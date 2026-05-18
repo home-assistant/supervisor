@@ -19,11 +19,12 @@ from ..dbus.const import (
     DBUS_ATTR_TIMEOUT_USEC,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_WHAT,
+    DBUS_SIGNAL_SYSTEMD_JOB_REMOVED,
     StartUnitMode,
     StopUnitMode,
     UnitActiveState,
 )
-from ..dbus.systemd import SystemdUnit
+from ..dbus.systemd import SystemdUnit, job_removed_filter
 from ..docker.const import PATH_MEDIA, PATH_SHARE
 from ..exceptions import (
     DBusError,
@@ -310,11 +311,18 @@ class Mount(CoreSysAttributes, ABC):
         Returns None on timeout — callers should re-read state to decide
         what to do next.
         """
-        async with self.sys_dbus.systemd.job_removed() as jobs:
+        # Late-bound: dispatch hasn't run yet when we subscribe; the
+        # filter reads job_path each time it's evaluated, so it picks
+        # up the assignment below before any JobRemoved is consumed.
+        job_path: str | None = None
+        async with self.sys_dbus.systemd.connected_dbus.signal(
+            DBUS_SIGNAL_SYSTEMD_JOB_REMOVED,
+            job_removed_filter(lambda: job_path),
+        ) as signal:
             job_path = await dispatch
             try:
                 async with asyncio.timeout(SYSTEMD_JOB_TIMEOUT):
-                    result = await jobs.wait_for_job(job_path)
+                    _id, _path, _unit, result = await signal.wait_for_signal()
             except TimeoutError:
                 _LOGGER.warning(
                     "Systemd %s job for mount %s did not complete within %d seconds",

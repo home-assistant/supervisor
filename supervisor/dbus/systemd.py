@@ -1,5 +1,6 @@
 """Interface to Systemd over D-Bus."""
 
+from collections.abc import Callable
 from functools import wraps
 import logging
 from typing import NamedTuple
@@ -29,7 +30,6 @@ from .const import (
     DBUS_NAME_SYSTEMD,
     DBUS_OBJECT_SYSTEMD,
     DBUS_SIGNAL_PROPERTIES_CHANGED,
-    DBUS_SIGNAL_SYSTEMD_JOB_REMOVED,
     StartUnitMode,
     StopUnitMode,
     UnitActiveState,
@@ -48,41 +48,32 @@ class ExecStartEntry(NamedTuple):
     ignore_failure: bool
 
 
-class JobRemovedSignal:
-    """Subscribe to systemd JobRemoved signals on the Manager.
+def job_removed_filter(get_job_path: Callable[[], str | None]) -> Callable[..., bool]:
+    """Build a DBusSignalWrapper filter that matches a specific JobRemoved.
 
-    Wrap the underlying DBusSignalWrapper as a context manager and expose
-    a `wait_for_job(job_path)` helper. Subscribing before dispatching a
-    job (start/stop/reload/restart/...) is what makes the wait race-free:
-    any JobRemoved that fires after subscription is queued and we can't
-    miss it, even if the job completes faster than we can process the
-    dispatch return value.
+    JobRemoved has signature `(u id, o job, s unit, s result)`. The filter
+    returns True only for the signal whose `job` path matches the one
+    returned by get_job_path() — used to wait for a specific systemd job
+    we dispatched, ignoring concurrent jobs on the system bus.
+
+    The getter indirection exists because race-free use requires
+    subscribing *before* dispatching the job (so we can't miss its
+    JobRemoved), which means the job path isn't known at filter
+    construction time. The closure reads it lazily at wait time:
+
+        job_path: str | None = None
+        async with systemd.connected_dbus.signal(
+            DBUS_SIGNAL_SYSTEMD_JOB_REMOVED,
+            job_removed_filter(lambda: job_path),
+        ) as signal:
+            job_path = await systemd.restart_unit(...)
+            _id, _path, _unit, result = await signal.wait_for_signal()
     """
 
-    def __init__(self, signal_wrapper: DBusSignalWrapper) -> None:
-        """Initialize wrapper."""
-        self._signal = signal_wrapper
+    def _match(_id: int, path: str, _unit: str, _result: str) -> bool:
+        return path == get_job_path()
 
-    async def __aenter__(self):
-        """Install the signal match."""
-        await self._signal.__aenter__()
-        return self
-
-    async def __aexit__(self, exc_t, exc_v, exc_tb) -> None:
-        """Remove the signal match."""
-        await self._signal.__aexit__(exc_t, exc_v, exc_tb)
-
-    async def wait_for_job(self, job_path: str) -> str:
-        """Wait for the specified job to be removed.
-
-        Returns the systemd job result string ("done", "failed",
-        "canceled", "timeout", "dependency", "skipped").
-        """
-        while True:
-            # JobRemoved(u id, o job, s unit, s result)
-            _id, path, _unit, result = await self._signal.wait_for_signal()
-            if path == job_path:
-                return result
+    return _match
 
 
 def systemd_errors(func):
@@ -166,7 +157,7 @@ class Systemd(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning(
                 "No systemd support on the host. Host control has been disabled."
             )
@@ -199,25 +190,6 @@ class Systemd(DBusInterfaceProxy):
     def virtualization(self) -> str:
         """Return virtualization hypervisor being used."""
         return self.properties[DBUS_ATTR_VIRTUALIZATION]
-
-    @dbus_connected
-    def job_removed(self) -> JobRemovedSignal:
-        """Get context manager for JobRemoved signals on the Manager.
-
-        Use this around a systemd dispatch + wait pattern:
-
-            async with sys_dbus.systemd.job_removed() as jobs:
-                job_path = await sys_dbus.systemd.restart_unit(...)
-                result = await jobs.wait_for_job(job_path)
-
-        Subscribing before the dispatch is what makes the wait race-free
-        — even for very fast operations (e.g. CIFS reload completing in
-        milliseconds), the JobRemoved signal cannot fire before the call
-        that allocates job_path.
-        """
-        return JobRemovedSignal(
-            self.connected_dbus.signal(DBUS_SIGNAL_SYSTEMD_JOB_REMOVED)
-        )
 
     @dbus_connected
     async def reboot(self) -> None:

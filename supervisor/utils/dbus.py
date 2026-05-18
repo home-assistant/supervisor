@@ -298,9 +298,20 @@ class DBus:
 
         self._signal_monitors = {}
 
-    def signal(self, signal_member: str) -> DBusSignalWrapper:
-        """Get signal context manager for this object."""
-        return DBusSignalWrapper(self, signal_member)
+    def signal(
+        self,
+        signal_member: str,
+        message_filter: Callable[..., bool] | None = None,
+    ) -> DBusSignalWrapper:
+        """Get signal context manager for this object.
+
+        message_filter is invoked with the signal body unpacked positionally
+        (`filter(*msg.body)`) and only signals where it returns True are
+        delivered to `wait_for_signal`. Useful when subscribing to a
+        broadcast signal but only caring about specific payloads (e.g.
+        systemd's JobRemoved, where we want one specific job path).
+        """
+        return DBusSignalWrapper(self, signal_member, message_filter)
 
     def _add_signal_monitor(
         self, interface: str, dbus_name: str, callback: Callable
@@ -481,7 +492,12 @@ class DBusCallWrapper:
 class DBusSignalWrapper:
     """Wrapper for D-Bus Signal."""
 
-    def __init__(self, dbus: DBus, signal_member: str) -> None:
+    def __init__(
+        self,
+        dbus: DBus,
+        signal_member: str,
+        message_filter: Callable[..., bool] | None = None,
+    ) -> None:
         """Initialize wrapper."""
         self._dbus: DBus = dbus
         signal_parts = signal_member.split(".")
@@ -489,6 +505,7 @@ class DBusSignalWrapper:
         self._member = signal_parts[-1]
         self._match: str = f"type='signal',interface={self._interface},member={self._member},path={self._dbus.object_path}"
         self._messages: asyncio.Queue[Message] = asyncio.Queue()
+        self._filter = message_filter
 
     def _message_handler(self, msg: Message):
         if msg.message_type != MessageType.SIGNAL:
@@ -528,9 +545,15 @@ class DBusSignalWrapper:
         return self
 
     async def wait_for_signal(self) -> Any:
-        """Wait for signal and returns signal payload."""
-        msg = await self._messages.get()
-        return msg.body
+        """Wait for signal and returns signal payload.
+
+        If a message_filter was provided at construction, non-matching
+        signals are discarded and the wait continues.
+        """
+        while True:
+            msg = await self._messages.get()
+            if self._filter is None or self._filter(*msg.body):
+                return msg.body
 
     async def __aexit__(self, exc_t, exc_v, exc_tb):
         """Stop collecting signal messages and remove match for signals."""
