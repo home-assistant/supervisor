@@ -275,9 +275,10 @@ class App(AppModel):
                     self._create_missing_image_issue()
         except DockerError as err:
             # Docker error other than a clean "image not found" - we can't
-            # tell whether the image is actually missing. Log and leave the
-            # addon detached; a future load will reattempt and surface a
-            # MISSING_IMAGE repair if appropriate.
+            # tell whether the image is actually missing. Log so the issue
+            # is visible (CRITICAL is captured by the Sentry integration)
+            # and leave the app detached; the user can attempt a manual
+            # repair from the UI once the underlying cause is resolved.
             _LOGGER.critical(
                 "Docker error loading app %s, leaving detached: %s", self.slug, err
             )
