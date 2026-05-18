@@ -123,11 +123,12 @@ class DockerMonitor(CoreSysAttributes):
                             die_exit_code = int(
                                 event["Actor"]["Attributes"]["exitCode"]
                             )
-                            if die_exit_code == 0:
-                                container_state = ContainerState.STOPPED
-                            else:
-                                container_state = ContainerState.FAILED
-                                exit_code = die_exit_code
+                            container_state = (
+                                ContainerState.FAILED
+                                if die_exit_code
+                                else ContainerState.STOPPED
+                            )
+                            exit_code = die_exit_code or None
                         elif action == "health_status: healthy":
                             container_state = ContainerState.HEALTHY
                         elif action == "health_status: unhealthy":
