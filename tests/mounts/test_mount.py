@@ -132,8 +132,21 @@ async def test_cifs_mount(
                 ("Description", Variant("s", "Supervisor cifs mount: test")),
                 ("What", Variant("s", "//test.local/camera")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant("s", "Supervisor cifs mount: test (automount)"),
+                        ),
+                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         )
     ]
     assert mount.path_credentials.exists()
@@ -198,8 +211,21 @@ async def test_cifs_mount_read_only(
                 ("Description", Variant("s", "Supervisor cifs mount: test")),
                 ("What", Variant("s", "//test.local/camera")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant("s", "Supervisor cifs mount: test (automount)"),
+                        ),
+                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         )
     ]
 
@@ -259,8 +285,21 @@ async def test_nfs_mount(
                 ("Description", Variant("s", "Supervisor nfs mount: test")),
                 ("What", Variant("s", "test.local:/media/camera")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant("s", "Supervisor nfs mount: test (automount)"),
+                        ),
+                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         )
     ]
 
@@ -306,8 +345,21 @@ async def test_nfs_mount_read_only(
                 ("Description", Variant("s", "Supervisor nfs mount: test")),
                 ("What", Variant("s", "test.local:/media/camera")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant("s", "Supervisor nfs mount: test (automount)"),
+                        ),
+                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         )
     ]
 
@@ -358,8 +410,21 @@ async def test_load(
                 ("Description", Variant("s", "Supervisor cifs mount: test")),
                 ("What", Variant("s", "//test.local/share")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant("s", "Supervisor cifs mount: test (automount)"),
+                        ),
+                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         )
     ]
     assert systemd_service.ReloadOrRestartUnit.calls == []
@@ -443,8 +508,11 @@ async def test_unmount(
 
     assert mount.unit is None
     assert mount.state is None
+    # Network mount unmount stops the .automount companion first, then the
+    # .mount itself.
     assert systemd_service.StopUnit.calls == [
-        ("mnt-data-supervisor-mounts-test.mount", "fail")
+        ("mnt-data-supervisor-mounts-test.automount", "fail"),
+        ("mnt-data-supervisor-mounts-test.mount", "fail"),
     ]
 
 
@@ -530,7 +598,9 @@ async def test_unmount_failure(
     with pytest.raises(MountError):
         await mount.unmount()
 
-    assert len(systemd_service.StopUnit.calls) == 1
+    # The .automount stop is best-effort (warning logged, swallowed); the
+    # subsequent .mount stop raises and surfaces as MountError.
+    assert len(systemd_service.StopUnit.calls) == 2
 
     # If unit is missing we skip unmounting, its already gone
     systemd_service.StopUnit.calls.clear()
@@ -836,7 +906,20 @@ async def test_mount_fails_if_down(
                 ("Description", Variant("s", "Supervisor nfs mount: test")),
                 ("What", Variant("s", "test.local:/media/camera")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant("s", "Supervisor nfs mount: test (automount)"),
+                        ),
+                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         )
     ]

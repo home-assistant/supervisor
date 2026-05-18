@@ -15,10 +15,13 @@ from voluptuous import Coerce
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     DBUS_ATTR_DESCRIPTION,
+    DBUS_ATTR_LAZY_UNMOUNT,
     DBUS_ATTR_OPTIONS,
+    DBUS_ATTR_TIMEOUT_IDLE_USEC,
     DBUS_ATTR_TIMEOUT_USEC,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_WHAT,
+    DBUS_ATTR_WHERE,
     DBUS_SIGNAL_SYSTEMD_JOB_REMOVED,
     StartUnitMode,
     StopUnitMode,
@@ -83,12 +86,26 @@ UPDATE_STATE_TIMEOUT = 40
 # case doesn't time out one second before JobRemoved fires.
 SYSTEMD_JOB_TIMEOUT = 90
 
+# Idle expiry on the companion `.automount` unit. After this much time
+# without access, autofs umounts the underlying `.mount`; the next access
+# triggers a fresh mount transparently. 5 min keeps mount/umount churn
+# low on bursty workloads (backups, periodic media scans) while still
+# letting dead servers drop out of the kernel mount table reasonably
+# soon after they disappear.
+AUTOMOUNT_IDLE_TIMEOUT_USEC = 5 * 60 * 1_000_000
+
 COERCE_MOUNT_TYPE: Callable[[str], MountType] = Coerce(MountType)
 COERCE_MOUNT_USAGE: Callable[[str], MountUsage] = Coerce(MountUsage)
 
 
 class Mount(CoreSysAttributes, ABC):
     """A mount."""
+
+    # Whether `mount()` should also create a companion `.automount` unit
+    # via the aux parameter of StartTransientUnit. Network mounts opt in;
+    # bind mounts stay eagerly mounted since they have no server to wait
+    # on and lazy semantics would only add latency.
+    creates_automount: bool = False
 
     def __init__(self, coresys: CoreSys, data: MountData) -> None:
         """Initialize object."""
@@ -168,8 +185,13 @@ class Mount(CoreSysAttributes, ABC):
 
     @property
     def unit_name(self) -> str:
-        """Systemd unit name for mount."""
+        """Systemd unit name for the .mount unit."""
         return f"{self.where.as_posix()[1:].replace('/', '-')}.mount"
+
+    @property
+    def automount_unit_name(self) -> str:
+        """Systemd unit name for the companion .automount unit."""
+        return f"{self.where.as_posix()[1:].replace('/', '-')}.automount"
 
     @property
     def unit(self) -> SystemdUnit | None:
@@ -364,17 +386,43 @@ class Mount(CoreSysAttributes, ABC):
         )
         if self.type != MountType.BIND:
             options += [(DBUS_ATTR_TYPE, Variant("s", self.type))]
-        properties = options + [
+        mount_properties = options + [
             (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
             (DBUS_ATTR_WHAT, Variant("s", self.what)),
             (DBUS_ATTR_TIMEOUT_USEC, Variant("t", MOUNT_UNIT_TIMEOUT_USEC)),
+            # MNT_DETACH on umount: when the share is gone, the stop/restart
+            # paths don't block waiting for an unreachable server to drain.
+            # Pairs with softerr (NFS) / soft (CIFS) — existing fds error
+            # out on their next op instead of hanging forever.
+            (DBUS_ATTR_LAZY_UNMOUNT, Variant("b", True)),
         ]
+        aux = None
+        if self.creates_automount:
+            aux = [
+                (
+                    self.automount_unit_name,
+                    [
+                        (
+                            DBUS_ATTR_DESCRIPTION,
+                            Variant("s", f"{self.description} (automount)"),
+                        ),
+                        (DBUS_ATTR_WHERE, Variant("s", self.where.as_posix())),
+                        (
+                            DBUS_ATTR_TIMEOUT_IDLE_USEC,
+                            Variant("t", AUTOMOUNT_IDLE_TIMEOUT_USEC),
+                        ),
+                    ],
+                )
+            ]
 
         try:
             await self._run_systemd_job(
                 "start_transient_unit",
                 self.sys_dbus.systemd.start_transient_unit(
-                    self.unit_name, StartUnitMode.FAIL, properties
+                    self.unit_name,
+                    StartUnitMode.FAIL,
+                    mount_properties,
+                    aux=aux,
                 ),
             )
         except DBusError as err:
@@ -385,6 +433,13 @@ class Mount(CoreSysAttributes, ABC):
         if unit := await self._update_unit():
             await self._update_state(unit)
 
+        # The `.automount` companion is what's "active" after creation; the
+        # `.mount` stays inactive until first access. So is_mounted() — which
+        # for network mounts triggers a statvfs probe through the autofs path
+        # — is the right way to confirm the setup is healthy. A passing probe
+        # also forces the initial activation, surfacing any server-side
+        # problems immediately rather than letting them lurk until the next
+        # consumer hits the path.
         if not await self.is_mounted():
             raise MountActivationError(
                 f"Mounting {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
@@ -396,6 +451,24 @@ class Mount(CoreSysAttributes, ABC):
         if not (unit := await self._update_unit()):
             _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
             return
+
+        # Stop the .automount companion first so it can't re-trigger the
+        # underlying .mount during cleanup. The .automount may not exist
+        # (legacy units, or non-network mounts) — best-effort stop.
+        if self.creates_automount:
+            try:
+                await self._run_systemd_job(
+                    "stop_unit",
+                    self.sys_dbus.systemd.stop_unit(
+                        self.automount_unit_name, StopUnitMode.FAIL
+                    ),
+                )
+            except DBusSystemdNoSuchUnit:
+                pass
+            except DBusError as err:
+                _LOGGER.warning(
+                    "Could not stop automount unit for %s: %s", self.name, err
+                )
 
         await self._update_state(unit)
         try:
@@ -536,6 +609,8 @@ class Mount(CoreSysAttributes, ABC):
 
 class NetworkMount(Mount, ABC):
     """A network mount."""
+
+    creates_automount: bool = True
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""

@@ -133,8 +133,27 @@ async def test_load(
                     ("Description", Variant("s", "Supervisor cifs mount: backup_test")),
                     ("What", Variant("s", "//backup.local/backups")),
                     ("TimeoutUSec", Variant("t", 35000000)),
+                    ("LazyUnmount", Variant("b", True)),
                 ],
-                [],
+                [
+                    (
+                        "mnt-data-supervisor-mounts-backup_test.automount",
+                        [
+                            (
+                                "Description",
+                                Variant(
+                                    "s",
+                                    "Supervisor cifs mount: backup_test (automount)",
+                                ),
+                            ),
+                            (
+                                "Where",
+                                Variant("s", "/mnt/data/supervisor/mounts/backup_test"),
+                            ),
+                            ("TimeoutIdleUSec", Variant("t", 300000000)),
+                        ],
+                    ),
+                ],
             ),
             (
                 "mnt-data-supervisor-mounts-media_test.mount",
@@ -145,8 +164,27 @@ async def test_load(
                     ("Description", Variant("s", "Supervisor nfs mount: media_test")),
                     ("What", Variant("s", "media.local:/media")),
                     ("TimeoutUSec", Variant("t", 35000000)),
+                    ("LazyUnmount", Variant("b", True)),
                 ],
-                [],
+                [
+                    (
+                        "mnt-data-supervisor-mounts-media_test.automount",
+                        [
+                            (
+                                "Description",
+                                Variant(
+                                    "s",
+                                    "Supervisor nfs mount: media_test (automount)",
+                                ),
+                            ),
+                            (
+                                "Where",
+                                Variant("s", "/mnt/data/supervisor/mounts/media_test"),
+                            ),
+                            ("TimeoutIdleUSec", Variant("t", 300000000)),
+                        ],
+                    ),
+                ],
             ),
             (
                 "mnt-data-supervisor-media-media_test.mount",
@@ -159,6 +197,7 @@ async def test_load(
                     ),
                     ("What", Variant("s", "/mnt/data/supervisor/mounts/media_test")),
                     ("TimeoutUSec", Variant("t", 35000000)),
+                    ("LazyUnmount", Variant("b", True)),
                 ],
                 [],
             ),
@@ -215,8 +254,26 @@ async def test_load_share_mount(
                 ("Description", Variant("s", "Supervisor nfs mount: share_test")),
                 ("What", Variant("s", "share.local:/share")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-share_test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant(
+                                "s", "Supervisor nfs mount: share_test (automount)"
+                            ),
+                        ),
+                        (
+                            "Where",
+                            Variant("s", "/mnt/data/supervisor/mounts/share_test"),
+                        ),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         ),
         (
             "mnt-data-supervisor-share-share_test.mount",
@@ -226,6 +283,7 @@ async def test_load_share_mount(
                 ("Description", Variant("s", "Supervisor bind mount: bind_share_test")),
                 ("What", Variant("s", "/mnt/data/supervisor/mounts/share_test")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
             [],
         ),
@@ -339,6 +397,7 @@ async def test_mount_failed_during_load(
             ),
             ("What", Variant("s", "/mnt/data/supervisor/emergency/media_test")),
             ("TimeoutUSec", Variant("t", 35000000)),
+            ("LazyUnmount", Variant("b", True)),
         ],
         [],
     )
@@ -421,8 +480,10 @@ async def test_update_mount(
         "mnt-data-supervisor-mounts-media_test.mount",
         "mnt-data-supervisor-media-media_test.mount",
     ]
+    # Network mount unmount now also stops the .automount companion first.
     assert [call[0] for call in systemd_service.StopUnit.calls] == [
         "mnt-data-supervisor-media-media_test.mount",
+        "mnt-data-supervisor-mounts-media_test.automount",
         "mnt-data-supervisor-mounts-media_test.mount",
     ]
 
@@ -532,6 +593,7 @@ async def test_remove_mount(
 
     assert [call[0] for call in systemd_service.StopUnit.calls] == [
         "mnt-data-supervisor-media-media_test.mount",
+        "mnt-data-supervisor-mounts-media_test.automount",
         "mnt-data-supervisor-mounts-media_test.mount",
     ]
 
@@ -893,7 +955,13 @@ async def test_create_mount_activation_failure(
 
     assert len(systemd_service.StartTransientUnit.calls) == 1
     assert len(systemd_service.ResetFailedUnit.calls) == 1
-    assert not systemd_service.StopUnit.calls
+    # Cleanup unmount stops the .automount companion even when the .mount
+    # is in failed state (best-effort); the .mount itself is left to
+    # reset_failed_unit because systemd won't accept a stop on a failed
+    # unit.
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-mounts-backup_test.automount",
+    ]
 
 
 async def test_reload_mounts(
@@ -951,8 +1019,26 @@ async def test_reload_mounts_attempts_initial_mount(
                 ("Description", Variant("s", "Supervisor nfs mount: media_test")),
                 ("What", Variant("s", "media.local:/media")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
-            [],
+            [
+                (
+                    "mnt-data-supervisor-mounts-media_test.automount",
+                    [
+                        (
+                            "Description",
+                            Variant(
+                                "s", "Supervisor nfs mount: media_test (automount)"
+                            ),
+                        ),
+                        (
+                            "Where",
+                            Variant("s", "/mnt/data/supervisor/mounts/media_test"),
+                        ),
+                        ("TimeoutIdleUSec", Variant("t", 300000000)),
+                    ],
+                ),
+            ],
         ),
         (
             "mnt-data-supervisor-media-media_test.mount",
@@ -962,6 +1048,7 @@ async def test_reload_mounts_attempts_initial_mount(
                 ("Description", Variant("s", "Supervisor bind mount: bind_media_test")),
                 ("What", Variant("s", "/mnt/data/supervisor/mounts/media_test")),
                 ("TimeoutUSec", Variant("t", 35000000)),
+                ("LazyUnmount", Variant("b", True)),
             ],
             [],
         ),
