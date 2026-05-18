@@ -1674,13 +1674,13 @@ class App(AppModel):
                     "App %s did not handle SIGTERM and was terminated by the "
                     "default signal handler (exit code %d). The app should "
                     "trap SIGTERM, shut down cleanly, and exit with code 0.",
-                    self.slug,
+                    self.name,
                     EXIT_CODE_SIGTERM_DEFAULT,
                 )
             elif event.exit_code is not None:
                 _LOGGER.error(
                     "App %s exited with non-zero exit code %d",
-                    self.slug,
+                    self.name,
                     event.exit_code,
                 )
             self.state = AppState.ERROR
