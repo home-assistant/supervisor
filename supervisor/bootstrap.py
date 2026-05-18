@@ -255,13 +255,6 @@ def initialize_system(coresys: CoreSys) -> None:
         )
         config.path_mounts_credentials.mkdir(mode=0o600)
 
-    # Emergency folder
-    if not config.path_emergency.is_dir():
-        _LOGGER.debug(
-            "Creating Supervisor emergency folder at '%s'", config.path_emergency
-        )
-        config.path_emergency.mkdir()
-
     # App Configs folder
     if not config.path_app_configs.is_dir():
         _LOGGER.debug(

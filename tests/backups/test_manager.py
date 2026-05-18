@@ -582,11 +582,15 @@ async def test_backup_media_with_mounts_retains_files(
     with patch.object(DockerHomeAssistant, "is_running", return_value=True):
         await coresys.backups.do_restore_partial(backup, folders=["media"])
 
+    # Restore unmounts the network mount nested inside `media` (stops
+    # both the .automount and .mount), then re-mounts it after writes.
+    # The re-mount creates a new transient .mount + aux .automount pair.
     assert systemd_service.StopUnit.calls == [
-        ("mnt-data-supervisor-media-media_test.mount", "fail")
+        ("mnt-data-supervisor-media-media_test.automount", "fail"),
+        ("mnt-data-supervisor-media-media_test.mount", "fail"),
     ]
     assert systemd_service.StartTransientUnit.calls == [
-        ("mnt-data-supervisor-media-media_test.mount", "fail", ANY, [])
+        ("mnt-data-supervisor-media-media_test.mount", "fail", ANY, ANY)
     ]
 
 

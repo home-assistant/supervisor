@@ -768,18 +768,28 @@ class Backup(JobGroup):
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
 
-            # Bind mounts are constant during the backup, so resolve the set of
-            # paths to skip once instead of per file.
-            excluded_paths = {
-                bound.bind_mount.local_where for bound in self.sys_mounts.bound_mounts
-            }
-
             def is_excluded_by_filter(item_arcpath: PurePath) -> bool:
-                """Filter out bind mounts in folders being backed up."""
+                """Skip network mount points when archiving local folders.
+
+                Media/share network mounts live directly under
+                path_media / path_share. We don't want to recurse into
+                them on backup — that would archive the remote share
+                contents alongside the local data, and the autofs
+                trigger would activate the mount just so we could read
+                files we're going to throw out anyway.
+                """
                 full_path = origin_dir / item_arcpath.relative_to(".")
 
-                if full_path in excluded_paths:
-                    _LOGGER.debug("Ignoring %s because of bind mount", full_path)
+                for mount in (
+                    *self.sys_mounts.media_mounts,
+                    *self.sys_mounts.share_mounts,
+                ):
+                    if full_path != mount.local_where:
+                        continue
+                    _LOGGER.debug(
+                        "Ignoring %s because it is a network mount",
+                        full_path,
+                    )
                     return True
 
                 return False
@@ -872,23 +882,27 @@ class Backup(JobGroup):
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
 
-        # Unmount any mounts within folder
-        bind_mounts = [
-            bound.bind_mount
-            for bound in self.sys_mounts.bound_mounts
-            if bound.bind_mount.local_where
-            and bound.bind_mount.local_where.is_relative_to(origin_dir)
+        # Unmount any network mounts that live inside the folder being
+        # restored. Otherwise the restore would write into the remote
+        # share instead of replacing the local mount-point directory.
+        # The autofs trigger gets re-armed by `mount()` afterwards so
+        # the next access re-activates the share transparently.
+        nested_mounts = [
+            mount
+            for mount in (
+                *self.sys_mounts.media_mounts,
+                *self.sys_mounts.share_mounts,
+            )
+            if mount.local_where and mount.local_where.is_relative_to(origin_dir)
         ]
-        if bind_mounts:
-            await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
+        if nested_mounts:
+            await asyncio.gather(*[mount.unmount() for mount in nested_mounts])
 
         try:
             await self.sys_run_in_executor(_restore)
         finally:
-            if bind_mounts:
-                await asyncio.gather(
-                    *[bind_mount.mount() for bind_mount in bind_mounts]
-                )
+            if nested_mounts:
+                await asyncio.gather(*[mount.mount() for mount in nested_mounts])
 
     @Job(name="backup_restore_folders", cleanup=False)
     async def restore_folders(self, folder_list: list[str]) -> bool:

@@ -384,30 +384,35 @@ async def test_api_reload_mount(
     mount,
     mock_is_mount,
 ):
-    """Test reloading a mount via API."""
+    """Test reloading a mount via API.
+
+    With autofs handling re-activation, "reload" reduces to a probe of
+    the mount's health. systemd is not contacted on either the success
+    or the failure path — the kernel's autofs trigger handles
+    re-activation on demand when something next accesses the path.
+    """
     api_client, prefix = api_client_with_prefix
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
 
-    # Healthy mount (probe passes): API reload completes without touching
-    # systemd — the periodic refresh + probe-as-fast-path means a healthy
-    # mount only gets reloaded when the share has actually gone bad.
+    # Healthy mount (probe passes): API reload returns ok and dismisses
+    # any failed-mount resolution issue.
     resp = await api_client.post(f"{prefix}/mounts/backup_test/reload")
     result = await resp.json()
     assert result["result"] == "ok"
     assert systemd_service.ReloadOrRestartUnit.calls == []
 
-    # Probe failure forces the reload to actually go to systemd.
+    # Probe failure: API reload returns an error response (the probe
+    # raised MountActivationError); still no systemd reload — the
+    # kernel will re-trigger the mount when something accesses it.
     with patch(
         "supervisor.mounts.mount._probe_network_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         resp = await api_client.post(f"{prefix}/mounts/backup_test/reload")
-        await resp.json()
-
-    assert systemd_service.ReloadOrRestartUnit.calls == [
-        ("mnt-data-supervisor-mounts-backup_test.mount", "fail")
-    ]
+        result = await resp.json()
+    assert result["result"] == "error"
+    assert systemd_service.ReloadOrRestartUnit.calls == []
 
 
 async def test_api_delete_mount(
