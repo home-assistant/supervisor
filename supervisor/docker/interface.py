@@ -101,7 +101,7 @@ def _container_state_from_model(
     if exit_code > 0:
         return ContainerState.FAILED, exit_code
 
-    return ContainerState.STOPPED, exit_code
+    return ContainerState.STOPPED, None
 
 
 class DockerInterface(JobGroup, ABC):

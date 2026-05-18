@@ -59,7 +59,7 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..docker.app import DockerApp
-from ..docker.const import ContainerState
+from ..docker.const import EXIT_CODE_SIGTERM_DEFAULT, ContainerState
 from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
@@ -1669,12 +1669,13 @@ class App(AppModel):
         elif event.state == ContainerState.STOPPED:
             self.state = AppState.STOPPED
         elif event.state == ContainerState.FAILED:
-            if event.exit_code == 143:
+            if event.exit_code == EXIT_CODE_SIGTERM_DEFAULT:
                 _LOGGER.warning(
                     "App %s did not handle SIGTERM and was terminated by the "
-                    "default signal handler (exit code 143). The app should "
+                    "default signal handler (exit code %d). The app should "
                     "trap SIGTERM, shut down cleanly, and exit with code 0.",
                     self.slug,
+                    EXIT_CODE_SIGTERM_DEFAULT,
                 )
             elif event.exit_code is not None:
                 _LOGGER.error(

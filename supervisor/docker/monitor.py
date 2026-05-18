@@ -21,7 +21,11 @@ STOP_MONITOR_TIMEOUT = 5.0
 
 @dataclass(slots=True, frozen=True)
 class DockerContainerStateEvent:
-    """Event for docker container state change."""
+    """Event for docker container state change.
+
+    exit_code is populated for FAILED transitions where the source event or
+    inspect data carried an exit code; None otherwise.
+    """
 
     name: str
     state: ContainerState
@@ -116,12 +120,14 @@ class DockerMonitor(CoreSysAttributes):
                         if action == "start":
                             container_state = ContainerState.RUNNING
                         elif action == "die":
-                            exit_code = int(event["Actor"]["Attributes"]["exitCode"])
-                            container_state = (
-                                ContainerState.STOPPED
-                                if exit_code == 0
-                                else ContainerState.FAILED
+                            die_exit_code = int(
+                                event["Actor"]["Attributes"]["exitCode"]
                             )
+                            if die_exit_code == 0:
+                                container_state = ContainerState.STOPPED
+                            else:
+                                container_state = ContainerState.FAILED
+                                exit_code = die_exit_code
                         elif action == "health_status: healthy":
                             container_state = ContainerState.HEALTHY
                         elif action == "health_status: unhealthy":

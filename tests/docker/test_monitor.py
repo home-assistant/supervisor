@@ -34,7 +34,7 @@ from supervisor.docker.monitor import DockerContainerStateEvent
                 "Actor": {"Attributes": {"supervisor_managed": "", "exitCode": "0"}},
             },
             ContainerState.STOPPED,
-            0,
+            None,
         ),
         (
             {

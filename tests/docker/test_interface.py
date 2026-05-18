@@ -235,23 +235,31 @@ async def test_current_state_failures(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "attrs,expected,fired_when_skip_down",
+    "attrs,expected,expected_exit_code,fired_when_skip_down",
     [
-        ({"State": {"Status": "running"}}, ContainerState.RUNNING, True),
-        ({"State": {"Status": "exited", "ExitCode": 0}}, ContainerState.STOPPED, False),
+        ({"State": {"Status": "running"}}, ContainerState.RUNNING, None, True),
+        (
+            {"State": {"Status": "exited", "ExitCode": 0}},
+            ContainerState.STOPPED,
+            None,
+            False,
+        ),
         (
             {"State": {"Status": "exited", "ExitCode": 137}},
             ContainerState.FAILED,
+            137,
             False,
         ),
         (
             {"State": {"Status": "running", "Health": {"Status": "healthy"}}},
             ContainerState.HEALTHY,
+            None,
             True,
         ),
         (
             {"State": {"Status": "running", "Health": {"Status": "unhealthy"}}},
             ContainerState.UNHEALTHY,
+            None,
             True,
         ),
     ],
@@ -261,6 +269,7 @@ async def test_attach_existing_container(
     container: DockerContainer,
     attrs: dict[str, Any],
     expected: ContainerState,
+    expected_exit_code: int | None,
     fired_when_skip_down: bool,
 ):
     """Test attaching to existing container."""
@@ -279,7 +288,9 @@ async def test_attach_existing_container(
         ] == [
             call(
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-                DockerContainerStateEvent("homeassistant", expected, "abc123", 1),
+                DockerContainerStateEvent(
+                    "homeassistant", expected, "abc123", 1, expected_exit_code
+                ),
             )
         ]
 
