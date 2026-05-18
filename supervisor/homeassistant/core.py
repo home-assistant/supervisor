@@ -214,46 +214,52 @@ class HomeAssistantCore(JobGroup):
                 if not self.sys_homeassistant.latest_version:
                     await self.sys_updater.reload()
 
-                if to_version := self.sys_homeassistant.latest_version:
-                    # Supervisor must always be updated before Core to avoid
-                    # incompatibilities between a newer Core and an older Supervisor.
-                    if self.sys_supervisor.need_update:
-                        if self.sys_updater.auto_update:
-                            _LOGGER.warning(
-                                "Supervisor has a pending update and must be updated"
-                                " before Home Assistant Core. Updating Supervisor first"
-                            )
-                            try:
-                                await self.sys_supervisor.update()
-                            except SupervisorUpdateError as err:
-                                _LOGGER.warning(
-                                    "Supervisor update failed, retrying in %ssec: %s",
-                                    INSTALL_RETRY_WAIT_SECS,
-                                    err,
-                                )
-                                await async_capture_exception(err)
-                                await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
-                                continue
-                        else:
-                            _LOGGER.warning(
-                                "Supervisor has a pending update but auto-update is"
-                                " disabled. Installing Home Assistant Core anyway —"
-                                " unknown issues may occur"
-                            )
+                if not (to_version := self.sys_homeassistant.latest_version):
+                    _LOGGER.warning(
+                        "Found no information about Home Assistant version. Retrying in"
+                        " %ssec",
+                        INSTALL_RETRY_WAIT_SECS,
+                    )
+                    await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
+                    continue
 
-                    try:
-                        await self.instance.update(
-                            to_version,
-                            image=self.sys_updater.image_homeassistant,
+                # Supervisor must always be updated before Core to avoid
+                # incompatibilities between a newer Core and an older Supervisor.
+                if self.sys_supervisor.need_update:
+                    if self.sys_updater.auto_update:
+                        _LOGGER.warning(
+                            "Supervisor has a pending update and must be updated"
+                            " before Home Assistant Core. Updating Supervisor first"
                         )
-                        self.sys_homeassistant.version = (
-                            self.instance.version or to_version
+                        try:
+                            await self.sys_supervisor.update()
+                        except SupervisorUpdateError as err:
+                            _LOGGER.warning(
+                                "Supervisor update failed, retrying in %ssec: %s",
+                                INSTALL_RETRY_WAIT_SECS,
+                                err,
+                            )
+                            await async_capture_exception(err)
+                            await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
+                            continue
+                    else:
+                        _LOGGER.warning(
+                            "Supervisor has a pending update but auto-update is"
+                            " disabled. Installing Home Assistant Core anyway —"
+                            " unknown issues may occur"
                         )
-                        break
-                    except DockerError, JobException:
-                        pass
-                    except Exception as err:  # pylint: disable=broad-except
-                        await async_capture_exception(err)
+
+                try:
+                    await self.instance.update(
+                        to_version,
+                        image=self.sys_updater.image_homeassistant,
+                    )
+                    self.sys_homeassistant.version = self.instance.version or to_version
+                    break
+                except DockerError, JobException:
+                    pass
+                except Exception as err:  # pylint: disable=broad-except
+                    await async_capture_exception(err)
 
                 _LOGGER.warning(
                     "Error on Home Assistant installation. Retrying in %ssec",
