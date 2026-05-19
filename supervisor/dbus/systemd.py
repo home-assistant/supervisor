@@ -32,6 +32,7 @@ from .const import (
     DBUS_SIGNAL_PROPERTIES_CHANGED,
     StartUnitMode,
     StopUnitMode,
+    SystemState,
     UnitActiveState,
 )
 from .interface import DBusInterface, DBusInterfaceProxy, dbus_property
@@ -233,6 +234,11 @@ class Systemd(DBusInterfaceProxy):
     ) -> list[tuple[str, str, str, str, str, str, str, int, str, str]]:
         """Return a list of available systemd services."""
         return await self.connected_dbus.Manager.call("list_units")
+
+    @dbus_connected
+    async def get_system_state(self) -> SystemState:
+        """Return the systemd manager state."""
+        return SystemState(await self.connected_dbus.Manager.get("system_state"))
 
     @dbus_connected
     async def start_transient_unit(

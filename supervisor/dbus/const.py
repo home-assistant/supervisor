@@ -428,6 +428,17 @@ class StartUnitMode(StrEnum):
     ISOLATE = "isolate"
 
 
+class SystemState(DBusStrEnum):
+    """State of the systemd manager."""
+
+    INITIALIZING = "initializing"
+    STARTING = "starting"
+    RUNNING = "running"
+    DEGRADED = "degraded"
+    MAINTENANCE = "maintenance"
+    STOPPING = "stopping"
+
+
 class UnitActiveState(DBusStrEnum):
     """Active state of a systemd unit."""
 
