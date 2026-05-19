@@ -5,7 +5,12 @@ from dbus_fast import DBusError, Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.dbus.const import StartUnitMode, StopUnitMode, UnitActiveState
+from supervisor.dbus.const import (
+    StartUnitMode,
+    StopUnitMode,
+    SystemState,
+    UnitActiveState,
+)
 from supervisor.dbus.systemd import Systemd
 from supervisor.exceptions import DBusNotConnectedError, DBusSystemdNoSuchUnit
 
@@ -30,6 +35,7 @@ async def test_dbus_systemd_info(dbus_session_bus: MessageBus):
 
     assert systemd.boot_timestamp == 1632236713344227
     assert systemd.startup_time == 45.304696
+    assert await systemd.get_system_state() == SystemState.RUNNING
 
 
 async def test_subscribe_on_connect(

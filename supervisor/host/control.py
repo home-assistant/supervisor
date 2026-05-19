@@ -1,5 +1,6 @@
 """Power control for host."""
 
+import asyncio
 from datetime import datetime
 import logging
 
@@ -7,13 +8,19 @@ from awesomeversion import AwesomeVersion
 
 from ..const import HostFeature
 from ..coresys import CoreSysAttributes
+from ..dbus.const import StartUnitMode, UnitActiveState
 from ..exceptions import (
     DBusInvalidArgsError,
+    DBusSystemdNoSuchUnit,
+    HassioError,
     HostInvalidHostnameError,
     HostNotSupportedError,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+HAOS_PRE_SHUTDOWN_TARGET = "haos-pre-shutdown.target"
+HAOS_PRE_SHUTDOWN_TIMEOUT = 10
 
 
 class SystemControl(CoreSysAttributes):
@@ -38,6 +45,28 @@ class SystemControl(CoreSysAttributes):
             f"No {flag!s} D-Bus connection available", _LOGGER.error
         )
 
+    async def _enter_haos_pre_shutdown(self) -> None:
+        """Enter the HAOS pre-shutdown systemd phase if available."""
+        if not self.sys_dbus.systemd.is_connected:
+            return
+
+        try:
+            _LOGGER.info("Entering Home Assistant OS pre-shutdown phase")
+            await self.sys_dbus.systemd.start_unit(
+                HAOS_PRE_SHUTDOWN_TARGET, StartUnitMode.REPLACE
+            )
+            unit = await self.sys_dbus.systemd.get_unit(HAOS_PRE_SHUTDOWN_TARGET)
+            async with asyncio.timeout(HAOS_PRE_SHUTDOWN_TIMEOUT):
+                await unit.wait_for_active_state({UnitActiveState.ACTIVE})
+        except DBusSystemdNoSuchUnit:
+            _LOGGER.debug("Home Assistant OS pre-shutdown target is not available")
+        except TimeoutError:
+            _LOGGER.warning("Timed out entering Home Assistant OS pre-shutdown phase")
+        except HassioError as err:
+            _LOGGER.warning(
+                "Could not enter Home Assistant OS pre-shutdown phase: %s", err
+            )
+
     async def reboot(self) -> None:
         """Reboot host system."""
         self._check_dbus(HostFeature.REBOOT)
@@ -47,7 +76,13 @@ class SystemControl(CoreSysAttributes):
             "Initialize host reboot using %s", "logind" if use_logind else "systemd"
         )
 
+        # Stop Home Assistant Core, add-ons and plugins before requesting the
+        # reboot. Doing it here (rather than relying only on the SIGTERM
+        # handler during host shutdown) keeps UI-triggered reboots fully
+        # graceful on every OS version, including ones whose systemd units
+        # give Supervisor only a short stop timeout.
         try:
+            await self._enter_haos_pre_shutdown()
             await self.sys_core.shutdown()
         finally:
             if use_logind:
@@ -64,7 +99,13 @@ class SystemControl(CoreSysAttributes):
             "Initialize host power off %s", "logind" if use_logind else "systemd"
         )
 
+        # Stop Home Assistant Core, add-ons and plugins before requesting the
+        # power off. Doing it here (rather than relying only on the SIGTERM
+        # handler during host shutdown) keeps UI-triggered shutdowns fully
+        # graceful on every OS version, including ones whose systemd units
+        # give Supervisor only a short stop timeout.
         try:
+            await self._enter_haos_pre_shutdown()
             await self.sys_core.shutdown()
         finally:
             if use_logind:

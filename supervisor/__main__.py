@@ -13,6 +13,8 @@ zlib_fast.enable()
 
 # pylint: disable=wrong-import-position
 from supervisor import bootstrap  # noqa: E402
+from supervisor.dbus.const import SystemState  # noqa: E402
+from supervisor.exceptions import HassioError  # noqa: E402
 from supervisor.utils.blockbuster import BlockBusterManager  # noqa: E402
 from supervisor.utils.logging import activate_log_queue_handler  # noqa: E402
 
@@ -68,6 +70,32 @@ if __name__ == "__main__":
 
     # Create startup task that can be cancelled gracefully
     startup_task = loop.create_task(coresys.core.start())
+    shutdown_tasks: list[asyncio.Task] = []
+
+    async def host_is_shutting_down() -> bool:
+        """Return True if systemd is shutting the host down.
+
+        This relies only on the systemd manager state, which is exposed by
+        every systemd version, so it works regardless of the running HAOS
+        release (no dependency on OS-side units being present).
+        """
+        if not coresys.dbus.systemd.is_connected:
+            return False
+
+        try:
+            return await coresys.dbus.systemd.get_system_state() == SystemState.STOPPING
+        except HassioError as err:
+            _LOGGER.warning("Could not read systemd manager state: %s", err)
+            return False
+
+    async def stop_supervisor() -> None:
+        """Stop Supervisor, including managed services during host shutdown."""
+        try:
+            if await host_is_shutting_down():
+                _LOGGER.info("Host shutdown detected, shutting down managed services")
+                await coresys.core.shutdown()
+        finally:
+            await coresys.core.stop()
 
     def shutdown_handler() -> None:
         """Handle shutdown signals gracefully during startup."""
@@ -75,7 +103,10 @@ if __name__ == "__main__":
             _LOGGER.warning("Supervisor startup interrupted by shutdown signal")
             startup_task.cancel()
 
-        coresys.create_task(coresys.core.stop())
+        if shutdown_tasks and not shutdown_tasks[0].done():
+            return
+
+        shutdown_tasks[:] = [coresys.create_task(stop_supervisor())]
 
     bootstrap.register_signal_handlers(loop, shutdown_handler)
 
