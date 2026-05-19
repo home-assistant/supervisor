@@ -156,7 +156,7 @@ class HomeAssistantCore(JobGroup):
         while True:
             if not self.sys_updater.image_homeassistant:
                 _LOGGER.warning(
-                    "Found no information about Home Assistant. Retrying in %ssec",
+                    "Updater has no Home Assistant image information yet. Retrying in %ssec",
                     INSTALL_RETRY_WAIT_SECS,
                 )
                 await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
@@ -216,7 +216,7 @@ class HomeAssistantCore(JobGroup):
 
                 if not (to_version := self.sys_homeassistant.latest_version):
                     _LOGGER.warning(
-                        "Found no information about Home Assistant version. Retrying in"
+                        "Updater has no Home Assistant version information yet. Retrying in"
                         " %ssec",
                         INSTALL_RETRY_WAIT_SECS,
                     )
@@ -227,9 +227,9 @@ class HomeAssistantCore(JobGroup):
                 # incompatibilities between a newer Core and an older Supervisor.
                 if self.sys_supervisor.need_update:
                     if self.sys_updater.auto_update:
-                        _LOGGER.warning(
+                        _LOGGER.info(
                             "Supervisor has a pending update and must be updated"
-                            " before Home Assistant Core. Updating Supervisor first"
+                            " before installing Home Assistant Core. Updating Supervisor first"
                         )
                         try:
                             await self.sys_supervisor.update()
