@@ -239,7 +239,6 @@ class HomeAssistantCore(JobGroup):
                                 INSTALL_RETRY_WAIT_SECS,
                                 err,
                             )
-                            await async_capture_exception(err)
                             await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
                             continue
                     else:

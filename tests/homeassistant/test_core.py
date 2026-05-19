@@ -209,7 +209,7 @@ async def test_install_other_error(
 
 
 async def test_install_supervisor_needs_update_auto_update_enabled(
-    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
 ):
     """Test install proceeds with supervisor update first when auto-update is enabled."""
     with (
@@ -239,14 +239,13 @@ async def test_install_supervisor_needs_update_auto_update_enabled(
         supervisor_update.assert_awaited_once()
 
     assert (
-        "Supervisor has a pending update and must be updated before Home Assistant Core"
+        "Supervisor has a pending update and must be updated before installing Home Assistant Core"
         in caplog.text
     )
-    capture_exception.assert_not_called()
 
 
 async def test_install_supervisor_needs_update_auto_update_disabled(
-    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
 ):
     """Test install proceeds with core anyway when supervisor needs update but auto-update is disabled."""
     with (
@@ -277,11 +276,10 @@ async def test_install_supervisor_needs_update_auto_update_disabled(
 
     assert "Supervisor has a pending update but auto-update is disabled" in caplog.text
     assert "unknown issues may occur" in caplog.text
-    capture_exception.assert_not_called()
 
 
 async def test_install_supervisor_update_fails_retries(
-    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
 ):
     """Test install retries after 30s when supervisor update fails."""
     # Supervisor reports needing update on first pass, not on second
@@ -317,7 +315,6 @@ async def test_install_supervisor_update_fails_retries(
         sleep.assert_any_await(30)
 
     assert "Supervisor update failed, retrying in 30sec" in caplog.text
-    capture_exception.assert_called_once()
 
 
 @pytest.mark.parametrize(
