@@ -59,6 +59,9 @@ async def test_new_backup_permission_error(coresys: CoreSys, tmp_path: Path):
         async with backup.create():
             pass
 
+    assert not listdir(tmp_path)
+    assert not backup.tarfile.exists()
+
 
 async def test_new_backup_exists_error(coresys: CoreSys, tmp_path: Path):
     """Test if a permission error is correctly handled when a new backup is created."""
