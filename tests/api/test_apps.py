@@ -313,7 +313,7 @@ async def test_api_app_rebuild_force(
 
     assert resp.status == 400
     result = await resp.json()
-    assert "Can't rebuild an image-based app" in result["message"]
+    assert result["message"] == "Cannot rebuild app Terminal & SSH, it is image-based"
 
     # Reset state for next test
     state_changes.clear()

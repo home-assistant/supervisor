@@ -361,6 +361,92 @@ class AppsError(HassioError):
     """Apps exception."""
 
 
+class AppAlreadyInstalledError(AppsError, APIError):
+    """Raise when attempting to install an app that is already installed."""
+
+    error_key = "addon_already_installed_error"
+    message_template = "App {addon} is already installed"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
+class AppNotFoundError(AppsError, APIError):
+    """Raise when an app cannot be found in any store."""
+
+    error_key = "addon_not_found_error"
+    message_template = "App {addon} does not exist"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
+class AppNotInstalledError(AppsError, APIError):
+    """Raise when an action is taken on an app that is not installed."""
+
+    error_key = "addon_not_installed_error"
+    message_template = "App {addon} is not installed"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
+class AppNotInStoreError(AppsError, APIError):
+    """Raise when an installed app is no longer available in its store."""
+
+    error_key = "addon_not_in_store_error"
+    message_template = "App {addon} is not available inside store"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
+class AppNoUpdateAvailableError(AppsError, APIError):
+    """Raise when an update is requested but local matches store version."""
+
+    error_key = "addon_no_update_available_error"
+    message_template = "No update available for app {addon}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
+class AppRebuildVersionChangedError(AppsError, APIError):
+    """Raise when rebuild is requested but local and store versions differ."""
+
+    error_key = "addon_rebuild_version_changed_error"
+    message_template = (
+        "Local and store versions of app {addon} differ, use Update instead of Rebuild"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
 class AppConfigurationError(AppsError):
     """Error with app configuration."""
 
@@ -429,57 +515,71 @@ class AppNotSupportedError(HassioNotSupportedError):
     """App doesn't support a function."""
 
 
-class AppNotSupportedArchitectureError(AppNotSupportedError):
+class AppNotSupportedArchitectureError(AppNotSupportedError, APIError):
     """App does not support system due to architecture."""
 
     error_key = "addon_not_supported_architecture_error"
-    message_template = "App {slug} not supported on this platform, supported architectures: {architectures}"
+    message_template = "App {addon} not supported on this platform, supported architectures: {architectures}"
 
     def __init__(
         self,
         logger: Callable[..., None] | None = None,
         *,
-        slug: str,
+        addon: str,
         architectures: list[str],
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"slug": slug, "architectures": ", ".join(architectures)}
+        self.extra_fields = {"addon": addon, "architectures": ", ".join(architectures)}
         super().__init__(None, logger)
 
 
-class AppNotSupportedMachineTypeError(AppNotSupportedError):
+class AppNotSupportedMachineTypeError(AppNotSupportedError, APIError):
     """App does not support system due to machine type."""
 
     error_key = "addon_not_supported_machine_type_error"
-    message_template = "App {slug} not supported on this machine, supported machine types: {machine_types}"
+    message_template = "App {addon} not supported on this machine, supported machine types: {machine_types}"
 
     def __init__(
         self,
         logger: Callable[..., None] | None = None,
         *,
-        slug: str,
+        addon: str,
         machine_types: list[str],
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"slug": slug, "machine_types": ", ".join(machine_types)}
+        self.extra_fields = {"addon": addon, "machine_types": ", ".join(machine_types)}
         super().__init__(None, logger)
 
 
-class AppNotSupportedHomeAssistantVersionError(AppNotSupportedError):
+class AppNotSupportedHomeAssistantVersionError(AppNotSupportedError, APIError):
     """App does not support system due to Home Assistant version."""
 
     error_key = "addon_not_supported_home_assistant_version_error"
-    message_template = "App {slug} not supported on this system, requires Home Assistant version {version} or greater"
+    message_template = "App {addon} not supported on this system, requires Home Assistant version {version} or greater"
 
     def __init__(
         self,
         logger: Callable[..., None] | None = None,
         *,
-        slug: str,
+        addon: str,
         version: str,
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"slug": slug, "version": version}
+        self.extra_fields = {"addon": addon, "version": version}
+        super().__init__(None, logger)
+
+
+class AppRebuildImageBasedError(AppNotSupportedError, APIError):
+    """Raise when rebuild is requested for an image-based app."""
+
+    error_key = "addon_rebuild_image_based_error"
+    message_template = "Cannot rebuild app {addon}, it is image-based"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
         super().__init__(None, logger)
 
 

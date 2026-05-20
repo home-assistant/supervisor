@@ -46,7 +46,7 @@ async def test_api_store(
     assert result["data"]["addons"][-1]["slug"] == store_app.slug
     assert result["data"]["repositories"][-1]["slug"] == test_repository.slug
 
-    assert f"App {store_app.slug} not supported on this platform" not in caplog.text
+    assert f"App {store_app.name} not supported on this platform" not in caplog.text
 
 
 async def test_api_store_apps(api_client: TestClient, store_app: AppStore):
@@ -601,7 +601,7 @@ async def test_background_app_install_fails_fast(
     )
     assert resp.status == 400
     body = await resp.json()
-    assert body["message"] == "App local_ssh is already installed"
+    assert body["message"] == "App Terminal & SSH is already installed"
 
 
 @pytest.mark.parametrize(
@@ -665,7 +665,7 @@ async def test_background_app_update_fails_fast(
     )
     assert resp.status == 400
     body = await resp.json()
-    assert body["message"] == "No update available for app local_ssh"
+    assert body["message"] == "No update available for app Terminal & SSH"
 
 
 async def test_api_store_apps_app_availability_success(
@@ -728,12 +728,12 @@ async def test_api_store_apps_app_availability_arch_not_supported(
         result = await resp.json()
         assert result["error_key"] == "addon_not_supported_architecture_error"
         assert result["extra_fields"] == {
-            "slug": "test_arch_addon",
+            "addon": "Test Arch Add-on",
             "architectures": (architectures := ", ".join(supported_architectures)),
         }
         assert (
             result["message"]
-            == f"App test_arch_addon not supported on this platform, supported architectures: {architectures}"
+            == f"App Test Arch Add-on not supported on this platform, supported architectures: {architectures}"
         )
 
 
@@ -791,12 +791,12 @@ async def test_api_store_apps_app_availability_machine_not_supported(
         result = await resp.json()
         assert result["error_key"] == "addon_not_supported_machine_type_error"
         assert result["extra_fields"] == {
-            "slug": "test_machine_addon",
+            "addon": "Test Machine Add-on",
             "machine_types": (machine_types := ", ".join(supported_machines)),
         }
         assert (
             result["message"]
-            == f"App test_machine_addon not supported on this machine, supported machine types: {machine_types}"
+            == f"App Test Machine Add-on not supported on this machine, supported machine types: {machine_types}"
         )
 
 
@@ -851,12 +851,12 @@ async def test_api_store_apps_app_availability_homeassistant_version_too_old(
         result = await resp.json()
         assert result["error_key"] == "addon_not_supported_home_assistant_version_error"
         assert result["extra_fields"] == {
-            "slug": "test_version_addon",
+            "addon": "Test Version Add-on",
             "version": "2023.1.1",
         }
         assert (
             result["message"]
-            == "App test_version_addon not supported on this system, requires Home Assistant version 2023.1.1 or greater"
+            == "App Test Version Add-on not supported on this system, requires Home Assistant version 2023.1.1 or greater"
         )
 
 
