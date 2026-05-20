@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import PurePath
 import re
+import signal
 from typing import Any
 
 from ..const import MACHINE_ID
@@ -25,6 +26,10 @@ DOCKER_HUB_LEGACY = "hub.docker.com"
 
 # GitHub Container Registry identifier
 GITHUB_CONTAINER_REGISTRY = "ghcr.io"
+
+# Exit code reported when a process is terminated by SIGTERM with the default
+# disposition (i.e. no userspace handler ran). POSIX convention is 128 + signal.
+EXIT_CODE_SIGTERM_DEFAULT = 128 + signal.SIGTERM
 
 
 class Capabilities(StrEnum):

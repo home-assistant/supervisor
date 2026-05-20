@@ -4,6 +4,7 @@ import asyncio
 from datetime import timedelta
 import errno
 from http import HTTPStatus
+import logging
 from pathlib import Path, PurePath
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
@@ -51,7 +52,12 @@ from tests.common import fire_bus_event, get_fixture_path, is_in_list
 from tests.const import TEST_ADDON_SLUG
 
 
-async def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState) -> None:
+async def _fire_test_event(
+    coresys: CoreSys,
+    name: str,
+    state: ContainerState,
+    exit_code: int | None = None,
+) -> None:
     """Fire a test event and await the listener tasks the bus spawned."""
     await fire_bus_event(
         coresys,
@@ -61,6 +67,7 @@ async def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState) -
             state=state,
             id="abc123",
             time=1,
+            exit_code=exit_code,
         ),
     )
 
@@ -151,6 +158,51 @@ async def test_app_state_listener(coresys: CoreSys, install_app_ssh: App) -> Non
             coresys, "addon_local_non_installed", ContainerState.RUNNING
         )
         assert install_app_ssh.state == AppState.ERROR
+
+
+async def test_app_failed_logs_exit_code(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test FAILED transition logs exit code with appropriate severity."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    with patch.object(App, "watchdog_container"):
+        # Exit 143 (SIGTERM default disposition): warning nudging author
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"addon_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=143,
+        )
+        assert install_app_ssh.state == AppState.ERROR
+        warnings = [
+            r for r in caplog.records if r.levelno == logging.WARNING and r.message
+        ]
+        assert any("did not handle SIGTERM" in r.message for r in warnings)
+
+        # Any other non-zero exit: error
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"addon_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+        errors = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert any("exit code 1" in r.message for r in errors)
+
+        # No exit code available: stay silent
+        caplog.clear()
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+        )
+        assert not any(
+            "exit code" in r.message or "SIGTERM" in r.message for r in caplog.records
+        )
 
 
 async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:

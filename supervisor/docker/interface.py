@@ -79,24 +79,29 @@ def _restart_policy_from_model(meta_host: dict[str, Any]) -> RestartPolicy | Non
     return RestartPolicy.NO
 
 
-def _container_state_from_model(container_metadata: dict[str, Any]) -> ContainerState:
-    """Get container state from model."""
+def _container_state_from_model(
+    container_metadata: dict[str, Any],
+) -> tuple[ContainerState, int | None]:
+    """Get container state and exit code from model."""
     if "State" not in container_metadata:
-        return ContainerState.UNKNOWN
+        return ContainerState.UNKNOWN, None
 
-    if container_metadata["State"]["Status"] == "running":
-        if "Health" in container_metadata["State"]:
+    state_obj = container_metadata["State"]
+    if state_obj["Status"] == "running":
+        if "Health" in state_obj:
             return (
                 ContainerState.HEALTHY
-                if container_metadata["State"]["Health"]["Status"] == "healthy"
-                else ContainerState.UNHEALTHY
+                if state_obj["Health"]["Status"] == "healthy"
+                else ContainerState.UNHEALTHY,
+                None,
             )
-        return ContainerState.RUNNING
+        return ContainerState.RUNNING, None
 
-    if container_metadata["State"]["ExitCode"] > 0:
-        return ContainerState.FAILED
+    exit_code = state_obj["ExitCode"]
+    if exit_code > 0:
+        return ContainerState.FAILED, exit_code
 
-    return ContainerState.STOPPED
+    return ContainerState.STOPPED, None
 
 
 class DockerInterface(JobGroup, ABC):
@@ -422,7 +427,8 @@ class DockerInterface(JobGroup, ABC):
     async def current_state(self) -> ContainerState:
         """Return current state of container."""
         if container_metadata := await self._get_container():
-            return _container_state_from_model(container_metadata)
+            state, _ = _container_state_from_model(container_metadata)
+            return state
         return ContainerState.UNKNOWN
 
     @Job(name="docker_interface_attach", concurrency=JobConcurrency.GROUP_QUEUE)
@@ -435,7 +441,7 @@ class DockerInterface(JobGroup, ABC):
             self._meta = await docker_container.show()
             self.sys_docker.monitor.watch_container(self._meta)
 
-            state = _container_state_from_model(self._meta)
+            state, exit_code = _container_state_from_model(self._meta)
             if not (
                 skip_state_event_if_down
                 and state in [ContainerState.STOPPED, ContainerState.FAILED]
@@ -444,7 +450,7 @@ class DockerInterface(JobGroup, ABC):
                 self.sys_bus.fire_event(
                     BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
                     DockerContainerStateEvent(
-                        self.name, state, docker_container.id, int(time())
+                        self.name, state, docker_container.id, int(time()), exit_code
                     ),
                 )
 

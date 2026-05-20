@@ -21,12 +21,17 @@ STOP_MONITOR_TIMEOUT = 5.0
 
 @dataclass(slots=True, frozen=True)
 class DockerContainerStateEvent:
-    """Event for docker container state change."""
+    """Event for docker container state change.
+
+    exit_code is populated for FAILED transitions where the source event or
+    inspect data carried an exit code; None otherwise.
+    """
 
     name: str
     state: ContainerState
     id: str
     time: int
+    exit_code: int | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -109,16 +114,21 @@ class DockerMonitor(CoreSysAttributes):
                         or attributes.get("name") in self._unlabeled_managed_containers
                     ):
                         container_state: ContainerState | None = None
+                        exit_code: int | None = None
                         action: str = event["Action"]
 
                         if action == "start":
                             container_state = ContainerState.RUNNING
                         elif action == "die":
-                            container_state = (
-                                ContainerState.STOPPED
-                                if int(event["Actor"]["Attributes"]["exitCode"]) == 0
-                                else ContainerState.FAILED
+                            die_exit_code = int(
+                                event["Actor"]["Attributes"]["exitCode"]
                             )
+                            container_state = (
+                                ContainerState.FAILED
+                                if die_exit_code
+                                else ContainerState.STOPPED
+                            )
+                            exit_code = die_exit_code or None
                         elif action == "health_status: healthy":
                             container_state = ContainerState.HEALTHY
                         elif action == "health_status: unhealthy":
@@ -130,6 +140,7 @@ class DockerMonitor(CoreSysAttributes):
                                 state=container_state,
                                 id=event["Actor"]["ID"],
                                 time=event["time"],
+                                exit_code=exit_code,
                             )
                             tasks = self.sys_bus.fire_event(
                                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE, state_event
