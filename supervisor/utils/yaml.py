@@ -22,7 +22,7 @@ def read_yaml_file(path: Path) -> dict:
     Must be run in executor.
     """
     try:
-        with open(path, encoding="utf-8") as yaml_file:
+        with path.open(encoding="utf-8") as yaml_file:
             return load(yaml_file, Loader=SafeLoader) or {}
 
     except (YAMLError, AttributeError, OSError, UnicodeDecodeError) as err:

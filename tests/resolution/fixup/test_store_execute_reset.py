@@ -2,7 +2,6 @@
 
 # pylint: disable=import-error,protected-access
 import errno
-from os import listdir
 from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
@@ -82,7 +81,7 @@ async def test_fixup(coresys: CoreSys):
     assert not corrupt_marker.exists()
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
-    assert len(listdir(coresys.config.path_tmp)) == 0
+    assert len(list(coresys.config.path_tmp.iterdir())) == 0
 
 
 @pytest.mark.usefixtures("supervisor_internet")
@@ -111,7 +110,7 @@ async def test_fixup_clone_fail(coresys: CoreSys):
     assert corrupt_marker.exists()
     assert len(coresys.resolution.suggestions) == 1
     assert len(coresys.resolution.issues) == 1
-    assert len(listdir(coresys.config.path_tmp)) == 0
+    assert len(list(coresys.config.path_tmp.iterdir())) == 0
 
 
 @pytest.mark.parametrize(
@@ -143,7 +142,7 @@ async def test_fixup_move_fail(coresys: CoreSys, error_num: int, unhealthy: bool
 
     assert len(coresys.resolution.suggestions) == 1
     assert len(coresys.resolution.issues) == 1
-    assert len(listdir(coresys.config.path_tmp)) == 0
+    assert len(list(coresys.config.path_tmp.iterdir())) == 0
     assert (
         UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
     ) is unhealthy
