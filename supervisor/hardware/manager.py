@@ -161,6 +161,7 @@ class HardwareManager(CoreSysAttributes):
     async def load(self) -> None:
         """Load hardware backend."""
         self._import_devices()
+        await self.helper.load()
         await self.monitor.load()
 
     async def unload(self) -> None:

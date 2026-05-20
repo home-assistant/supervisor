@@ -474,9 +474,7 @@ class DockerApp(DockerInterface):
 
         # GPIO support
         if self.app.with_gpio and self.sys_hardware.helper.support_gpio:
-            for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
-                if not Path(gpio_path).exists():
-                    continue
+            for gpio_path in self.sys_hardware.helper.gpio_mount_paths:
                 mounts.append(
                     DockerMount(
                         type=MountType.BIND,
