@@ -278,7 +278,7 @@ class App(AppModel):
             # tell whether the image is actually missing. Log so the issue
             # is visible (CRITICAL is captured by the Sentry integration)
             # and leave the app detached; the user can attempt a manual
-            # repair from the UI once the underlying cause is resolved.
+            # rebuild from the app page.
             _LOGGER.critical(
                 "Docker error loading app %s, leaving detached: %s", self.slug, err
             )
