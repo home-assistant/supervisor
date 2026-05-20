@@ -640,13 +640,17 @@ class DockerAPI(CoreSysAttributes):
         try:
             await self.images.inspect(f"{image}:{tag}")
         except aiodocker.DockerError as err:
-            if err.status == HTTPStatus.NOT_FOUND:
-                _LOGGER.info("Pulling image %s:%s", image, tag)
-                await self.images.pull(image, tag=tag)
-            else:
+            if err.status != HTTPStatus.NOT_FOUND:
                 raise DockerError(
                     f"Can't inspect image {image}:{tag}: {err}", _LOGGER.error
                 ) from err
+            _LOGGER.info("Pulling image %s:%s", image, tag)
+            try:
+                await self.images.pull(image, tag=tag)
+            except aiodocker.DockerError as pull_err:
+                raise DockerError(
+                    f"Can't pull image {image}:{tag}: {pull_err}", _LOGGER.error
+                ) from pull_err
 
         try:
             container = await self._run(

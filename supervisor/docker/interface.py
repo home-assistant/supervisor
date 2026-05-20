@@ -454,15 +454,20 @@ class DockerInterface(JobGroup, ABC):
                     ),
                 )
 
-        with suppress(aiodocker.DockerError):
-            if not self._meta and self.image:
+        if not self._meta and self.image:
+            try:
                 self._meta = await self.sys_docker.images.inspect(
                     f"{self.image}:{version!s}"
                 )
+            except aiodocker.DockerError as err:
+                if err.status != HTTPStatus.NOT_FOUND:
+                    raise DockerAPIError(
+                        f"Docker API error inspecting image {self.image}:{version!s}: {err!s}"
+                    ) from err
 
         # Successful?
         if not self._meta:
-            raise DockerError(
+            raise DockerNotFound(
                 f"Could not get metadata on container or image for {self.name}"
             )
         _LOGGER.info("Attaching to %s with version %s", self.image, self.version)
@@ -558,7 +563,11 @@ class DockerInterface(JobGroup, ABC):
             try:
                 image = await self.sys_docker.images.inspect(image_name)
             except aiodocker.DockerError as err:
-                raise DockerError(
+                if err.status == HTTPStatus.NOT_FOUND:
+                    raise DockerNotFound(
+                        f"Image {image_name} not found", _LOGGER.info
+                    ) from err
+                raise DockerAPIError(
                     f"Could not get {image_name} for check due to: {err!s}",
                     _LOGGER.error,
                 ) from err

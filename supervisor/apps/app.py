@@ -81,6 +81,7 @@ from ..exceptions import (
     DockerBuildError,
     DockerContainerPortConflict,
     DockerError,
+    DockerNotFound,
     DockerRegistryAuthError,
     HostAppArmorError,
     StoreAppNotFoundError,
@@ -258,13 +259,41 @@ class App(AppModel):
 
             # Ensure we are using correct image for this system
             await self.instance.check_image(self.version, default_image, self.arch)
-        except DockerError:
+        except DockerNotFound:
             _LOGGER.info("No %s app Docker image %s found", self.slug, self.image)
-            with suppress(DockerError, AppNotSupportedError):
-                await self.instance.install(self.version, default_image, arch=self.arch)
+            if self.need_build:
+                # Don't run a local build during setup. Surface a repair so
+                # the resolution autofix loop can handle it off the critical
+                # path.
+                self._create_missing_image_issue()
+            else:
+                try:
+                    await self.instance.install(
+                        self.version, default_image, arch=self.arch
+                    )
+                except (DockerError, AppNotSupportedError):
+                    self._create_missing_image_issue()
+        except DockerError as err:
+            # Docker error other than a clean "image not found" - we can't
+            # tell whether the image is actually missing. Log so the issue
+            # is visible (CRITICAL is captured by the Sentry integration)
+            # and leave the app detached; the user can attempt a manual
+            # rebuild from the app page.
+            _LOGGER.critical(
+                "Docker error loading app %s, leaving detached: %s", self.slug, err
+            )
 
         self.persist[ATTR_IMAGE] = default_image
         await self.save_persist()
+
+    def _create_missing_image_issue(self) -> None:
+        """Surface a repair suggestion for a missing app image."""
+        self.sys_resolution.create_issue(
+            IssueType.MISSING_IMAGE,
+            ContextType.ADDON,
+            reference=self.slug,
+            suggestions=[SuggestionType.EXECUTE_REPAIR],
+        )
 
     @property
     def ip_address(self) -> IPv4Address:
