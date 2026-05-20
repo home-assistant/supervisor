@@ -2,7 +2,6 @@
 
 # pylint: disable=protected-access
 import errno
-import os
 from pathlib import Path
 from unittest.mock import patch
 
@@ -315,22 +314,23 @@ def test_get_dir_structure_sizes_ebadmsg_error(coresys, tmp_path):
     subdir.mkdir()
     (subdir / "file2.txt").write_text("content2")
 
-    # Mock is_dir, is_symlink, and stat methods to handle the EBADMSG error correctly
+    # Capture the real Path methods before they get patched below so the mocks
+    # can delegate to them without recursing into themselves.
+    real_is_dir = Path.is_dir
+    real_is_symlink = Path.is_symlink
+    real_stat = Path.stat
 
     def mock_is_dir(self):
-        # Use the real is_dir for all paths
-        return os.path.isdir(self)
+        return real_is_dir(self)
 
     def mock_is_symlink(self):
-        # Use the real is_symlink for all paths
-        return os.path.islink(self)
+        return real_is_symlink(self)
 
     def mock_stat_ebadmsg(self, follow_symlinks=True):
         # Raise EBADMSG for any child of test_dir to ensure consistent behavior
         if self.parent == test_dir:
             raise OSError(errno.EBADMSG, "Bad message")
-        # For other paths, use the real os.stat
-        return os.stat(self, follow_symlinks=follow_symlinks)
+        return real_stat(self, follow_symlinks=follow_symlinks)
 
     with (
         patch.object(Path, "is_dir", mock_is_dir),

@@ -1,7 +1,6 @@
 """Test loading add-translation."""
 
 # pylint: disable=import-error,protected-access
-import os
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,7 @@ from supervisor.utils.common import write_json_or_yaml_file
 
 def test_loading_traslations(coresys: CoreSys, tmp_path: Path):
     """Test loading add-translation."""
-    os.makedirs(tmp_path / "translations")
+    (tmp_path / "translations").mkdir(parents=True)
     # no transaltions
     assert _read_app_translations(tmp_path) == {}
 
@@ -69,7 +68,7 @@ def test_translation_file_failure(
     coresys: CoreSys, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ):
     """Test translations load if one fails."""
-    os.makedirs(tmp_path / "translations")
+    (tmp_path / "translations").mkdir(parents=True)
     write_json_or_yaml_file(
         tmp_path / "translations" / "en.json",
         {"configuration": {"test": {"name": "test", "test": "test"}}},

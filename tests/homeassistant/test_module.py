@@ -27,8 +27,8 @@ async def test_load(
     coresys: CoreSys, tmp_supervisor_data: Path, ha_ws_client: AsyncMock
 ):
     """Test homeassistant module load."""
-    with open(
-        tmp_supervisor_data / "homeassistant" / "secrets.yaml", "w", encoding="utf-8"
+    with (tmp_supervisor_data / "homeassistant" / "secrets.yaml").open(
+        "w", encoding="utf-8"
     ) as secrets:
         secrets.write("hello: world\n")
 

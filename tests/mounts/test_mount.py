@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import errno
-import os
 from pathlib import Path
 import stat
 from typing import Any
@@ -712,7 +711,7 @@ async def test_mount_local_where_invalid(
         await mount.mount()
 
     # Cannot mount on top of a non-empty directory
-    os.remove(mount_path)
+    mount_path.unlink()
     mount_path.mkdir()
     (mount_path / "test").touch()
 
