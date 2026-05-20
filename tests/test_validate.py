@@ -12,7 +12,7 @@ DNS_GOOD_V4 = [
     "DNS://1.1.1.1",  # cloudflare
     "dns://9.9.9.9",  # quad-9
 ]
-DNS_GOOD_V6 = [
+DNS_V6_UNSUPPORTED = [
     "dns://2606:4700:4700::1111",  # cloudflare
     "DNS://2606:4700:4700::1001",  # cloudflare
 ]
@@ -52,9 +52,13 @@ def test_dns_url_v4_good():
         assert validate.dns_url(url)
 
 
-@pytest.mark.parametrize("url", DNS_GOOD_V6)
-def test_dns_url_v6_good(url: str):
-    """Test the DNS validator with known-good IPv6 DNS URLs."""
+@pytest.mark.parametrize("url", DNS_V6_UNSUPPORTED)
+def test_dns_url_v6_rejected(url: str):
+    """Test the DNS validator rejects well-formed IPv6 DNS URLs.
+
+    IPv6 is currently not supported for DNS because it doesn't work with
+    the Docker network.
+    """
     with pytest.raises(vol.error.Invalid):
         validate.dns_url(url)
 
@@ -64,15 +68,15 @@ def test_dns_server_list_v4():
     assert validate.dns_server_list(DNS_GOOD_V4)
 
 
-def test_dns_server_list_v6():
-    """Test a list with v6 addresses."""
+def test_dns_server_list_v6_rejected():
+    """Test that lists of IPv6 DNS URLs are rejected."""
     with pytest.raises(vol.error.Invalid):
-        assert validate.dns_server_list(DNS_GOOD_V6)
+        assert validate.dns_server_list(DNS_V6_UNSUPPORTED)
 
 
 def test_dns_server_list_combined():
     """Test a list with both v4 and v6 addresses."""
-    combined = DNS_GOOD_V4 + DNS_GOOD_V6
+    combined = DNS_GOOD_V4 + DNS_V6_UNSUPPORTED
     # test the matches
     with pytest.raises(vol.error.Invalid):
         validate.dns_server_list(combined)
@@ -93,7 +97,7 @@ def test_dns_server_list_bad():
 
 def test_dns_server_list_bad_combined():
     """Test the bad list, combined with the good."""
-    combined = DNS_GOOD_V4 + DNS_GOOD_V6 + DNS_BAD
+    combined = DNS_GOOD_V4 + DNS_V6_UNSUPPORTED + DNS_BAD
 
     with pytest.raises(vol.error.Invalid):
         # bad list
