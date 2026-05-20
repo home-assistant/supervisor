@@ -18,7 +18,7 @@ async def fixture_nvme_controller_service(
     dbus_session_bus: MessageBus,
 ) -> NVMeControllerService:
     """Mock NVMe Controller service."""
-    yield (
+    return (
         await mock_dbus_services(
             {
                 "udisks2_nvme_controller": "/org/freedesktop/UDisks2/drives/Samsung_SSD_970_EVO_Plus_2TB_S40123456789ABC"

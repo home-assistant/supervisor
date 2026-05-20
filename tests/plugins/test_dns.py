@@ -465,14 +465,8 @@ async def test_dns_restart_triggers_connectivity_check(coresys: CoreSys):
         )
 
         # Wait a bit and verify connectivity check was NOT triggered
-        try:
+        with pytest.raises(TimeoutError):
             await asyncio.wait_for(connectivity_check_event.wait(), timeout=0.1)
-            assert False, (
-                "Connectivity check should not have been called for other containers"
-            )
-        except TimeoutError:
-            # This is expected - connectivity check should not be called
-            pass
 
         # Verify sleep was not called for other containers
         mock_sleep.assert_not_called()

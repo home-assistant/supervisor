@@ -16,7 +16,7 @@ async def fixture_cgroup_service(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> CGroupService:
     """Mock CGroup dbus service."""
-    yield os_agent_services["agent_cgroup"]
+    return os_agent_services["agent_cgroup"]
 
 
 async def test_dbus_osagent_cgroup_add_devices(

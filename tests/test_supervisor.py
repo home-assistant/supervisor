@@ -25,7 +25,7 @@ from tests.common import MockResponse
 
 
 @pytest.mark.parametrize(
-    "side_effect,connectivity", [(ClientError(), False), (None, True)]
+    ("side_effect", "connectivity"), [(ClientError(), False), (None, True)]
 )
 async def test_connectivity_check(
     coresys: CoreSys,

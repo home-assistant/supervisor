@@ -49,7 +49,7 @@ def partial_backup_mock(backup_mock):
         None: BackupLocation(path=Path("/"), protected=False, size_bytes=0)
     }
     backup_instance.validate_backup = AsyncMock()
-    yield backup_mock
+    return backup_mock
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def full_backup_mock(backup_mock):
         None: BackupLocation(path=Path("/"), protected=False, size_bytes=0)
     }
     backup_instance.validate_backup = AsyncMock()
-    yield backup_mock
+    return backup_mock
 
 
 @pytest.fixture(name="backup_locations")

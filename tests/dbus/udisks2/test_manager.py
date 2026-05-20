@@ -26,7 +26,7 @@ async def fixture_udisks2_manager_service(
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> UDisks2ManagerService:
     """Mock UDisks2 Manager service."""
-    yield udisks2_services["udisks2_manager"]
+    return udisks2_services["udisks2_manager"]
 
 
 @pytest.fixture(name="udisks2_service")
@@ -34,7 +34,7 @@ async def fixture_udisks2_service(
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> UDisks2Service:
     """Mock UDisks2 base service."""
-    yield udisks2_services["udisks2"]
+    return udisks2_services["udisks2"]
 
 
 async def test_udisks2_manager_info(

@@ -38,7 +38,7 @@ from tests.common import AsyncIterator, load_json_fixture
 
 
 @pytest.mark.parametrize(
-    "cpu_arch, platform",
+    ("cpu_arch", "platform"),
     [
         (CpuArch.AARCH64, "linux/arm64"),
         (CpuArch.AMD64, "linux/amd64"),
@@ -83,7 +83,7 @@ async def test_docker_image_default_platform(
 
 
 @pytest.mark.parametrize(
-    "image,registry_key",
+    ("image", "registry_key"),
     [
         ("homeassistant/amd64-supervisor", DOCKER_HUB),
         ("ghcr.io/home-assistant/amd64-supervisor", "ghcr.io"),
@@ -191,7 +191,7 @@ async def test_pull_401_without_credentials_raises_docker_error(
 
 
 @pytest.mark.parametrize(
-    "attrs,expected",
+    ("attrs", "expected"),
     [
         ({"State": {"Status": "running"}}, ContainerState.RUNNING),
         ({"State": {"Status": "exited", "ExitCode": 0}}, ContainerState.STOPPED),
@@ -235,7 +235,7 @@ async def test_current_state_failures(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "attrs,expected,expected_exit_code,fired_when_skip_down",
+    ("attrs", "expected", "expected_exit_code", "fired_when_skip_down"),
     [
         ({"State": {"Status": "running"}}, ContainerState.RUNNING, None, True),
         (
@@ -986,7 +986,9 @@ def _assert_docker_ratelimit_issue(coresys: CoreSys, expected: bool) -> None:
     assert present is expected
 
 
-@pytest.mark.parametrize("image,expected_exception,expect_issue", _RATE_LIMIT_PARAMS)
+@pytest.mark.parametrize(
+    ("image", "expected_exception", "expect_issue"), _RATE_LIMIT_PARAMS
+)
 async def test_install_pull_429_raises_registry_specific_exception(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,
@@ -1018,7 +1020,9 @@ async def test_install_pull_429_raises_registry_specific_exception(
     capture_exception.assert_not_called()
 
 
-@pytest.mark.parametrize("image,expected_exception,expect_issue", _RATE_LIMIT_PARAMS)
+@pytest.mark.parametrize(
+    ("image", "expected_exception", "expect_issue"), _RATE_LIMIT_PARAMS
+)
 async def test_install_pull_500_with_toomanyrequests_body_treated_as_rate_limit(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,
@@ -1053,7 +1057,9 @@ async def test_install_pull_500_with_toomanyrequests_body_treated_as_rate_limit(
     capture_exception.assert_not_called()
 
 
-@pytest.mark.parametrize("image,expected_exception,expect_issue", _RATE_LIMIT_PARAMS)
+@pytest.mark.parametrize(
+    ("image", "expected_exception", "expect_issue"), _RATE_LIMIT_PARAMS
+)
 async def test_install_streaming_pull_rate_limit(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,

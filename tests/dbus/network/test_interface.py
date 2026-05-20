@@ -20,7 +20,7 @@ async def fixture_device_eth0_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceService:
     """Mock Device eth0 service."""
-    yield network_manager_services["network_device"][
+    return network_manager_services["network_device"][
         "/org/freedesktop/NetworkManager/Devices/1"
     ]
 
@@ -30,7 +30,7 @@ async def fixture_device_wlan0_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceService:
     """Mock Device wlan0 service."""
-    yield network_manager_services["network_device"][
+    return network_manager_services["network_device"][
         "/org/freedesktop/NetworkManager/Devices/3"
     ]
 
@@ -40,7 +40,7 @@ async def fixture_device_unmanaged_service(
     dbus_session_bus: MessageBus,
 ) -> DeviceService:
     """Mock Device unmanaged service."""
-    yield (
+    return (
         await mock_dbus_services(
             {"network_device": "/org/freedesktop/NetworkManager/Devices/35"},
             dbus_session_bus,

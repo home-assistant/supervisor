@@ -16,7 +16,7 @@ from supervisor.docker.monitor import DockerContainerStateEvent
 
 
 @pytest.mark.parametrize(
-    "event,expected,expected_exit_code",
+    ("event", "expected", "expected_exit_code"),
     [
         (
             {

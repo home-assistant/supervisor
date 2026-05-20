@@ -18,7 +18,7 @@ async def fixture_filesystem_sda1_service(
     dbus_session_bus: MessageBus,
 ) -> FilesystemService:
     """Mock sda1 Filesystem service."""
-    yield (
+    return (
         await mock_dbus_services(
             {"udisks2_filesystem": "/org/freedesktop/UDisks2/block_devices/sda1"},
             dbus_session_bus,
@@ -31,7 +31,7 @@ async def fixture_filesystem_sdb1_service(
     dbus_session_bus: MessageBus,
 ) -> FilesystemService:
     """Mock sdb1 Filesystem service."""
-    yield (
+    return (
         await mock_dbus_services(
             {"udisks2_filesystem": "/org/freedesktop/UDisks2/block_devices/sdb1"},
             dbus_session_bus,

@@ -25,7 +25,7 @@ async def fixture_block_sda_service(
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> BlockService:
     """Mock sda Block service."""
-    yield udisks2_services["udisks2_block"][
+    return udisks2_services["udisks2_block"][
         "/org/freedesktop/UDisks2/block_devices/sda"
     ]
 
@@ -35,7 +35,7 @@ async def fixture_block_sda1_service(
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> BlockService:
     """Mock sda1 Block service."""
-    yield udisks2_services["udisks2_block"][
+    return udisks2_services["udisks2_block"][
         "/org/freedesktop/UDisks2/block_devices/sda1"
     ]
 

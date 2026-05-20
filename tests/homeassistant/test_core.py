@@ -497,7 +497,7 @@ async def test_restart_failures(
 
 
 @pytest.mark.parametrize(
-    "get_error,running",
+    ("get_error", "running"),
     [
         (aiodocker.DockerError(404, {"message": "missing"}), False),
         (aiodocker.DockerError(500, {"message": "fail"}), False),

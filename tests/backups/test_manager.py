@@ -1723,7 +1723,7 @@ async def test_backup_to_mount_bypasses_free_space_condition(
 
 
 @pytest.mark.parametrize(
-    "partial_backup,exclude_db_setting",
+    ("partial_backup", "exclude_db_setting"),
     [(False, True), (True, True), (False, False), (True, False)],
 )
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -1823,7 +1823,7 @@ async def test_backup_remove_error(
 
 
 @pytest.mark.parametrize(
-    "error_path,healthy_expected",
+    ("error_path", "healthy_expected"),
     [(Path("/data/backup"), False), (Path("/data/mounts/backup_test"), True)],
 )
 @pytest.mark.usefixtures("path_extern", "mount_propagation")

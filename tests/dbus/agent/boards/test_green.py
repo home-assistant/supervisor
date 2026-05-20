@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.agent_boards_green import Green as GreenService
 @pytest.fixture(name="green_service", autouse=True)
 async def fixture_green_service(dbus_session_bus: MessageBus) -> GreenService:
     """Mock Green Board dbus service."""
-    yield (await mock_dbus_services({"agent_boards_green": None}, dbus_session_bus))[
+    return (await mock_dbus_services({"agent_boards_green": None}, dbus_session_bus))[
         "agent_boards_green"
     ]
 

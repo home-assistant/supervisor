@@ -150,7 +150,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
 
 
 @pytest.mark.parametrize(
-    "plugin,error",
+    ("plugin", "error"),
     [
         (PluginAudio, AudioError()),
         (PluginCli, CliError()),
@@ -298,7 +298,7 @@ async def test_plugin_load_missing_container(
 
 
 @pytest.mark.parametrize(
-    "plugin,error",
+    ("plugin", "error"),
     [
         (PluginAudio, AudioJobError),
         (PluginCli, CliJobError),

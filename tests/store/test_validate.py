@@ -7,7 +7,7 @@ from supervisor.store.validate import repositories
 
 
 @pytest.mark.parametrize(
-    "repo_list,valid",
+    ("repo_list", "valid"),
     [
         (["core", "local"], True),
         (["https://github.com/hassio-addons/repository"], True),

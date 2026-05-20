@@ -15,7 +15,7 @@ from supervisor.resolution.evaluations.home_assistant_core_version import (
 
 
 @pytest.mark.parametrize(
-    "current,latest,expected",
+    ("current", "latest", "expected"),
     [
         ("2022.1.0", "2024.12.0", True),  # More than 24 months behind, unsupported
         ("2023.1.0", "2024.12.0", False),  # Less than 24 months behind, supported

@@ -76,10 +76,10 @@ async def test_update_job(coresys: CoreSys):
     job.stage = "stage"
     assert job.stage == "stage"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must be <= 100"):
         job.progress = 110
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must be >= 0"):
         job.progress = -10
 
 

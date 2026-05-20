@@ -35,7 +35,7 @@ async def fixture_mount(
     coresys.mounts._mounts = {"backup_test": mount}  # pylint: disable=protected-access
     coresys.mounts.default_backup_mount = mount
     await coresys.mounts.load()
-    yield mount
+    return mount
 
 
 async def test_api_mounts_info(api_client_with_prefix: tuple[TestClient, str]):

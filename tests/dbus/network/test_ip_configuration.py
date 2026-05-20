@@ -15,15 +15,15 @@ from tests.dbus_service_mocks.network_ip6config import IP6Config as IP6ConfigSer
 @pytest.fixture(name="ip4config_service")
 async def fixture_ip4config_service(dbus_session_bus: MessageBus) -> IP4ConfigService:
     """Mock IP4Config service."""
-    yield (await mock_dbus_services({"network_ip4config": None}, dbus_session_bus))[
+    return (await mock_dbus_services({"network_ip4config": None}, dbus_session_bus))[
         "network_ip4config"
     ]
 
 
 @pytest.fixture(name="ip6config_service")
-async def fixture_ip6config_service(dbus_session_bus: MessageBus) -> IP4ConfigService:
+async def fixture_ip6config_service(dbus_session_bus: MessageBus) -> IP6ConfigService:
     """Mock IP6Config service."""
-    yield (await mock_dbus_services({"network_ip6config": None}, dbus_session_bus))[
+    return (await mock_dbus_services({"network_ip6config": None}, dbus_session_bus))[
         "network_ip6config"
     ]
 

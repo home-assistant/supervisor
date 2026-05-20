@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.logind import Logind as LogindService
 @pytest.fixture(name="logind_service")
 async def fixture_logind_service(dbus_session_bus: MessageBus) -> LogindService:
     """Mock logind dbus service."""
-    yield (await mock_dbus_services({"logind": None}, dbus_session_bus))["logind"]
+    return (await mock_dbus_services({"logind": None}, dbus_session_bus))["logind"]
 
 
 async def test_reboot(logind_service: LogindService, dbus_session_bus: MessageBus):

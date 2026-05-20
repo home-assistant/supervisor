@@ -38,7 +38,7 @@ async def fixture_systemd_service(
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> SystemdService:
     """Return systemd service mock."""
-    yield all_dbus_services["systemd"]
+    return all_dbus_services["systemd"]
 
 
 @pytest.fixture(name="systemd_unit_service")
@@ -46,7 +46,7 @@ async def fixture_systemd_unit_service(
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> SystemdUnitService:
     """Return systemd unit service mock."""
-    yield all_dbus_services["systemd_unit"]
+    return all_dbus_services["systemd_unit"]
 
 
 async def test_apply_gateway_firewall_rules(

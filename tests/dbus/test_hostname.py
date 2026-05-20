@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.hostname import Hostname as HostnameService
 @pytest.fixture(name="hostname_service")
 async def fixture_hostname_service(dbus_session_bus: MessageBus) -> HostnameService:
     """Mock hostname dbus service."""
-    yield (await mock_dbus_services({"hostname": None}, dbus_session_bus))["hostname"]
+    return (await mock_dbus_services({"hostname": None}, dbus_session_bus))["hostname"]
 
 
 async def test_dbus_hostname_info(

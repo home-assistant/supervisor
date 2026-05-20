@@ -21,7 +21,7 @@ async def fixture_sda1_block_service(
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> BlockService:
     """Return sda1 block service."""
-    yield udisks2_services["udisks2_block"][
+    return udisks2_services["udisks2_block"][
         "/org/freedesktop/UDisks2/block_devices/sda1"
     ]
 

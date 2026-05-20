@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 @pytest.fixture(name="boards_service", autouse=True)
 async def fixture_boards_service(dbus_session_bus: MessageBus) -> BoardsService:
     """Mock Boards dbus service."""
-    yield (await mock_dbus_services({"agent_boards": None}, dbus_session_bus))[
+    return (await mock_dbus_services({"agent_boards": None}, dbus_session_bus))[
         "agent_boards"
     ]
 

@@ -12,7 +12,7 @@ from supervisor.resolution.evaluations.os_version import EvaluateOSVersion
 
 
 @pytest.mark.parametrize(
-    "current,latest,expected",
+    ("current", "latest", "expected"),
     [
         ("10.0", "15.0", True),  # 5 major behind, should be unsupported
         ("10.0", "14.0", False),  # 4 major behind, should be supported

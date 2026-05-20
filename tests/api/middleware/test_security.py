@@ -35,7 +35,7 @@ async def api_system(aiohttp_client, coresys: CoreSys) -> TestClient:
     api.webapp.middlewares.append(api.security.system_validation)
     api.webapp.router.add_get("/{all:.*}", mock_handler)
 
-    yield await aiohttp_client(api.webapp)
+    return await aiohttp_client(api.webapp)
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ async def api_token_validation(aiohttp_client, coresys: CoreSys) -> TestClient:
     api.webapp.router.add_post("/{all:.*}", mock_handler)
     api.webapp.router.add_delete("/{all:.*}", mock_handler)
 
-    yield await aiohttp_client(api.webapp)
+    return await aiohttp_client(api.webapp)
 
 
 @pytest.fixture(name="plugin_tokens")
@@ -162,7 +162,7 @@ async def test_bad_requests(
 
 
 @pytest.mark.parametrize(
-    "request_method,request_path,success_roles",
+    ("request_method", "request_path", "success_roles"),
     [
         ("post", "/auth/reset", {"admin"}),
         ("get", "/auth/list", {"admin"}),

@@ -34,7 +34,7 @@ async def fixture_tasks(
     coresys.homeassistant.version = AwesomeVersion("2023.12.0")
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
-    yield Tasks(coresys)
+    return Tasks(coresys)
 
 
 async def test_watchdog_homeassistant_api(
