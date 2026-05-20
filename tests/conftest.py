@@ -353,7 +353,7 @@ async def network_manager_service(
 @pytest.fixture
 async def dns_manager_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-) -> AsyncGenerator[DnsManagerService]:
+) -> DnsManagerService:
     """Return DNS Manager service mock."""
     return network_manager_services["network_dns_manager"]
 
@@ -701,7 +701,7 @@ async def api_client(
 
 
 @pytest.fixture
-def supervisor_internet(coresys: CoreSys) -> Generator[AsyncMock]:
+def supervisor_internet(coresys: CoreSys) -> AsyncMock:
     """Fixture which simluate Supervsior internet connection."""
     connectivity_check = AsyncMock(return_value=True)
     coresys.supervisor.check_and_update_connectivity = connectivity_check
@@ -709,7 +709,7 @@ def supervisor_internet(coresys: CoreSys) -> Generator[AsyncMock]:
 
 
 @pytest.fixture
-def websession(coresys: CoreSys) -> Generator[MagicMock]:
+def websession(coresys: CoreSys) -> MagicMock:
     """Fixture for global aiohttp SessionClient.
 
     Also mocks Core container is_running to return True so that
@@ -721,7 +721,7 @@ def websession(coresys: CoreSys) -> Generator[MagicMock]:
 
 
 @pytest.fixture
-def mock_update_data(websession: MagicMock) -> Generator[MockResponse]:
+def mock_update_data(websession: MagicMock) -> MockResponse:
     """Mock updater JSON data."""
     version_data = load_fixture("version_stable.json")
     client_response = MockResponse(text=version_data)

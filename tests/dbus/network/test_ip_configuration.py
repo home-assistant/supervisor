@@ -21,7 +21,7 @@ async def fixture_ip4config_service(dbus_session_bus: MessageBus) -> IP4ConfigSe
 
 
 @pytest.fixture(name="ip6config_service")
-async def fixture_ip6config_service(dbus_session_bus: MessageBus) -> IP4ConfigService:
+async def fixture_ip6config_service(dbus_session_bus: MessageBus) -> IP6ConfigService:
     """Mock IP6Config service."""
     return (await mock_dbus_services({"network_ip6config": None}, dbus_session_bus))[
         "network_ip6config"
