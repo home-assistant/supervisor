@@ -373,7 +373,7 @@ class AppModel(JobGroup, ABC):
         """Return True if AppArmor is enabled."""
         if not self.data.get(ATTR_APPARMOR):
             return SECURITY_DISABLE
-        elif self.sys_host.apparmor.exists(self.slug):
+        if self.sys_host.apparmor.exists(self.slug):
             return SECURITY_PROFILE
         return SECURITY_DEFAULT
 
@@ -712,7 +712,7 @@ class AppModel(JobGroup, ABC):
         """Validate if app is available for current system."""
         return self._validate_availability(self.data, logger=_LOGGER.error)
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Compare app objects."""
         if not isinstance(other, AppModel):
             return False

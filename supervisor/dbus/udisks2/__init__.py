@@ -69,7 +69,7 @@ class UDisks2Manager(DBusInterfaceProxy):
             await self.udisks2_object_manager.connect(bus)
         except DBusError as err:
             _LOGGER.critical("Can't connect to udisks2: %s", err)
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning(
                 "No udisks2 support on the host. Host control has been disabled."
             )

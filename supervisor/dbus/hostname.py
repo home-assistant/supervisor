@@ -40,7 +40,7 @@ class Hostname(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-hostname")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning(
                 "No hostname support on the host. Hostname functions have been disabled."
             )

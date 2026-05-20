@@ -148,7 +148,7 @@ class NetworkManager(DBusInterfaceProxy):
             await self.settings.connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning(
                 "No Network Manager support on the host. Local network functions have been disabled."
             )
@@ -157,7 +157,7 @@ class NetworkManager(DBusInterfaceProxy):
         if self.is_connected:
             try:
                 await self._validate_version()
-            except (HostNotSupportedError, DBusError):
+            except HostNotSupportedError, DBusError:
                 self.disconnect()
                 self.dns.disconnect()
                 self.settings.disconnect()
@@ -170,7 +170,7 @@ class NetworkManager(DBusInterfaceProxy):
         try:
             if self.version >= MINIMAL_VERSION:
                 return
-        except (AwesomeVersionException, KeyError):
+        except AwesomeVersionException, KeyError:
             pass
 
         raise HostNotSupportedError(

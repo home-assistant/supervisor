@@ -85,7 +85,7 @@ class APIIngress(CoreSysAttributes):
         app = self.sys_ingress.get(token)
         if not app:
             _LOGGER.warning("Ingress for %s not available", token)
-            raise HTTPServiceUnavailable()
+            raise HTTPServiceUnavailable
 
         return app
 
@@ -135,7 +135,7 @@ class APIIngress(CoreSysAttributes):
         # Check Ingress Session
         if not self.sys_ingress.validate_session(data[ATTR_SESSION]):
             _LOGGER.warning("No valid ingress session %s", data[ATTR_SESSION])
-            raise HTTPUnauthorized()
+            raise HTTPUnauthorized
 
     async def handler(
         self, request: web.Request
@@ -146,7 +146,7 @@ class APIIngress(CoreSysAttributes):
         session = request.cookies.get(COOKIE_INGRESS, "")
         if not self.sys_ingress.validate_session(session):
             _LOGGER.warning("No valid ingress session %s", session)
-            raise HTTPUnauthorized()
+            raise HTTPUnauthorized
 
         # Process requests
         app = self._extract_app(request)
@@ -163,7 +163,7 @@ class APIIngress(CoreSysAttributes):
         except aiohttp.ClientError as err:
             _LOGGER.error("Ingress error: %s", err)
 
-        raise HTTPBadGateway()
+        raise HTTPBadGateway
 
     async def _handle_websocket(
         self,

@@ -285,7 +285,7 @@ class Job(CoreSysAttributes):
                 # Handle execution limits using context manager
                 async with self._concurrency_control(job_group, job):
                     if not await self._handle_throttling(group_name):
-                        return  # Job was throttled, exit early
+                        return None  # Job was throttled, exit early
 
                     # Execute Job
                     with job.start():
@@ -309,7 +309,7 @@ class Job(CoreSysAttributes):
                             _LOGGER.exception("Unhandled exception: %s", err)
                             job.capture_error()
                             await async_capture_exception(err)
-                            raise JobException() from err
+                            raise JobException from err
 
             # Jobs that weren't started are always cleaned up. Also clean up done jobs if required
             finally:

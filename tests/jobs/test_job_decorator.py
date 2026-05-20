@@ -186,7 +186,7 @@ async def test_exception(coresys: CoreSys, capture_exception: Mock):
         @Job(name="test_exception_execute", conditions=[JobCondition.HEALTHY])
         async def execute(self):
             """Execute the class method."""
-            raise HassioError()
+            raise HassioError
 
     test = TestClass(coresys)
 

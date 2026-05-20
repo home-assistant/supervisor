@@ -28,7 +28,7 @@ class FixupMountExecuteReload(FixupBase):
             # Leave the issue/suggestion in place so the user can try again
             # once the underlying problem (e.g. unreachable server) is fixed.
             _LOGGER.warning("Reload fixup for mount %s failed: %s", reference, err)
-            raise ResolutionFixupError() from err
+            raise ResolutionFixupError from err
 
     @property
     def suggestion(self) -> SuggestionType:

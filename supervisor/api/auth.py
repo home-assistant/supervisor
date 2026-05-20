@@ -96,14 +96,14 @@ class APIAuth(CoreSysAttributes):
         if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_JSON:
             data = await request.json(loads=json_loads)
             if not await self._process_dict(request, app, data):
-                raise HTTPUnauthorized()
+                raise HTTPUnauthorized
             return True
 
         # URL encoded
         if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_URL:
             data = await request.post()
             if not await self._process_dict(request, app, data):
-                raise HTTPUnauthorized()
+                raise HTTPUnauthorized
             return True
 
         # Advertise Basic authentication by default

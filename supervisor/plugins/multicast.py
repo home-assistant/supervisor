@@ -98,7 +98,7 @@ class PluginMulticast(PluginBase):
         try:
             return await self.instance.stats()
         except DockerError as err:
-            raise MulticastError() from err
+            raise MulticastError from err
 
     async def repair(self) -> None:
         """Repair Multicast plugin."""

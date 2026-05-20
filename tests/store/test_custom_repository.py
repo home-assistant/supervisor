@@ -26,7 +26,7 @@ def get_repository_by_url(store_manager: StoreManager, url: str) -> Repository:
     for repository in store_manager.all:
         if repository.source == url:
             return repository
-    raise StoreNotFound()
+    raise StoreNotFound
 
 
 @pytest.fixture(autouse=True)

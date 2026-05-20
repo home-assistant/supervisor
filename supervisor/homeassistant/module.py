@@ -284,7 +284,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         """Return true if a Home Assistant update is available."""
         try:
             return self.version is not None and self.version < self.latest_version
-        except (AwesomeVersionException, TypeError):
+        except AwesomeVersionException, TypeError:
             return False
 
     @property
@@ -543,7 +543,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 try:
                     data = read_json_file(temp_meta)
                 except ConfigurationFileError as err:
-                    raise HomeAssistantError() from err
+                    raise HomeAssistantError from err
 
                 return data
 

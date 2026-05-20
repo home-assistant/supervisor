@@ -33,13 +33,13 @@ class FixupAppExecuteStart(FixupBase):
             start_task = await app.start()
         except AppsError as err:
             _LOGGER.error("Could not start %s due to %s", reference, err)
-            raise ResolutionFixupError() from None
+            raise ResolutionFixupError from None
 
         # Wait for app start. If it ends up in error or unknown state it's not fixed
         await start_task
         if app.state in {AppState.ERROR, AppState.UNKNOWN}:
             _LOGGER.error("App %s could not start successfully", reference)
-            raise ResolutionFixupError()
+            raise ResolutionFixupError
 
     @property
     def suggestion(self) -> SuggestionType:

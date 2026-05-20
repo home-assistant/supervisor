@@ -311,7 +311,7 @@ class SecurityMiddleware(CoreSysAttributes):
         # Blacklist
         if BLACKLIST.match(request.path):
             _LOGGER.error("%s is blacklisted!", request.path)
-            raise HTTPForbidden()
+            raise HTTPForbidden
 
         # Ignore security check
         if patterns.no_security_check.match(request.path):
@@ -322,7 +322,7 @@ class SecurityMiddleware(CoreSysAttributes):
         # Not token
         if not supervisor_token:
             _LOGGER.warning("No API token provided for %s", request.path)
-            raise HTTPUnauthorized()
+            raise HTTPUnauthorized
 
         # Home-Assistant
         if supervisor_token == self.sys_homeassistant.supervisor_token:
@@ -333,7 +333,7 @@ class SecurityMiddleware(CoreSysAttributes):
                 "Attempted access to %s from client besides Home Assistant",
                 request.path,
             )
-            raise HTTPForbidden()
+            raise HTTPForbidden
 
         # Host
         if supervisor_token == self.sys_plugins.cli.supervisor_token:
@@ -344,7 +344,7 @@ class SecurityMiddleware(CoreSysAttributes):
         if supervisor_token == self.sys_plugins.observer.supervisor_token:
             if not OBSERVER_CHECK.match(request.path):
                 _LOGGER.warning("%s invalid Observer access", request.path)
-                raise HTTPForbidden()
+                raise HTTPForbidden
             _LOGGER.debug("%s access from Observer", request.path)
             request_from = self.sys_plugins.observer
 
@@ -372,4 +372,4 @@ class SecurityMiddleware(CoreSysAttributes):
             return await handler(request)
 
         _LOGGER.error("Invalid token for access %s", request.path)
-        raise HTTPForbidden()
+        raise HTTPForbidden

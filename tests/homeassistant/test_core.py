@@ -594,8 +594,7 @@ async def test_api_check_database_migration(
         calls.append(None)
         if len(calls) > 50:
             return APIState("RUNNING", False)
-        else:
-            return APIState("NOT_RUNNING", True)
+        return APIState("NOT_RUNNING", True)
 
     container.show.return_value["State"]["Status"] = "stopped"
     container.show.return_value["State"]["Running"] = False

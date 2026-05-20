@@ -15,7 +15,7 @@ def dbus_connected(method):
         if api.is_shutdown:
             return noop()
         if api.dbus is None:
-            raise DBusNotConnectedError()
+            raise DBusNotConnectedError
         return method(api, *args, **kwargs)
 
     return wrap_dbus

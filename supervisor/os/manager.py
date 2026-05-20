@@ -148,12 +148,12 @@ class OSManager(CoreSysAttributes):
     def get_slot_name(self, boot_name: str) -> str:
         """Get slot name from boot name."""
         if not self._slots:
-            raise HassOSSlotNotFound()
+            raise HassOSSlotNotFound
 
         for name, status in self._slots.items():
             if status.bootname == boot_name:
                 return name
-        raise HassOSSlotNotFound()
+        raise HassOSSlotNotFound
 
     def _get_download_url(self, version: AwesomeVersion) -> str:
         raw_url = self.sys_updater.ota_url
@@ -173,10 +173,9 @@ class OSManager(CoreSysAttributes):
         else:
             update_os_name = "haos"
 
-        url = raw_url.format(
+        return raw_url.format(
             version=str(version), board=update_board, os_name=update_os_name
         )
-        return url
 
     async def _download_raucb(self, url: str, raucb: Path) -> None:
         """Download rauc bundle (OTA) from URL."""
@@ -229,13 +228,13 @@ class OSManager(CoreSysAttributes):
         """Load HassOS data."""
         try:
             if not self.sys_host.info.cpe:
-                raise NotImplementedError()
+                raise NotImplementedError
 
             cpe = CPE(self.sys_host.info.cpe)
             os_name = cpe.get_product()[0]
             if os_name not in ("hassos", "haos"):
                 self._board = BOARD_NAME_SUPERVISED.lower()
-                raise NotImplementedError()
+                raise NotImplementedError
         except NotImplementedError:
             _LOGGER.info("No Home Assistant Operating System found")
             return
@@ -329,7 +328,7 @@ class OSManager(CoreSysAttributes):
             "Home Assistant Operating System update failed with: %s",
             self.sys_dbus.rauc.last_error,
         )
-        raise HassOSUpdateError()
+        raise HassOSUpdateError
 
     @Job(name="os_manager_mark_healthy", conditions=[JobCondition.HAOS], internal=True)
     async def mark_healthy(self) -> None:

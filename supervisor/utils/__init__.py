@@ -48,7 +48,7 @@ async def check_port(address: IPv4Address, port: int) -> bool:
     try:
         async with asyncio.timeout(0.5):
             await asyncio.get_running_loop().sock_connect(sock, (str(address), port))
-    except (OSError, TimeoutError):
+    except OSError, TimeoutError:
         return False
     finally:
         if sock is not None:

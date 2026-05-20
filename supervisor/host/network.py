@@ -123,7 +123,7 @@ class NetworkManager(CoreSysAttributes):
     def get(self, inet_name: str) -> Interface:
         """Return interface from interface name."""
         if inet_name not in self.sys_dbus.network:
-            raise HostNetworkNotFound()
+            raise HostNetworkNotFound
 
         return Interface.from_dbus_interface(self.sys_dbus.network.get(inet_name))
 
@@ -369,7 +369,7 @@ class NetworkManager(CoreSysAttributes):
             await inet.wireless.request_scan()
         except DBusError as err:
             _LOGGER.warning("Can't request a new scan: %s", err)
-            raise HostNetworkError() from err
+            raise HostNetworkError from err
 
         await asyncio.sleep(5)
 

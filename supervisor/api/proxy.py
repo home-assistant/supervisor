@@ -59,7 +59,7 @@ class APIProxy(CoreSysAttributes):
             await response.prepare(request)
             async for data in client.content:
                 await response.write(data)
-        except (aiohttp.ClientError, aiohttp.ClientPayloadError):
+        except aiohttp.ClientError, aiohttp.ClientPayloadError:
             # Client disconnected or upstream closed
             pass
 
@@ -82,7 +82,7 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.debug("%s access from %s", request.path, app.slug)
             return
 
-        raise HTTPUnauthorized()
+        raise HTTPUnauthorized
 
     @asynccontextmanager
     async def _api_client(
@@ -115,13 +115,13 @@ class APIProxy(CoreSysAttributes):
         except TimeoutError:
             _LOGGER.error("Client timeout error on API request %s", path)
 
-        raise HTTPBadGateway()
+        raise HTTPBadGateway
 
     async def stream(self, request: web.Request):
         """Proxy HomeAssistant EventStream Requests."""
         self._check_access(request)
         if not await self.sys_homeassistant.api.check_api_state():
-            raise HTTPBadGateway()
+            raise HTTPBadGateway
 
         _LOGGER.info("Home Assistant EventStream start")
         async with self._api_client(request, "stream", timeout=None) as client:
@@ -138,7 +138,7 @@ class APIProxy(CoreSysAttributes):
         """Proxy Home Assistant API Requests."""
         self._check_access(request)
         if not await self.sys_homeassistant.api.check_api_state():
-            raise HTTPBadGateway()
+            raise HTTPBadGateway
 
         # Normal request
         path = request.match_info.get("path", "")
@@ -221,7 +221,7 @@ class APIProxy(CoreSysAttributes):
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
         if not await self.sys_homeassistant.api.check_api_state():
-            raise HTTPBadGateway()
+            raise HTTPBadGateway
         _LOGGER.info("Home Assistant WebSocket API request initialize")
 
         # init server

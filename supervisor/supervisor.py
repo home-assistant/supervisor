@@ -269,7 +269,7 @@ class Supervisor(CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerError as err:
-            raise SupervisorUnknownError() from err
+            raise SupervisorUnknownError from err
 
     async def repair(self):
         """Repair local Supervisor data."""

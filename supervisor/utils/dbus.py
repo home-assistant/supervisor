@@ -368,7 +368,7 @@ class DBusCallWrapper:
     def __call__(self, *args, **kwargs) -> None:
         """Catch this method from being called."""
         _LOGGER.error("D-Bus method %s not exists!", self.interface)
-        raise DBusInterfaceMethodError()
+        raise DBusInterfaceMethodError
 
     def _dbus_action(
         self, name: str
@@ -448,7 +448,7 @@ class DBusCallWrapper:
 
             return _method_wrapper
 
-        elif dbus_type == "set":
+        if dbus_type == "set":
 
             def _set_wrapper(*args) -> Awaitable:
                 return DBus.call_dbus(dbus_proxy, name, *args, unpack_variants=False)

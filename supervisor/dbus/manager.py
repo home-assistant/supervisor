@@ -95,7 +95,7 @@ class DBusManager(CoreSysAttributes):
     def connected_bus(self) -> MessageBus:
         """Return the message bus. Raise if not connected."""
         if not self._bus:
-            raise DBusNotConnectedError()
+            raise DBusNotConnectedError
         return self._bus
 
     @property

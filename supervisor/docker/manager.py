@@ -824,7 +824,7 @@ class DockerAPI(CoreSysAttributes):
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 # Generally suppressed so we don't log this
-                raise DockerNotFound() from None
+                raise DockerNotFound from None
             raise DockerError(
                 f"Could not get container {name} for stopping: {err!s}",
                 _LOGGER.error,

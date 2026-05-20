@@ -200,4 +200,4 @@ class AsyncIterator:
         try:
             return next(self.iter)
         except StopIteration:
-            raise StopAsyncIteration() from None
+            raise StopAsyncIteration from None

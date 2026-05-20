@@ -66,7 +66,7 @@ class GitRepo(CoreSysAttributes):
                 UnicodeDecodeError,
             ) as err:
                 _LOGGER.error("Can't load %s", self.path)
-                raise StoreGitError() from err
+                raise StoreGitError from err
 
         # Fix possible corruption
         async with self.lock:
@@ -75,7 +75,7 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
             except git.CommandError as err:
                 _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
-                raise StoreGitError() from err
+                raise StoreGitError from err
 
     @Job(
         name="git_repo_clone",
@@ -152,7 +152,7 @@ class GitRepo(CoreSysAttributes):
             UnicodeDecodeError,
         ) as err:
             _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
-            raise StoreGitCloneError() from err
+            raise StoreGitCloneError from err
 
     @Job(
         name="git_repo_pull",
@@ -176,7 +176,7 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(git_cmd.ls_remote, "--heads", self.url)
             except git.CommandError as err:
                 _LOGGER.warning("Wasn't able to update %s repo: %s.", self.url, err)
-                raise StoreGitError() from err
+                raise StoreGitError from err
 
             try:
                 repo = self.repo
@@ -233,7 +233,7 @@ class GitRepo(CoreSysAttributes):
                     reference=self.path.stem,
                     suggestions=[SuggestionType.EXECUTE_RESET],
                 )
-                raise StoreGitError() from err
+                raise StoreGitError from err
 
     async def remove(self) -> None:
         """Remove a repository."""

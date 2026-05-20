@@ -50,8 +50,7 @@ class Repository(CoreSysAttributes, ABC):
         """Create a repository instance."""
         if repository in BuiltinRepository:
             return Repository._create_builtin(coresys, BuiltinRepository(repository))
-        else:
-            return Repository._create_custom(coresys, repository)
+        return Repository._create_custom(coresys, repository)
 
     @staticmethod
     def _create_builtin(coresys: CoreSys, builtin: BuiltinRepository) -> Repository:
@@ -60,7 +59,7 @@ class Repository(CoreSysAttributes, ABC):
             slug = REPOSITORY_LOCAL
             local_path = coresys.config.path_apps_local
             return RepositoryLocal(coresys, local_path, slug)
-        elif builtin == BuiltinRepository.CORE:
+        if builtin == BuiltinRepository.CORE:
             slug = REPOSITORY_CORE
             local_path = coresys.config.path_apps_core
         else:

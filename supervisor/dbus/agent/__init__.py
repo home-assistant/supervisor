@@ -111,7 +111,7 @@ class OSAgent(DBusInterfaceProxy):
         _LOGGER.info("Load dbus interface %s", self.name)
         try:
             await super().connect(bus)
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.error(
                 "No OS-Agent support on the host. Some Host functions have been disabled."
             )

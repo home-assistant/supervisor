@@ -33,7 +33,7 @@ class FixupAppExecuteRemove(FixupBase):
             await app.uninstall(remove_config=False)
         except AppsError as err:
             _LOGGER.error("Could not remove %s due to %s", reference, err)
-            raise ResolutionFixupError() from None
+            raise ResolutionFixupError from None
 
     @property
     def suggestion(self) -> SuggestionType:

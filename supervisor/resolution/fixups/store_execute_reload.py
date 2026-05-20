@@ -48,7 +48,7 @@ class FixupStoreExecuteReload(FixupBase):
             await repository.load()
             await self.sys_store.reload(repository)
         except StoreError:
-            raise ResolutionFixupError() from None
+            raise ResolutionFixupError from None
 
     @property
     def suggestion(self) -> SuggestionType:
