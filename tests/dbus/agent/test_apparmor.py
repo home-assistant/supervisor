@@ -18,7 +18,7 @@ async def fixture_apparmor_service(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> AppArmorService:
     """Mock AppArmor dbus service."""
-    yield os_agent_services["agent_apparmor"]
+    return os_agent_services["agent_apparmor"]
 
 
 async def test_dbus_osagent_apparmor(

@@ -29,7 +29,7 @@ async def fixture_boards_service(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> BoardsService:
     """Return mock Boards service."""
-    yield os_agent_services["agent_boards"]
+    return os_agent_services["agent_boards"]
 
 
 async def test_api_os_info(api_client_with_prefix: tuple[TestClient, str]):

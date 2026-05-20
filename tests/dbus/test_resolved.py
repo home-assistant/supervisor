@@ -22,7 +22,7 @@ from tests.dbus_service_mocks.resolved import Resolved as ResolvedService
 @pytest.fixture(name="resolved_service")
 async def fixture_resolved_service(dbus_session_bus: MessageBus) -> ResolvedService:
     """Mock resolved dbus service."""
-    yield (await mock_dbus_services({"resolved": None}, dbus_session_bus))["resolved"]
+    return (await mock_dbus_services({"resolved": None}, dbus_session_bus))["resolved"]
 
 
 async def test_dbus_resolved_info(

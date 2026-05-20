@@ -113,14 +113,12 @@ def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
 async def path_extern(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set external path env for tests."""
     monkeypatch.setenv("SUPERVISOR_SHARE", "/mnt/data/supervisor")
-    yield
 
 
 @pytest.fixture
 async def supervisor_name(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set env for supervisor name."""
     monkeypatch.setenv("SUPERVISOR_NAME", "hassio_supervisor")
-    yield
 
 
 @pytest.fixture
@@ -302,7 +300,7 @@ async def fixture_network_manager_services(
     dbus_session_bus: MessageBus,
 ) -> dict[str, DBusServiceMock | dict[str, DBusServiceMock]]:
     """Mock all services network manager connects to."""
-    yield await mock_dbus_services(
+    return await mock_dbus_services(
         {
             "network_access_point": [
                 "/org/freedesktop/NetworkManager/AccessPoint/43099",
@@ -341,7 +339,7 @@ async def network_manager(
     """Mock Network Manager."""
     nm_obj = NetworkManager()
     await nm_obj.connect(dbus_session_bus)
-    yield nm_obj
+    return nm_obj
 
 
 @pytest.fixture
@@ -349,7 +347,7 @@ async def network_manager_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> NetworkManagerService:
     """Return Network Manager service mock."""
-    yield network_manager_services["network_manager"]
+    return network_manager_services["network_manager"]
 
 
 @pytest.fixture
@@ -357,7 +355,7 @@ async def dns_manager_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> AsyncGenerator[DnsManagerService]:
     """Return DNS Manager service mock."""
-    yield network_manager_services["network_dns_manager"]
+    return network_manager_services["network_dns_manager"]
 
 
 @pytest.fixture(name="active_connection_service")
@@ -365,7 +363,7 @@ async def fixture_active_connection_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ActiveConnectionService:
     """Return mock active connection service."""
-    yield network_manager_services["network_active_connection"][
+    return network_manager_services["network_active_connection"][
         DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH
     ]
 
@@ -375,7 +373,7 @@ async def fixture_connection_settings_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ConnectionSettingsService:
     """Return mock connection settings service."""
-    yield network_manager_services["network_connection_settings"][
+    return network_manager_services["network_connection_settings"][
         DEFAULT_CONNECTION_SETTINGS_OBJECT_PATH
     ]
 
@@ -385,7 +383,7 @@ async def fixture_udisks2_services(
     dbus_session_bus: MessageBus,
 ) -> dict[str, DBusServiceMock | dict[str, DBusServiceMock]]:
     """Mock all services UDisks2 connects to."""
-    yield await mock_dbus_services(
+    return await mock_dbus_services(
         {
             "udisks2_block": [
                 "/org/freedesktop/UDisks2/block_devices/loop0",
@@ -436,7 +434,7 @@ async def fixture_os_agent_services(
     dbus_session_bus: MessageBus,
 ) -> dict[str, DBusServiceMock]:
     """Mock all services os agent connects to."""
-    yield await mock_dbus_services(
+    return await mock_dbus_services(
         {
             "os_agent": None,
             "agent_apparmor": None,
@@ -459,7 +457,7 @@ async def fixture_all_dbus_services(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> dict[str, DBusServiceMock | dict[str, DBusServiceMock]]:
     """Mock all dbus services supervisor uses."""
-    yield (
+    return (
         (
             await mock_dbus_services(
                 {
@@ -699,7 +697,7 @@ async def api_client(
     api.webapp = web.Application(middlewares=[_security_middleware])
     api.start = AsyncMock()
     await api.load()
-    yield await aiohttp_client(api.webapp)
+    return await aiohttp_client(api.webapp)
 
 
 @pytest.fixture
@@ -707,7 +705,7 @@ def supervisor_internet(coresys: CoreSys) -> Generator[AsyncMock]:
     """Fixture which simluate Supervsior internet connection."""
     connectivity_check = AsyncMock(return_value=True)
     coresys.supervisor.check_and_update_connectivity = connectivity_check
-    yield connectivity_check
+    return connectivity_check
 
 
 @pytest.fixture
@@ -719,7 +717,7 @@ def websession(coresys: CoreSys) -> Generator[MagicMock]:
     """
     coresys._websession = MagicMock(spec_set=ClientSession)
     coresys.homeassistant.core.instance.is_running = AsyncMock(return_value=True)
-    yield coresys._websession
+    return coresys._websession
 
 
 @pytest.fixture
@@ -729,7 +727,7 @@ def mock_update_data(websession: MagicMock) -> Generator[MockResponse]:
     client_response = MockResponse(text=version_data)
     client_response.status = 200
     websession.get = MagicMock(return_value=client_response)
-    yield client_response
+    return client_response
 
 
 @pytest.fixture
@@ -761,7 +759,7 @@ def store_app(coresys: CoreSys, tmp_path, test_repository):
         load_json_fixture("app.json")
     )
     coresys.store.data.apps[app_obj.slug]["location"] = tmp_path
-    yield app_obj
+    return app_obj
 
 
 @pytest.fixture
@@ -795,7 +793,7 @@ async def install_app_ssh(coresys: CoreSys, test_repository):
 
     app = App(coresys, store.slug)
     coresys.apps.local[app.slug] = app
-    yield app
+    return app
 
 
 @pytest.fixture
@@ -807,7 +805,7 @@ async def install_app_example(coresys: CoreSys, test_repository):
 
     app = App(coresys, store.slug)
     coresys.apps.local[app.slug] = app
-    yield app
+    return app
 
 
 @pytest.fixture
@@ -834,7 +832,7 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
         ATTR_EXCLUDE_DATABASE: False,
     }
     coresys.backups._backups = {"test": mock_backup}
-    yield mock_backup
+    return mock_backup
 
 
 @pytest.fixture
@@ -861,7 +859,7 @@ async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
         ATTR_EXCLUDE_DATABASE: False,
     }
     coresys.backups._backups = {"test": mock_backup}
-    yield mock_backup
+    return mock_backup
 
 
 @pytest.fixture
@@ -884,7 +882,7 @@ async def backups(
         }
         coresys.backups._backups[backup.slug] = backup
 
-    yield coresys.backups.list_backups
+    return coresys.backups.list_backups
 
 
 @pytest.fixture
@@ -909,7 +907,7 @@ async def docker_logs(container: DockerContainer, supervisor_name) -> AsyncMock:
     """Mock log output for a container from docker."""
     logs = load_fixture("logs_docker_container.txt")
     container.log.return_value = logs.splitlines()
-    yield container.log
+    return container.log
 
 
 @pytest.fixture
@@ -985,7 +983,7 @@ async def container(docker: DockerAPI) -> DockerContainer:
         "Pid": 12345,
     }
 
-    yield container_mock
+    return container_mock
 
 
 @pytest.fixture
@@ -1002,7 +1000,6 @@ async def mount_propagation(container: DockerContainer, coresys: CoreSys) -> Non
         }
     ]
     await coresys.supervisor.load()
-    yield
 
 
 @pytest.fixture

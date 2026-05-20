@@ -56,7 +56,7 @@ async def test_healthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
 
 
 @pytest.mark.parametrize(
-    "connectivity,head_side_effect,host_result,system_result",
+    ("connectivity", "head_side_effect", "host_result", "system_result"),
     [
         (4, None, True, True),
         (4, ClientError(), True, None),

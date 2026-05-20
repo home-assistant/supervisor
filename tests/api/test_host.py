@@ -36,7 +36,7 @@ async def fixture_coresys_disk_info(coresys: CoreSys) -> AsyncGenerator[CoreSys]
     coresys.hardware.disk.get_disk_total_space = lambda _: 50000
     coresys.hardware.disk.get_disk_used_space = lambda _: 45000
 
-    yield coresys
+    return coresys
 
 
 async def test_api_host_info(

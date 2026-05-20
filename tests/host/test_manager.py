@@ -18,7 +18,7 @@ async def fixture_systemd_service(
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> SystemdService:
     """Return systemd service mock."""
-    yield all_dbus_services["systemd"]
+    return all_dbus_services["systemd"]
 
 
 async def test_load(coresys: CoreSys, systemd_service: SystemdService):

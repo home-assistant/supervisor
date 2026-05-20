@@ -16,7 +16,7 @@ from tests.dbus_service_mocks.timedate import TimeDate as TimeDateService
 @pytest.fixture(name="timedate_service")
 async def fixture_timedate_service(dbus_session_bus: MessageBus) -> TimeDateService:
     """Mock timedate dbus service."""
-    yield (await mock_dbus_services({"timedate": None}, dbus_session_bus))["timedate"]
+    return (await mock_dbus_services({"timedate": None}, dbus_session_bus))["timedate"]
 
 
 async def test_timedate_info(

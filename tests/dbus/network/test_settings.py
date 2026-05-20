@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.network_settings import Settings as SettingsServic
 @pytest.fixture(name="settings_service")
 async def fixture_settings_service(dbus_session_bus: MessageBus) -> SettingsService:
     """Mock Settings service."""
-    yield (
+    return (
         await mock_dbus_services(
             {"network_settings": None, "network_connection_settings": None},
             dbus_session_bus,

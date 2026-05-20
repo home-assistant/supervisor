@@ -27,7 +27,7 @@ async def test_base(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "state_flags,issues",
+    ("state_flags", "issues"),
     [
         ({ConnectionStateFlags.IP4_READY}, set()),
         ({ConnectionStateFlags.IP6_READY}, TEST_ISSUES),
@@ -56,7 +56,7 @@ async def test_check(
 
 
 @pytest.mark.parametrize(
-    "state_flags,approved",
+    ("state_flags", "approved"),
     [
         ({ConnectionStateFlags.IP4_READY}, False),
         ({ConnectionStateFlags.IP6_READY}, True),

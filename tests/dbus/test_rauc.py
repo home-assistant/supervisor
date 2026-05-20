@@ -15,7 +15,7 @@ from tests.dbus_service_mocks.rauc import Rauc as RaucService
 @pytest.fixture(name="rauc_service")
 async def fixture_rauc_service(dbus_session_bus: MessageBus) -> RaucService:
     """Mock rauc dbus service."""
-    yield (await mock_dbus_services({"rauc": None}, dbus_session_bus))["rauc"]
+    return (await mock_dbus_services({"rauc": None}, dbus_session_bus))["rauc"]
 
 
 async def test_rauc_info(rauc_service: RaucService, dbus_session_bus: MessageBus):

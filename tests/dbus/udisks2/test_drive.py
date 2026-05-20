@@ -17,7 +17,7 @@ async def fixture_drive_ssk_storage_service(
     dbus_session_bus: MessageBus,
 ) -> DriveService:
     """Mock SSK Storage Drive service."""
-    yield (
+    return (
         await mock_dbus_services(
             {
                 "udisks2_drive": "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56"
@@ -32,7 +32,7 @@ async def fixture_drive_flash_disk_service(
     dbus_session_bus: MessageBus,
 ) -> DriveService:
     """Mock Flash Disk Drive service."""
-    yield (
+    return (
         await mock_dbus_services(
             {
                 "udisks2_drive": "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6"

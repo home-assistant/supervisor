@@ -15,7 +15,7 @@ async def fixture_system_service(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> SystemService:
     """Mock System dbus service."""
-    yield os_agent_services["agent_system"]
+    return os_agent_services["agent_system"]
 
 
 async def test_dbus_osagent_system_wipe(

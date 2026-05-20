@@ -17,7 +17,7 @@ async def fixture_datadisk_service(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> DataDiskService:
     """Mock DataDisk dbus service."""
-    yield os_agent_services["agent_datadisk"]
+    return os_agent_services["agent_datadisk"]
 
 
 async def test_dbus_osagent_datadisk(

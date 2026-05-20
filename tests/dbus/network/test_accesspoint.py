@@ -16,7 +16,7 @@ async def fixture_access_point_service(
     dbus_session_bus: MessageBus,
 ) -> AccessPointService:
     """Mock Access Point service."""
-    yield (
+    return (
         await mock_dbus_services(
             {
                 "network_access_point": "/org/freedesktop/NetworkManager/AccessPoint/43099"

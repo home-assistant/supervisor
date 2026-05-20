@@ -67,7 +67,7 @@ async def test_fetch_versions(
 
 @pytest.mark.usefixtures("no_job_throttle")
 @pytest.mark.parametrize(
-    "version, expected",
+    ("version", "expected"),
     [
         ("3.1", "3.13"),
         ("4.5", "4.20"),

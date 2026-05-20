@@ -154,13 +154,13 @@ async def test_boot_ids(
 
     # -1 is previous boot. We have 2 boots so -2 is too far
     assert await coresys.host.logs.get_boot_id(-1) == "b2aca10d5ca54fb1b6fb35c85a0efca9"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Logs only contain"):
         await coresys.host.logs.get_boot_id(-2)
 
     # 1 is oldest boot and count up from there. We have 2 boots so 3 is too far
     assert await coresys.host.logs.get_boot_id(1) == "b2aca10d5ca54fb1b6fb35c85a0efca9"
     assert await coresys.host.logs.get_boot_id(2) == "b1c386a144fd44db8f855d7e907256f8"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Logs only contain"):
         await coresys.host.logs.get_boot_id(3)
 
 
@@ -243,7 +243,7 @@ async def test_connection_refused_handled(
 
 
 @pytest.mark.parametrize(
-    "range_header,range_reparse",
+    ("range_header", "range_reparse"),
     [
         ("entries=:-99:", "entries=:-99:18446744073709551615"),
         ("entries=:-99:100", "entries=:-99:100"),

@@ -14,7 +14,7 @@ def mock_auth_backend_fixture(coresys):
     mock_auth_backend = AsyncMock()
     coresys.auth._backend_login = mock_auth_backend
 
-    yield mock_auth_backend
+    return mock_auth_backend
 
 
 @pytest.fixture(name="mock_api_state", autouse=True)
@@ -23,7 +23,7 @@ def mock_api_state_fixture(coresys):
     mock_api_state = AsyncMock()
     coresys.homeassistant.api.check_api_state = mock_api_state
 
-    yield mock_api_state
+    return mock_api_state
 
 
 async def test_auth_request_with_backend(coresys, mock_auth_backend, mock_api_state):

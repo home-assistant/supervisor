@@ -45,7 +45,7 @@ async def fixture_test_service(dbus_session_bus: MessageBus) -> TestInterface:
     await dbus_session_bus.request_name("service.test.TestInterface")
     service = TestInterface()
     service.export(dbus_session_bus)
-    yield service
+    return service
 
 
 async def test_missing_properties_interface(dbus_session_bus: MessageBus):
@@ -195,7 +195,7 @@ def test_from_dbus_error():
 
 
 @pytest.mark.parametrize(
-    "error_type,expected",
+    ("error_type", "expected"),
     [
         (ErrorType.UNKNOWN_METHOD, DBusInterfaceMethodError),
         (ErrorType.INVALID_SIGNATURE, DBusInterfaceMethodError),

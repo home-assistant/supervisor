@@ -16,7 +16,7 @@ from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 @pytest.fixture(name="systemd_service", autouse=True)
 async def fixture_systemd_service(dbus_session_bus: MessageBus) -> SystemdService:
     """Mock systemd dbus service."""
-    yield (await mock_dbus_services({"systemd": None}, dbus_session_bus))["systemd"]
+    return (await mock_dbus_services({"systemd": None}, dbus_session_bus))["systemd"]
 
 
 async def test_dbus_systemd_info(dbus_session_bus: MessageBus):

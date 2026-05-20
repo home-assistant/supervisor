@@ -35,7 +35,7 @@ async def fixture_wireless_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceWirelessService:
     """Return mock device wireless service."""
-    yield network_manager_services["network_device_wireless"]
+    return network_manager_services["network_device_wireless"]
 
 
 async def test_load(

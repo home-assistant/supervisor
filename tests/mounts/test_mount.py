@@ -29,8 +29,8 @@ ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
 
 
 @pytest.mark.parametrize(
-    "additional_data,expected_options",
-    (
+    ("additional_data", "expected_options"),
+    [
         (
             {"version": MountCifsVersion.LEGACY_1_0},
             ["vers=1.0"],
@@ -43,7 +43,7 @@ ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
             {"version": None},
             [],
         ),
-    ),
+    ],
 )
 async def test_cifs_mount(
     coresys: CoreSys,

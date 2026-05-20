@@ -359,7 +359,7 @@ async def test_listener_attached_on_install(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "boot_timedelta,restart_count", [(timedelta(), 1), (timedelta(days=1), 0)]
+    ("boot_timedelta", "restart_count"), [(timedelta(), 1), (timedelta(days=1), 0)]
 )
 @pytest.mark.usefixtures("test_repository")
 async def test_watchdog_during_attach(

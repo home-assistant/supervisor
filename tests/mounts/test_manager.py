@@ -61,7 +61,7 @@ async def fixture_mount(
     mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
     coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
     await coresys.mounts.load()
-    yield mount
+    return mount
 
 
 async def test_load(

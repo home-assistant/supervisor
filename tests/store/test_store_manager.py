@@ -124,7 +124,7 @@ async def test_reload_fails_if_out_of_date(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "config,log",
+    ("config", "log"),
     [
         (
             {"arch": ["aarch64"]},
@@ -181,7 +181,7 @@ async def test_update_unavailable_app(
 
 
 @pytest.mark.parametrize(
-    "config,log",
+    ("config", "log"),
     [
         (
             {"arch": ["aarch64"]},

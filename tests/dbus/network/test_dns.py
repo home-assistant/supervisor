@@ -17,7 +17,7 @@ async def fixture_dns_manager_service(
     dbus_session_bus: MessageBus,
 ) -> DnsManagerService:
     """Mock DnsManager dbus service."""
-    yield (await mock_dbus_services({"network_dns_manager": None}, dbus_session_bus))[
+    return (await mock_dbus_services({"network_dns_manager": None}, dbus_session_bus))[
         "network_dns_manager"
     ]
 

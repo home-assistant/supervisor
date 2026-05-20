@@ -30,7 +30,7 @@ async def fixture_network_manager_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> NetworkManagerService:
     """Mock NetworkManager dbus service."""
-    yield network_manager_services["network_manager"]
+    return network_manager_services["network_manager"]
 
 
 async def test_network_manager(

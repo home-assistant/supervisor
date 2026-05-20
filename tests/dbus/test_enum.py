@@ -80,7 +80,7 @@ def test_str_members_not_polluted():
 
 def test_str_non_str_raises_value_error():
     """Test non-string values raise ValueError."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is not a valid SampleStrEnum"):
         SampleStrEnum(123)
 
 
@@ -151,7 +151,7 @@ def test_int_members_not_polluted():
 
 def test_int_non_int_raises_value_error():
     """Test non-integer values raise ValueError."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is not a valid SampleIntEnum"):
         SampleIntEnum("abc")
 
 

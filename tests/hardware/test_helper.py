@@ -4,7 +4,7 @@ import errno
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from pytest import LogCaptureFixture
+import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.hardware.data import Device
@@ -87,7 +87,7 @@ def test_hide_virtual_device(coresys: CoreSys):
     assert coresys.hardware.helper.hide_virtual_device(udev_device)
 
 
-async def test_last_boot_error(coresys: CoreSys, caplog: LogCaptureFixture):
+async def test_last_boot_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test error reading last boot."""
     with patch(
         "supervisor.hardware.helper.Path.read_text", side_effect=(err := OSError())

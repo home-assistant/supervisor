@@ -17,7 +17,7 @@ async def fixture_partition_sda1_service(
     dbus_session_bus: MessageBus,
 ) -> PartitionService:
     """Mock sda1 Partition service."""
-    yield (
+    return (
         await mock_dbus_services(
             {"udisks2_partition": "/org/freedesktop/UDisks2/block_devices/sda1"},
             dbus_session_bus,
@@ -30,7 +30,7 @@ async def fixture_partition_sdb_service(
     dbus_session_bus: MessageBus,
 ) -> PartitionService:
     """Mock sdb1 Partition service."""
-    yield (
+    return (
         await mock_dbus_services(
             {"udisks2_partition": "/org/freedesktop/UDisks2/block_devices/sdb1"},
             dbus_session_bus,

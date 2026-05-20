@@ -52,7 +52,7 @@ async def fixture_test_service(dbus_session_bus: MessageBus) -> TestInterface:
     await dbus_session_bus.request_name("service.test.TestInterface")
     service = TestInterface()
     service.export(dbus_session_bus)
-    yield service
+    return service
 
 
 @pytest.fixture(name="proxy")
@@ -65,7 +65,7 @@ async def fixture_proxy(
     proxy = ServiceTest()
     proxy.sync_properties = getattr(request, "param", True)
     await proxy.connect(dbus_session_bus)
-    yield proxy
+    return proxy
 
 
 async def test_dbus_proxy_connect(

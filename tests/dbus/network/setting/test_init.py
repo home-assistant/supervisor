@@ -33,7 +33,7 @@ async def fixture_dbus_interface(
     """Get connected dbus interface."""
     dbus_interface = NetworkInterface(device_object_path)
     await dbus_interface.connect(dbus_session_bus)
-    yield dbus_interface
+    return dbus_interface
 
 
 @pytest.mark.parametrize(
@@ -140,7 +140,7 @@ async def test_ipv6_disabled_is_link_local(
 
 
 @pytest.mark.parametrize(
-    ["version", "addr_gen_mode"],
+    ("version", "addr_gen_mode"),
     [
         ("1.38.0", 1),
         ("1.40.0", 3),

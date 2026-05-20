@@ -205,11 +205,8 @@ def test_equals_dbus_interface_vlan_missing_info():
     mock_network_interface.settings = Mock()
 
     # Should raise RuntimeError
-    try:
+    with pytest.raises(RuntimeError, match="^VLAN information missing$"):
         test_vlan_interface.equals_dbus_interface(mock_network_interface)
-        assert False, "Expected RuntimeError"
-    except RuntimeError as e:
-        assert str(e) == "VLAN information missing"
 
 
 def test_equals_dbus_interface_vlan_no_vlan_settings():
@@ -248,7 +245,7 @@ async def fixture_device_eth0_10_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceService:
     """Mock Device eth0.10 service."""
-    yield network_manager_services["network_device"][
+    return network_manager_services["network_device"][
         "/org/freedesktop/NetworkManager/Devices/38"
     ]
 

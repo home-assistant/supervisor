@@ -14,7 +14,7 @@ async def fixture_swap_service(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> SwapService:
     """Mock System dbus service."""
-    yield os_agent_services["agent_swap"]
+    return os_agent_services["agent_swap"]
 
 
 async def test_dbus_osagent_swap_size(

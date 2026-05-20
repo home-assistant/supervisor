@@ -52,11 +52,11 @@ def test_dns_url_v4_good():
         assert validate.dns_url(url)
 
 
-def test_dns_url_v6_good():
+@pytest.mark.parametrize("url", DNS_GOOD_V6)
+def test_dns_url_v6_good(url: str):
     """Test the DNS validator with known-good IPv6 DNS URLs."""
     with pytest.raises(vol.error.Invalid):
-        for url in DNS_GOOD_V6:
-            assert validate.dns_url(url)
+        validate.dns_url(url)
 
 
 def test_dns_server_list_v4():

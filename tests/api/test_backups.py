@@ -272,7 +272,7 @@ async def test_api_freeze_thaw(
 
 
 @pytest.mark.parametrize(
-    "partial_backup,exclude_db_setting",
+    ("partial_backup", "exclude_db_setting"),
     [(False, True), (True, True), (False, False), (True, False)],
 )
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -310,7 +310,7 @@ async def _get_job_info(api_client: TestClient, job_id: str) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize(
-    "backup_type,options",
+    ("backup_type", "options"),
     [
         ("full", {}),
         (
@@ -396,7 +396,7 @@ async def test_api_backup_restore_background(
 
 
 @pytest.mark.parametrize(
-    "backup_type,options",
+    ("backup_type", "options"),
     [
         ("full", {}),
         (

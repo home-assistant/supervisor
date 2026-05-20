@@ -57,8 +57,7 @@ async def test_new_backup_permission_error(coresys: CoreSys, tmp_path: Path):
         pytest.raises(BackupPermissionError),
     ):
         async with backup.create():
-            assert len(listdir(tmp_path)) == 1
-            assert backup.tarfile.exists()
+            pass
 
 
 async def test_new_backup_exists_error(coresys: CoreSys, tmp_path: Path):

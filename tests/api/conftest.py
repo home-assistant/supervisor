@@ -181,7 +181,7 @@ async def fixture_api_client_v2(aiohttp_client, coresys: CoreSys) -> TestClient:
     api.webapp = web.Application(middlewares=[_security_middleware])
     api.start = AsyncMock()
     await api.load()
-    yield await aiohttp_client(api.webapp)
+    return await aiohttp_client(api.webapp)
 
 
 @pytest.fixture(

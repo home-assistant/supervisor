@@ -112,12 +112,10 @@ async def test_git_load_error(coresys: CoreSys, tmp_path: Path, git_errors: Exce
     # Pretend we have a repo
     (tmp_path / ".git").mkdir()
 
-    with (
-        patch("git.Repo") as mock_repo,
-        pytest.raises(StoreGitError),
-    ):
+    with patch("git.Repo") as mock_repo:
         mock_repo.side_effect = git_errors
-        await repo.load()
+        with pytest.raises(StoreGitError):
+            await repo.load()
 
     assert len(coresys.resolution.suggestions) == 0
 
@@ -140,12 +138,10 @@ async def test_git_pull_missing_origin_remote(coresys: CoreSys, tmp_path: Path):
     mock_repo.active_branch.name = "main"
     repo.repo = mock_repo
 
-    with (
-        patch("git.Git") as mock_git,
-        pytest.raises(StoreGitError),
-    ):
+    with patch("git.Git") as mock_git:
         mock_git.return_value.ls_remote = MagicMock()
-        await repo.pull.__wrapped__(repo)
+        with pytest.raises(StoreGitError):
+            await repo.pull.__wrapped__(repo)
 
     # Verify resolution issue was created
     assert len(coresys.resolution.issues) == 1

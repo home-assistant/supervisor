@@ -85,7 +85,7 @@ async def fixture_install_app_example_image(
 
     app = App(coresys, store.slug)
     coresys.apps.local[app.slug] = app
-    yield app
+    return app
 
 
 async def test_image_added_removed_on_update(coresys: CoreSys, install_app_ssh: App):

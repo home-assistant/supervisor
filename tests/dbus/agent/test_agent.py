@@ -16,7 +16,7 @@ async def fixture_os_agent_service(
     os_agent_services: dict[str, DBusServiceMock],
 ) -> OSAgentService:
     """Mock OS Agent dbus service."""
-    yield os_agent_services["os_agent"]
+    return os_agent_services["os_agent"]
 
 
 async def test_dbus_osagent(
@@ -44,7 +44,7 @@ async def test_dbus_osagent(
 
 
 @pytest.mark.parametrize(
-    "skip_service,error",
+    ("skip_service", "error"),
     [
         ("os_agent", "No OS-Agent support on the host"),
         (
