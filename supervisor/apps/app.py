@@ -1673,7 +1673,8 @@ class App(AppModel):
                 _LOGGER.warning(
                     "App %s did not handle SIGTERM and was terminated by the "
                     "default signal handler (exit code %d). The app should "
-                    "trap SIGTERM, shut down cleanly, and exit with code 0.",
+                    "trap SIGTERM, shut down cleanly, and exit with code 0. "
+                    "Please report this to the app developer.",
                     self.name,
                     EXIT_CODE_SIGTERM_DEFAULT,
                 )
