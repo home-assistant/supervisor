@@ -1,5 +1,6 @@
 """Interface to Systemd over D-Bus."""
 
+from collections.abc import Callable
 from functools import wraps
 import logging
 from typing import NamedTuple
@@ -45,6 +46,34 @@ class ExecStartEntry(NamedTuple):
     binary: str
     argv: list[str]
     ignore_failure: bool
+
+
+def job_removed_filter(get_job_path: Callable[[], str | None]) -> Callable[..., bool]:
+    """Build a DBusSignalWrapper filter that matches a specific JobRemoved.
+
+    JobRemoved has signature `(u id, o job, s unit, s result)`. The filter
+    returns True only for the signal whose `job` path matches the one
+    returned by get_job_path() — used to wait for a specific systemd job
+    we dispatched, ignoring concurrent jobs on the system bus.
+
+    The getter indirection exists because race-free use requires
+    subscribing *before* dispatching the job (so we can't miss its
+    JobRemoved), which means the job path isn't known at filter
+    construction time. The closure reads it lazily at wait time:
+
+        job_path: str | None = None
+        async with systemd.connected_dbus.signal(
+            DBUS_SIGNAL_SYSTEMD_JOB_REMOVED,
+            job_removed_filter(lambda: job_path),
+        ) as signal:
+            job_path = await systemd.restart_unit(...)
+            _id, _path, _unit, result = await signal.wait_for_signal()
+    """
+
+    def _match(_id: int, path: str, _unit: str, _result: str) -> bool:
+        return path == get_job_path()
+
+    return _match
 
 
 def systemd_errors(func):
@@ -128,7 +157,7 @@ class Systemd(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning(
                 "No systemd support on the host. Host control has been disabled."
             )

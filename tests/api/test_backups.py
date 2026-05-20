@@ -1,6 +1,7 @@
 """Test backups API."""
 
 import asyncio
+import errno
 from pathlib import Path, PurePath
 from shutil import copy
 from typing import Any
@@ -220,14 +221,18 @@ async def test_backup_to_down_mount_returns_400(
     await coresys.mounts.create_mount(mount)
     coresys.mounts.default_backup_mount = mount
 
-    mock_is_mount.return_value = False
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    resp = await api_client.post(
-        "/backups/new/full",
-        json={"name": "Mount test", "location": "backup_test"},
-    )
+    # Simulate the mount being down: probe (statvfs) fails with EHOSTDOWN.
+    with patch(
+        "supervisor.mounts.mount._probe_network_mount",
+        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    ):
+        resp = await api_client.post(
+            "/backups/new/full",
+            json={"name": "Mount test", "location": "backup_test"},
+        )
     assert resp.status == 400
     body = await resp.json()
     assert body["result"] == "error"

@@ -800,16 +800,20 @@ async def test_backup_to_down_mount_error(coresys: CoreSys, mock_is_mount: Magic
     assert "backup_test" in coresys.backups.backup_locations
     assert coresys.backups.backup_locations["backup_test"] == mount_dir
 
-    # Attempt to make a backup which fails because is_mount on directory is false
-    mock_is_mount.return_value = False
+    # Attempt to make a backup which fails because the probe (statvfs)
+    # surfaces the server as unreachable.
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    with pytest.raises(BackupMountDownError):
-        await coresys.backups.do_backup_full("test", location=mount)
-    with pytest.raises(BackupMountDownError):
-        await coresys.backups.do_backup_partial(
-            "test", location=mount, homeassistant=True
-        )
+    with patch(
+        "supervisor.mounts.mount._probe_network_mount",
+        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    ):
+        with pytest.raises(BackupMountDownError):
+            await coresys.backups.do_backup_full("test", location=mount)
+        with pytest.raises(BackupMountDownError):
+            await coresys.backups.do_backup_partial(
+                "test", location=mount, homeassistant=True
+            )
 
 
 @pytest.mark.usefixtures(
@@ -906,12 +910,18 @@ async def test_backup_to_default_mount_down_error(
     await coresys.mounts.create_mount(mount)
     coresys.mounts.default_backup_mount = mount
 
-    # Attempt to make a backup which fails because is_mount on directory is false
-    mock_is_mount.return_value = False
+    # Attempt to make a backup which fails because the probe (statvfs)
+    # surfaces the server as unreachable.
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    with pytest.raises(BackupMountDownError):
+    with (
+        patch(
+            "supervisor.mounts.mount._probe_network_mount",
+            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+        ),
+        pytest.raises(BackupMountDownError),
+    ):
         await coresys.backups.do_backup_partial("test", homeassistant=True)
 
 

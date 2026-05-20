@@ -1,7 +1,7 @@
 """Mock of systemd dbus service."""
 
 from dbus_fast import DBusError
-from dbus_fast.service import PropertyAccess, dbus_property
+from dbus_fast.service import PropertyAccess, dbus_property, signal
 
 from .base import DBusServiceMock, dbus_method
 from .systemd_unit import SystemdUnit
@@ -660,12 +660,29 @@ class Systemd(DBusServiceMock):
     def Subscribe(self) -> None:
         """Subscribe to systemd signals."""
 
+    @signal()
+    def JobRemoved(  # noqa: PLR0913
+        self,
+        job_id: "u",
+        job: "o",
+        unit: "s",
+        result: "s",
+    ) -> "uoss":
+        """Emit JobRemoved signal with (id, job_path, unit_name, result)."""
+        return [job_id, job, unit, result]
+
+    def _emit_job_removed(self, job_path: str, unit: str, result: str = "done") -> None:
+        """Emit JobRemoved with a deterministic id placeholder."""
+        self.JobRemoved(0, job_path, unit, result)
+
     @dbus_method()
     def StartUnit(self, name: "s", mode: "s") -> "o":
         """Start a service unit."""
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "active"
-        return "/org/freedesktop/systemd1/job/7623"
+        job_path = "/org/freedesktop/systemd1/job/7623"
+        self._emit_job_removed(job_path, name)
+        return job_path
 
     @dbus_method()
     def StopUnit(self, name: "s", mode: "s") -> "o":
@@ -674,6 +691,7 @@ class Systemd(DBusServiceMock):
             raise self.response_stop_unit  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "inactive"
+        self._emit_job_removed(self.response_stop_unit, name)
         return self.response_stop_unit
 
     @dbus_method()
@@ -683,6 +701,7 @@ class Systemd(DBusServiceMock):
             raise self.response_reload_or_restart_unit  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "active"
+        self._emit_job_removed(self.response_reload_or_restart_unit, name)
         return self.response_reload_or_restart_unit
 
     @dbus_method()
@@ -692,6 +711,7 @@ class Systemd(DBusServiceMock):
             raise self.response_restart_unit  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "active"
+        self._emit_job_removed(self.response_restart_unit, name)
         return self.response_restart_unit
 
     @dbus_method()
@@ -703,6 +723,7 @@ class Systemd(DBusServiceMock):
             raise self.response_start_transient_unit  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "active"
+        self._emit_job_removed(self.response_start_transient_unit, name)
         return self.response_start_transient_unit
 
     @dbus_method()
