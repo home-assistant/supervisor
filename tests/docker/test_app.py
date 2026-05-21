@@ -64,7 +64,7 @@ def get_docker_app(
     config = (
         load_json_fixture(config_file) if isinstance(config_file, str) else config_file
     )
-    config = vd.SCHEMA_ADDON_CONFIG(config)
+    config = vd.SCHEMA_APP_CONFIG(config)
     slug = config.get("slug")
     addonsdata_system.return_value = {slug: config}
 

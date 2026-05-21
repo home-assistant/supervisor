@@ -28,7 +28,7 @@ from securetar import SecureTarArchive
 from supervisor import config as su_config
 from supervisor.api import RestAPI
 from supervisor.apps.app import App
-from supervisor.apps.validate import SCHEMA_ADDON_SYSTEM
+from supervisor.apps.validate import SCHEMA_APP_SYSTEM
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.backups.validate import ALL_FOLDERS
@@ -753,7 +753,7 @@ def store_app(coresys: CoreSys, tmp_path, test_repository):
     app_obj = AppStore(coresys, "test_store_addon")
 
     coresys.apps.store[app_obj.slug] = app_obj
-    coresys.store.data.apps[app_obj.slug] = SCHEMA_ADDON_SYSTEM(
+    coresys.store.data.apps[app_obj.slug] = SCHEMA_APP_SYSTEM(
         load_json_fixture("app.json")
     )
     coresys.store.data.apps[app_obj.slug]["location"] = tmp_path

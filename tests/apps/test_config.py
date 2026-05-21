@@ -13,7 +13,7 @@ def test_basic_config():
     """Validate basic config and check the default values."""
     config = load_json_fixture("basic-app-config.json")
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
 
     assert valid_config["name"] == "Test Add-on"
     assert valid_config["image"] == "test/{arch}-my-custom-addon"
@@ -36,13 +36,13 @@ def test_migration_startup():
 
     config["startup"] = "before"
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
 
     assert valid_config["startup"] == "services"
 
     config["startup"] = "after"
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
 
     assert valid_config["startup"] == "application"
 
@@ -53,7 +53,7 @@ def test_migration_auto_uart():
 
     config["auto_uart"] = True
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
 
     assert valid_config["uart"]
     assert "auto_uart" not in valid_config
@@ -65,7 +65,7 @@ def test_migration_devices():
 
     config["devices"] = ["test:test:rw", "bla"]
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
 
     assert valid_config["devices"] == ["test", "bla"]
 
@@ -76,7 +76,7 @@ def test_migration_tmpfs():
 
     config["tmpfs"] = "test:test:rw"
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
 
     assert valid_config["tmpfs"]
 
@@ -90,7 +90,7 @@ def test_migration_backup():
     config["snapshot_post"] = "post_command"
     config["snapshot_exclude"] = ["excludeed"]
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
 
     assert valid_config.get("snapshot") is None
     assert valid_config.get("snapshot_pre") is None
@@ -109,17 +109,17 @@ def test_invalid_repository():
 
     config["image"] = "-invalid-something"
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
     config["image"] = "ghcr.io/home-assistant/no-valid-repo:no-tag-allow"
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
     config["image"] = (
         "registry.gitlab.com/company/add-ons/test-example/text-example:no-tag-allow"
     )
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_valid_repository():
@@ -128,7 +128,7 @@ def test_valid_repository():
 
     custom_registry = "registry.gitlab.com/company/add-ons/core/test-example"
     config["image"] = custom_registry
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["image"] == custom_registry
 
 
@@ -137,7 +137,7 @@ def test_valid_map():
     config = load_json_fixture("basic-app-config.json")
 
     config["map"] = ["backup:rw", "ssl:ro", "config"]
-    vd.SCHEMA_ADDON_CONFIG(config)
+    vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_malformed_map_entries():
@@ -146,17 +146,17 @@ def test_malformed_map_entries():
 
     # Test case 1: Empty dict in map (should be skipped with warning)
     config["map"] = [{}]
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["map"] == []
 
     # Test case 2: Dict missing required 'type' field (should be skipped with warning)
     config["map"] = [{"read_only": False, "path": "/custom"}]
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["map"] == []
 
     # Test case 3: Invalid string format that doesn't match regex
     config["map"] = ["invalid_format", "not:a:valid:mapping", "share:invalid_mode"]
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["map"] == []
 
     # Test case 4: Mix of valid and invalid entries (invalid should be filtered out)
@@ -167,7 +167,7 @@ def test_malformed_map_entries():
         {"type": "config", "read_only": True},  # Valid dict format
         {"read_only": False},  # Invalid - missing type
     ]
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     # Should only keep the valid entries
     assert len(valid_config["map"]) == 2
     assert any(entry["type"] == "share" for entry in valid_config["map"])
@@ -176,7 +176,7 @@ def test_malformed_map_entries():
     # Test case 5: The specific case from the UplandJacob repo (malformed YAML format)
     # This simulates what YAML "- addon_config: rw" creates
     config["map"] = [{"addon_config": "rw"}]  # Wrong structure, missing 'type' key
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["map"] == []
 
 
@@ -192,7 +192,7 @@ def test_valid_legacy_arch_values_for_migration():
     config = load_json_fixture("basic-app-config.json")
     config["arch"] = ["armv7", "amd64"]
 
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_valid_legacy_build_from_keys_for_migration():
@@ -208,7 +208,7 @@ def test_warn_legacy_arch_values(caplog: pytest.LogCaptureFixture):
     config = load_json_fixture("basic-app-config.json")
     config["arch"] = ["armv7", "amd64"]
 
-    vd.SCHEMA_ADDON_CONFIG(config)
+    vd.SCHEMA_APP_CONFIG(config)
 
     assert "App config 'arch' uses deprecated values" in caplog.text
 
@@ -218,7 +218,7 @@ def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
     config = load_json_fixture("basic-app-config.json")
     config["machine"] = ["qemux86"]
 
-    vd.SCHEMA_ADDON_CONFIG(config)
+    vd.SCHEMA_APP_CONFIG(config)
 
     assert "App config 'machine' uses deprecated values" in caplog.text
 
@@ -228,7 +228,7 @@ def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
     config = load_json_fixture("basic-app-config.json")
     config["advanced"] = True
 
-    vd.SCHEMA_ADDON_CONFIG(config)
+    vd.SCHEMA_APP_CONFIG(config)
 
     assert "uses deprecated 'advanced' field in config" in caplog.text
 
@@ -268,7 +268,7 @@ def test_valid_machine():
         "generic-x86-64",
     ]
 
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     config["machine"] = [
         "!intel-nuc",
@@ -294,7 +294,7 @@ def test_valid_machine():
         "!generic-x86-64",
     ]
 
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     config["machine"] = [
         "odroid-n2",
@@ -310,7 +310,7 @@ def test_valid_machine():
         "!tinker",
     ]
 
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_invalid_machine():
@@ -325,7 +325,7 @@ def test_invalid_machine():
     ]
 
     with pytest.raises(vol.Invalid):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
     config["machine"] = [
         "intel-nuc",
@@ -333,7 +333,7 @@ def test_invalid_machine():
     ]
 
     with pytest.raises(vol.Invalid):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_watchdog_url():
@@ -346,7 +346,7 @@ def test_watchdog_url():
         "https://[HOST]:[PORT:80]/",
     ):
         config["watchdog"] = test_options
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_valid_slug():
@@ -355,31 +355,31 @@ def test_valid_slug():
 
     # All examples pulled from https://analytics.home-assistant.io/apps.json
     config["slug"] = "uptime-kuma"
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     config["slug"] = "hassio_google_drive_backup"
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     config["slug"] = "paradox_alarm_interface_3.x"
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     config["slug"] = "Lupusec2Mqtt"
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     # No whitespace
     config["slug"] = "my addon"
     with pytest.raises(vol.Invalid):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
     # No url control chars (or other non-word ascii characters)
     config["slug"] = "a/b_&_c\\d_@ddon$:_test=#2?"
     with pytest.raises(vol.Invalid):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
     # No unicode
     config["slug"] = "complemento telefónico"
     with pytest.raises(vol.Invalid):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_valid_schema():
@@ -422,7 +422,7 @@ def test_valid_schema():
         "float_max": "float(,10)",
         "float_minmax": "float(5,10)",
     }
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     # Different valid ways of nesting dicts and lists
     config["schema"] = {
@@ -459,21 +459,21 @@ def test_valid_schema():
             },
         },
     }
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     # List nested within dict within list
     config["schema"] = {"field": [{"subfield": ["str"]}]}
-    assert vd.SCHEMA_ADDON_CONFIG(config)
+    assert vd.SCHEMA_APP_CONFIG(config)
 
     # No lists directly nested within each other
     config["schema"] = {"field": [["str"]]}
     with pytest.raises(vol.Invalid):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
     # Field types must be valid
     config["schema"] = {"field": "invalid"}
     with pytest.raises(vol.Invalid):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
+        assert vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_ulimits_simple_format():
@@ -482,7 +482,7 @@ def test_ulimits_simple_format():
 
     config["ulimits"] = {"nofile": 65535, "nproc": 32768, "memlock": 134217728}
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["ulimits"]["nofile"] == 65535
     assert valid_config["ulimits"]["nproc"] == 32768
     assert valid_config["ulimits"]["memlock"] == 134217728
@@ -498,7 +498,7 @@ def test_ulimits_detailed_format():
         "memlock": {"soft": 67108864, "hard": 134217728},
     }
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["ulimits"]["nofile"]["soft"] == 20000
     assert valid_config["ulimits"]["nofile"]["hard"] == 40000
     assert valid_config["ulimits"]["nproc"] == 32768
@@ -510,7 +510,7 @@ def test_ulimits_empty_dict():
     """Test ulimits with empty dict (default)."""
     config = load_json_fixture("basic-app-config.json")
 
-    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
     assert valid_config["ulimits"] == {}
 
 
@@ -521,33 +521,33 @@ def test_ulimits_invalid_values():
     # Invalid string values
     config["ulimits"] = {"nofile": "invalid"}
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
     # Invalid detailed format
     config["ulimits"] = {"nofile": {"invalid_key": 1000}}
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
     # Missing hard value in detailed format
     config["ulimits"] = {"nofile": {"soft": 1000}}
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
     # Missing soft value in detailed format
     config["ulimits"] = {"nofile": {"hard": 1000}}
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
     # Empty dict in detailed format
     config["ulimits"] = {"nofile": {}}
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(config)
+        vd.SCHEMA_APP_CONFIG(config)
 
 
 def test_non_dict_config_raises_invalid():
     """Test that a non-dict config raises vol.Invalid, not AttributeError."""
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG("not a dict")
+        vd.SCHEMA_APP_CONFIG("not a dict")
 
     with pytest.raises(vol.Invalid):
-        vd.SCHEMA_ADDON_CONFIG(["list", "not", "dict"])
+        vd.SCHEMA_APP_CONFIG(["list", "not", "dict"])

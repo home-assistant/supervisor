@@ -109,7 +109,7 @@ from .const import (
 from .model import AppModel, Data
 from .options import AppOptions
 from .utils import remove_data
-from .validate import SCHEMA_ADDON_BACKUP
+from .validate import SCHEMA_APP_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -1522,7 +1522,7 @@ class App(AppModel):
         try:
             # Validate
             try:
-                data = SCHEMA_ADDON_BACKUP(data)
+                data = SCHEMA_APP_BACKUP(data)
             except vol.Invalid as err:
                 raise AppBackupMetadataInvalidError(
                     _LOGGER.error,

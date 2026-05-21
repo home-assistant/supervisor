@@ -9,7 +9,7 @@ from typing import Any
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..apps.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATIONS
+from ..apps.validate import SCHEMA_APP_CONFIG, SCHEMA_APP_TRANSLATIONS
 from ..const import (
     ATTR_LOCATION,
     ATTR_REPOSITORY,
@@ -59,7 +59,7 @@ def _read_app_translations(app_path: Path) -> dict:
 
     for translation in translation_files:
         try:
-            translations[translation.stem] = SCHEMA_ADDON_TRANSLATIONS(
+            translations[translation.stem] = SCHEMA_APP_TRANSLATIONS(
                 read_json_or_yaml_file(translation)
             )
 
@@ -197,7 +197,7 @@ class StoreData(CoreSysAttributes):
 
                 # validate
                 try:
-                    app = SCHEMA_ADDON_CONFIG(app)
+                    app = SCHEMA_APP_CONFIG(app)
                 except vol.Invalid as ex:
                     _LOGGER.warning(
                         "Can't read %s: %s", app_config, humanize_error(app, ex)
