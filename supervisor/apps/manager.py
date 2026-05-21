@@ -210,13 +210,11 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug in self.local:
-            raise AppAlreadyInstalledError(
-                _LOGGER.warning, addon=self.local[slug].name, slug=slug
-            )
+            raise AppAlreadyInstalledError(_LOGGER.warning, app=self.local[slug])
         store = self.store.get(slug)
 
         if not store:
-            raise AppNotFoundError(_LOGGER.error, slug=slug)
+            raise AppNotFoundError(_LOGGER.error, app=slug)
 
         store.validate_availability()
 
@@ -274,15 +272,15 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
-            raise AppNotInstalledError(_LOGGER.error, slug=slug)
+            raise AppNotInstalledError(_LOGGER.error, app=slug)
         app = self.local[slug]
 
         if app.is_detached:
-            raise AppNotInStoreError(_LOGGER.error, addon=app.name, slug=slug)
+            raise AppNotInStoreError(_LOGGER.error, app=app)
         store = self.store[slug]
 
         if app.version == store.version:
-            raise AppNoUpdateAvailableError(_LOGGER.warning, addon=app.name, slug=slug)
+            raise AppNoUpdateAvailableError(_LOGGER.warning, app=app)
 
         # Check if available, Maybe something have changed
         store.validate_availability()
@@ -321,20 +319,18 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
-            raise AppNotInstalledError(_LOGGER.error, slug=slug)
+            raise AppNotInstalledError(_LOGGER.error, app=slug)
         app = self.local[slug]
 
         if app.is_detached:
-            raise AppNotInStoreError(_LOGGER.error, addon=app.name, slug=slug)
+            raise AppNotInStoreError(_LOGGER.error, app=app)
         store = self.store[slug]
 
         # Check if a rebuild is possible now
         if app.version != store.version:
-            raise AppRebuildVersionChangedError(
-                _LOGGER.error, addon=app.name, slug=slug
-            )
+            raise AppRebuildVersionChangedError(_LOGGER.error, app=app)
         if not force and not app.need_build:
-            raise AppRebuildImageBasedError(_LOGGER.error, addon=app.name, slug=slug)
+            raise AppRebuildImageBasedError(_LOGGER.error, app=app)
 
         return await app.rebuild()
 
