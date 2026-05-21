@@ -9,7 +9,7 @@ from typing import Self, Union
 from attr import evolve
 from securetar import SecureTarFile
 
-from ..const import AppBoot, AppStartup, AppState
+from ..const import FILE_HASSIO_ADDONS, FILE_HASSIO_APPS, AppBoot, AppStartup, AppState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     AppAlreadyInstalledError,
@@ -38,6 +38,15 @@ from .data import AppsData
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 AnyApp = Union[App, AppStore]
+
+
+def _migrate_addons_json() -> None:
+    """Rename legacy addons.json to apps.json if needed."""
+    if FILE_HASSIO_ADDONS.is_file() and not FILE_HASSIO_APPS.exists():
+        _LOGGER.info(
+            "Migrating %s to %s", FILE_HASSIO_ADDONS.name, FILE_HASSIO_APPS.name
+        )
+        FILE_HASSIO_ADDONS.rename(FILE_HASSIO_APPS)
 
 
 class AppManager(CoreSysAttributes):
@@ -87,6 +96,7 @@ class AppManager(CoreSysAttributes):
 
     async def load_config(self) -> Self:
         """Load config in executor."""
+        await self.sys_run_in_executor(_migrate_addons_json)
         await self.data.read_data()
         return self
 

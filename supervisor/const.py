@@ -27,6 +27,7 @@ URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 SUPERVISOR_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(SUPERVISOR_DATA, "addons.json")
+FILE_HASSIO_APPS = Path(SUPERVISOR_DATA, "apps.json")
 FILE_HASSIO_AUTH = Path(SUPERVISOR_DATA, "auth.json")
 FILE_HASSIO_BACKUPS = Path(SUPERVISOR_DATA, "backups.json")
 FILE_HASSIO_BOARD = Path(SUPERVISOR_DATA, "board.json")

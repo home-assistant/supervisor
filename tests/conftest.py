@@ -548,13 +548,11 @@ async def coresys(
     coresys_obj.host.network._connectivity = True
 
     # Fix Paths
-    su_config.ADDONS_CORE = Path(
-        Path(__file__).parent.joinpath("fixtures"), "apps/core"
-    )
-    su_config.ADDONS_LOCAL = Path(
+    su_config.APPS_CORE = Path(Path(__file__).parent.joinpath("fixtures"), "apps/core")
+    su_config.APPS_LOCAL = Path(
         Path(__file__).parent.joinpath("fixtures"), "apps/local"
     )
-    su_config.ADDONS_GIT = Path(Path(__file__).parent.joinpath("fixtures"), "apps/git")
+    su_config.APPS_GIT = Path(Path(__file__).parent.joinpath("fixtures"), "apps/git")
     su_config.APPARMOR_DATA = Path(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )

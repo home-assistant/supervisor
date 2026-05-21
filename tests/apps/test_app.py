@@ -870,7 +870,7 @@ async def test_local_example_install(coresys: CoreSys, tmp_supervisor_data: Path
     """Test install of an app."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     assert not (
-        data_dir := tmp_supervisor_data / "addons" / "data" / "local_example"
+        data_dir := tmp_supervisor_data / "apps" / "data" / "local_example"
     ).exists()
 
     with patch.object(DockerApp, "install") as install:
@@ -946,7 +946,7 @@ async def test_local_example_start(tmp_supervisor_data: Path, install_app_exampl
     assert install_app_example.state == AppState.STOPPED
 
     assert not (
-        app_config_dir := tmp_supervisor_data / "addon_configs" / "local_example"
+        app_config_dir := tmp_supervisor_data / "app_configs" / "local_example"
     ).exists()
 
     await install_app_example.start()

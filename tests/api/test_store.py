@@ -320,7 +320,7 @@ async def test_api_detached_app_changelog(
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
     """
-    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    (apps_dir := tmp_supervisor_data / "apps" / "local").mkdir(parents=True)
     with patch.object(
         CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
     ):
@@ -343,7 +343,7 @@ async def test_api_detached_app_changelog_v2(
 ):
     """Test /store/apps/{app}/changelog for a detached app for both v1 and v2 store paths."""
     client, root = store_app_api_client_with_root
-    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    (apps_dir := tmp_supervisor_data / "apps" / "local").mkdir(parents=True)
     with patch.object(
         CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
     ):
@@ -401,7 +401,7 @@ async def test_api_detached_app_documentation(
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
     """
-    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    (apps_dir := tmp_supervisor_data / "apps" / "local").mkdir(parents=True)
     with patch.object(
         CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
     ):
@@ -424,7 +424,7 @@ async def test_api_detached_app_documentation_v2(
 ):
     """Test /store/apps/{app}/documentation for a detached app for both v1 and v2 store paths."""
     client, root = store_app_api_client_with_root
-    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    (apps_dir := tmp_supervisor_data / "apps" / "local").mkdir(parents=True)
     with patch.object(
         CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
     ):
