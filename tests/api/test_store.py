@@ -729,6 +729,7 @@ async def test_api_store_apps_app_availability_arch_not_supported(
         assert result["error_key"] == "addon_not_supported_architecture_error"
         assert result["extra_fields"] == {
             "addon": "Test Arch Add-on",
+            "slug": "test_arch_addon",
             "architectures": (architectures := ", ".join(supported_architectures)),
         }
         assert (
@@ -792,6 +793,7 @@ async def test_api_store_apps_app_availability_machine_not_supported(
         assert result["error_key"] == "addon_not_supported_machine_type_error"
         assert result["extra_fields"] == {
             "addon": "Test Machine Add-on",
+            "slug": "test_machine_addon",
             "machine_types": (machine_types := ", ".join(supported_machines)),
         }
         assert (
@@ -852,6 +854,7 @@ async def test_api_store_apps_app_availability_homeassistant_version_too_old(
         assert result["error_key"] == "addon_not_supported_home_assistant_version_error"
         assert result["extra_fields"] == {
             "addon": "Test Version Add-on",
+            "slug": "test_version_addon",
             "version": "2023.1.1",
         }
         assert (
