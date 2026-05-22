@@ -1,5 +1,6 @@
 """Test Home Assistant OS functionality."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -99,6 +100,42 @@ async def test_update_fails_if_unhealthy(
         pytest.raises(HassOSJobError),
     ):
         await coresys.os.update()
+
+
+async def test_update_success_cleans_up_bundle(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    path_extern: None,
+    supervisor_internet: AsyncMock,
+) -> None:
+    """Test successful OS update installs via RAUC and removes the downloaded bundle."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    coresys.os._available = True
+    coresys.os._board = "generic-x86-64"
+    coresys.os._os_name = "haos"
+    coresys.os._version = AwesomeVersion("12.0")
+    coresys.updater._data = {
+        "ota": (
+            "https://github.com/home-assistant/operating-system/releases/download/"
+            "{version}/{os_name}_{board}-{version}.raucb"
+        ),
+        "hassos_unrestricted": AwesomeVersion("13.0"),
+    }
+
+    async def fake_download(url: str, raucb: Path) -> None:
+        raucb.touch()
+
+    reboot_mock = AsyncMock()
+
+    with (
+        patch.object(coresys.os, "_download_raucb", side_effect=fake_download),
+        patch.object(coresys.host.control, "reboot", reboot_mock),
+    ):
+        await coresys.os.update()
+
+    bundle = coresys.config.path_tmp / "hassos-13.0.raucb"
+    assert not bundle.exists()
 
 
 async def test_board_name_supervised(coresys: CoreSys) -> None:
