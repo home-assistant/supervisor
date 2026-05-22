@@ -639,7 +639,7 @@ class HomeAssistantCore(JobGroup):
             return
 
         if event.state in [ContainerState.FAILED, ContainerState.UNHEALTHY]:
-            await self._restart_after_problem(event.state)
+            await self._restart_after_problem(event.state, event.exit_code)
 
     async def _supervisor_state_changed(self, state: CoreState) -> None:
         """Handle supervisor state changes to disable watchdog during shutdown."""
@@ -657,15 +657,24 @@ class HomeAssistantCore(JobGroup):
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         throttle=JobThrottle.RATE_LIMIT,
     )
-    async def _restart_after_problem(self, state: ContainerState):
+    async def _restart_after_problem(
+        self, state: ContainerState, exit_code: int | None = None
+    ):
         """Restart unhealthy or failed Home Assistant."""
         attempts = 0
         while await self.instance.current_state() == state:
             # Don't interrupt a task in progress or if rollback is handling it
             if not (self.in_progress or self.error_state):
-                _LOGGER.warning(
-                    "Watchdog found Home Assistant %s, restarting...", state
-                )
+                if state == ContainerState.FAILED and exit_code is not None:
+                    _LOGGER.warning(
+                        "Watchdog found Home Assistant exited with code %d, "
+                        "restarting...",
+                        exit_code,
+                    )
+                else:
+                    _LOGGER.warning(
+                        "Watchdog found Home Assistant %s, restarting...", state
+                    )
                 if state == ContainerState.FAILED and attempts == 0:
                     try:
                         await self.start()
