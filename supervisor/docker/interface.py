@@ -228,10 +228,11 @@ class DockerInterface(JobGroup, ABC):
             if registry in (DOCKER_HUB, DOCKER_HUB_LEGACY):
                 qualified_image = f"{DOCKER_HUB}/{image}"
 
-            _LOGGER.debug(
-                "Logging in to %s as %s",
+            _LOGGER.info(
+                "Using stored registry credentials for %s (user: %s) to pull %s",
                 registry,
                 stored[ATTR_USERNAME],
+                image,
             )
 
         return credentials, qualified_image

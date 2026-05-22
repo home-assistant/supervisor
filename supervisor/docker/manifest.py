@@ -172,7 +172,12 @@ class RegistryManifestFetcher:
             username, password = credentials
             if username and password:
                 auth = aiohttp.BasicAuth(username, password)
-                _LOGGER.debug("Using credentials for %s", registry)
+                _LOGGER.info(
+                    "Using stored registry credentials for %s (user: %s) to fetch manifest for %s",
+                    registry,
+                    username,
+                    repository,
+                )
 
         try:
             async with self._session.get(token_url, auth=auth) as resp:
