@@ -18,6 +18,14 @@ _RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
 
 _RE_HIDE_SYSFS: re.Pattern = re.compile(r"/sys/devices/virtual/(?:tty|block|vc)/.*")
 
+# Candidate sysfs paths to expose to GPIO-enabled add-ons. Which subset
+# exists is determined by the kernel at boot and does not change at runtime,
+# so we resolve it once during hardware load.
+_GPIO_CANDIDATE_PATHS: tuple[str, ...] = (
+    "/sys/class/gpio",
+    "/sys/devices/platform/soc",
+)
+
 
 class HwHelper(CoreSysAttributes):
     """Representation of an interface to procfs, sysfs and udev."""
@@ -26,6 +34,7 @@ class HwHelper(CoreSysAttributes):
         """Init hardware object."""
         self.coresys = coresys
         self._last_boot: datetime | None = None
+        self._gpio_mount_paths: tuple[str, ...] = ()
 
     @property
     def support_audio(self) -> bool:
@@ -36,6 +45,17 @@ class HwHelper(CoreSysAttributes):
     def support_gpio(self) -> bool:
         """Return True if device support GPIOs."""
         return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.GPIO))
+
+    @property
+    def gpio_mount_paths(self) -> tuple[str, ...]:
+        """Return existing sysfs paths to mount for GPIO add-ons."""
+        return self._gpio_mount_paths
+
+    async def load(self) -> None:
+        """Resolve hardware state that depends on blocking I/O."""
+        self._gpio_mount_paths = await self.sys_run_in_executor(
+            lambda: tuple(path for path in _GPIO_CANDIDATE_PATHS if Path(path).exists())
+        )
 
     @property
     def support_usb(self) -> bool:
