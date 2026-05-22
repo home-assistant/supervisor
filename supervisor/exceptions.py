@@ -362,13 +362,13 @@ class AppsError(HassioError):
 
 
 class AppAPIError(AppsError, APIError):
-    """Base class for App-related API errors.
+    """Base class for App-related API errors that have an app for context.
 
-    Owns the shape of extra_fields so all App* API errors expose addon
-    (display name) and slug uniformly. Pass an app-like object (anything
-    with .name and .slug attributes — App, AppModel, AppStore) to
-    populate both, or a slug string when no app object is available
-    (e.g., unknown or not-installed app lookups) — only slug is set.
+    Owns the shape of extra_fields so subclasses uniformly expose addon
+    (display name) and slug. Pass an app-like object (anything with .name
+    and .slug attributes — App, AppModel, AppStore). Errors raised without
+    an app object available (e.g., unknown or not-installed app lookups)
+    do not belong here; they inherit (AppsError, APIError) directly.
     """
 
     def __init__(
@@ -379,14 +379,11 @@ class AppAPIError(AppsError, APIError):
         **extra_fields: Any,
     ) -> None:
         """Initialize exception."""
-        if isinstance(app, str):
-            self.extra_fields = {"slug": app, **extra_fields}
-        else:
-            self.extra_fields = {
-                "addon": app.name,
-                "slug": app.slug,
-                **extra_fields,
-            }
+        self.extra_fields = {
+            "addon": app.name,
+            "slug": app.slug,
+            **extra_fields,
+        }
         super().__init__(None, logger)
 
 
@@ -397,18 +394,34 @@ class AppAlreadyInstalledError(AppAPIError):
     message_template = "App {addon} is already installed"
 
 
-class AppNotFoundError(AppAPIError):
-    """Raise when an app cannot be found in any store."""
+class AppNotFoundError(AppsError, APIError):
+    """Raise when an app cannot be found in any store.
+
+    No app object exists at this point, so this is not an AppAPIError.
+    """
 
     error_key = "addon_not_found_error"
     message_template = "App {slug} does not exist"
 
+    def __init__(self, logger: Callable[..., None] | None = None, *, slug: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"slug": slug}
+        super().__init__(None, logger)
 
-class AppNotInstalledError(AppAPIError):
-    """Raise when an action is taken on an app that is not installed."""
+
+class AppNotInstalledError(AppsError, APIError):
+    """Raise when an action is taken on an app that is not installed.
+
+    No app object exists at this point, so this is not an AppAPIError.
+    """
 
     error_key = "addon_not_installed_error"
     message_template = "App {slug} is not installed"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, slug: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"slug": slug}
+        super().__init__(None, logger)
 
 
 class AppNotInStoreError(AppAPIError):
@@ -508,6 +521,16 @@ class AppNotSupportedArchitectureError(AppNotSupportedError, AppAPIError):
     error_key = "addon_not_supported_architecture_error"
     message_template = "App {addon} not supported on this platform, supported architectures: {architectures}"
 
+    def __init__(  # pylint: disable=useless-parent-delegation
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        app: Any,
+        architectures: list[str],
+    ) -> None:
+        """Initialize exception."""
+        super().__init__(logger, app=app, architectures=", ".join(architectures))
+
 
 class AppNotSupportedMachineTypeError(AppNotSupportedError, AppAPIError):
     """App does not support system due to machine type."""
@@ -515,12 +538,32 @@ class AppNotSupportedMachineTypeError(AppNotSupportedError, AppAPIError):
     error_key = "addon_not_supported_machine_type_error"
     message_template = "App {addon} not supported on this machine, supported machine types: {machine_types}"
 
+    def __init__(  # pylint: disable=useless-parent-delegation
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        app: Any,
+        machine_types: list[str],
+    ) -> None:
+        """Initialize exception."""
+        super().__init__(logger, app=app, machine_types=", ".join(machine_types))
+
 
 class AppNotSupportedHomeAssistantVersionError(AppNotSupportedError, AppAPIError):
     """App does not support system due to Home Assistant version."""
 
     error_key = "addon_not_supported_home_assistant_version_error"
     message_template = "App {addon} not supported on this system, requires Home Assistant version {version} or greater"
+
+    def __init__(  # pylint: disable=useless-parent-delegation
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        app: Any,
+        version: str,
+    ) -> None:
+        """Initialize exception."""
+        super().__init__(logger, app=app, version=version)
 
 
 class AppRebuildImageBasedError(AppNotSupportedError, AppAPIError):

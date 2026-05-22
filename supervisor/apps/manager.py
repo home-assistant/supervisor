@@ -214,7 +214,7 @@ class AppManager(CoreSysAttributes):
         store = self.store.get(slug)
 
         if not store:
-            raise AppNotFoundError(_LOGGER.error, app=slug)
+            raise AppNotFoundError(_LOGGER.error, slug=slug)
 
         store.validate_availability()
 
@@ -272,7 +272,7 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
-            raise AppNotInstalledError(_LOGGER.error, app=slug)
+            raise AppNotInstalledError(_LOGGER.error, slug=slug)
         app = self.local[slug]
 
         if app.is_detached:
@@ -319,7 +319,7 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
-            raise AppNotInstalledError(_LOGGER.error, app=slug)
+            raise AppNotInstalledError(_LOGGER.error, slug=slug)
         app = self.local[slug]
 
         if app.is_detached:

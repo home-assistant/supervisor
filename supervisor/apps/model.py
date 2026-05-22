@@ -729,7 +729,7 @@ class AppModel(JobGroup, ABC):
         # Architecture
         if not self.sys_arch.is_supported(config[ATTR_ARCH]):
             raise AppNotSupportedArchitectureError(
-                logger, app=self, architectures=", ".join(config[ATTR_ARCH])
+                logger, app=self, architectures=config[ATTR_ARCH]
             )
 
         # Machine / Hardware
@@ -738,7 +738,7 @@ class AppModel(JobGroup, ABC):
             f"!{self.sys_machine}" in machine or self.sys_machine not in machine
         ):
             raise AppNotSupportedMachineTypeError(
-                logger, app=self, machine_types=", ".join(machine)
+                logger, app=self, machine_types=machine
             )
 
         # Home Assistant
