@@ -1551,7 +1551,7 @@ class App(AppModel):
                     _LOGGER.info("Restore/Install of image for app %s", self.slug)
 
                     image_file = Path(tmp.name, "image.tar")
-                    if image_file.is_file():
+                    if await self.sys_run_in_executor(image_file.is_file):
                         with suppress(DockerError):
                             await self.instance.import_image(image_file)
                     else:

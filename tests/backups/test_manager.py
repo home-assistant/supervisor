@@ -1644,6 +1644,36 @@ async def test_restore_new_app(coresys: CoreSys, install_app_example: App):
 
 
 @pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
+async def test_restore_app_image_missing(coresys: CoreSys, install_app_example: App):
+    """Test restore when local image is missing installs from registry.
+
+    Exercises the ``not instance.exists()`` branch in ``App.restore()`` which
+    checks the extracted bundle for an ``image.tar`` to import. This path is
+    skipped by other restore tests because the mocked Docker image inspect
+    always reports the image as present.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup: Backup = await coresys.backups.do_backup_partial(apps=["local_example"])
+    await coresys.apps.uninstall("local_example")
+    assert "local_example" not in coresys.apps.local
+
+    with (
+        patch.object(AppModel, "_validate_availability"),
+        patch.object(DockerApp, "attach"),
+        patch.object(DockerApp, "exists", new=AsyncMock(return_value=False)),
+        patch.object(DockerApp, "install", new=AsyncMock()) as install_mock,
+        patch.object(DockerApp, "cleanup", new=AsyncMock()),
+        patch.object(DockerApp, "import_image", new=AsyncMock()) as import_mock,
+    ):
+        assert await coresys.backups.do_restore_partial(backup, apps=["local_example"])
+
+    import_mock.assert_called_once()
+    install_mock.assert_not_called()
+
+
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
 async def test_restore_preserves_data_config(
     coresys: CoreSys, install_app_example: App
 ):
