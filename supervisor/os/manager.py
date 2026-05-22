@@ -312,7 +312,7 @@ class OSManager(CoreSysAttributes):
             raise HassOSUpdateError("Rauc communication error", _LOGGER.error) from err
 
         finally:
-            int_ota.unlink()
+            await self.sys_run_in_executor(int_ota.unlink)
 
         # Update success
         if 0 in completed:
