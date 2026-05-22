@@ -27,7 +27,7 @@ async def test_check(coresys: CoreSys, install_app_ssh: App, tmp_supervisor_data
     assert len(coresys.resolution.issues) == 0
     assert len(coresys.resolution.suggestions) == 0
 
-    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    (apps_dir := tmp_supervisor_data / "apps" / "local").mkdir(parents=True)
     with patch.object(
         CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
     ):
@@ -58,7 +58,7 @@ async def test_approve(
         is False
     )
 
-    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    (apps_dir := tmp_supervisor_data / "apps" / "local").mkdir(parents=True)
     with patch.object(
         CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
     ):

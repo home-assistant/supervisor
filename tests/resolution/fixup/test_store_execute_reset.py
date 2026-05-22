@@ -28,7 +28,7 @@ async def fixture_mock_apps_git(tmp_supervisor_data: Path) -> None:
     with patch.object(
         CoreConfig,
         "path_apps_git",
-        new=PropertyMock(return_value=tmp_supervisor_data / "addons" / "git"),
+        new=PropertyMock(return_value=tmp_supervisor_data / "apps" / "git"),
     ):
         yield
 
