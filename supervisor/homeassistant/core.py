@@ -423,7 +423,7 @@ class HomeAssistantCore(JobGroup):
             await _update(rollback_version)
         else:
             self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
-            raise HomeAssistantUpdateError()
+            raise HomeAssistantUpdateError
 
     @Job(
         name="home_assistant_core_start",
@@ -441,7 +441,7 @@ class HomeAssistantCore(JobGroup):
             try:
                 await self.instance.start()
             except DockerError as err:
-                raise HomeAssistantError() from err
+                raise HomeAssistantError from err
 
             await self._block_till_run()
         # No Instance/Container found, extended start
@@ -456,7 +456,7 @@ class HomeAssistantCore(JobGroup):
             try:
                 await self.instance.run(restore_job_id=self.sys_backups.current_restore)
             except DockerError as err:
-                raise HomeAssistantError() from err
+                raise HomeAssistantError from err
 
             await self._block_till_run()
 
@@ -470,7 +470,7 @@ class HomeAssistantCore(JobGroup):
         try:
             return await self.instance.stop(remove_container=remove_container)
         except DockerError as err:
-            raise HomeAssistantError() from err
+            raise HomeAssistantError from err
 
     @Job(
         name="home_assistant_core_restart",
@@ -489,7 +489,7 @@ class HomeAssistantCore(JobGroup):
         try:
             await self.instance.restart()
         except DockerError as err:
-            raise HomeAssistantError() from err
+            raise HomeAssistantError from err
 
         await self._block_till_run()
 
@@ -516,7 +516,7 @@ class HomeAssistantCore(JobGroup):
         try:
             return await self.instance.stats()
         except DockerError as err:
-            raise HomeAssistantError() from err
+            raise HomeAssistantError from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -552,7 +552,7 @@ class HomeAssistantCore(JobGroup):
                 ]
             )
         except DockerError as err:
-            raise HomeAssistantError() from err
+            raise HomeAssistantError from err
 
         # If not valid
         if result.exit_code is None:
@@ -613,7 +613,7 @@ class HomeAssistantCore(JobGroup):
                 "No Home Assistant Core response, assuming a fatal startup error",
                 _LOGGER.error,
             )
-        raise HomeAssistantCrashError()
+        raise HomeAssistantCrashError
 
     @Job(
         name="home_assistant_core_repair",

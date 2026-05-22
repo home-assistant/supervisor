@@ -95,7 +95,7 @@ class PluginCli(PluginBase):
         try:
             return await self.instance.stats()
         except DockerError as err:
-            raise CliError() from err
+            raise CliError from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

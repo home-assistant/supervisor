@@ -45,7 +45,7 @@ class FixupStoreExecuteReset(FixupBase):
         try:
             await repository.reset()
         except StoreError:
-            raise ResolutionFixupError() from None
+            raise ResolutionFixupError from None
 
     @property
     def suggestion(self) -> SuggestionType:

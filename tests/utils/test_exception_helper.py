@@ -8,7 +8,7 @@ from supervisor.utils import check_exception_chain, get_message_from_exception_c
 def _raise_value_error(message: str | None = None) -> None:
     """Raise a ValueError, optionally with a message."""
     if message is None:
-        raise ValueError()
+        raise ValueError
     raise ValueError(message)
 
 
@@ -17,7 +17,7 @@ def _raise_key_error_from_value_error(value_message: str | None = None) -> None:
     try:
         _raise_value_error(value_message)
     except ValueError as err:
-        raise KeyError() from err
+        raise KeyError from err
 
 
 def test_simple_chain_exception():

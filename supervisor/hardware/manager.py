@@ -102,7 +102,7 @@ class HardwareManager(CoreSysAttributes):
                 return device
             if device_node in device.links:
                 return device
-        raise HardwareNotFound()
+        raise HardwareNotFound
 
     def filter_devices(self, subsystem: UdevSubsystem | None = None) -> list[Device]:
         """Return a filtered list."""

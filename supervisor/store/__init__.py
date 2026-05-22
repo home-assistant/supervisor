@@ -59,7 +59,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     def get(self, slug: str) -> Repository:
         """Return Repository with slug."""
         if slug not in self.repositories:
-            raise StoreNotFound()
+            raise StoreNotFound
         return self.repositories[slug]
 
     async def load(self) -> None:

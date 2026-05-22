@@ -198,7 +198,7 @@ class APIHost(CoreSysAttributes):
             try:
                 return await self.sys_host.logs.get_boot_id(offset)
             except (ValueError, HostLogError) as err:
-                raise APIError() from err
+                raise APIError from err
         return possible_offset
 
     async def advanced_logs_handler(

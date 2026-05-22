@@ -126,28 +126,27 @@ async def test_ingress_proxy_no_content_type_for_empty_body_responses(
         if path == "/204":
             # 204 No Content - should not have Content-Type
             return web.Response(status=204)
-        elif path == "/304":
+        if path == "/304":
             # 304 Not Modified - should not have Content-Type
             return web.Response(status=304)
-        elif path == "/100":
+        if path == "/100":
             # 100 Continue - should not have Content-Type
             return web.Response(status=100)
-        elif path == "/head":
+        if path == "/head":
             # HEAD request - should have Content-Type (same as GET would)
             return web.Response(body=b"test", content_type="text/html")
-        elif path == "/200":
+        if path == "/200":
             # 200 OK with body - should have Content-Type
             return web.Response(body=b"test content", content_type="text/plain")
-        elif path == "/200-no-content-type":
+        if path == "/200-no-content-type":
             # 200 OK without explicit Content-Type - should get default
             return web.Response(body=b"test content")
-        elif path == "/200-json":
+        if path == "/200-json":
             # 200 OK with JSON - should preserve Content-Type
             return web.Response(
                 body=b'{"key": "value"}', content_type="application/json"
             )
-        else:
-            return web.Response(body=b"default", content_type="text/html")
+        return web.Response(body=b"default", content_type="text/html")
 
     # Create test server for mock app
     app = web.Application()

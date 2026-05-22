@@ -98,7 +98,7 @@ class ServiceManager(CoreSysAttributes):
                 ):
                     continue
                 self._services.add(ServiceInfo.read_from(service_data))
-        except (HassioError, IndexError):
+        except HassioError, IndexError:
             _LOGGER.warning("Can't update host service information!")
 
 

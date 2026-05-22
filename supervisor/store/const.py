@@ -33,5 +33,4 @@ class BuiltinRepository(StrEnum):
             raise RuntimeError("Local repository does not have a git URL")
         if self == BuiltinRepository.CORE:
             return URL_HASSIO_ADDONS
-        else:
-            return self.value  # For URL-based repos, value is the URL
+        return self.value  # For URL-based repos, value is the URL

@@ -20,7 +20,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
     # Chech hit cache
     sha1_short = sha1_pw[:5]
     if sha1_short in _CACHE:
-        raise PwnedSecret()
+        raise PwnedSecret
 
     _LOGGER.debug("Check pwned state of %s", sha1_short)
     try:
@@ -38,7 +38,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             if not sha1_pw.endswith(line.split(":")[0]):
                 continue
             _CACHE.add(sha1_short)
-            raise PwnedSecret()
+            raise PwnedSecret
 
     except (aiohttp.ClientError, TimeoutError) as err:
         raise PwnedConnectivityError(

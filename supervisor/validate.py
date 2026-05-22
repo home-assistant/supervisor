@@ -112,7 +112,7 @@ token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
 def version_tag(
-    value: str | None | int | float | AwesomeVersion,
+    value: str | None | float | AwesomeVersion,
 ) -> AwesomeVersion | None:
     """Validate main version handling."""
     if value is None:

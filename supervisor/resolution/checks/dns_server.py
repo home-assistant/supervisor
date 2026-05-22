@@ -17,7 +17,7 @@ from .base import CheckBase
 
 
 async def check_server(
-    loop: asyncio.AbstractEventLoop, server: str, qtype: Literal["A"] | Literal["AAAA"]
+    loop: asyncio.AbstractEventLoop, server: str, qtype: Literal["A", "AAAA"]
 ) -> None:
     """Check a DNS server and report issues."""
     ip_addr = server[6:] if server.startswith("dns://") else server

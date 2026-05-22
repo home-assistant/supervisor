@@ -85,7 +85,7 @@ def api_process(method):
             return answer
         if isinstance(answer, web.StreamResponse):
             return answer
-        elif isinstance(answer, bool) and not answer:
+        if isinstance(answer, bool) and not answer:
             return api_return_error()
         return api_return_ok()
 
@@ -100,7 +100,7 @@ def require_home_assistant(method):
         coresys: CoreSys = api.coresys
         request: Request = args[0]
         if request[REQUEST_FROM] != coresys.homeassistant:
-            raise HTTPUnauthorized()
+            raise HTTPUnauthorized
         return await method(api, *args, **kwargs)
 
     return wrap_api

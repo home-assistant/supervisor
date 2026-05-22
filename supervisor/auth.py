@@ -136,7 +136,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
         finally:
             self._running.pop(username, None)
 
-        raise AuthHomeAssistantAPIValidationError()
+        raise AuthHomeAssistantAPIValidationError
 
     async def change_password(self, username: str, password: str) -> None:
         """Change user password login."""
@@ -162,7 +162,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
             return await self.sys_homeassistant.list_users()
         except HomeAssistantWSError as err:
             _LOGGER.error("Can't request listing users on Home Assistant: %s", err)
-            raise AuthListUsersError() from err
+            raise AuthListUsersError from err
 
     @staticmethod
     def _rehash(value: str, salt2: str = "") -> str:

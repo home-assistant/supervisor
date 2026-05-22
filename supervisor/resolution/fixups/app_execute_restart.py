@@ -32,7 +32,7 @@ class FixupAppExecuteRestart(FixupBase):
             await app.stop()
         except AppsError as err:
             _LOGGER.error("Could not stop %s due to %s", reference, err)
-            raise ResolutionFixupError() from None
+            raise ResolutionFixupError from None
 
         # Start app
         # Removing the container has already fixed the issue and dismissed it

@@ -51,5 +51,5 @@ class Bus(CoreSysAttributes):
         """Unregister an listener."""
         try:
             self._listeners[listener.event_type].remove(listener)
-        except (ValueError, KeyError):
+        except ValueError, KeyError:
             _LOGGER.warning("Listener %s not registered", listener)

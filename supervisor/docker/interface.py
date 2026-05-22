@@ -480,7 +480,7 @@ class DockerInterface(JobGroup, ABC):
     )
     async def run(self) -> None:
         """Run Docker image."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     async def _run(self, *, name: str, **kwargs) -> None:
         """Run Docker image with retry if necessary."""
@@ -659,7 +659,7 @@ class DockerInterface(JobGroup, ABC):
     )
     async def execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     async def stats(self) -> DockerStats:
         """Read and return stats from container."""
@@ -684,7 +684,7 @@ class DockerInterface(JobGroup, ABC):
                     available_version.append(version)
 
             if not available_version:
-                raise ValueError()
+                raise ValueError
 
         except (aiodocker.DockerError, ValueError) as err:
             raise DockerNotFound(

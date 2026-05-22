@@ -74,7 +74,7 @@ class Rauc(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to rauc")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning("Host has no rauc support. OTA updates have been disabled.")
 
     @property

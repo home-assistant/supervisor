@@ -94,7 +94,7 @@ class AppOptions(CoreSysAttributes):
             typ = self.raw_schema[key]
             try:
                 options[key] = self._validate_element(typ, value, key)
-            except (IndexError, KeyError):
+            except IndexError, KeyError:
                 raise vol.Invalid(
                     f"Type error for option '{key}' in {self._name} ({self._slug})"
                 ) from None
@@ -108,12 +108,11 @@ class AppOptions(CoreSysAttributes):
         if isinstance(typ, list):
             # nested value list
             return self._nested_validate_list(typ[0], value, key)
-        elif isinstance(typ, dict):
+        if isinstance(typ, dict):
             # nested value dict
             return self._nested_validate_dict(typ, value, key)
-        else:
-            # normal value
-            return self._single_validate(typ, value, key)
+        # normal value
+        return self._single_validate(typ, value, key)
 
     # pylint: disable=no-value-for-parameter
     def _single_validate(self, typ: str, value: Any, key: str) -> Any:
@@ -152,23 +151,23 @@ class AppOptions(CoreSysAttributes):
             if typ.startswith(_PASSWORD) and value:
                 self.pwned.add(hashlib.sha1(str(value).encode()).hexdigest())
             return vol.All(str(value), vol.Range(**range_args))(value)
-        elif typ.startswith(_INT):
+        if typ.startswith(_INT):
             return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
-        elif typ.startswith(_FLOAT):
+        if typ.startswith(_FLOAT):
             return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
-        elif typ.startswith(_BOOL):
+        if typ.startswith(_BOOL):
             return vol.Boolean()(value)
-        elif typ.startswith(_EMAIL):
+        if typ.startswith(_EMAIL):
             return vol.Email()(value)
-        elif typ.startswith(_URL):
+        if typ.startswith(_URL):
             return vol.Url()(value)
-        elif typ.startswith(_PORT):
+        if typ.startswith(_PORT):
             return network_port(value)
-        elif typ.startswith(_MATCH):
+        if typ.startswith(_MATCH):
             return vol.Match(match.group("match"))(str(value))
-        elif typ.startswith(_LIST):
+        if typ.startswith(_LIST):
             return vol.In(match.group("list").split("|"))(str(value))
-        elif typ.startswith(_DEVICE):
+        if typ.startswith(_DEVICE):
             if not isinstance(value, str):
                 raise vol.Invalid(
                     f"Expected a string for option '{key}' in {self._name} ({self._slug})"

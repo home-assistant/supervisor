@@ -29,7 +29,7 @@ class NetworkManagerSettings(DBusInterface):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager Settings")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning(
                 "No Network Manager Settings support on the host. Local network functions have been disabled."
             )

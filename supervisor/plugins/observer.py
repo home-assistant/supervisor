@@ -93,7 +93,7 @@ class PluginObserver(PluginBase):
             raise ObserverPortConflict(_LOGGER.error) from err
         except DockerError as err:
             _LOGGER.error("Can't start observer plugin")
-            raise ObserverError() from err
+            raise ObserverError from err
 
     async def stop(self) -> None:
         """Raise. Supervisor should not stop observer."""
@@ -104,7 +104,7 @@ class PluginObserver(PluginBase):
         try:
             return await self.instance.stats()
         except DockerError as err:
-            raise ObserverError() from err
+            raise ObserverError from err
 
     async def check_system_runtime(self) -> bool:
         """Check if the observer is running."""
@@ -115,7 +115,7 @@ class PluginObserver(PluginBase):
             ) as request:
                 if request.status == 200:
                     return True
-        except (aiohttp.ClientError, TimeoutError):
+        except aiohttp.ClientError, TimeoutError:
             pass
 
         return False

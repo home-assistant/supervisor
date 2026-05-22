@@ -84,7 +84,7 @@ class CpuArchManager(CoreSysAttributes):
         for self_arch in self.supported:
             if self_arch in arch_list:
                 return CpuArch(self_arch)
-        raise HassioArchNotFound()
+        raise HassioArchNotFound
 
     def detect_cpu(self) -> CpuArch:
         """Return the arch type of local CPU."""

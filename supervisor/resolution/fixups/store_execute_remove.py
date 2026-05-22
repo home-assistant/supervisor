@@ -34,7 +34,7 @@ class FixupStoreExecuteRemove(FixupBase):
         try:
             await self.sys_store.remove_repository(repository)
         except StoreError:
-            raise ResolutionFixupError() from None
+            raise ResolutionFixupError from None
 
     @property
     def suggestion(self) -> SuggestionType:

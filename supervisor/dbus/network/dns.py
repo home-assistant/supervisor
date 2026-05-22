@@ -68,7 +68,7 @@ class NetworkManagerDNS(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to DnsManager")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning(
                 "No DnsManager support on the host. Local DNS functions have been disabled."
             )

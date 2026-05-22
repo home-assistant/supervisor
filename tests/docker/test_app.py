@@ -69,8 +69,7 @@ def get_docker_app(
     addonsdata_system.return_value = {slug: config}
 
     app = App(coresys, config.get("slug"))
-    docker_app = DockerApp(coresys, app)
-    return docker_app
+    return DockerApp(coresys, app)
 
 
 @pytest.mark.usefixtures("path_extern")

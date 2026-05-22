@@ -65,7 +65,7 @@ class FixupAppExecuteRepair(FixupBase):
             # FixupBase swallows it without a Sentry event. The repair stays
             # available for manual retry once the underlying cause is fixed.
             _LOGGER.warning("Cannot repair app %s: %s", reference, err)
-            raise ResolutionFixupError() from err
+            raise ResolutionFixupError from err
 
     @property
     def suggestion(self) -> SuggestionType:

@@ -271,7 +271,7 @@ class App(AppModel):
                     await self.instance.install(
                         self.version, default_image, arch=self.arch
                     )
-                except (DockerError, AppNotSupportedError):
+                except DockerError, AppNotSupportedError:
                     self._create_missing_image_issue()
         except DockerError as err:
             # Docker error other than a clean "image not found" - we can't
@@ -1386,7 +1386,7 @@ class App(AppModel):
                 write_json_file(temp_path.joinpath("addon.json"), metadata)
             except ConfigurationFileError as err:
                 _LOGGER.error("Can't save meta for %s: %s", self.slug, err)
-                raise BackupRestoreUnknownError() from err
+                raise BackupRestoreUnknownError from err
 
             # Store AppArmor Profile
             if apparmor_profile:
@@ -1399,7 +1399,7 @@ class App(AppModel):
                     _LOGGER.error(
                         "Can't backup AppArmor profile for %s: %s", self.slug, err
                     )
-                    raise BackupRestoreUnknownError() from err
+                    raise BackupRestoreUnknownError from err
 
             # Write tarfile
             with tar_file as backup:
@@ -1463,10 +1463,10 @@ class App(AppModel):
             _LOGGER.info("Finish backup for app %s", self.slug)
         except DockerError as err:
             _LOGGER.error("Can't export image for app %s: %s", self.slug, err)
-            raise BackupRestoreUnknownError() from err
+            raise BackupRestoreUnknownError from err
         except (tarfile.TarError, OSError, AddFileError) as err:
             _LOGGER.error("Can't write backup tarfile for app %s: %s", self.slug, err)
-            raise BackupRestoreUnknownError() from err
+            raise BackupRestoreUnknownError from err
         finally:
             await self.sys_run_in_executor(temp_dir.cleanup)
             if was_running:
@@ -1515,7 +1515,7 @@ class App(AppModel):
                 _LOGGER.error,
             ) from err
         except tarfile.TarError as err:
-            raise BackupRestoreUnknownError() from err
+            raise BackupRestoreUnknownError from err
         except ConfigurationFileError as err:
             raise AppUnknownError(app=self.slug) from err
 
@@ -1593,7 +1593,7 @@ class App(AppModel):
                     _LOGGER.error(
                         "Can't restore origin data for %s: %s", self.slug, err
                     )
-                    raise BackupRestoreUnknownError() from err
+                    raise BackupRestoreUnknownError from err
 
                 # Restore AppArmor
                 profile_file = Path(tmp.name, "apparmor.txt")
@@ -1608,7 +1608,7 @@ class App(AppModel):
                             self.slug,
                             err,
                         )
-                        raise BackupRestoreUnknownError() from err
+                        raise BackupRestoreUnknownError from err
 
             finally:
                 # Is app loaded

@@ -301,17 +301,17 @@ def register_signal_handlers(
     """Register SIGTERM, SIGHUP and SIGKILL to stop the Supervisor."""
     try:
         loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
-    except (ValueError, RuntimeError):
+    except ValueError, RuntimeError:
         _LOGGER.warning("Could not bind to SIGTERM")
 
     try:
         loop.add_signal_handler(signal.SIGHUP, shutdown_handler)
-    except (ValueError, RuntimeError):
+    except ValueError, RuntimeError:
         _LOGGER.warning("Could not bind to SIGHUP")
 
     try:
         loop.add_signal_handler(signal.SIGINT, shutdown_handler)
-    except (ValueError, RuntimeError):
+    except ValueError, RuntimeError:
         _LOGGER.warning("Could not bind to SIGINT")
 
 
