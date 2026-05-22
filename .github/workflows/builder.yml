@@ -280,6 +280,7 @@ jobs:
       - name: Create the Supervisor
         run: |
           mkdir -p /tmp/supervisor/data
+          echo '{"detect_blocking_io": true}' > /tmp/supervisor/data/config.json
           docker create --name hassio_supervisor \
             --privileged \
             --security-opt seccomp=unconfined \
