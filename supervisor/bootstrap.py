@@ -144,6 +144,17 @@ def _migrate_legacy_paths(coresys: CoreSys) -> None:
             _LOGGER.info("Migrating %s to %s", old, new)
             old.rename(new)
 
+    # Opportunistic remove of the now-empty legacy addons directory.
+    # rmdir only succeeds if empty, so leftover files keep it around.
+    legacy_addons = supervisor / "addons"
+    try:
+        legacy_addons.rmdir()
+    except OSError:
+        _LOGGER.debug(
+            "Legacy addons directory '%s' not empty, leaving in place",
+            legacy_addons.as_posix(),
+        )
+
 
 def initialize_system(coresys: CoreSys) -> None:
     """Set up the default configuration and create folders."""
