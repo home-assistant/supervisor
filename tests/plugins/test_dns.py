@@ -175,6 +175,7 @@ async def test_loop_detection_on_failure(coresys: CoreSys, container: DockerCont
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         await asyncio.sleep(0)
@@ -191,6 +192,7 @@ async def test_loop_detection_on_failure(coresys: CoreSys, container: DockerCont
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         await asyncio.sleep(0)

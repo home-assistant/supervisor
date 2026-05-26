@@ -1630,16 +1630,25 @@ class App(AppModel):
         on_condition=AppsJobError,
         throttle=JobThrottle.GROUP_RATE_LIMIT,
     )
-    async def _restart_after_problem(self, state: ContainerState):
+    async def _restart_after_problem(
+        self, state: ContainerState, exit_code: int | None = None
+    ):
         """Restart unhealthy or failed app."""
         attempts = 0
         while await self.instance.current_state() == state:
             if not self.in_progress:
-                _LOGGER.warning(
-                    "Watchdog found app %s is %s, restarting...",
-                    self.name,
-                    state,
-                )
+                if state == ContainerState.FAILED:
+                    _LOGGER.warning(
+                        "Watchdog found app %s exited with code %d, restarting...",
+                        self.name,
+                        exit_code,
+                    )
+                else:
+                    _LOGGER.warning(
+                        "Watchdog found app %s is %s, restarting...",
+                        self.name,
+                        state,
+                    )
                 try:
                     if state == ContainerState.FAILED:
                         # Ensure failed container is removed before attempting reanimation
@@ -1729,7 +1738,7 @@ class App(AppModel):
             ContainerState.STOPPED,
             ContainerState.UNHEALTHY,
         ]:
-            await self._restart_after_problem(event.state)
+            await self._restart_after_problem(event.state, event.exit_code)
 
     async def refresh_path_cache(self) -> None:
         """Refresh cache of existing paths."""

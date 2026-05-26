@@ -60,6 +60,7 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         restart.assert_not_called()
@@ -76,6 +77,7 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         restart.assert_not_called()
@@ -143,6 +145,7 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         start.assert_called_once()
@@ -217,6 +220,7 @@ async def test_home_assistant_watchdog_unregisters_on_shutdown(
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         start.assert_called_once()

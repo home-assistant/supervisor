@@ -119,6 +119,8 @@ class PluginMulticast(PluginBase):
         on_condition=MulticastJobError,
         throttle=JobThrottle.RATE_LIMIT,
     )
-    async def _restart_after_problem(self, state: ContainerState):
+    async def _restart_after_problem(
+        self, state: ContainerState, exit_code: int | None = None
+    ):
         """Restart unhealthy or failed plugin."""
-        return await super()._restart_after_problem(state)
+        return await super()._restart_after_problem(state, exit_code)
