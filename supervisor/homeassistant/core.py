@@ -665,7 +665,7 @@ class HomeAssistantCore(JobGroup):
         while await self.instance.current_state() == state:
             # Don't interrupt a task in progress or if rollback is handling it
             if not (self.in_progress or self.error_state):
-                if state == ContainerState.FAILED and exit_code is not None:
+                if state == ContainerState.FAILED:
                     _LOGGER.warning(
                         "Watchdog found Home Assistant exited with code %d, "
                         "restarting...",

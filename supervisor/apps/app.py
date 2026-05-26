@@ -1637,7 +1637,7 @@ class App(AppModel):
         attempts = 0
         while await self.instance.current_state() == state:
             if not self.in_progress:
-                if state == ContainerState.FAILED and exit_code is not None:
+                if state == ContainerState.FAILED:
                     _LOGGER.warning(
                         "Watchdog found app %s exited with code %d, restarting...",
                         self.name,
