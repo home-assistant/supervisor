@@ -104,6 +104,7 @@ class IssueType(StrEnum):
     NTP_SYNC_FAILED = "ntp_sync_failed"
     PWNED = "pwned"
     REBOOT_REQUIRED = "reboot_required"
+    RPI_FIRMWARE_UPDATE_BLOCKED = "rpi_firmware_update_blocked"
     SECURITY = "security"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"

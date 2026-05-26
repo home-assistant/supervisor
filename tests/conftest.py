@@ -443,6 +443,7 @@ async def fixture_os_agent_services(
             "agent_swap": None,
             "agent_system": None,
             "agent_boards": None,
+            "agent_boards_rpi_firmware": None,
             "agent_boards_yellow": None,
         },
         dbus_session_bus,

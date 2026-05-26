@@ -13,9 +13,15 @@ from ...const import (
     DBUS_OBJECT_HAOS_BOARDS,
 )
 from ...interface import DBusInterfaceProxy, dbus_property
-from .const import BOARD_NAME_GREEN, BOARD_NAME_SUPERVISED, BOARD_NAME_YELLOW
+from .const import (
+    BOARD_NAME_GREEN,
+    BOARD_NAME_SUPERVISED,
+    BOARD_NAME_YELLOW,
+    BOARDS_WITH_RPI_FIRMWARE,
+)
 from .green import Green
 from .interface import BoardProxy
+from .rpi_firmware import RPiFirmware
 from .supervised import Supervised
 from .yellow import Yellow
 
@@ -35,6 +41,7 @@ class BoardManager(DBusInterfaceProxy):
         super().__init__()
 
         self._board_proxy: BoardProxy | None = None
+        self._rpi_firmware: RPiFirmware | None = None
 
     @property
     @dbus_property
@@ -66,6 +73,24 @@ class BoardManager(DBusInterfaceProxy):
 
         return cast(Yellow, self._board_proxy)
 
+    @property
+    def rpi_firmware(self) -> RPiFirmware:
+        """Get Raspberry Pi firmware proxy.
+
+        Available on RPi4 / RPi5 / Yellow. Raises BoardInvalidError elsewhere.
+        """
+        if self._rpi_firmware is None:
+            raise BoardInvalidError(
+                "Raspberry Pi firmware is not available on this board",
+                _LOGGER.error,
+            )
+        return self._rpi_firmware
+
+    @property
+    def has_rpi_firmware(self) -> bool:
+        """Return True if the Raspberry Pi firmware interface is loaded."""
+        return self._rpi_firmware is not None
+
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
         await super().connect(bus)
@@ -76,10 +101,20 @@ class BoardManager(DBusInterfaceProxy):
             self._board_proxy = await Green().load_config()
         elif self.board == BOARD_NAME_SUPERVISED:
             self._board_proxy = await Supervised().load_config()
-        else:
-            return
 
-        try:
-            await self._board_proxy.connect(bus)
-        except (DBusServiceUnkownError, DBusInterfaceError) as ex:
-            _LOGGER.warning("OS-Agent board support initialization failed: %s", ex)
+        if self._board_proxy is not None:
+            try:
+                await self._board_proxy.connect(bus)
+            except (DBusServiceUnkownError, DBusInterfaceError) as ex:
+                _LOGGER.warning("OS-Agent board support initialization failed: %s", ex)
+
+        if self.board in BOARDS_WITH_RPI_FIRMWARE:
+            self._rpi_firmware = RPiFirmware()
+            try:
+                await self._rpi_firmware.connect(bus)
+            except (DBusServiceUnkownError, DBusInterfaceError) as ex:
+                _LOGGER.warning(
+                    "OS-Agent Raspberry Pi firmware interface unavailable: %s",
+                    ex,
+                )
+                self._rpi_firmware = None
