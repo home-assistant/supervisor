@@ -191,7 +191,7 @@ jobs:
         with:
           arch: ${{ matrix.arch }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
-          cosign-base-identity: "https://github.com/home-assistant/docker-base/.*"
+          cosign-base-identity: 'https://github.com/home-assistant/docker-base/.*'
           cosign-base-verify: ghcr.io/home-assistant/base-python:3.14-alpine3.22
           image: ${{ matrix.image }}
           image-tags: |
@@ -280,7 +280,6 @@ jobs:
       - name: Create the Supervisor
         run: |
           mkdir -p /tmp/supervisor/data
-          echo '{"detect_blocking_io": true}' > /tmp/supervisor/data/config.json
           docker create --name hassio_supervisor \
             --privileged \
             --security-opt seccomp=unconfined \
@@ -308,7 +307,7 @@ jobs:
             sleep 1
           done
           echo "Waiting for Supervisor API at http://${SUPERVISOR}/supervisor/ping"
-          timeout=30
+          timeout=300
           elapsed=0
 
           while [ $elapsed -lt $timeout ]; do

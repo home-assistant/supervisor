@@ -61,6 +61,7 @@ async def initialize_coresys() -> CoreSys:
         _LOGGER.warning("Environment variable 'SUPERVISOR_DEV' is set")
         coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
+        coresys.config.detect_blocking_io = True
     else:
         coresys.config.modify_log_level()
 
