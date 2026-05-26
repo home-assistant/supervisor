@@ -235,7 +235,10 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         current_state.return_value = ContainerState.FAILED
         with patch.object(DockerApp, "stop") as stop:
             await _fire_test_event(
-                coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+                coresys,
+                f"addon_{TEST_ADDON_SLUG}",
+                ContainerState.FAILED,
+                exit_code=1,
             )
             stop.assert_called_once_with(remove_container=True)
             restart.assert_not_called()
@@ -246,7 +249,10 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         # Do not process event if container state has changed since fired
         current_state.return_value = ContainerState.HEALTHY
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+            coresys,
+            f"addon_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
         )
         restart.assert_not_called()
         start.assert_not_called()
@@ -282,7 +288,10 @@ async def test_watchdog_port_conflict_does_not_retry(
     ):
         caplog.clear()
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+            coresys,
+            f"addon_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
         )
 
         start.assert_called_once()

@@ -98,6 +98,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         rebuild.assert_called_once()
@@ -129,6 +130,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             ),
         )
         rebuild.assert_not_called()
@@ -185,6 +187,7 @@ async def test_plugin_watchdog_max_failed_attempts(
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
+                exit_code=1,
             )
         )
         assert start.call_count == 5
