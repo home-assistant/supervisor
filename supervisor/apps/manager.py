@@ -12,7 +12,13 @@ from securetar import SecureTarFile
 from ..const import AppBoot, AppStartup, AppState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
-    AppNotSupportedError,
+    AppAlreadyInstalledError,
+    AppNotFoundError,
+    AppNotInstalledError,
+    AppNotInStoreError,
+    AppNoUpdateAvailableError,
+    AppRebuildImageBasedError,
+    AppRebuildVersionChangedError,
     AppsError,
     AppsJobError,
     CoreDNSError,
@@ -204,11 +210,11 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug in self.local:
-            raise AppsError(f"App {slug} is already installed", _LOGGER.warning)
+            raise AppAlreadyInstalledError(_LOGGER.warning, app=self.local[slug])
         store = self.store.get(slug)
 
         if not store:
-            raise AppsError(f"App {slug} does not exist", _LOGGER.error)
+            raise AppNotFoundError(_LOGGER.error, slug=slug)
 
         store.validate_availability()
 
@@ -266,15 +272,15 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
-            raise AppsError(f"App {slug} is not installed", _LOGGER.error)
+            raise AppNotInstalledError(_LOGGER.error, slug=slug)
         app = self.local[slug]
 
         if app.is_detached:
-            raise AppsError(f"App {slug} is not available inside store", _LOGGER.error)
+            raise AppNotInStoreError(_LOGGER.error, app=app)
         store = self.store[slug]
 
         if app.version == store.version:
-            raise AppsError(f"No update available for app {slug}", _LOGGER.warning)
+            raise AppNoUpdateAvailableError(_LOGGER.warning, app=app)
 
         # Check if available, Maybe something have changed
         store.validate_availability()
@@ -313,22 +319,18 @@ class AppManager(CoreSysAttributes):
         self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
-            raise AppsError(f"App {slug} is not installed", _LOGGER.error)
+            raise AppNotInstalledError(_LOGGER.error, slug=slug)
         app = self.local[slug]
 
         if app.is_detached:
-            raise AppsError(f"App {slug} is not available inside store", _LOGGER.error)
+            raise AppNotInStoreError(_LOGGER.error, app=app)
         store = self.store[slug]
 
         # Check if a rebuild is possible now
         if app.version != store.version:
-            raise AppsError(
-                "Version changed, use Update instead Rebuild", _LOGGER.error
-            )
+            raise AppRebuildVersionChangedError(_LOGGER.error, app=app)
         if not force and not app.need_build:
-            raise AppNotSupportedError(
-                "Can't rebuild an image-based app", _LOGGER.error
-            )
+            raise AppRebuildImageBasedError(_LOGGER.error, app=app)
 
         return await app.rebuild()
 
