@@ -378,7 +378,7 @@ def _migrate_app_config(protocol=False):
 
 
 # pylint: disable=no-value-for-parameter
-_SCHEMA_ADDON_CONFIG = vol.Schema(
+_SCHEMA_APP_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): str,
         vol.Required(ATTR_VERSION): version_tag,
@@ -483,8 +483,8 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
-SCHEMA_ADDON_CONFIG = vol.All(
-    _migrate_app_config(True), _warn_app_config, _SCHEMA_ADDON_CONFIG
+SCHEMA_APP_CONFIG = vol.All(
+    _migrate_app_config(True), _warn_app_config, _SCHEMA_APP_CONFIG
 )
 
 
@@ -512,7 +512,7 @@ SCHEMA_TRANSLATION_CONFIGURATION = vol.Schema(
 )
 
 
-SCHEMA_ADDON_TRANSLATIONS = vol.Schema(
+SCHEMA_APP_TRANSLATIONS = vol.Schema(
     {
         vol.Optional(ATTR_CONFIGURATION): {str: SCHEMA_TRANSLATION_CONFIGURATION},
         vol.Optional(ATTR_NETWORK): {str: str},
@@ -522,7 +522,7 @@ SCHEMA_ADDON_TRANSLATIONS = vol.Schema(
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_ADDON_USER = vol.Schema(
+SCHEMA_APP_USER = vol.Schema(
     {
         vol.Required(ATTR_VERSION): version_tag,
         vol.Optional(ATTR_IMAGE): docker_image,
@@ -544,33 +544,33 @@ SCHEMA_ADDON_USER = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
-SCHEMA_ADDON_SYSTEM = vol.All(
+SCHEMA_APP_SYSTEM = vol.All(
     _migrate_app_config(),
-    _SCHEMA_ADDON_CONFIG.extend(
+    _SCHEMA_APP_CONFIG.extend(
         {
             vol.Required(ATTR_LOCATION): str,
             vol.Required(ATTR_REPOSITORY): str,
             vol.Required(ATTR_TRANSLATIONS, default=dict): {
-                str: SCHEMA_ADDON_TRANSLATIONS
+                str: SCHEMA_APP_TRANSLATIONS
             },
         }
     ),
 )
 
 
-SCHEMA_ADDONS_FILE = vol.Schema(
+SCHEMA_APPS_FILE = vol.Schema(
     {
-        vol.Optional(ATTR_USER, default=dict): {str: SCHEMA_ADDON_USER},
-        vol.Optional(ATTR_SYSTEM, default=dict): {str: SCHEMA_ADDON_SYSTEM},
+        vol.Optional(ATTR_USER, default=dict): {str: SCHEMA_APP_USER},
+        vol.Optional(ATTR_SYSTEM, default=dict): {str: SCHEMA_APP_SYSTEM},
     },
     extra=vol.REMOVE_EXTRA,
 )
 
 
-SCHEMA_ADDON_BACKUP = vol.Schema(
+SCHEMA_APP_BACKUP = vol.Schema(
     {
-        vol.Required(ATTR_USER): SCHEMA_ADDON_USER,
-        vol.Required(ATTR_SYSTEM): SCHEMA_ADDON_SYSTEM,
+        vol.Required(ATTR_USER): SCHEMA_APP_USER,
+        vol.Required(ATTR_SYSTEM): SCHEMA_APP_SYSTEM,
         vol.Required(ATTR_STATE): vol.Coerce(AppState),
         vol.Required(ATTR_VERSION): version_tag,
     },

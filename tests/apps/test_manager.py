@@ -410,7 +410,7 @@ async def test_repository_file_missing(
     with patch.object(
         CoreConfig,
         "path_apps_git",
-        new=PropertyMock(return_value=tmp_supervisor_data / "addons" / "git"),
+        new=PropertyMock(return_value=tmp_supervisor_data / "apps" / "git"),
     ):
         repo_dir = coresys.config.path_apps_git / "test"
         repo_dir.mkdir(parents=True)
@@ -427,7 +427,7 @@ async def test_repository_file_error(
     with patch.object(
         CoreConfig,
         "path_apps_git",
-        new=PropertyMock(return_value=tmp_supervisor_data / "addons" / "git"),
+        new=PropertyMock(return_value=tmp_supervisor_data / "apps" / "git"),
     ):
         repo_dir = coresys.config.path_apps_git / "test"
         repo_dir.mkdir(parents=True)

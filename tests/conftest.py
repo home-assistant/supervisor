@@ -28,7 +28,7 @@ from securetar import SecureTarArchive
 from supervisor import config as su_config
 from supervisor.api import RestAPI
 from supervisor.apps.app import App
-from supervisor.apps.validate import SCHEMA_ADDON_SYSTEM
+from supervisor.apps.validate import SCHEMA_APP_SYSTEM
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.backups.validate import ALL_FOLDERS
@@ -548,13 +548,11 @@ async def coresys(
     coresys_obj.host.network._connectivity = True
 
     # Fix Paths
-    su_config.ADDONS_CORE = Path(
-        Path(__file__).parent.joinpath("fixtures"), "apps/core"
-    )
-    su_config.ADDONS_LOCAL = Path(
+    su_config.APPS_CORE = Path(Path(__file__).parent.joinpath("fixtures"), "apps/core")
+    su_config.APPS_LOCAL = Path(
         Path(__file__).parent.joinpath("fixtures"), "apps/local"
     )
-    su_config.ADDONS_GIT = Path(Path(__file__).parent.joinpath("fixtures"), "apps/git")
+    su_config.APPS_GIT = Path(Path(__file__).parent.joinpath("fixtures"), "apps/git")
     su_config.APPARMOR_DATA = Path(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )
@@ -755,7 +753,7 @@ def store_app(coresys: CoreSys, tmp_path, test_repository):
     app_obj = AppStore(coresys, "test_store_addon")
 
     coresys.apps.store[app_obj.slug] = app_obj
-    coresys.store.data.apps[app_obj.slug] = SCHEMA_ADDON_SYSTEM(
+    coresys.store.data.apps[app_obj.slug] = SCHEMA_APP_SYSTEM(
         load_json_fixture("app.json")
     )
     coresys.store.data.apps[app_obj.slug]["location"] = tmp_path

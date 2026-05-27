@@ -9,13 +9,13 @@ from ..const import (
     ATTR_SYSTEM,
     ATTR_USER,
     ATTR_VERSION,
-    FILE_HASSIO_ADDONS,
+    FILE_HASSIO_APPS,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..store.app import AppStore
 from ..utils.common import FileConfiguration
 from .app import App
-from .validate import SCHEMA_ADDONS_FILE
+from .validate import SCHEMA_APPS_FILE
 
 Config = dict[str, Any]
 
@@ -25,7 +25,7 @@ class AppsData(FileConfiguration, CoreSysAttributes):
 
     def __init__(self, coresys: CoreSys):
         """Initialize data holder."""
-        super().__init__(FILE_HASSIO_ADDONS, SCHEMA_ADDONS_FILE)
+        super().__init__(FILE_HASSIO_APPS, SCHEMA_APPS_FILE)
         self.coresys: CoreSys = coresys
 
     @property

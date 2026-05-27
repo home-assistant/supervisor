@@ -38,10 +38,10 @@ HOMEASSISTANT_CONFIG = PurePath("homeassistant")
 
 HASSIO_SSL = PurePath("ssl")
 
-ADDONS_CORE = PurePath("addons/core")
-ADDONS_LOCAL = PurePath("addons/local")
-ADDONS_GIT = PurePath("addons/git")
-ADDONS_DATA = PurePath("addons/data")
+APPS_CORE = PurePath("apps/core")
+APPS_DATA = PurePath("apps/data")
+APPS_LOCAL = PurePath("apps/local")
+APPS_GIT = PurePath("apps/git")
 
 BACKUP_DATA = PurePath("backup")
 SHARE_DATA = PurePath("share")
@@ -54,7 +54,7 @@ MEDIA_DATA = PurePath("media")
 MOUNTS_FOLDER = PurePath("mounts")
 MOUNTS_CREDENTIALS = PurePath(".mounts_credentials")
 EMERGENCY_DATA = PurePath("emergency")
-ADDON_CONFIGS = PurePath("addon_configs")
+APP_CONFIGS = PurePath("app_configs")
 CORE_BACKUP_DATA = PurePath("core/backup")
 CID_FILES = PurePath("cid_files")
 
@@ -256,42 +256,42 @@ class CoreConfig(FileConfiguration):
     @property
     def path_apps_core(self) -> Path:
         """Return git path for core Apps."""
-        return self.path_supervisor / ADDONS_CORE
+        return self.path_supervisor / APPS_CORE
 
     @property
     def path_apps_git(self) -> Path:
         """Return path for Git App."""
-        return self.path_supervisor / ADDONS_GIT
+        return self.path_supervisor / APPS_GIT
 
     @property
     def path_apps_local(self) -> Path:
         """Return path for custom Apps."""
-        return self.path_supervisor / ADDONS_LOCAL
+        return self.path_supervisor / APPS_LOCAL
 
     @property
     def path_extern_apps_local(self) -> PurePath:
         """Return path for custom Apps."""
-        return PurePath(self.path_extern_supervisor, ADDONS_LOCAL)
+        return PurePath(self.path_extern_supervisor, APPS_LOCAL)
 
     @property
     def path_apps_data(self) -> Path:
         """Return root App data folder."""
-        return self.path_supervisor / ADDONS_DATA
+        return self.path_supervisor / APPS_DATA
 
     @property
     def path_extern_apps_data(self) -> PurePath:
         """Return root app data folder external for Docker."""
-        return PurePath(self.path_extern_supervisor, ADDONS_DATA)
+        return PurePath(self.path_extern_supervisor, APPS_DATA)
 
     @property
     def path_app_configs(self) -> Path:
         """Return root App configs folder."""
-        return self.path_supervisor / ADDON_CONFIGS
+        return self.path_supervisor / APP_CONFIGS
 
     @property
     def path_extern_app_configs(self) -> PurePath:
         """Return root App configs folder external for Docker."""
-        return PurePath(self.path_extern_supervisor, ADDON_CONFIGS)
+        return PurePath(self.path_extern_supervisor, APP_CONFIGS)
 
     @property
     def path_audio(self) -> Path:
