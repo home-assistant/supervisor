@@ -570,11 +570,11 @@ async def test_api_config_swap_old_os(
     assert resp.status == 404
 
 
+@pytest.mark.usefixtures("os_agent_version")
 async def test_api_board_raspberrypi_info(
     api_client_with_prefix: tuple[TestClient, str],
     os_agent_services: dict[str, DBusServiceMock],
     os_available,
-    os_agent_version,
 ):
     """Test Raspberry Pi firmware info endpoint."""
     api_client, prefix = api_client_with_prefix
@@ -592,12 +592,12 @@ async def test_api_board_raspberrypi_info(
     }
 
 
+@pytest.mark.usefixtures("os_agent_version")
 async def test_api_board_raspberrypi_info_blocked_creates_issue(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
     os_available,
-    os_agent_version,
 ):
     """GET on raspberrypi info while blocked raises a repair issue."""
     api_client, prefix = api_client_with_prefix
@@ -623,12 +623,12 @@ async def test_api_board_raspberrypi_info_blocked_creates_issue(
     )
 
 
+@pytest.mark.usefixtures("os_agent_version")
 async def test_api_board_raspberrypi_update(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
     os_available,
-    os_agent_version,
 ):
     """Successful firmware update creates REBOOT_REQUIRED issue."""
     api_client, prefix = api_client_with_prefix
@@ -650,12 +650,12 @@ async def test_api_board_raspberrypi_update(
     )
 
 
+@pytest.mark.usefixtures("os_agent_version")
 async def test_api_board_raspberrypi_update_blocked(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
     os_available,
-    os_agent_version,
 ):
     """POST to raspberrypi update on a blocked device returns an error and surfaces the repair issue."""
     api_client, prefix = api_client_with_prefix
@@ -682,7 +682,7 @@ async def test_api_board_raspberrypi_requires_os_agent_version(
     api_client_with_prefix: tuple[TestClient, str],
     os_agent_services: dict[str, DBusServiceMock],
     os_available,
-    os_agent_version,
+    os_agent_version,  # pylint: disable=redefined-outer-name
 ):
     """Test 404 is returned for raspberrypi endpoints on an OS Agent older than 1.9.0."""
     api_client, prefix = api_client_with_prefix
