@@ -15,7 +15,9 @@ from supervisor.resolution.evaluations.os_version import EvaluateOSVersion
     ("current", "latest", "expected"),
     [
         ("10.0", "15.0", True),  # 5 major behind, should be unsupported
-        ("10.0", "14.0", False),  # 4 major behind, should be supported
+        ("10.0", "14.0", True),  # 4 major behind, should be unsupported
+        ("14.0", "18.0", True),  # 4 major behind, should be unsupported
+        ("15.0", "18.0", False),  # 3 major behind, last supported
         ("10.2", "11.0", False),  # 1 major behind, supported
         ("10.4", "10.5", False),  # same major, supported
         ("10.5", "10.5", False),  # up to date, supported
@@ -25,6 +27,7 @@ from supervisor.resolution.evaluations.os_version import EvaluateOSVersion
         ("10.2.dev20240321", "13.0", False),  # 3 major behind, dev version, supported
         ("10.2.rc2", "15.0", True),  # 5 major behind, rc version, unsupported
         ("10.2.rc2", "13.0", False),  # 3 major behind, rc version, supported
+        ("10.0", "13.0", False),  # 3 major behind, supported (boundary)
         (None, "15.0", False),  # No current version info, check skipped
         ("2.0", None, False),  # No latest version info, check skipped
         (
