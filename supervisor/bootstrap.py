@@ -3,7 +3,6 @@
 # ruff: noqa: T100
 import asyncio
 from collections.abc import Callable
-from importlib import import_module
 import logging
 import os
 import signal
@@ -62,6 +61,7 @@ async def initialize_coresys() -> CoreSys:
         _LOGGER.warning("Environment variable 'SUPERVISOR_DEV' is set")
         coresys.config.logging = LogLevel.DEBUG
         coresys.config.debug = True
+        coresys.config.detect_blocking_io = True
     else:
         coresys.config.modify_log_level()
 
@@ -363,11 +363,15 @@ async def supervisor_debugger(coresys: CoreSys) -> None:
     if not coresys.config.debug:
         return
 
-    debugpy = await coresys.run_in_executor(import_module, "debugpy")
+    def setup_debugger() -> None:
+        # pylint: disable-next=import-outside-toplevel
+        import debugpy  # noqa: PLC0415
 
-    _LOGGER.info("Initializing Supervisor debugger")
+        _LOGGER.info("Initializing Supervisor debugger")
 
-    debugpy.listen(("0.0.0.0", 33333))
-    if coresys.config.debug_block:
-        _LOGGER.info("Wait until debugger is attached")
-        debugpy.wait_for_client()
+        debugpy.listen(("0.0.0.0", 33333))
+        if coresys.config.debug_block:
+            _LOGGER.info("Wait until debugger is attached")
+            debugpy.wait_for_client()
+
+    await coresys.run_in_executor(setup_debugger)
