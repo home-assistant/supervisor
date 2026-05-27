@@ -588,7 +588,7 @@ async def test_api_board_raspberrypi_info(
         "update_available": True,
         "update_blocked": False,
         "update_pending": False,
-        "blocked_reason": "",
+        "blocked_reason": None,
     }
 
 

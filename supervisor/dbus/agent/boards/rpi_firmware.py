@@ -64,7 +64,7 @@ class RPiFirmware(DBusInterfaceProxy):
     @property
     @dbus_property
     def blocked_reason(self) -> str | None:
-        """Blocked reason; empty/None when not blocked.
+        """Blocked reason; None when not blocked.
 
         Currently, the only emitted value is `unsupported_boot_device`. It is
         used universally whenever the OS Agent reports `update_blocked`,
@@ -73,7 +73,7 @@ class RPiFirmware(DBusInterfaceProxy):
         cannot be applied here" signal rather than a precise diagnosis;
         more specific values may be introduced in the future.
         """
-        return self.properties[DBUS_ATTR_BLOCKED_REASON]
+        return self.properties[DBUS_ATTR_BLOCKED_REASON] or None
 
     @dbus_connected
     def update_firmware(self) -> Awaitable[None]:

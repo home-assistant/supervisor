@@ -33,7 +33,7 @@ async def test_dbus_rpi_firmware(
     assert rpi_firmware.update_available is True
     assert rpi_firmware.update_blocked is False
     assert rpi_firmware.update_pending is False
-    assert rpi_firmware.blocked_reason == ""
+    assert rpi_firmware.blocked_reason is None
 
 
 async def test_dbus_rpi_firmware_update(
