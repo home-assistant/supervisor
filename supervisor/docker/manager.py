@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from io import BufferedReader, BufferedWriter
 from ipaddress import IPv4Address
-import json
 import logging
 import os
 from pathlib import Path, PurePath
@@ -1136,9 +1135,7 @@ class DockerAPI(CoreSysAttributes):
             old_images | {current_image} if old_images else {current_image}
         )
         try:
-            images_list = await self.images.list(
-                filters=json.dumps({"reference": image_names})
-            )
+            images_list = await self.images.list(filters={"reference": image_names})
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Corrupt docker overlayfs found: {err}", _LOGGER.warning

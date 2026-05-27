@@ -675,7 +675,7 @@ class DockerInterface(JobGroup, ABC):
         available_version: list[AwesomeVersion] = []
         try:
             for image in await self.sys_docker.images.list(
-                filters=f'{{"reference": ["{self.image}"]}}'
+                filters={"reference": [self.image]}
             ):
                 for tag in image["RepoTags"]:
                     version = AwesomeVersion(tag.partition(":")[2])
