@@ -233,3 +233,98 @@ async def test_setup_unhandled_exception_captured(
     capture_mock.assert_called_once()
     assert "Fatal error happening on load Task" in caplog.text
     assert UnhealthyReason.SETUP in coresys.resolution.unhealthy
+
+
+async def test_shutdown_reentrant_waits(coresys: CoreSys):
+    """Concurrent shutdown() calls await the in-flight shutdown rather than re-running."""
+    call_count = 0
+    shutdown_started = asyncio.Event()
+    proceed = asyncio.Event()
+
+    original_shutdown = coresys.apps.shutdown
+
+    async def slow_app_shutdown(startup):
+        nonlocal call_count
+        call_count += 1
+        shutdown_started.set()
+        await proceed.wait()
+        return await original_shutdown(startup)
+
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(coresys.apps, "shutdown", side_effect=slow_app_shutdown):
+        task1 = asyncio.create_task(coresys.core.shutdown())
+        await shutdown_started.wait()
+
+        # Second call should wait, not start a new shutdown
+        task2 = asyncio.create_task(coresys.core.shutdown())
+        await asyncio.sleep(0.05)
+
+        proceed.set()
+        await asyncio.gather(task1, task2)
+
+    # AppStartup has 4 levels (APPLICATION/SERVICES/SYSTEM/INITIALIZE); a single
+    # shutdown call iterates them. A re-entered shutdown would double the count.
+    assert call_count == 4
+    assert coresys.core._shutdown_event.is_set()
+
+
+async def test_shutdown_event_reset_between_cycles(coresys: CoreSys):
+    """Repeated shutdown cycles (e.g. backup restore) work because the event is reset."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    await coresys.core.shutdown()
+    assert coresys.core._shutdown_event.is_set()
+
+    # Simulate restore returning to RUNNING and shutting down again
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    second_entered = False
+    original_shutdown = coresys.apps.shutdown
+
+    async def track_app_shutdown(startup):
+        nonlocal second_entered
+        second_entered = True
+        return await original_shutdown(startup)
+
+    with patch.object(coresys.apps, "shutdown", side_effect=track_app_shutdown):
+        await coresys.core.shutdown()
+
+    assert second_entered
+    assert coresys.core._shutdown_event.is_set()
+
+
+@pytest.mark.parametrize(
+    "state", [CoreState.STOPPING, CoreState.CLOSE], ids=["stopping", "close"]
+)
+async def test_shutdown_ignored_during_stop(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, state: CoreState
+):
+    """Shutdown is ignored when Supervisor is already stopping."""
+    await coresys.core.set_state(state)
+
+    with patch.object(coresys.apps, "shutdown") as mock_app_shutdown:
+        await coresys.core.shutdown()
+
+    mock_app_shutdown.assert_not_called()
+    assert "Ignoring shutdown request, Supervisor is already stopping" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "state",
+    [CoreState.INITIALIZE, CoreState.STARTUP, CoreState.SETUP],
+    ids=["initialize", "startup", "setup"],
+)
+async def test_shutdown_skipped_during_startup(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, state: CoreState
+):
+    """Shutdown returns early when Supervisor has not finished starting yet."""
+    await coresys.core.set_state(state)
+
+    with patch.object(coresys.apps, "shutdown") as mock_app_shutdown:
+        await coresys.core.shutdown()
+
+    mock_app_shutdown.assert_not_called()
+    assert (
+        "Ignoring shutdown request, Supervisor has not finished starting" in caplog.text
+    )

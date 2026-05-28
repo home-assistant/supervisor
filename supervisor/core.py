@@ -43,6 +43,7 @@ class Core(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._state: CoreState = CoreState.INITIALIZE
         self.exit_code: int = 0
+        self._shutdown_event: asyncio.Event = asyncio.Event()
 
     @property
     def state(self) -> CoreState:
@@ -364,28 +365,57 @@ class Core(CoreSysAttributes):
         self.sys_loop.stop()
 
     async def shutdown(self, *, remove_homeassistant_container: bool = False) -> None:
-        """Shutdown all running containers in correct order."""
+        """Shutdown all running containers in correct order.
+
+        Reentrant: if a shutdown is already in progress, additional callers
+        await completion of the in-flight shutdown instead of starting a
+        second one.
+        """
+        # Nothing coherent to gracefully shut down before startup completes;
+        # the caller (e.g. signal handler) is expected to follow up with stop().
+        if self.state in STARTING_STATES:
+            _LOGGER.warning(
+                "Ignoring shutdown request, Supervisor has not finished starting"
+            )
+            return
+
+        # Supervisor is already tearing itself down, no point running shutdown
+        if self.state in (CoreState.STOPPING, CoreState.CLOSE):
+            _LOGGER.warning("Ignoring shutdown request, Supervisor is already stopping")
+            return
+
+        # Another shutdown is in progress, wait for it to complete
+        if self.state == CoreState.SHUTDOWN:
+            await self._shutdown_event.wait()
+            return
+
+        # Reset event for this shutdown cycle (supports repeated use, e.g. backup restore)
+        self._shutdown_event.clear()
+
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
             await self.set_state(CoreState.SHUTDOWN)
 
-        # Shutdown Application Apps, using Home Assistant API
-        await self.sys_apps.shutdown(AppStartup.APPLICATION)
+        try:
+            # Shutdown Application Apps, using Home Assistant API
+            await self.sys_apps.shutdown(AppStartup.APPLICATION)
 
-        # Close Home Assistant
-        with suppress(HassioError):
-            await self.sys_homeassistant.core.stop(
-                remove_container=remove_homeassistant_container
-            )
+            # Close Home Assistant
+            with suppress(HassioError):
+                await self.sys_homeassistant.core.stop(
+                    remove_container=remove_homeassistant_container
+                )
 
-        # Shutdown System Apps
-        await self.sys_apps.shutdown(AppStartup.SERVICES)
-        await self.sys_apps.shutdown(AppStartup.SYSTEM)
-        await self.sys_apps.shutdown(AppStartup.INITIALIZE)
+            # Shutdown System Apps
+            await self.sys_apps.shutdown(AppStartup.SERVICES)
+            await self.sys_apps.shutdown(AppStartup.SYSTEM)
+            await self.sys_apps.shutdown(AppStartup.INITIALIZE)
 
-        # Shutdown all Plugins
-        if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
-            await self.sys_plugins.shutdown()
+            # Shutdown all Plugins
+            if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
+                await self.sys_plugins.shutdown()
+        finally:
+            self._shutdown_event.set()
 
     async def _update_last_boot(self) -> None:
         """Update last boot time."""
