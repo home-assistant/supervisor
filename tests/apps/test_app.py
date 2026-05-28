@@ -47,7 +47,7 @@ from supervisor.utils.dt import utcnow
 
 from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
 
-from tests.common import fire_bus_event, get_fixture_path, is_in_list
+from tests.common import fire_bus_event, force_app_state, get_fixture_path, is_in_list
 from tests.const import TEST_ADDON_SLUG
 
 
@@ -1257,10 +1257,10 @@ async def test_app_state_dismisses_issue(
     suggestions: list[SuggestionType],
 ):
     """Test an app state change dismisses the issues."""
-    install_app_ssh.state = initial_state
+    force_app_state(install_app_ssh, initial_state)
     coresys.resolution.add_issue(issue, suggestions)
 
-    install_app_ssh.state = target_state
+    force_app_state(install_app_ssh, target_state)
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
 
@@ -1270,7 +1270,7 @@ async def test_app_disable_boot_dismisses_boot_fail(
 ):
     """Test a disabling boot dismisses the boot fail issue."""
     install_app_ssh.boot = AppBoot.AUTO
-    install_app_ssh.state = AppState.ERROR
+    force_app_state(install_app_ssh, AppState.ERROR)
     coresys.resolution.add_issue(
         BOOT_FAIL_ISSUE, [suggestion.type for suggestion in BOOT_FAIL_SUGGESTIONS]
     )

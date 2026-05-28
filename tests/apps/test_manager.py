@@ -39,7 +39,7 @@ from supervisor.store.repository import RepositoryLocal
 from supervisor.utils import check_exception_chain
 from supervisor.utils.common import write_json_file
 
-from tests.common import fire_bus_event, load_json_fixture
+from tests.common import fire_bus_event, force_app_state, load_json_fixture
 from tests.const import TEST_ADDON_SLUG
 
 BOOT_FAIL_ISSUE = Issue(
@@ -219,7 +219,7 @@ async def test_app_shutdown_error(
     coresys: CoreSys, install_app_ssh: App, capture_exception: Mock
 ):
     """Test errors captured during app shutdown."""
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     with patch.object(DockerApp, "stop", side_effect=DockerNotFound()):
         await coresys.apps.shutdown(AppStartup.APPLICATION)
 

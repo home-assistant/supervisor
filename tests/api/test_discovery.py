@@ -11,7 +11,7 @@ from supervisor.const import AppState
 from supervisor.coresys import CoreSys
 from supervisor.discovery import Message
 
-from tests.common import load_json_fixture
+from tests.common import force_app_state, load_json_fixture
 
 
 async def test_api_discovery_forbidden(
@@ -63,7 +63,7 @@ async def test_api_list_discovery(
         Message(app="local_ssh", service="adguard", config=ANY, uuid=ANY),
     ]
 
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     resp = await api_client.get(f"{prefix}/discovery")
     assert resp.status == 200
     result = await resp.json()
@@ -77,7 +77,7 @@ async def test_api_list_discovery(
         }
     ]
 
-    install_app_ssh.state = skip_state
+    force_app_state(install_app_ssh, skip_state)
     resp = await api_client.get(f"{prefix}/discovery")
     assert resp.status == 200
     result = await resp.json()

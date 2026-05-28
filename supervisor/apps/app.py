@@ -148,7 +148,12 @@ class App(AppModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerApp = DockerApp(coresys, self)
-        self._state: AppState = AppState.UNKNOWN
+        # Last observed container state; None until first event arrives.
+        self._container_state: ContainerState | None = None
+        # Sticky flag for failures of start/stop operations that the docker
+        # event stream cannot reflect (e.g. container never came up). Cleared
+        # on the next observed container state change.
+        self._operation_error: bool = False
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
@@ -176,16 +181,47 @@ class App(AppModel):
 
     @property
     def state(self) -> AppState:
-        """Return state of the app."""
-        return self._state
+        """Return state of the app, derived from container state.
 
-    @state.setter
-    def state(self, new_state: AppState) -> None:
-        """Set the app into new state."""
-        if self._state == new_state:
+        Falls back to install signals when no container has been observed
+        yet: an attached instance (image present) is STOPPED, otherwise
+        UNKNOWN. A sticky operation error overrides the derivation until
+        the next container event arrives.
+        """
+        if self._operation_error:
+            return AppState.ERROR
+        match self._container_state:
+            case ContainerState.RUNNING:
+                return (
+                    AppState.STARTUP if self.instance.healthcheck else AppState.STARTED
+                )
+            case ContainerState.HEALTHY | ContainerState.UNHEALTHY:
+                return AppState.STARTED
+            case ContainerState.STOPPED:
+                return AppState.STOPPED
+            case ContainerState.FAILED:
+                return AppState.ERROR
+            case _:
+                # No container observed (None) or container missing (UNKNOWN):
+                # fall back to install status.
+                return AppState.STOPPED if self.instance.attached else AppState.UNKNOWN
+
+    def _set_operation_error(self) -> None:
+        """Mark a failed start/stop operation so state reflects an error."""
+        old_state = self.state
+        self._operation_error = True
+        self._emit_state_change(old_state)
+
+    def _emit_state_change(self, old_state: AppState) -> None:
+        """Run side effects after a state transition.
+
+        Compares the previous (passed-in) state against the freshly derived
+        current state and fires listeners, dismisses related issues and
+        notifies the websocket if anything changed.
+        """
+        new_state = self.state
+        if old_state == new_state:
             return
-        old_state = self._state
-        self._state = new_state
 
         # Signal listeners about app state change
         if new_state == AppState.STARTED or old_state == AppState.STARTUP:
@@ -878,13 +914,17 @@ class App(AppModel):
         self, *, remove_config: bool, remove_image: bool = True
     ) -> None:
         """Uninstall and cleanup this app."""
+        old_state = self.state
         try:
             await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
             _LOGGER.error("Could not remove image for app %s: %s", self.slug, err)
             raise AppUnknownError(app=self.slug) from err
 
-        self.state = AppState.UNKNOWN
+        # Reset cached signals so state derives back to UNKNOWN.
+        self._container_state = None
+        self._operation_error = False
+        self._emit_state_change(old_state)
 
         await self.unload()
 
@@ -1208,7 +1248,7 @@ class App(AppModel):
             ) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for app %s: %s", self.slug, err)
-            self.state = AppState.ERROR
+            self._set_operation_error()
             raise AppUnknownError(app=self.slug) from err
 
         self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
@@ -1226,7 +1266,7 @@ class App(AppModel):
             await self.instance.stop()
         except DockerError as err:
             _LOGGER.error("Could not stop container for app %s: %s", self.slug, err)
-            self.state = AppState.ERROR
+            self._set_operation_error()
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
@@ -1690,22 +1730,12 @@ class App(AppModel):
             await asyncio.sleep(delay)
 
     async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
-        """Set app state from container state."""
+        """Update cached container state and emit transitions."""
         if event.name != self.instance.name:
             return
 
         if event.state == ContainerState.RUNNING:
             self._manual_stop = False
-            self.state = (
-                AppState.STARTUP if self.instance.healthcheck else AppState.STARTED
-            )
-        elif event.state in [
-            ContainerState.HEALTHY,
-            ContainerState.UNHEALTHY,
-        ]:
-            self.state = AppState.STARTED
-        elif event.state == ContainerState.STOPPED:
-            self.state = AppState.STOPPED
         elif event.state == ContainerState.FAILED:
             if event.exit_code == EXIT_CODE_SIGTERM_DEFAULT:
                 _LOGGER.warning(
@@ -1722,7 +1752,12 @@ class App(AppModel):
                     self.name,
                     event.exit_code,
                 )
-            self.state = AppState.ERROR
+
+        old_state = self.state
+        self._container_state = event.state
+        # An observed container state supersedes any prior operation error.
+        self._operation_error = False
+        self._emit_state_change(old_state)
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in app container and restart if necessary."""

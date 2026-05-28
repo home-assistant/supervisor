@@ -12,13 +12,47 @@ from typing import Any, Self
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from supervisor.const import BusEvent
+from supervisor.apps.app import App
+from supervisor.const import AppState, BusEvent
 from supervisor.coresys import CoreSys
+from supervisor.docker.const import ContainerState
 from supervisor.jobs.decorator import Job
 from supervisor.resolution.validate import get_valid_modules
 from supervisor.utils.yaml import read_yaml_file
 
 from .dbus_service_mocks.base import DBusServiceMock
+
+
+def force_app_state(app: App, state: AppState) -> None:
+    """Drive an app's derived state to ``state`` by setting underlying signals.
+
+    The ``App.state`` property is purely derived from the last observed
+    container state and an operation-error flag. Tests sometimes need a
+    specific AppState as setup without spinning up real Docker events;
+    this helper maps each AppState back to plausible signals and emits
+    the resulting transition through the normal side-effect path.
+    """
+    # pylint: disable=protected-access
+    old_state = app.state
+    app._operation_error = False
+    match state:
+        case AppState.UNKNOWN:
+            app._container_state = None
+        case AppState.STOPPED:
+            app._container_state = ContainerState.STOPPED
+        case AppState.STARTED:
+            app._container_state = ContainerState.HEALTHY
+        case AppState.STARTUP:
+            app._container_state = ContainerState.RUNNING
+            # STARTUP only resolves from RUNNING when the container has a
+            # healthcheck configured; ensure one is present in the mocked
+            # container metadata.
+            meta = app.instance._meta or {}
+            meta.setdefault("Config", {})["Healthcheck"] = {"Test": ["CMD", "true"]}
+            app.instance._meta = meta
+        case AppState.ERROR:
+            app._operation_error = True
+    app._emit_state_change(old_state)
 
 
 async def fire_bus_event(coresys: CoreSys, event: BusEvent, data: Any) -> None:
