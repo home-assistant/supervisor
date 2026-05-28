@@ -28,6 +28,7 @@ class Systemd(DBusServiceMock):
     reboot_watchdog_usec = 600000000
     kexec_watchdog_usec = 0
     service_watchdogs = True
+    system_state = "running"
     virtualization = ""
     response_get_unit: (
         dict[str, list[str | DBusError]] | list[str | DBusError] | str | DBusError
@@ -401,7 +402,7 @@ class Systemd(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def SystemState(self) -> "s":
         """Get SystemState."""
-        return "running"
+        return self.system_state
 
     @dbus_property(access=PropertyAccess.READ)
     def ExitCode(self) -> "y":

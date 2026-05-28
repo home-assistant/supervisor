@@ -15,6 +15,12 @@ from ..exceptions import (
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# First HAOS release whose hassos-supervisor.service has a stop timeout long
+# enough for the SIGTERM handler to run the managed shutdown while the host is
+# tearing down. On older releases Supervisor stops Core, apps and plugins
+# in-process before requesting the reboot/power off instead.
+HAOS_GRACEFUL_SHUTDOWN_MIN_VERSION = AwesomeVersion("18.0.dev20260527")
+
 
 class SystemControl(CoreSysAttributes):
     """Handle host power controls."""
@@ -38,6 +44,21 @@ class SystemControl(CoreSysAttributes):
             f"No {flag!s} D-Bus connection available", _LOGGER.error
         )
 
+    def _os_coordinates_graceful_shutdown(self) -> bool:
+        """Return True if the OS gives Supervisor time to shut down on teardown.
+
+        Newer HAOS releases give hassos-supervisor.service a long stop timeout,
+        so the SIGTERM handler can run the managed shutdown while the host is
+        tearing down (see __main__.py). On older releases (or when not running
+        HAOS) the timeout is too short, so Core, apps and plugins must be
+        stopped in-process before the reboot/power off is requested.
+        """
+        return (
+            self.coresys.os.available
+            and self.sys_os.version is not None
+            and self.sys_os.version >= HAOS_GRACEFUL_SHUTDOWN_MIN_VERSION
+        )
+
     async def reboot(self) -> None:
         """Reboot host system."""
         self._check_dbus(HostFeature.REBOOT)
@@ -48,7 +69,8 @@ class SystemControl(CoreSysAttributes):
         )
 
         try:
-            await self.sys_core.shutdown()
+            if not self._os_coordinates_graceful_shutdown():
+                await self.sys_core.shutdown()
         finally:
             if use_logind:
                 await self.sys_dbus.logind.reboot()
@@ -65,7 +87,8 @@ class SystemControl(CoreSysAttributes):
         )
 
         try:
-            await self.sys_core.shutdown()
+            if not self._os_coordinates_graceful_shutdown():
+                await self.sys_core.shutdown()
         finally:
             if use_logind:
                 await self.sys_dbus.logind.power_off()
