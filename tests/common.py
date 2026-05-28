@@ -38,6 +38,10 @@ def force_app_state(app: App, state: AppState) -> None:
     match state:
         case AppState.UNKNOWN:
             app._container_state = None
+            # The derivation falls back to STOPPED when ``instance.attached``
+            # is true; clear the docker metadata so the helper is
+            # deterministic regardless of prior fixture setup.
+            app.instance._meta = None
         case AppState.STOPPED:
             app._container_state = ContainerState.STOPPED
         case AppState.STARTED:
