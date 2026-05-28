@@ -28,7 +28,7 @@ class EvaluateOSVersion(EvaluateBase):
     @property
     def on_failure(self) -> str:
         """Return a string that is printed when self.evaluate is True."""
-        return f"OS version '{self.sys_os.version}' is more than 4 versions behind the latest '{self.sys_os.latest_version}'!"
+        return f"OS version '{self.sys_os.version}' is older than the last 4 major releases (latest '{self.sys_os.latest_version}')!"
 
     @property
     def states(self) -> list[CoreState]:
@@ -47,8 +47,8 @@ class EvaluateOSVersion(EvaluateBase):
         ):
             return False
 
-        # If current is more than 4 major versions behind latest, mark as unsupported
-        last_supported_version = AwesomeVersion(f"{int(latest.major) - 4}.0")
+        # Only the latest 4 major versions are supported; anything older is unsupported
+        last_supported_version = AwesomeVersion(f"{int(latest.major) - 3}.0")
         try:
             return current < last_supported_version
         except AwesomeVersionException as err:
