@@ -26,15 +26,15 @@ from .dbus_service_mocks.base import DBusServiceMock
 def force_app_state(app: App, state: AppState) -> None:
     """Drive an app's derived state to ``state`` by setting underlying signals.
 
-    The ``App.state`` property is purely derived from the last observed
-    container state and an operation-error flag. Tests sometimes need a
+    The ``App.state`` value is derived from the last observed container
+    state and a momentary operation-error signal. Tests sometimes need a
     specific AppState as setup without spinning up real Docker events;
     this helper maps each AppState back to plausible signals and routes
     them through the normal state update path.
     """
     # pylint: disable=protected-access
     container_state: ContainerState | None = None
-    operation_error: bool | None = False
+    operation_error = False
     match state:
         case AppState.UNKNOWN:
             # The derivation falls back to STOPPED when ``instance.attached``

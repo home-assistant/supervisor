@@ -150,10 +150,6 @@ class App(AppModel):
         self.instance: DockerApp = DockerApp(coresys, self)
         # Last observed container state; None until first event arrives.
         self._container_state: ContainerState | None = None
-        # Sticky flag for failures of start/stop operations that the docker
-        # event stream cannot reflect (e.g. container never came up). Cleared
-        # on the next observed container state change.
-        self._operation_error: bool = False
         # Cached app state. Updated only via ``_update_state`` so the value
         # consumers see matches what was last emitted.
         self._state: AppState = AppState.UNKNOWN
@@ -187,15 +183,16 @@ class App(AppModel):
         """Return current state of the app."""
         return self._state
 
-    def _derive_state(self) -> AppState:
+    def _derive_state(self, operation_error: bool) -> AppState:
         """Derive the app state from the cached docker signals.
 
         Falls back to install signals when no container has been observed
         yet: an attached instance (image present) is STOPPED, otherwise
-        UNKNOWN. A sticky operation error overrides the derivation until
-        the next container event arrives.
+        UNKNOWN. ``operation_error`` forces ERROR for start/stop failures
+        that the docker event stream cannot reflect (e.g. the container
+        never came up).
         """
-        if self._operation_error:
+        if operation_error:
             return AppState.ERROR
         match self._container_state:
             case ContainerState.RUNNING:
@@ -217,22 +214,21 @@ class App(AppModel):
         self,
         *,
         container_state: ContainerState | None = None,
-        operation_error: bool | None = None,
+        operation_error: bool = False,
     ) -> None:
-        """Update state-driving signals and emit a transition if anything changed.
+        """Update the cached container state and emit a transition if it changed.
 
-        Applies the given signal updates, re-derives the app state and
-        emits side effects if it differs from the cached state. ``None``
-        leaves a signal untouched; calling with no arguments simply
-        triggers a re-derivation (useful after ``attach()`` to settle the
-        state once the docker meta is known).
+        Re-derives the app state and emits side effects if it differs from
+        the cached state. ``container_state=None`` leaves the last observed
+        container state untouched (e.g. the argless call after ``attach()``
+        settles the state once the docker meta is known). ``operation_error``
+        is a momentary signal forcing ERROR for the current transition; a
+        later container observation supersedes it via the default.
         """
         if container_state is not None:
             self._container_state = container_state
-        if operation_error is not None:
-            self._operation_error = operation_error
 
-        new_state = self._derive_state()
+        new_state = self._derive_state(operation_error)
         if new_state == self._state:
             return
         old_state = self._state
@@ -943,9 +939,7 @@ class App(AppModel):
 
         # The container (and possibly the image) is gone; the state derives
         # back to UNKNOWN via the image-removed instance.
-        self._update_state(
-            container_state=ContainerState.UNKNOWN, operation_error=False
-        )
+        self._update_state(container_state=ContainerState.UNKNOWN)
 
         await self.unload()
 
@@ -1775,7 +1769,7 @@ class App(AppModel):
                 )
 
         # An observed container state supersedes any prior operation error.
-        self._update_state(container_state=event.state, operation_error=False)
+        self._update_state(container_state=event.state)
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in app container and restart if necessary."""
