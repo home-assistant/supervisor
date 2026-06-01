@@ -154,10 +154,9 @@ class App(AppModel):
         # event stream cannot reflect (e.g. container never came up). Cleared
         # on the next observed container state change.
         self._operation_error: bool = False
-        # Last AppState that listeners were notified about. Used to diff
-        # transitions even when ``state`` is shifted by an out-of-band change
-        # (e.g. ``instance.remove()`` clearing ``_meta`` during uninstall).
-        self._last_state: AppState = AppState.UNKNOWN
+        # Cached app state. Updated only via ``_update_state`` so the value
+        # consumers see matches what was last emitted.
+        self._state: AppState = AppState.UNKNOWN
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
@@ -185,7 +184,11 @@ class App(AppModel):
 
     @property
     def state(self) -> AppState:
-        """Return state of the app, derived from container state.
+        """Return current state of the app."""
+        return self._state
+
+    def _derive_state(self) -> AppState:
+        """Derive the app state from the cached docker signals.
 
         Falls back to install signals when no container has been observed
         yet: an attached instance (image present) is STOPPED, otherwise
@@ -218,23 +221,22 @@ class App(AppModel):
     ) -> None:
         """Update state-driving signals and emit a transition if anything changed.
 
-        Applies the given signal updates and emits a transition relative to
-        the last state listeners were notified about. ``None`` leaves a
-        signal untouched. Diffing against the last emitted state (rather
-        than the freshly derived one) lets callers rely on a consistent
-        transition even when an out-of-band mutation shifted the derivation
-        between updates (e.g. ``instance.remove()`` during uninstall).
+        Applies the given signal updates, re-derives the app state and
+        emits side effects if it differs from the cached state. ``None``
+        leaves a signal untouched; calling with no arguments simply
+        triggers a re-derivation (useful after ``attach()`` to settle the
+        state once the docker meta is known).
         """
         if container_state is not None:
             self._container_state = container_state
         if operation_error is not None:
             self._operation_error = operation_error
 
-        old_state = self._last_state
-        new_state = self.state
-        if old_state == new_state:
+        new_state = self._derive_state()
+        if new_state == self._state:
             return
-        self._last_state = new_state
+        old_state = self._state
+        self._state = new_state
 
         # Signal listeners about app state change
         if new_state == AppState.STARTED or old_state == AppState.STARTUP:
@@ -300,6 +302,7 @@ class App(AppModel):
             )
             with suppress(DockerError):
                 await self.instance.attach(version=self.version)
+            self._update_state()
             return
 
         default_image = self._image(self.data)
@@ -334,6 +337,11 @@ class App(AppModel):
 
         self.persist[ATTR_IMAGE] = default_image
         await self.save_persist()
+
+        # Settle the cached state now that attach() has run: image-only
+        # attaches do not fire a docker event, so without this an installed
+        # app stays in the constructor-default UNKNOWN until first start.
+        self._update_state()
 
     def _create_missing_image_issue(self) -> None:
         """Surface a repair suggestion for a missing app image."""
