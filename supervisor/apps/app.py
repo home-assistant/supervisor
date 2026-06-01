@@ -154,6 +154,10 @@ class App(AppModel):
         # event stream cannot reflect (e.g. container never came up). Cleared
         # on the next observed container state change.
         self._operation_error: bool = False
+        # Last AppState that listeners were notified about. Used to diff
+        # transitions even when ``state`` is shifted by an out-of-band change
+        # (e.g. ``instance.remove()`` clearing ``_meta`` during uninstall).
+        self._last_state: AppState = AppState.UNKNOWN
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
@@ -206,22 +210,31 @@ class App(AppModel):
                 # fall back to install status.
                 return AppState.STOPPED if self.instance.attached else AppState.UNKNOWN
 
-    def _set_operation_error(self) -> None:
-        """Mark a failed start/stop operation so state reflects an error."""
-        old_state = self.state
-        self._operation_error = True
-        self._emit_state_change(old_state)
+    def _update_state(
+        self,
+        *,
+        container_state: ContainerState | None = None,
+        operation_error: bool | None = None,
+    ) -> None:
+        """Update state-driving signals and emit a transition if anything changed.
 
-    def _emit_state_change(self, old_state: AppState) -> None:
-        """Run side effects after a state transition.
-
-        Compares the previous (passed-in) state against the freshly derived
-        current state and fires listeners, dismisses related issues and
-        notifies the websocket if anything changed.
+        Applies the given signal updates and emits a transition relative to
+        the last state listeners were notified about. ``None`` leaves a
+        signal untouched. Diffing against the last emitted state (rather
+        than the freshly derived one) lets callers rely on a consistent
+        transition even when an out-of-band mutation shifted the derivation
+        between updates (e.g. ``instance.remove()`` during uninstall).
         """
+        if container_state is not None:
+            self._container_state = container_state
+        if operation_error is not None:
+            self._operation_error = operation_error
+
+        old_state = self._last_state
         new_state = self.state
         if old_state == new_state:
             return
+        self._last_state = new_state
 
         # Signal listeners about app state change
         if new_state == AppState.STARTED or old_state == AppState.STARTUP:
@@ -914,17 +927,17 @@ class App(AppModel):
         self, *, remove_config: bool, remove_image: bool = True
     ) -> None:
         """Uninstall and cleanup this app."""
-        old_state = self.state
         try:
             await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
             _LOGGER.error("Could not remove image for app %s: %s", self.slug, err)
             raise AppUnknownError(app=self.slug) from err
 
-        # Reset cached signals so state derives back to UNKNOWN.
-        self._container_state = None
-        self._operation_error = False
-        self._emit_state_change(old_state)
+        # The container (and possibly the image) is gone; the state derives
+        # back to UNKNOWN via the image-removed instance.
+        self._update_state(
+            container_state=ContainerState.UNKNOWN, operation_error=False
+        )
 
         await self.unload()
 
@@ -1248,7 +1261,7 @@ class App(AppModel):
             ) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for app %s: %s", self.slug, err)
-            self._set_operation_error()
+            self._update_state(operation_error=True)
             raise AppUnknownError(app=self.slug) from err
 
         self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
@@ -1266,7 +1279,7 @@ class App(AppModel):
             await self.instance.stop()
         except DockerError as err:
             _LOGGER.error("Could not stop container for app %s: %s", self.slug, err)
-            self._set_operation_error()
+            self._update_state(operation_error=True)
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
@@ -1753,11 +1766,8 @@ class App(AppModel):
                     event.exit_code,
                 )
 
-        old_state = self.state
-        self._container_state = event.state
         # An observed container state supersedes any prior operation error.
-        self._operation_error = False
-        self._emit_state_change(old_state)
+        self._update_state(container_state=event.state, operation_error=False)
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in app container and restart if necessary."""

@@ -29,25 +29,25 @@ def force_app_state(app: App, state: AppState) -> None:
     The ``App.state`` property is purely derived from the last observed
     container state and an operation-error flag. Tests sometimes need a
     specific AppState as setup without spinning up real Docker events;
-    this helper maps each AppState back to plausible signals and emits
-    the resulting transition through the normal side-effect path.
+    this helper maps each AppState back to plausible signals and routes
+    them through the normal state update path.
     """
     # pylint: disable=protected-access
-    old_state = app.state
-    app._operation_error = False
+    container_state: ContainerState | None = None
+    operation_error: bool | None = False
     match state:
         case AppState.UNKNOWN:
-            app._container_state = None
             # The derivation falls back to STOPPED when ``instance.attached``
             # is true; clear the docker metadata so the helper is
             # deterministic regardless of prior fixture setup.
             app.instance._meta = None
+            container_state = ContainerState.UNKNOWN
         case AppState.STOPPED:
-            app._container_state = ContainerState.STOPPED
+            container_state = ContainerState.STOPPED
         case AppState.STARTED:
-            app._container_state = ContainerState.HEALTHY
+            container_state = ContainerState.HEALTHY
         case AppState.STARTUP:
-            app._container_state = ContainerState.RUNNING
+            container_state = ContainerState.RUNNING
             # STARTUP only resolves from RUNNING when the container has a
             # healthcheck configured; ensure one is present in the mocked
             # container metadata.
@@ -55,8 +55,8 @@ def force_app_state(app: App, state: AppState) -> None:
             meta.setdefault("Config", {})["Healthcheck"] = {"Test": ["CMD", "true"]}
             app.instance._meta = meta
         case AppState.ERROR:
-            app._operation_error = True
-    app._emit_state_change(old_state)
+            operation_error = True
+    app._update_state(container_state=container_state, operation_error=operation_error)
 
 
 async def fire_bus_event(coresys: CoreSys, event: BusEvent, data: Any) -> None:
