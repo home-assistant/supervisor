@@ -2,7 +2,8 @@ ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.22-2026.05.0
 FROM ${BUILD_FROM} AS supervisor-base
 
 ENV \
-    S6_SERVICES_GRACETIME=10000 \
+    S6_SERVICES_GRACETIME=415000 \
+    S6_KILL_GRACETIME=3000 \
     SUPERVISOR_API=http://localhost \
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 \
     UV_SYSTEM_PYTHON=true
