@@ -220,10 +220,9 @@ class App(AppModel):
 
         Re-derives the app state and emits side effects if it differs from
         the cached state. ``container_state=None`` leaves the last observed
-        container state untouched (e.g. the argless call after ``attach()``
-        settles the state once the docker meta is known). ``operation_error``
-        is a momentary signal forcing ERROR for the current transition; a
-        later container observation supersedes it via the default.
+        container state untouched. ``operation_error`` is a momentary signal
+        forcing ERROR for the current transition; a later container
+        observation supersedes it via the default.
         """
         if container_state is not None:
             self._container_state = container_state
@@ -298,7 +297,7 @@ class App(AppModel):
             )
             with suppress(DockerError):
                 await self.instance.attach(version=self.version)
-            self._update_state()
+                self._update_state(container_state=await self.instance.current_state())
             return
 
         default_image = self._image(self.data)
@@ -334,10 +333,12 @@ class App(AppModel):
         self.persist[ATTR_IMAGE] = default_image
         await self.save_persist()
 
-        # Settle the cached state now that attach() has run: image-only
-        # attaches do not fire a docker event, so without this an installed
-        # app stays in the constructor-default UNKNOWN until first start.
-        self._update_state()
+        # Settle the cached state from the attached container (UNKNOWN when
+        # only an image is present, which derives to STOPPED). attach() emits
+        # its runtime event asynchronously, so query synchronously here rather
+        # than racing that event during load.
+        with suppress(DockerError):
+            self._update_state(container_state=await self.instance.current_state())
 
     def _create_missing_image_issue(self) -> None:
         """Surface a repair suggestion for a missing app image."""

@@ -126,7 +126,10 @@ def test_options_merge(coresys: CoreSys, install_app_ssh: App) -> None:
 
 async def test_app_state_listener(coresys: CoreSys, install_app_ssh: App) -> None:
     """Test app is setting state from docker events."""
-    with patch.object(DockerApp, "attach"):
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(DockerApp, "current_state", return_value=ContainerState.UNKNOWN),
+    ):
         await install_app_ssh.load()
 
     assert install_app_ssh.state == AppState.UNKNOWN
@@ -460,6 +463,19 @@ async def test_listeners_removed_on_uninstall(
             listener
             not in coresys.bus._listeners[BusEvent.DOCKER_CONTAINER_STATE_CHANGE]
         )
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_load_settles_state_from_running_container(
+    install_app_ssh: App, container: DockerContainer
+) -> None:
+    """Test load derives the state from a running container, not the default."""
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    await install_app_ssh.load()
+    # State is settled synchronously from current_state(), so it reflects the
+    # running container immediately rather than the image-only STOPPED default.
+    assert install_app_ssh.state == AppState.STARTED
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
