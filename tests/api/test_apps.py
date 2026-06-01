@@ -23,6 +23,7 @@ from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HassioError
 from supervisor.store.repository import Repository
 
+from ..common import force_app_state
 from ..const import TEST_ADDON_SLUG
 
 
@@ -41,7 +42,7 @@ async def test_apps_info(
 ):
     """Test getting app info."""
     client, root = app_api_client_with_root
-    install_app_ssh.state = AppState.STOPPED
+    force_app_state(install_app_ssh, AppState.STOPPED)
     install_app_ssh.ingress_panel = True
     install_app_ssh.protected = True
     install_app_ssh.watchdog = False

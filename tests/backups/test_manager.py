@@ -43,7 +43,7 @@ from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils.json import read_json_file, write_json_file
 
-from tests.common import get_fixture_path
+from tests.common import force_app_state, get_fixture_path
 from tests.const import TEST_ADDON_SLUG
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
@@ -1255,7 +1255,7 @@ async def test_restore_progress(
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
     install_app_ssh.path_data.mkdir()
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
@@ -1387,7 +1387,7 @@ async def test_restore_progress(
 
     container.show.return_value["State"]["Status"] = "stopped"
     container.show.return_value["State"]["Running"] = False
-    install_app_ssh.state = AppState.STOPPED
+    force_app_state(install_app_ssh, AppState.STOPPED)
     app_backup: Backup = await coresys.backups.do_backup_partial(apps=["local_ssh"])
 
     ha_ws_client.async_send_command.reset_mock()
