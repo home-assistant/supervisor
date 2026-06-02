@@ -1,5 +1,7 @@
 """Test host control."""
 
+from unittest.mock import patch
+
 from dbus_fast import DBusError, ErrorType
 import pytest
 
@@ -8,6 +10,7 @@ from supervisor.exceptions import HostInvalidHostnameError
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.hostname import Hostname as HostnameService
+from tests.dbus_service_mocks.logind import Logind as LogindService
 from tests.dbus_service_mocks.timedate import TimeDate as TimeDateService
 
 
@@ -73,3 +76,49 @@ async def test_set_timezone_unsupported(
 
     await coresys.host.control.set_timezone("Europe/Prague")
     assert timedate_service.SetTimezone.calls == []
+
+
+@pytest.mark.parametrize(
+    ("os_available", "in_process_shutdown"),
+    [("18.0", False), ("17.3", True)],
+    indirect=["os_available"],
+    ids=["new-os", "old-os"],
+)
+async def test_reboot_graceful_shutdown_gating(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available: str,
+    in_process_shutdown: bool,
+):
+    """reboot() stops Core in-process only on OS too old for coordinated shutdown."""
+    logind_service: LogindService = all_dbus_services["logind"]
+    logind_service.Reboot.calls.clear()
+
+    with patch.object(coresys.core, "shutdown") as core_shutdown:
+        await coresys.host.control.reboot()
+
+    assert core_shutdown.called is in_process_shutdown
+    assert len(logind_service.Reboot.calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("os_available", "in_process_shutdown"),
+    [("18.0", False), ("17.3", True)],
+    indirect=["os_available"],
+    ids=["new-os", "old-os"],
+)
+async def test_shutdown_graceful_shutdown_gating(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available: str,
+    in_process_shutdown: bool,
+):
+    """shutdown() stops Core in-process only on OS too old for coordinated shutdown."""
+    logind_service: LogindService = all_dbus_services["logind"]
+    logind_service.PowerOff.calls.clear()
+
+    with patch.object(coresys.core, "shutdown") as core_shutdown:
+        await coresys.host.control.shutdown()
+
+    assert core_shutdown.called is in_process_shutdown
+    assert len(logind_service.PowerOff.calls) == 1

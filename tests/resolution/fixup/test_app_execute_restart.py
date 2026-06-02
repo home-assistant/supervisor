@@ -14,6 +14,7 @@ from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 from supervisor.resolution.fixups.app_execute_restart import FixupAppExecuteRestart
 
+from tests.common import force_app_state
 from tests.const import TEST_ADDON_SLUG
 
 DEVICE_ACCESS_MISSING_ISSUE = Issue(
@@ -29,12 +30,12 @@ EXECUTE_RESTART_SUGGESTION = Suggestion(
 @pytest.mark.usefixtures("path_extern")
 async def test_fixup(coresys: CoreSys, install_app_ssh: App):
     """Test fixup restarts app."""
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     app_execute_restart = FixupAppExecuteRestart(coresys)
     assert app_execute_restart.auto is False
 
     async def mock_stop(*args, **kwargs):
-        install_app_ssh.state = AppState.STOPPED
+        force_app_state(install_app_ssh, AppState.STOPPED)
 
     coresys.resolution.add_issue(
         DEVICE_ACCESS_MISSING_ISSUE,
@@ -59,7 +60,7 @@ async def test_fixup_stop_error(
     coresys: CoreSys, install_app_ssh: App, caplog: pytest.LogCaptureFixture
 ):
     """Test fixup fails on stop app failure."""
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     app_execute_start = FixupAppExecuteRestart(coresys)
 
     coresys.resolution.add_issue(
@@ -83,7 +84,7 @@ async def test_fixup_start_error(
     coresys: CoreSys, install_app_ssh: App, caplog: pytest.LogCaptureFixture
 ):
     """Test fixup logs a start app failure."""
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     app_execute_start = FixupAppExecuteRestart(coresys)
 
     coresys.resolution.add_issue(

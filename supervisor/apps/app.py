@@ -148,6 +148,10 @@ class App(AppModel):
         """Initialize data holder."""
         super().__init__(coresys, slug)
         self.instance: DockerApp = DockerApp(coresys, self)
+        # Last observed container state; None until first event arrives.
+        self._container_state: ContainerState | None = None
+        # Cached app state. Updated only via ``_update_state`` so the value
+        # consumers see matches what was last emitted.
         self._state: AppState = AppState.UNKNOWN
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
@@ -176,13 +180,55 @@ class App(AppModel):
 
     @property
     def state(self) -> AppState:
-        """Return state of the app."""
+        """Return current state of the app."""
         return self._state
 
-    @state.setter
-    def state(self, new_state: AppState) -> None:
-        """Set the app into new state."""
-        if self._state == new_state:
+    def _derive_state(self, operation_error: bool) -> AppState:
+        """Derive the app state from the cached docker signals.
+
+        Falls back to install signals when no container has been observed
+        yet: an attached instance (image present) is STOPPED, otherwise
+        UNKNOWN. ``operation_error`` forces ERROR for start/stop failures
+        that the docker event stream cannot reflect (e.g. the container
+        never came up).
+        """
+        if operation_error:
+            return AppState.ERROR
+        match self._container_state:
+            case ContainerState.RUNNING:
+                return (
+                    AppState.STARTUP if self.instance.healthcheck else AppState.STARTED
+                )
+            case ContainerState.HEALTHY | ContainerState.UNHEALTHY:
+                return AppState.STARTED
+            case ContainerState.STOPPED:
+                return AppState.STOPPED
+            case ContainerState.FAILED:
+                return AppState.ERROR
+            case _:
+                # No container observed (None) or container missing (UNKNOWN):
+                # fall back to install status.
+                return AppState.STOPPED if self.instance.attached else AppState.UNKNOWN
+
+    def _update_state(
+        self,
+        *,
+        container_state: ContainerState | None = None,
+        operation_error: bool = False,
+    ) -> None:
+        """Update the cached container state and emit a transition if it changed.
+
+        Re-derives the app state and emits side effects if it differs from
+        the cached state. ``container_state=None`` leaves the last observed
+        container state untouched. ``operation_error`` is a momentary signal
+        forcing ERROR for the current transition; a later container
+        observation supersedes it via the default.
+        """
+        if container_state is not None:
+            self._container_state = container_state
+
+        new_state = self._derive_state(operation_error)
+        if new_state == self._state:
             return
         old_state = self._state
         self._state = new_state
@@ -251,6 +297,7 @@ class App(AppModel):
             )
             with suppress(DockerError):
                 await self.instance.attach(version=self.version)
+                self._update_state(container_state=await self.instance.current_state())
             return
 
         default_image = self._image(self.data)
@@ -285,6 +332,13 @@ class App(AppModel):
 
         self.persist[ATTR_IMAGE] = default_image
         await self.save_persist()
+
+        # Settle the cached state from the attached container (UNKNOWN when
+        # only an image is present, which derives to STOPPED). attach() emits
+        # its runtime event asynchronously, so query synchronously here rather
+        # than racing that event during load.
+        with suppress(DockerError):
+            self._update_state(container_state=await self.instance.current_state())
 
     def _create_missing_image_issue(self) -> None:
         """Surface a repair suggestion for a missing app image."""
@@ -884,7 +938,9 @@ class App(AppModel):
             _LOGGER.error("Could not remove image for app %s: %s", self.slug, err)
             raise AppUnknownError(app=self.slug) from err
 
-        self.state = AppState.UNKNOWN
+        # The container (and possibly the image) is gone; the state derives
+        # back to UNKNOWN via the image-removed instance.
+        self._update_state(container_state=ContainerState.UNKNOWN)
 
         await self.unload()
 
@@ -1208,7 +1264,7 @@ class App(AppModel):
             ) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for app %s: %s", self.slug, err)
-            self.state = AppState.ERROR
+            self._update_state(operation_error=True)
             raise AppUnknownError(app=self.slug) from err
 
         self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
@@ -1226,7 +1282,7 @@ class App(AppModel):
             await self.instance.stop()
         except DockerError as err:
             _LOGGER.error("Could not stop container for app %s: %s", self.slug, err)
-            self.state = AppState.ERROR
+            self._update_state(operation_error=True)
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
@@ -1690,22 +1746,12 @@ class App(AppModel):
             await asyncio.sleep(delay)
 
     async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
-        """Set app state from container state."""
+        """Update cached container state and emit transitions."""
         if event.name != self.instance.name:
             return
 
         if event.state == ContainerState.RUNNING:
             self._manual_stop = False
-            self.state = (
-                AppState.STARTUP if self.instance.healthcheck else AppState.STARTED
-            )
-        elif event.state in [
-            ContainerState.HEALTHY,
-            ContainerState.UNHEALTHY,
-        ]:
-            self.state = AppState.STARTED
-        elif event.state == ContainerState.STOPPED:
-            self.state = AppState.STOPPED
         elif event.state == ContainerState.FAILED:
             if event.exit_code == EXIT_CODE_SIGTERM_DEFAULT:
                 _LOGGER.warning(
@@ -1722,7 +1768,9 @@ class App(AppModel):
                     self.name,
                     event.exit_code,
                 )
-            self.state = AppState.ERROR
+
+        # An observed container state supersedes any prior operation error.
+        self._update_state(container_state=event.state)
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in app container and restart if necessary."""

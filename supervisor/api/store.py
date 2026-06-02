@@ -192,15 +192,11 @@ class APIStore(CoreSysAttributes):
         }
 
     async def _all_store_apps_info(self) -> list[dict[str, Any]]:
-        """Return gathered info for all apps in the store."""
-        return list(
-            await asyncio.gather(
-                *[
-                    self._generate_app_information(self.sys_apps.store[app])
-                    for app in self.sys_apps.store
-                ]
-            )
-        )
+        """Return info for all apps in the store."""
+        return [
+            await self._generate_app_information(self.sys_apps.store[app])
+            for app in self.sys_apps.store
+        ]
 
     @api_process
     async def reload(self, request: web.Request) -> None:

@@ -14,6 +14,7 @@ from supervisor.resolution.data import Suggestion
 from supervisor.resolution.fixups.app_execute_start import FixupAppExecuteStart
 
 from tests.apps.test_manager import BOOT_FAIL_ISSUE
+from tests.common import force_app_state
 
 EXECUTE_START_SUGGESTION = Suggestion(
     SuggestionType.EXECUTE_START, ContextType.ADDON, reference="local_ssh"
@@ -26,12 +27,12 @@ EXECUTE_START_SUGGESTION = Suggestion(
 @pytest.mark.usefixtures("path_extern")
 async def test_fixup(coresys: CoreSys, install_app_ssh: App, state: AppState):
     """Test fixup starts app."""
-    install_app_ssh.state = AppState.UNKNOWN
+    force_app_state(install_app_ssh, AppState.UNKNOWN)
     app_execute_start = FixupAppExecuteStart(coresys)
     assert app_execute_start.auto is False
 
     async def mock_start(*args, **kwargs):
-        install_app_ssh.state = state
+        force_app_state(install_app_ssh, state)
 
     coresys.resolution.add_issue(
         BOOT_FAIL_ISSUE,
@@ -52,7 +53,7 @@ async def test_fixup(coresys: CoreSys, install_app_ssh: App, state: AppState):
 @pytest.mark.usefixtures("path_extern")
 async def test_fixup_start_error(coresys: CoreSys, install_app_ssh: App):
     """Test fixup fails on start app failure."""
-    install_app_ssh.state = AppState.UNKNOWN
+    force_app_state(install_app_ssh, AppState.UNKNOWN)
     app_execute_start = FixupAppExecuteStart(coresys)
 
     coresys.resolution.add_issue(
@@ -76,11 +77,11 @@ async def test_fixup_wait_start_failure(
     coresys: CoreSys, install_app_ssh: App, state: AppState
 ):
     """Test fixup fails if app does not complete startup."""
-    install_app_ssh.state = AppState.UNKNOWN
+    force_app_state(install_app_ssh, AppState.UNKNOWN)
     app_execute_start = FixupAppExecuteStart(coresys)
 
     async def mock_start(*args, **kwargs):
-        install_app_ssh.state = state
+        force_app_state(install_app_ssh, state)
 
     coresys.resolution.add_issue(
         BOOT_FAIL_ISSUE,
