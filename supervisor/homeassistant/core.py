@@ -187,6 +187,13 @@ class HomeAssistantCore(JobGroup):
         name="home_assistant_core_install",
         on_condition=HomeAssistantJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        # We assume for now the docker image pull is 100% of this task. But from
+        # a user perspective that isn't true. Other steps that take time which
+        # is not accounted for in progress include: image cleanup and Home
+        # Assistant start.
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
     )
     async def install(self) -> None:
         """Install Home Assistant Core."""
