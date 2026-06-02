@@ -3,10 +3,12 @@
 from unittest.mock import Mock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError, ErrorType
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.agent.boards.interface import BoardProxy
 from supervisor.host.control import SystemControl
 from supervisor.os.manager import OSManager
@@ -16,6 +18,9 @@ from supervisor.resolution.data import Issue, Suggestion
 from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 from tests.dbus_service_mocks.agent_boards_green import Green as GreenService
+from tests.dbus_service_mocks.agent_boards_rpi_firmware import (
+    RPiFirmware as RPiFirmwareService,
+)
 from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.agent_swap import Swap as SwapService
@@ -30,6 +35,18 @@ async def fixture_boards_service(
 ) -> BoardsService:
     """Return mock Boards service."""
     return os_agent_services["agent_boards"]
+
+
+@pytest.fixture
+async def os_agent_version(request: pytest.FixtureRequest) -> None:
+    """Mock OS Agent version."""
+    version = (
+        AwesomeVersion(request.param)
+        if hasattr(request, "param")
+        else AwesomeVersion("1.9.0")
+    )
+    with patch.object(OSAgent, "version", new=PropertyMock(return_value=version)):
+        yield
 
 
 async def test_api_os_info(api_client_with_prefix: tuple[TestClient, str]):
@@ -550,4 +567,128 @@ async def test_api_config_swap_old_os(
             "swappiness": 10,
         },
     )
+    assert resp.status == 404
+
+
+@pytest.mark.usefixtures("os_agent_version")
+async def test_api_board_raspberrypi_info(
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test Raspberry Pi firmware info endpoint."""
+    api_client, prefix = api_client_with_prefix
+
+    resp = await api_client.get(f"{prefix}/os/boards/raspberrypi/firmware")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"] == {
+        "current_version": "1618412973",
+        "latest_version": "1700000000",
+        "update_available": True,
+        "update_blocked": False,
+        "update_pending": False,
+        "blocked_reason": None,
+    }
+
+
+@pytest.mark.usefixtures("os_agent_version")
+async def test_api_board_raspberrypi_info_blocked_creates_issue(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """GET on raspberrypi info while blocked raises a repair issue."""
+    api_client, prefix = api_client_with_prefix
+    rpi_service: RPiFirmwareService = os_agent_services["agent_boards_rpi_firmware"]
+    rpi_service.set_state(update_blocked=True, blocked_reason="unsupported_boot_device")
+    await coresys.dbus.agent.board.rpi_firmware.update()
+
+    resp = await api_client.get(f"{prefix}/os/boards/raspberrypi/firmware")
+    assert resp.status == 200
+    assert (
+        Issue(IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM)
+        in coresys.resolution.issues
+    )
+
+    # Clearing the blocked state dismisses the issue on the next info call.
+    rpi_service.set_state(update_blocked=False, blocked_reason="")
+    await coresys.dbus.agent.board.rpi_firmware.update()
+    resp = await api_client.get(f"{prefix}/os/boards/raspberrypi/firmware")
+    assert resp.status == 200
+    assert (
+        Issue(IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM)
+        not in coresys.resolution.issues
+    )
+
+
+@pytest.mark.usefixtures("os_agent_version")
+async def test_api_board_raspberrypi_update(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Successful firmware update creates REBOOT_REQUIRED issue."""
+    api_client, prefix = api_client_with_prefix
+    rpi_service: RPiFirmwareService = os_agent_services["agent_boards_rpi_firmware"]
+    assert rpi_service.update_called is False
+
+    resp = await api_client.post(f"{prefix}/os/boards/raspberrypi/firmware/update")
+    assert resp.status == 200
+
+    await rpi_service.ping()
+    assert rpi_service.update_called is True
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        in coresys.resolution.issues
+    )
+    assert (
+        Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
+        in coresys.resolution.suggestions
+    )
+
+
+@pytest.mark.usefixtures("os_agent_version")
+async def test_api_board_raspberrypi_update_blocked(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """POST to raspberrypi update on a blocked device returns an error and surfaces the repair issue."""
+    api_client, prefix = api_client_with_prefix
+    rpi_service: RPiFirmwareService = os_agent_services["agent_boards_rpi_firmware"]
+    rpi_service.set_state(update_blocked=True, blocked_reason="unsupported_boot_device")
+    await coresys.dbus.agent.board.rpi_firmware.update()
+
+    resp = await api_client.post(f"{prefix}/os/boards/raspberrypi/firmware/update")
+    assert resp.status == 400
+    assert rpi_service.update_called is False
+    assert (
+        Issue(IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM)
+        in coresys.resolution.issues
+    )
+    # No reboot issue should be raised when the update was rejected.
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        not in coresys.resolution.issues
+    )
+
+
+@pytest.mark.parametrize("os_agent_version", ["1.8.0"], indirect=True)
+async def test_api_board_raspberrypi_requires_os_agent_version(
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+    os_agent_version,  # pylint: disable=redefined-outer-name
+):
+    """Test 404 is returned for raspberrypi endpoints on an OS Agent older than 1.9.0."""
+    api_client, prefix = api_client_with_prefix
+
+    resp = await api_client.get(f"{prefix}/os/boards/raspberrypi/firmware")
+    assert resp.status == 404
+
+    resp = await api_client.post(f"{prefix}/os/boards/raspberrypi/firmware/update")
     assert resp.status == 404

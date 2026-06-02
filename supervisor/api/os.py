@@ -7,16 +7,20 @@ import re
 from typing import Any
 
 from aiohttp import web
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from ..const import (
     ATTR_ACTIVITY_LED,
+    ATTR_BLOCKED_REASON,
     ATTR_BOARD,
     ATTR_BOOT,
+    ATTR_CURRENT_VERSION,
     ATTR_DEVICES,
     ATTR_DISK_LED,
     ATTR_HEARTBEAT_LED,
     ATTR_ID,
+    ATTR_LATEST_VERSION,
     ATTR_NAME,
     ATTR_POWER_LED,
     ATTR_SERIAL,
@@ -25,12 +29,15 @@ from ..const import (
     ATTR_SWAP_SIZE,
     ATTR_SWAPPINESS,
     ATTR_UPDATE_AVAILABLE,
+    ATTR_UPDATE_BLOCKED,
+    ATTR_UPDATE_PENDING,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APINotFound, BoardInvalidError
+from ..exceptions import APIError, APINotFound, BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.data import Issue
 from ..validate import version_tag
 from .const import (
     ATTR_BOOT_SLOT,
@@ -48,6 +55,10 @@ from .const import (
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Raspberry Pi firmware management requires the io.hass.os.Boards.RaspberryPi
+# .Firmware D-Bus interface first shipped in this OS Agent release.
+RPI_FIRMWARE_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.9.0")
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
@@ -214,6 +225,68 @@ class APIOS(CoreSysAttributes):
             ContextType.SYSTEM,
             suggestions=[SuggestionType.EXECUTE_REBOOT],
         )
+
+    def _check_rpi_firmware_available(self) -> None:
+        """Reject the request unless Raspberry Pi firmware management is usable."""
+        if (
+            not self.sys_dbus.agent.is_connected
+            or self.sys_dbus.agent.version < RPI_FIRMWARE_MIN_OS_AGENT_VERSION
+        ):
+            raise APINotFound(
+                f"OS Agent {RPI_FIRMWARE_MIN_OS_AGENT_VERSION} or newer required "
+                "for Raspberry Pi firmware management"
+            )
+
+        if not self.sys_dbus.agent.board.has_rpi_firmware:
+            raise BoardInvalidError(
+                "Raspberry Pi firmware is not available on this board", _LOGGER.error
+            )
+
+    @api_process
+    async def boards_raspberrypi_firmware_info(
+        self, request: web.Request
+    ) -> dict[str, Any]:
+        """Get Raspberry Pi firmware state."""
+        self._check_rpi_firmware_available()
+        rpi = self.sys_dbus.agent.board.rpi_firmware
+        self._sync_rpi_firmware_blocked_issue(rpi.update_blocked)
+        return {
+            ATTR_CURRENT_VERSION: rpi.current_version,
+            ATTR_LATEST_VERSION: rpi.latest_version,
+            ATTR_UPDATE_AVAILABLE: rpi.update_available,
+            ATTR_UPDATE_BLOCKED: rpi.update_blocked,
+            ATTR_UPDATE_PENDING: rpi.update_pending,
+            ATTR_BLOCKED_REASON: rpi.blocked_reason,
+        }
+
+    @api_process
+    async def boards_raspberrypi_firmware_update(self, request: web.Request) -> None:
+        """Trigger Raspberry Pi firmware (and VL805 where present) update."""
+        self._check_rpi_firmware_available()
+
+        # Reject early without scheduling the update job. The OS manager would
+        # also reject it, but raising here keeps the resolution state in sync
+        # without waiting for the next coordinator poll.
+        if self.sys_dbus.agent.board.rpi_firmware.update_blocked:
+            self._sync_rpi_firmware_blocked_issue(True)
+            raise APIError(
+                "Raspberry Pi firmware update is unavailable on this boot device",
+                _LOGGER.warning,
+            )
+
+        await asyncio.shield(self.sys_os.update_raspberrypi_firmware())
+
+    def _sync_rpi_firmware_blocked_issue(self, blocked: bool) -> None:
+        """Create or dismiss the RPI_FIRMWARE_UPDATE_BLOCKED issue based on agent state."""
+        issue = Issue(IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM)
+        existing = self.sys_resolution.get_issue_if_present(issue)
+        if blocked:
+            if existing is None:
+                self.sys_resolution.create_issue(
+                    IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM
+                )
+        elif existing is not None:
+            self.sys_resolution.dismiss_issue(existing)
 
     @api_process
     async def boards_other_info(self, request: web.Request) -> dict[str, Any]:

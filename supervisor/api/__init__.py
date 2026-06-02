@@ -313,6 +313,14 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/os/boards/green", api_os.boards_green_info),
                 web.post("/os/boards/green", api_os.boards_green_options),
+                web.get(
+                    "/os/boards/raspberrypi/firmware",
+                    api_os.boards_raspberrypi_firmware_info,
+                ),
+                web.post(
+                    "/os/boards/raspberrypi/firmware/update",
+                    api_os.boards_raspberrypi_firmware_update,
+                ),
                 web.get("/os/boards/yellow", api_os.boards_yellow_info),
                 web.post("/os/boards/yellow", api_os.boards_yellow_options),
                 web.get("/os/boards/{board}", api_os.boards_other_info),

@@ -21,6 +21,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -329,6 +330,48 @@ class OSManager(CoreSysAttributes):
             self.sys_dbus.rauc.last_error,
         )
         raise HassOSUpdateError
+
+    @Job(
+        name="os_manager_update_raspberrypi_firmware",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        concurrency=JobConcurrency.REJECT,
+    )
+    async def update_raspberrypi_firmware(self) -> None:
+        """Update Raspberry Pi firmware (and VL805 where present).
+
+        Always raises a REBOOT_REQUIRED issue on success — the running
+        bootloader is the old one until reboot, regardless of whether the
+        update was flashed live (BCM2712) or staged for next boot (BCM2711).
+        """
+        if not self.sys_dbus.agent.board.has_rpi_firmware:
+            raise HassOSJobError(
+                "Raspberry Pi firmware is not available on this board",
+                _LOGGER.error,
+            )
+
+        rpi = self.sys_dbus.agent.board.rpi_firmware
+        if rpi.update_blocked:
+            raise HassOSJobError(
+                "Raspberry Pi firmware update is unavailable on this boot device",
+                _LOGGER.warning,
+            )
+
+        try:
+            await rpi.update_firmware()
+        except DBusError as err:
+            raise HassOSJobError(
+                f"Raspberry Pi firmware update failed: {err}. "
+                "Check the Host logs for details.",
+                _LOGGER.error,
+            ) from err
+
+        _LOGGER.info("Raspberry Pi firmware update completed; reboot required")
+        self.sys_resolution.create_issue(
+            IssueType.REBOOT_REQUIRED,
+            ContextType.SYSTEM,
+            suggestions=[SuggestionType.EXECUTE_REBOOT],
+        )
 
     @Job(name="os_manager_mark_healthy", conditions=[JobCondition.HAOS], internal=True)
     async def mark_healthy(self) -> None:
