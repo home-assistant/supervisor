@@ -35,7 +35,7 @@ from ..const import (
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APINotFound, BoardInvalidError
+from ..exceptions import APIError, APINotFound, BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..resolution.data import Issue
 from ..validate import version_tag
@@ -263,11 +263,15 @@ class APIOS(CoreSysAttributes):
         """Trigger Raspberry Pi firmware (and VL805 where present) update."""
         self._check_rpi_firmware_available()
 
-        # If blocked, surface the repair issue and reject early. The OS
-        # manager would also reject it, but raising here keeps the resolution
-        # state in sync without waiting for the next coordinator poll.
+        # Reject early without scheduling the update job. The OS manager would
+        # also reject it, but raising here keeps the resolution state in sync
+        # without waiting for the next coordinator poll.
         if self.sys_dbus.agent.board.rpi_firmware.update_blocked:
             self._sync_rpi_firmware_blocked_issue(True)
+            raise APIError(
+                "Raspberry Pi firmware update is unavailable on this boot device",
+                _LOGGER.warning,
+            )
 
         await asyncio.shield(self.sys_os.update_raspberrypi_firmware())
 
