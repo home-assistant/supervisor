@@ -166,12 +166,16 @@ class RegistryManifestFetcher:
             token_url += f"&service={service}"
 
         # Check for credentials
-        auth = None
+        headers = None
         credentials = self._get_credentials(registry)
         if credentials:
             username, password = credentials
             if username and password:
-                auth = aiohttp.BasicAuth(username, password)
+                headers = {
+                    aiohttp.hdrs.AUTHORIZATION: aiohttp.encode_basic_auth(
+                        username, password
+                    )
+                }
                 _LOGGER.info(
                     "Using stored registry credentials for %s (user: %s) to fetch manifest for %s",
                     registry,
@@ -180,7 +184,7 @@ class RegistryManifestFetcher:
                 )
 
         try:
-            async with self._session.get(token_url, auth=auth) as resp:
+            async with self._session.get(token_url, headers=headers) as resp:
                 if resp.status != 200:
                     _LOGGER.warning(
                         "Failed to get token from %s: %d", realm, resp.status
