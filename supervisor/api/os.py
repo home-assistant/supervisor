@@ -228,10 +228,6 @@ class APIOS(CoreSysAttributes):
 
     def _check_rpi_firmware_available(self) -> None:
         """Reject the request unless Raspberry Pi firmware management is usable."""
-        if not self.sys_dbus.agent.board.has_rpi_firmware:
-            raise BoardInvalidError(
-                "Raspberry Pi firmware is not available on this board", _LOGGER.error
-            )
         if (
             not self.sys_dbus.agent.is_connected
             or self.sys_dbus.agent.version < RPI_FIRMWARE_MIN_OS_AGENT_VERSION
@@ -239,6 +235,11 @@ class APIOS(CoreSysAttributes):
             raise APINotFound(
                 f"OS Agent {RPI_FIRMWARE_MIN_OS_AGENT_VERSION} or newer required "
                 "for Raspberry Pi firmware management"
+            )
+
+        if not self.sys_dbus.agent.board.has_rpi_firmware:
+            raise BoardInvalidError(
+                "Raspberry Pi firmware is not available on this board", _LOGGER.error
             )
 
     @api_process
