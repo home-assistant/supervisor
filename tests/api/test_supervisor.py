@@ -450,6 +450,51 @@ async def test_api_progress_updates_supervisor_update(
     ]
 
 
+@pytest.mark.parametrize("dev", [True, False])
+async def test_api_supervisor_update_no_update_available(
+    api_client_with_prefix: tuple[TestClient, str],
+    dev: bool,
+):
+    """Test versionless update is a no-op when no update is available.
+
+    Home Assistant Core triggers a versionless Supervisor update during
+    onboarding. Without an available update (always the case in DEV) this
+    must report no update rather than installing the latest published version.
+    """
+    api_client, prefix = api_client_with_prefix
+
+    with (
+        patch.object(CoreSys, "dev", new=PropertyMock(return_value=dev)),
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=False)),
+        patch.object(Supervisor, "update") as update,
+    ):
+        resp = await api_client.post(f"{prefix}/supervisor/update")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert "No supervisor update available" in result["message"]
+    update.assert_not_called()
+
+
+async def test_api_supervisor_update_dev_explicit_version(
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test an explicit version can be forced in DEV without an update available."""
+    api_client, prefix = api_client_with_prefix
+
+    with (
+        patch.object(CoreSys, "dev", new=PropertyMock(return_value=True)),
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=False)),
+        patch.object(Supervisor, "update") as update,
+    ):
+        resp = await api_client.post(
+            f"{prefix}/supervisor/update", json={"version": "2025.08.3"}
+        )
+
+    assert resp.status == 200
+    update.assert_called_once_with(AwesomeVersion("2025.08.3"))
+
+
 async def test_api_supervisor_stats(
     api_client_with_prefix: tuple[TestClient, str], container: DockerContainer
 ):

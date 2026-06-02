@@ -227,16 +227,18 @@ class APISupervisor(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update Supervisor OS."""
         body = await api_validate(SCHEMA_VERSION, request)
+        version = body.get(ATTR_VERSION)
 
-        # This option is useless outside of DEV
-        if not self.sys_dev and not self.sys_supervisor.need_update:
+        # Updating to a specific version is only possible in DEV. Without an
+        # explicit version an update is only triggered when one is actually
+        # available (in DEV need_update is always False, so a versionless
+        # request is a no-op).
+        if version is None and not self.sys_supervisor.need_update:
             raise APIError(
                 f"No supervisor update available - {self.sys_supervisor.version!s}"
             )
 
-        if self.sys_dev:
-            version = body.get(ATTR_VERSION, self.sys_updater.version_supervisor)
-        else:
+        if not self.sys_dev:
             version = self.sys_updater.version_supervisor
 
         await asyncio.shield(self.sys_supervisor.update(version))
