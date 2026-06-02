@@ -338,7 +338,8 @@ class OSManager(CoreSysAttributes):
         concurrency=JobConcurrency.REJECT,
     )
     async def update_raspberrypi_firmware(self) -> None:
-        """Update Raspberry Pi firmware (and VL805 where present) firmware.
+        """Update Raspberry Pi firmware (and VL805 where present).
+
 
         Always raises a REBOOT_REQUIRED issue on success — the running
         bootloader is the old one until reboot, regardless of whether the
