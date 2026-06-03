@@ -7,6 +7,8 @@ from functools import cached_property
 import logging
 import os
 from pathlib import Path, PurePath
+import re
+import subprocess
 import time
 
 from dbus_fast import Variant
@@ -58,6 +60,35 @@ def _probe_network_mount(path: Path) -> bool:
     """
     os.statvfs(path)
     return path.stat().st_dev != path.parent.stat().st_dev
+
+
+def _get_kernel_version() -> tuple[int, int]:
+    """Get kernel major and minor version.
+
+    Returns (major, minor) tuple, e.g., (6, 1) for "6.1.115-haos".
+    Returns (0, 0) if version cannot be determined.
+    """
+    try:
+        output = subprocess.check_output(["uname", "-r"], text=True).strip()
+        match = re.match(r"(\d+)\.(\d+)", output)
+        if match:
+            return (int(match.group(1)), int(match.group(2)))
+    except (subprocess.SubprocessError, OSError):
+        pass
+    return (0, 0)
+
+
+def _kernel_supports_cifs_retrans() -> bool:
+    """Check if kernel supports CIFS retrans parameter.
+
+    The retrans parameter for CIFS mounts was introduced in Linux 6.6.
+    On older kernels (like 6.1.x used by HAOS Green/panther-x2),
+    using retrans causes mount failure with "Unknown parameter 'retrans'".
+
+    Returns True if kernel is 6.6 or newer.
+    """
+    major, minor = _get_kernel_version()
+    return major > 6 or (major == 6 and minor >= 6)
 
 
 # Three layered timeouts cooperate to keep the host alive when an NFS server
@@ -671,7 +702,7 @@ class CIFSMount(NetworkMount):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        # soft + echo_interval=10 + retrans=0 give a ~30s per-operation budget
+        # soft + echo_interval=10 give a ~30s per-operation budget
         # before the kernel reports the server unreachable (3 × echo_interval
         # since last server response). This roughly matches the NFS budget
         # from `softerr,timeo=100,retrans=2` so the userspace probe behaves
@@ -681,12 +712,17 @@ class CIFSMount(NetworkMount):
         # `soft` is the kernel default but is set explicitly so the
         # behavior is part of the recorded mount options rather than an
         # implicit assumption.
+        #
+        # Note: retrans=0 is only supported on kernel 6.6+. On older kernels
+        # (like 6.1.x used by HAOS Green/panther-x2), using retrans causes
+        # mount failure with "Unknown parameter 'retrans'".
         options = super().options + [
             "noserverino",
             "soft",
             "echo_interval=10",
-            "retrans=0",
         ]
+        if _kernel_supports_cifs_retrans():
+            options.append("retrans=0")
         if self.version:
             options.append(f"vers={self.version}")
 
