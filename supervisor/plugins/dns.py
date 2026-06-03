@@ -341,6 +341,8 @@ class PluginDns(PluginBase):
         self.search_domains.clear()
         self.fallback = True
         await self.save_data()
+        if self._resolv_template:
+            await self._write_resolv(HOST_RESOLV)
 
         # Resets hosts
         with suppress(OSError):

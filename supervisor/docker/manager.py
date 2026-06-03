@@ -435,9 +435,9 @@ class DockerAPI(CoreSysAttributes):
         # Set up networking
         if dns:
             host_config["Dns"] = [str(self.network.dns)]
-            host_config["DnsSearch"] = [
-                d for d in self.sys_plugins.dns.search_domains if d != DNS_SUFFIX
-            ] + [DNS_SUFFIX]
+            host_config["DnsSearch"] = list(set(self.sys_plugins.dns.search_domains) | {
+                DNS_SUFFIX
+            })
             # CoreDNS forward plug-in fails in ~6s, then fallback triggers.
             # However, the default timeout of glibc and musl is 5s. Increase
             # default timeout to make sure CoreDNS fallback is working
