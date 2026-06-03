@@ -144,6 +144,57 @@ def test_get_credentials_not_found(coresys: CoreSys, websession: MagicMock):
     assert creds is None
 
 
+class _MockTokenResponse:
+    """Mock aiohttp response usable as an async context manager."""
+
+    def __init__(self, *, status=200, headers=None, payload=None):
+        """Initialize mock response."""
+        self.status = status
+        self.headers = headers or {}
+        self._payload = payload or {}
+
+    async def json(self):
+        """Return the response body as JSON."""
+        return self._payload
+
+    async def __aenter__(self):
+        """Enter the context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Exit the context manager."""
+
+
+async def test_get_auth_token_uses_basic_auth_header(
+    coresys: CoreSys, websession: MagicMock
+):
+    """Test stored credentials are sent as an Authorization header."""
+    coresys.docker.config._data["registries"] = {  # pylint: disable=protected-access
+        "ghcr.io": {"username": "user", "password": "token"}
+    }
+    fetcher = RegistryManifestFetcher(coresys)
+
+    challenge = _MockTokenResponse(
+        status=401,
+        headers={
+            "WWW-Authenticate": (
+                'Bearer realm="https://ghcr.io/token",service="ghcr.io"'
+            )
+        },
+    )
+    token_response = _MockTokenResponse(payload={"token": "secret-token"})
+    websession.get = MagicMock(side_effect=[challenge, token_response])
+
+    token = await fetcher._get_auth_token(  # pylint: disable=protected-access
+        "ghcr.io", "org/image"
+    )
+
+    assert token == "secret-token"
+    # Second call fetches the token with the stored credentials as a header.
+    _, token_kwargs = websession.get.call_args_list[1]
+    assert token_kwargs["headers"] == {"Authorization": "Basic dXNlcjp0b2tlbg=="}
+
+
 def test_get_api_endpoint_docker_hub(coresys: CoreSys, websession: MagicMock):
     """Test Docker Hub registry translates to API endpoint."""
     fetcher = RegistryManifestFetcher(coresys)
