@@ -83,7 +83,11 @@ async def test_run_command_uses_configured_dns_search(
     await docker.run_command(image="alpine", tag="3.18", command=["echo", "hello"])
 
     call_args = docker.containers.create.call_args[0][0]
-    assert call_args["HostConfig"]["DnsSearch"] == ["example.com", "corp.example.com"]
+    assert call_args["HostConfig"]["DnsSearch"] == [
+        "example.com",
+        "corp.example.com",
+        "local.hass.io",
+    ]
 
     # Restore default for fixture reuse
     docker.coresys.plugins.dns.search_domains = []
