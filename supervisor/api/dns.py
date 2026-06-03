@@ -27,6 +27,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from ..plugins.dns import HOST_RESOLV
 from ..validate import dns_server_list, version_tag
 from .const import ATTR_FALLBACK, ATTR_LLMNR, ATTR_MDNS
 from .utils import api_process, api_validate
@@ -80,6 +81,7 @@ class APICoreDNS(CoreSysAttributes):
 
         if ATTR_SEARCH_DOMAINS in body:
             self.sys_plugins.dns.search_domains = body[ATTR_SEARCH_DOMAINS]
+            await self.sys_plugins.dns._write_resolv(HOST_RESOLV)
 
         if restart_required:
             self.sys_create_task(self.sys_plugins.dns.restart())
