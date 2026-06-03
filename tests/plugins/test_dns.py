@@ -505,7 +505,31 @@ async def test_write_resolv_custom_search_domains(
     caplog: pytest.LogCaptureFixture,
     container,
 ):
-    """Test resolv.conf uses configured search_domains when set."""
+    """Test resolv.conf appends local.hass.io after configured search_domains."""
+    coresys.plugins.dns.search_domains = ["example.com"]
+
+    written: list[str] = []
+
+    def capture_write(data: str) -> None:
+        written.append(data)
+
+    with (
+        patch.object(DockerDNS, "attach"),
+        patch.object(DockerDNS, "is_running", return_value=True),
+        patch("supervisor.plugins.dns.Path.write_text", side_effect=capture_write),
+    ):
+        await coresys.plugins.dns.load()
+
+    assert written
+    assert "search example.com local.hass.io" in written[-1]
+
+
+async def test_write_resolv_deduplicates_dns_suffix(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    container,
+):
+    """Test resolv.conf doesn't duplicate local.hass.io if already in search_domains."""
     coresys.plugins.dns.search_domains = ["example.com", "local.hass.io"]
 
     written: list[str] = []
@@ -522,6 +546,4 @@ async def test_write_resolv_custom_search_domains(
 
     assert written
     assert "search example.com local.hass.io" in written[-1]
-    assert "search local.hass.io" not in written[-1].replace(
-        "search example.com local.hass.io", ""
-    )
+    assert written[-1].count("local.hass.io") == 1

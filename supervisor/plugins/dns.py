@@ -531,7 +531,9 @@ class PluginDns(PluginBase):
     async def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
         nameservers = [str(self.sys_docker.network.dns), "127.0.0.11"]
-        search_domains = self.search_domains or [DNS_SUFFIX]
+        search_domains = [d for d in self.search_domains if d != DNS_SUFFIX] + [
+            DNS_SUFFIX
+        ]
 
         # Read resolv config
         data = self.resolv_template.render(
