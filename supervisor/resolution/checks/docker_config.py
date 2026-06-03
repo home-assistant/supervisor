@@ -18,10 +18,13 @@ def _check_container(
     For apps, only validates mounts explicitly configured (not Docker VOLUMEs).
     For Core/plugins, validates all /media and /share mounts.
     """
-    # Check DnsSearch reflects current configured search domains
-    if dns_search is not None and set(
-        container.meta_host.get("DnsSearch") or []
-    ) != set(dns_search):
+    # Check DnsSearch reflects current configured search domains.
+    # Only applies to containers started with DNS enabled (Dns key present).
+    if (
+        dns_search is not None
+        and container.meta_host.get("Dns")
+        and set(container.meta_host.get("DnsSearch") or []) != dns_search
+    ):
         return True
 
     # For apps, check mounts against their actual configured targets
