@@ -196,6 +196,37 @@ class AppOptions(CoreSysAttributes):
             f"Fatal error for option '{key}' with type '{typ}' in {self._name} ({self._slug})"
         ) from None
 
+    def extract_device_paths(self, options: dict[str, Any]) -> set[Path]:
+        """Return raw device paths from options without full validation."""
+        paths: set[Path] = set()
+        self._collect_device_paths(self.raw_schema, options, paths)
+        return paths
+
+    def _collect_device_paths(
+        self, schema: dict[str, Any], options: dict[str, Any], paths: set[Path]
+    ) -> None:
+        """Recursively collect raw device paths configured in options."""
+        for key, typ in schema.items():
+            if key not in options:
+                continue
+            value = options[key]
+            if isinstance(typ, list) and len(typ) == 1:
+                inner = typ[0]
+                if isinstance(inner, str) and inner.startswith(_DEVICE):
+                    for item in value if isinstance(value, list) else []:
+                        if item:
+                            paths.add(Path(str(item)))
+                elif isinstance(inner, dict):
+                    for item in value if isinstance(value, list) else []:
+                        if isinstance(item, dict):
+                            self._collect_device_paths(inner, item, paths)
+            elif isinstance(typ, dict):
+                if isinstance(value, dict):
+                    self._collect_device_paths(typ, value, paths)
+            elif isinstance(typ, str) and typ.startswith(_DEVICE):
+                if value:
+                    paths.add(Path(str(value)))
+
     def _nested_validate_list(self, typ: Any, data_list: Any, key: str) -> list[Any]:
         """Validate nested items."""
         options = []

@@ -581,17 +581,30 @@ async def test_app_options_device_hw_listener(
     container: MagicMock,
     docker: DockerAPI,
 ):
-    """Test hw_listener is registered and fires for options-based devices.
+    """Test hw_listener fires for a by-id option device after re-enumeration.
 
-    Before the fix, _hw_listener was only registered when addon.static_devices
-    was non-empty. Add-ons like Z-Wave JS that configure the device via the
-    options schema (addon.devices) never had a listener, so cgroup permissions
-    were never updated after a USB re-enumeration.
+    Scenario: the user picks a by-id path (stable symlink) in the add-on options.
+    On USB re-enumeration the kernel assigns a new device node (minor number
+    changes, e.g. ttyACM0 → ttyACM1) but the by-id symlink remains the same.
+    The hardware event must still be processed and cgroup permissions updated.
     """
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_app_ssh.data["devices"] = []  # no static devices
+
+    # Configure a device-type option with the by-id path from TEST_HW_DEVICE.
+    by_id_path = TEST_HW_DEVICE.links[0]
+    install_app_ssh.data["schema"] = {"device": "device"}
+    install_app_ssh.persist["options"] = {"device": str(by_id_path)}
+
     container.id = 123
     docker._info = replace(docker.info, cgroup="1")  # pylint: disable=protected-access
+
+    # Re-enumerated device: same by-id symlink, different kernel node (ttyACM1).
+    reenumerated_device = replace(
+        TEST_HW_DEVICE,
+        name="ttyACM1",
+        path=Path("/dev/ttyACM1"),
+    )
 
     with (
         patch.object(App, "write_options"),
@@ -599,13 +612,10 @@ async def test_app_options_device_hw_listener(
         # called exactly once — from the hardware event via the options listener.
         patch.object(OSManager, "available", new=PropertyMock(return_value=False)),
         patch.object(
-            App, "devices", new_callable=PropertyMock, return_value={TEST_HW_DEVICE}
-        ),
-        patch.object(
             CGroup, "add_devices_allowed", new_callable=AsyncMock
         ) as add_devices,
     ):
         await install_app_ssh.start()
-        await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, TEST_HW_DEVICE)
+        await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, reenumerated_device)
 
         add_devices.assert_called_once_with(123, "c 0:0 rwm")
