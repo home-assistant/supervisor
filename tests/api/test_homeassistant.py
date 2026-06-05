@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
@@ -14,7 +14,7 @@ from supervisor.const import DNS_SUFFIX, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
-from supervisor.exceptions import HomeAssistantError
+from supervisor.exceptions import DockerError, HomeAssistantError
 from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import WSEvent
 import supervisor.homeassistant.core as ha_core
@@ -292,7 +292,8 @@ async def test_background_home_assistant_update_fails_fast(
 
     assert resp.status == 400
     body = await resp.json()
-    assert body["message"] == "Version 2025.8.3 is already installed"
+    assert body["message"] == "Home Assistant version 2025.8.3 is already installed"
+    assert body["error_key"] == "homeassistant_update_already_installed_error"
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
@@ -662,6 +663,61 @@ async def test_update_get_config_error_triggers_rollback(
         Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
     )
     mock_cleanup.assert_not_called()
+
+
+async def test_update_image_install_failure_surfaces_error(
+    core_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    capture_exception: Mock,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data: Path,
+):
+    """Test that a failed image install surfaces a clean translated error.
+
+    When the target version does not exist the image pull fails before the
+    running Core is touched. The post-update health check would otherwise pass
+    against the still-healthy old version and mask the failure. The error is
+    modeled as a client-facing APIError so it does not reach Sentry.
+    """
+    api_client, root = core_api_client_with_root
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(
+            DockerInterface, "update", side_effect=DockerError("404 not found")
+        ),
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=True)),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(HomeAssistantAPI, "get_config") as mock_get_config,
+        patch.object(ha_core, "verify_frontend", AsyncMock(return_value=True)),
+        patch.object(DockerInterface, "cleanup") as mock_cleanup,
+    ):
+        resp = await api_client.post(f"{root}/update", json={"version": "2025.8.3"})
+
+    # The update reports a clean client error with a translatable key.
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["result"] == "error"
+    assert body["error_key"] == "homeassistant_update_image_error"
+    assert "2025.8.3" in body["message"]
+    # A client error must not be captured as an unexpected error in Sentry.
+    capture_exception.assert_not_called()
+    assert "Unexpected error during API call" not in caplog.text
+    # No health check or rollback should run since the old Core is untouched.
+    mock_get_config.assert_not_called()
+    assert "HomeAssistant update failed -> rollback!" not in caplog.text
+    mock_cleanup.assert_not_called()
+    # Version is unchanged and no rollback issue is created.
+    assert coresys.homeassistant.version == AwesomeVersion("2025.8.0")
+    assert (
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE)
+        not in coresys.resolution.issues
+    )
 
 
 async def test_update_skips_health_check_when_core_not_running(

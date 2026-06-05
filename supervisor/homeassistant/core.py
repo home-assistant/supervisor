@@ -28,7 +28,9 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantJobError,
     HomeAssistantStartupTimeout,
+    HomeAssistantUpdateAlreadyInstalledError,
     HomeAssistantUpdateError,
+    HomeAssistantUpdateImageError,
     JobException,
     SupervisorUpdateError,
 )
@@ -325,8 +327,8 @@ class HomeAssistantCore(JobGroup):
         exists = await self.instance.exists()
 
         if exists and to_version == self.instance.version:
-            raise HomeAssistantUpdateError(
-                f"Version {to_version!s} is already installed", _LOGGER.warning
+            raise HomeAssistantUpdateAlreadyInstalledError(
+                _LOGGER.warning, version=str(to_version)
             )
 
         # If being run in the background, notify caller that validation has completed
@@ -341,18 +343,20 @@ class HomeAssistantCore(JobGroup):
             )
 
         # process an update
-        async def _update(to_version: AwesomeVersion) -> None:
-            """Run Home Assistant update."""
+        async def _install_image(to_version: AwesomeVersion) -> None:
+            """Pull the Home Assistant image for the given version."""
             _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
                 await self.instance.update(
                     to_version, image=self.sys_updater.image_homeassistant
                 )
             except DockerError as err:
-                raise HomeAssistantUpdateError(
-                    "Updating Home Assistant image failed", _LOGGER.warning
+                raise HomeAssistantUpdateImageError(
+                    _LOGGER.warning, version=str(to_version)
                 ) from err
 
+        async def _start_update(to_version: AwesomeVersion) -> None:
+            """Record the new version, (re)start Core and persist the change."""
             self.sys_homeassistant.version = self.instance.version or to_version
             self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
 
@@ -363,9 +367,17 @@ class HomeAssistantCore(JobGroup):
             # Successfull - last step
             await self.sys_homeassistant.save_data()
 
-        # Update Home Assistant
-        with suppress(HomeAssistantError):
-            await _update(to_version)
+        # A failed image install (e.g. the version does not exist) leaves the
+        # running Core untouched, so bubble it out rather than masking it with
+        # the health check below.
+        await _install_image(to_version)
+
+        # The image is in place; a start failure here defers to the health
+        # check below to decide on a rollback.
+        try:
+            await _start_update(to_version)
+        except HomeAssistantError as err:
+            _LOGGER.debug("Error starting Home Assistant after update: %s", err)
 
         # If Core wasn't running on entry, the caller is responsible for
         # starting it (e.g. backup restore, which stops and removes Core
@@ -420,7 +432,8 @@ class HomeAssistantCore(JobGroup):
                 _LOGGER.info(
                     "A backup of the logfile is stored in /config/home-assistant-rollback.log"
                 )
-            await _update(rollback_version)
+            await _install_image(rollback_version)
+            await _start_update(rollback_version)
         else:
             self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
             raise HomeAssistantUpdateError
