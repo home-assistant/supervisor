@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
@@ -101,23 +100,18 @@ async def test_get_config_api_error(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    ("version", "flag_enabled", "expected"),
+    ("version", "expected"),
     [
-        ("2026.4.0", True, True),
-        ("2026.4.0", False, False),
-        ("2026.5.1", True, True),
-        ("2026.5.1", False, True),
-        ("2026.6.0", False, True),
-        ("2024.1.0", True, False),
-        (LANDINGPAGE, True, False),
+        ("2026.4.0", True),
+        ("2026.5.1", True),
+        ("2026.6.0", True),
+        ("2024.1.0", False),
+        (LANDINGPAGE, False),
     ],
 )
-async def test_supports_unix_socket(
-    coresys: CoreSys, version: str, flag_enabled: bool, expected: bool
-):
-    """Test supports_unix_socket based on Core version and feature flag."""
+async def test_supports_unix_socket(coresys: CoreSys, version: str, expected: bool):
+    """Test supports_unix_socket based on Core version."""
     coresys.homeassistant.version = AwesomeVersion(version)
-    coresys.config.set_feature_flag(FeatureFlag.UNIX_SOCKET_CORE_API, flag_enabled)
     assert coresys.homeassistant.api.supports_unix_socket is expected
 
 
@@ -134,7 +128,6 @@ async def test_use_unix_socket(
 ):
     """Test use_unix_socket based on version and container env."""
     coresys.homeassistant.version = AwesomeVersion(version)
-    coresys.config.set_feature_flag(FeatureFlag.UNIX_SOCKET_CORE_API, True)
     # pylint: disable-next=protected-access
     coresys.homeassistant.core.instance._meta = {"Config": {"Env": env}}
     assert coresys.homeassistant.api.use_unix_socket is expected
