@@ -4,12 +4,20 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 import logging
-from typing import Self, Union
+from pathlib import Path
+from typing import Any, Self, Union
 
 from attr import evolve
 from securetar import SecureTarFile
 
-from ..const import FILE_HASSIO_ADDONS, FILE_HASSIO_APPS, AppBoot, AppStartup, AppState
+from ..const import (
+    ATTR_LOCATION,
+    FILE_HASSIO_ADDONS,
+    FILE_HASSIO_APPS,
+    AppBoot,
+    AppStartup,
+    AppState,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     AppAlreadyInstalledError,
@@ -47,6 +55,24 @@ def _migrate_addons_json() -> None:
             "Migrating %s to %s", FILE_HASSIO_ADDONS.name, FILE_HASSIO_APPS.name
         )
         FILE_HASSIO_ADDONS.rename(FILE_HASSIO_APPS)
+
+
+def _migrate_app_locations(system: dict[str, Any], supervisor_path: Path) -> bool:
+    """Rewrite stored app locations from legacy addons paths to apps paths.
+
+    The directory migration renamed addons/{core,data,local,git} to apps/{...}
+    but the absolute location persisted per installed app was left pointing at
+    the old addons path, which breaks local builds. Returns True if changed.
+    """
+    legacy_prefix = f"{supervisor_path / 'addons'}/"
+    new_prefix = f"{supervisor_path / 'apps'}/"
+    changed = False
+    for app in system.values():
+        location = app.get(ATTR_LOCATION)
+        if location and location.startswith(legacy_prefix):
+            app[ATTR_LOCATION] = f"{new_prefix}{location[len(legacy_prefix) :]}"
+            changed = True
+    return changed
 
 
 class AppManager(CoreSysAttributes):
@@ -98,6 +124,9 @@ class AppManager(CoreSysAttributes):
         """Load config in executor."""
         await self.sys_run_in_executor(_migrate_addons_json)
         await self.data.read_data()
+        if _migrate_app_locations(self.data.system, self.sys_config.path_supervisor):
+            _LOGGER.info("Migrated legacy addon locations in %s", FILE_HASSIO_APPS.name)
+            await self.data.save_data()
         return self
 
     async def load(self) -> None:

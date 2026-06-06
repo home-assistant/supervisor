@@ -11,9 +11,17 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.apps.app import App
+from supervisor.apps.manager import _migrate_app_locations
 from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
-from supervisor.const import ATTR_INGRESS, AppBoot, AppStartup, AppState, BusEvent
+from supervisor.const import (
+    ATTR_INGRESS,
+    ATTR_LOCATION,
+    AppBoot,
+    AppStartup,
+    AppState,
+    BusEvent,
+)
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -671,3 +679,21 @@ async def test_shared_image_kept_on_update(
         await coresys.apps.update("local_example_image")
         docker.images.delete.assert_called_once_with("image_old", force=True)
         assert install_app_example_image.version == "1.3.0"
+
+
+def test_migrate_app_locations():
+    """Test stale legacy addon locations are rewritten to apps paths."""
+    supervisor_path = Path("/data")
+    system = {
+        "0f1cc410_puppet": {ATTR_LOCATION: "/data/addons/git/0f1cc410/puppet"},
+        "local_example": {ATTR_LOCATION: "/data/addons/local/example"},
+        "already_migrated": {ATTR_LOCATION: "/data/apps/git/0f1cc410/other"},
+    }
+
+    assert _migrate_app_locations(system, supervisor_path) is True
+    assert system["0f1cc410_puppet"][ATTR_LOCATION] == "/data/apps/git/0f1cc410/puppet"
+    assert system["local_example"][ATTR_LOCATION] == "/data/apps/local/example"
+    assert system["already_migrated"][ATTR_LOCATION] == "/data/apps/git/0f1cc410/other"
+
+    # Idempotent: second run leaves everything untouched
+    assert _migrate_app_locations(system, supervisor_path) is False
