@@ -1,28 +1,31 @@
 """Home Assistant control object."""
 
 import asyncio
-from collections.abc import Awaitable
-from contextlib import suppress
+from collections.abc import AsyncIterator, Awaitable
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import StrEnum
 import logging
 import re
 import secrets
 import shutil
-from typing import Final
+from typing import Final, cast
 
 from awesomeversion import AwesomeVersion
 
 from supervisor.utils import remove_colors
 
+from ..apps.app import App
 from ..bus import EventListener
-from ..const import ATTR_HOMEASSISTANT, BusEvent, CoreState
+from ..const import ATTR_HOMEASSISTANT, AppState, BusEvent, CoreState
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
 from ..docker.homeassistant import HASS_DOCKER_NAME, DockerHomeAssistant
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    AppsError,
     DockerError,
     HomeAssistantCrashError,
     HomeAssistantError,
@@ -38,6 +41,7 @@ from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrottle
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
+from ..plugins.base import PluginBase
 from ..resolution.const import ContextType, IssueType
 from ..utils.sentry import async_capture_exception
 from .const import (
@@ -73,6 +77,35 @@ class ConfigResult:
     log: str
 
 
+class ComponentType(StrEnum):
+    """Type of component."""
+
+    APP = "app"
+    PLUGIN = "plugin"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class PortConflict:
+    """Data about a port conflict that can be used to resolve it."""
+
+    port: int
+    component_type: ComponentType
+    component: App | PluginBase | str
+
+    def __str__(self) -> str:
+        """Return a string representation of the conflict."""
+        if self.component_type == ComponentType.APP:
+            app = cast(App, self.component)
+            return f"port {self.port} is in use by app {app.name} (slug: {app.slug})"
+        if self.component_type == ComponentType.PLUGIN and isinstance(
+            self.component, PluginBase
+        ):
+            plugin = self.component
+            return f"port {self.port} is in use by plugin {plugin.slug}"
+        return f"Unknown component '{self.component}' binding to port {self.port}"
+
+
 class HomeAssistantCore(JobGroup):
     """Home Assistant core object for handle it."""
 
@@ -82,11 +115,17 @@ class HomeAssistantCore(JobGroup):
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self._error_state: bool = False
         self._watchdog_listener: EventListener | None = None
+        self._startup_abort: asyncio.Event | None = None
 
     @property
     def error_state(self) -> bool:
         """Return True if system is in error."""
         return self._error_state
+
+    @property
+    def is_starting(self) -> bool:
+        """Return True if Home Assistant is currently starting."""
+        return self._startup_abort is not None
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
@@ -466,29 +505,105 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.warning("Home Assistant is already running!")
             return
 
-        # Instance/Container exists, simple start
-        if await self.instance.is_initialize():
-            try:
-                await self.instance.start()
-            except DockerError as err:
-                raise HomeAssistantError from err
+        async with self._handle_startup_port_conflict():
+            # Instance/Container exists, simple start
+            if await self.instance.is_initialize():
+                try:
+                    await self.instance.start()
+                except DockerError as err:
+                    raise HomeAssistantError from err
 
+                await self._block_till_run()
+            # No Instance/Container found, extended start
+            else:
+                # Create new API token
+                self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
+                await self.sys_homeassistant.save_data()
+
+                # Write audio settings
+                await self.sys_homeassistant.write_pulse()
+
+                try:
+                    await self.instance.run(
+                        restore_job_id=self.sys_backups.current_restore
+                    )
+                except DockerError as err:
+                    raise HomeAssistantError from err
+
+    async def set_port_conflict(self, conflict: PortConflict) -> None:
+        """Set a port conflict with Home Assistant.
+
+        This is assumed to be called during the Home Assistant startup sequence
+        so the goal is to get Home Assistant UI up and running if possible. Therefore
+        if an app is the source we attempt to stop it to free the port. If the
+        stop is successful, we assume the conflict is resolved. If the stop fails
+        or the source is not an app then we abort the startup sequence if it was
+        Supervisor initiated and we're still waiting.
+        """
+        # For app conflicts we always create an issue so the user can resolve
+        # persistent configuration problems even if the app is not currently
+        # running.
+        if conflict.component_type == ComponentType.APP:
+            app = cast(App, conflict.component)
+            app.create_port_conflict_issue(conflict.port, source="core")
+
+            # If the app is not currently running/starting, there's nothing to
+            # stop and no reason to abort core startup.
+            if app.state not in {AppState.STARTUP, AppState.STARTED}:
+                _LOGGER.error(
+                    "App %s (slug: %s) is configured for Home Assistant's selected port %s "
+                    "but is not currently running. Created issue for user action.",
+                    app.name,
+                    app.slug,
+                    conflict.port,
+                )
+                return
+
+            # For active app conflicts we attempt to stop the app to free up
+            # the port for Home Assistant.
+            _LOGGER.error(
+                "App %s (slug: %s) is blocking Home Assistant startup by binding to port %s. "
+                "Stopping app to allow Home Assistant to start.",
+                app.name,
+                app.slug,
+                conflict.port,
+            )
+
+            # Stop the app to unblock the port for Home Assistant
+            # Assume successful stop resolves the issue. Else abort startup
+            with suppress(AppsError):
+                await app.stop()
+                return
+
+            _LOGGER.error(
+                "Failed to stop app %s (slug: %s) that is blocking Home Assistant startup. "
+                "Manual intervention will be required to stop the app and start Home Assistant",
+                app.name,
+                app.slug,
+            )
+
+        # Either the source is not an app or the app couldn't be stopped.
+        # Abort the startup if Supervisor is waiting and log the conflict.
+        # Creating a repair is futile since the user can't get to the UI anyway.
+        _LOGGER.error(
+            "Port conflict detected with selected Home Assistant port: %s",
+            str(conflict),
+        )
+        if self._startup_abort is not None:
+            _LOGGER.error("Aborting Home Assistant startup due to port conflict")
+            self._startup_abort.set()
+
+    @asynccontextmanager
+    async def _handle_startup_port_conflict(self) -> AsyncIterator[None]:
+        """Wrap a start or restart call with startup abort handling."""
+        # Reset startup abort event for this attempt
+        self._startup_abort = asyncio.Event()
+
+        try:
+            yield
             await self._block_till_run()
-        # No Instance/Container found, extended start
-        else:
-            # Create new API token
-            self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
-            await self.sys_homeassistant.save_data()
-
-            # Write audio settings
-            await self.sys_homeassistant.write_pulse()
-
-            try:
-                await self.instance.run(restore_job_id=self.sys_backups.current_restore)
-            except DockerError as err:
-                raise HomeAssistantError from err
-
-            await self._block_till_run()
+        finally:
+            self._startup_abort = None
 
     @Job(
         name="home_assistant_core_stop",
@@ -516,12 +631,11 @@ class HomeAssistantCore(JobGroup):
                 (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
             )
 
-        try:
-            await self.instance.restart()
-        except DockerError as err:
-            raise HomeAssistantError from err
-
-        await self._block_till_run()
+        async with self._handle_startup_port_conflict():
+            try:
+                await self.instance.restart()
+            except DockerError as err:
+                raise HomeAssistantError from err
 
     @Job(
         name="home_assistant_core_rebuild",
@@ -609,8 +723,14 @@ class HomeAssistantCore(JobGroup):
 
         deadline = datetime.now() + STARTUP_API_RESPONSE_TIMEOUT
         last_state = None
+        last_progress_log = datetime.now()
         while not (timeout := datetime.now() >= deadline):
             await asyncio.sleep(SECONDS_BETWEEN_API_CHECKS)
+
+            # 0: Check if startup was aborted (e.g., port conflict detected)
+            if self._startup_abort and self._startup_abort.is_set():
+                timeout = True
+                break
 
             # 1: Check if Container is is_running
             if not await self.instance.is_running():
@@ -636,6 +756,11 @@ class HomeAssistantCore(JobGroup):
                 if state.offline_db_migration:
                     # Keep extended the deadline while database migration is active
                     deadline = datetime.now() + DATABASE_MIGRATION_TIMEOUT
+
+            # Periodic progress log so the user knows we are still waiting
+            if (datetime.now() - last_progress_log).total_seconds() >= 60:
+                _LOGGER.info("Still waiting for Home Assistant Core to start...")
+                last_progress_log = datetime.now()
 
         self._error_state = True
         if timeout:

@@ -8,7 +8,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from http import HTTPStatus
 from io import BufferedReader, BufferedWriter
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 import logging
 import os
 from pathlib import Path, PurePath
@@ -71,6 +71,52 @@ RE_PORT_CONFLICT_ERROR = re.compile(
     r"0\.0\.0\.0:(\d+).*"
     r"(?:address already in use|port is already allocated)$"
 )
+IPV4_WILDCARD = IPv4Address("0.0.0.0")
+IPV6_WILDCARD = IPv6Address("::")
+
+
+@dataclass(frozen=True, slots=True)
+class DockerPortBinding:
+    """Docker port binding information."""
+
+    ip: IPv4Address | IPv6Address | None
+    public_port: int | None
+    type: str
+    private_port: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DockerPortBinding:
+        """Create a DockerPortBinding from a dictionary."""
+        ip_raw = data.get("IP")
+        return cls(
+            ip=ip_address(ip_raw)
+            if isinstance(ip_raw, int | str | bytes) and ip_raw
+            else None,
+            public_port=data.get("PublicPort"),
+            type=data["Type"],
+            private_port=data["PrivatePort"],
+        )
+
+    def is_conflict(self, other: DockerPortBinding) -> bool:
+        """Check if this port binding conflicts with another."""
+        if self.type != other.type:
+            return False
+        if (
+            self.public_port is None
+            or other.public_port is None
+            or self.public_port != other.public_port
+        ):
+            return False
+        if self.ip is None or other.ip is None:
+            return False
+
+        # Different IP versions never conflict (assuming IPV6_V6ONLY=True)
+        if self.ip.version != other.ip.version:
+            return False
+
+        # They conflict if they're the same address, or either is the wildcard
+        wildcard = IPV4_WILDCARD if self.ip.version == 4 else IPV6_WILDCARD
+        return self.ip == wildcard or other.ip in {self.ip, wildcard}
 
 
 @dataclass(slots=True, frozen=True)
@@ -285,6 +331,7 @@ class DockerAPI(CoreSysAttributes):
         self._manifest_fetcher: RegistryManifestFetcher = RegistryManifestFetcher(
             coresys
         )
+        self._host_port_binding_cache: dict[DockerPortBinding, str] | None = None
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""
@@ -336,6 +383,30 @@ class DockerAPI(CoreSysAttributes):
     async def unload(self) -> None:
         """Stop docker events monitor."""
         await self.monitor.unload()
+
+    async def get_used_host_port_bindings(self) -> dict[DockerPortBinding, str]:
+        """Return a mapping of host port binding -> container name for all running containers.
+
+        Containers using host networking do not publish ports through Docker port bindings,
+        so only explicitly mapped ports (PublicPort entries) are visible here.
+        """
+        try:
+            containers = await self.docker.containers.list()
+        except aiodocker.DockerError as err:
+            _LOGGER.debug("Failed to refresh host port binding cache: %s", err)
+            return {}
+
+        bindings: dict[DockerPortBinding, str] = {}
+        for container in containers:
+            name: str = (container["Names"] or ["unknown"])[0].lstrip("/")
+            bindings.update(
+                {
+                    DockerPortBinding.from_dict(port_binding): name
+                    for port_binding in container["Ports"] or []
+                    if port_binding.get("PublicPort") is not None
+                }
+            )
+        return bindings
 
     def _create_container_config(
         self,

@@ -9,8 +9,16 @@ from typing import Self, Union
 from attr import evolve
 from securetar import SecureTarFile
 
-from ..const import FILE_HASSIO_ADDONS, FILE_HASSIO_APPS, AppBoot, AppStartup, AppState
+from ..const import (
+    DOCKER_IPV4_NETWORK_MASK,
+    FILE_HASSIO_ADDONS,
+    FILE_HASSIO_APPS,
+    AppBoot,
+    AppStartup,
+    AppState,
+)
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.manager import IPV4_WILDCARD, IPV6_WILDCARD, DockerPortBinding
 from ..exceptions import (
     AppAlreadyInstalledError,
     AppNotFoundError,
@@ -31,6 +39,7 @@ from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..store.app import AppStore
 from ..utils.sentry import async_capture_exception
+from ..validate import RE_DOCKER_PORT
 from .app import App
 from .const import APP_UPDATE_CONDITIONS
 from .data import AppsData
@@ -99,6 +108,100 @@ class AppManager(CoreSysAttributes):
         await self.sys_run_in_executor(_migrate_addons_json)
         await self.data.read_data()
         return self
+
+    async def get_used_host_port_bindings(
+        self,
+        *,
+        exclude_apps: list[App] | None = None,
+        exclude_homeassistant: bool = False,
+    ) -> dict[DockerPortBinding, str]:
+        """Return a mapping of host port bindings -> component name for all currently bound ports.
+
+        Combines Docker container port bindings (from cache) with the HA Core API port
+        (which uses host networking and is not visible in Docker port bindings).
+
+        Args:
+            exclude_apps: Container names / app slugs to exclude from the result.
+            exclude_homeassistant: When True, omit Home Assistant Core's API port.
+
+        """
+        ports = await self.sys_docker.get_used_host_port_bindings()
+        for app in self.installed:
+            # Apps running on host network can bind to ports directly without declaring
+            # them in their config. There's no general solution to this problem
+            # but we can at least include what we can see (ports and ingress port).
+            if app.host_network and app.ingress_port is not None:
+                ports[
+                    DockerPortBinding(
+                        ip=DOCKER_IPV4_NETWORK_MASK[1],
+                        public_port=app.ingress_port,
+                        type="tcp",
+                        private_port=app.ingress_port,
+                    )
+                ] = app.instance.name
+
+            if not app.ports:
+                continue
+
+            # Apps that aren't currently running won't have active port bindings but
+            # can still create conflicts when started
+            if (
+                app.state in {AppState.STARTUP, AppState.STARTED}
+                and not app.host_network
+            ):
+                continue
+
+            for def_port, config_port in app.ports.items():
+                if not config_port and not app.host_network:
+                    continue
+                if not (def_port_match := RE_DOCKER_PORT.match(def_port)):
+                    continue
+                binding_type = (def_port_match.group("type") or "/tcp")[1:]
+                private_port = int(def_port_match.group("port"))
+                public_port = config_port if config_port else private_port
+                ports.update(
+                    {
+                        DockerPortBinding(
+                            ip=IPV4_WILDCARD,
+                            public_port=public_port,
+                            type=binding_type,
+                            private_port=private_port,
+                        ): app.instance.name,
+                        DockerPortBinding(
+                            ip=IPV6_WILDCARD,
+                            public_port=public_port,
+                            type=binding_type,
+                            private_port=private_port,
+                        ): app.instance.name,
+                    }
+                )
+
+        if exclude_apps:
+            ports = {
+                port_binding: container_name
+                for port_binding, container_name in ports.items()
+                if container_name not in {app.instance.name for app in exclude_apps}
+            }
+
+        if not exclude_homeassistant:
+            ports.update(
+                {
+                    DockerPortBinding(
+                        ip=IPV4_WILDCARD,
+                        public_port=self.sys_homeassistant.api_port,
+                        type="tcp",
+                        private_port=self.sys_homeassistant.api_port,
+                    ): self.sys_homeassistant.core.instance.name,
+                    DockerPortBinding(
+                        ip=IPV6_WILDCARD,
+                        public_port=self.sys_homeassistant.api_port,
+                        type="tcp",
+                        private_port=self.sys_homeassistant.api_port,
+                    ): self.sys_homeassistant.core.instance.name,
+                }
+            )
+
+        return ports
 
     async def load(self) -> None:
         """Start up app management."""

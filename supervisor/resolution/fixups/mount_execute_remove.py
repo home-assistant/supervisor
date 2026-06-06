@@ -1,6 +1,7 @@
 """Helper to fix an issue with a mount by removing it."""
 
 import logging
+from typing import Any
 
 from ...coresys import CoreSys
 from ...exceptions import MountNotFound
@@ -18,7 +19,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupMountExecuteRemove(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Remove the failed mount."""
         try:
             await self.sys_mounts.remove_mount(reference)

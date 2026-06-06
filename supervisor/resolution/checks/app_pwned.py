@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 import logging
+from typing import Any
 
 from ...const import AppState, CoreState
 from ...coresys import CoreSys
@@ -73,7 +74,11 @@ class CheckAppPwned(CheckBase):
                     pass
 
     @Job(name="check_addon_pwned_approve", conditions=[JobCondition.INTERNET_SYSTEM])
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         if not reference:
             return False

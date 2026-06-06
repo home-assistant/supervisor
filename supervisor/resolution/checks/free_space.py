@@ -1,5 +1,7 @@
 """Helpers to check and fix issues with free space."""
 
+from typing import Any
+
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
@@ -19,7 +21,11 @@ class CheckFreeSpace(CheckBase):
         if await self.approve_check():
             self.sys_resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         return await self.sys_host.info.free_space() <= MINIMUM_FREE_SPACE_THRESHOLD
 

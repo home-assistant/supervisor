@@ -13,12 +13,24 @@ import pytest
 from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
-from supervisor.const import ATTR_INGRESS, AppBoot, AppStartup, AppState, BusEvent
+from supervisor.const import (
+    ATTR_INGRESS,
+    DOCKER_IPV4_NETWORK_MASK,
+    AppBoot,
+    AppStartup,
+    AppState,
+    BusEvent,
+)
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
-from supervisor.docker.manager import DockerAPI
+from supervisor.docker.manager import (
+    IPV4_WILDCARD,
+    IPV6_WILDCARD,
+    DockerAPI,
+    DockerPortBinding,
+)
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AppConfigurationError,
@@ -671,3 +683,125 @@ async def test_shared_image_kept_on_update(
         await coresys.apps.update("local_example_image")
         docker.images.delete.assert_called_once_with("image_old", force=True)
         assert install_app_example_image.version == "1.3.0"
+
+
+async def test_get_used_host_port_bindings_includes_stopped_app_ports(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Stopped app configured ports should be included as potential conflicts."""
+    install_app_ssh.state = AppState.STOPPED
+    install_app_ssh.ports = {"22/tcp": 2233}
+
+    with patch.object(
+        coresys.docker,
+        "get_used_host_port_bindings",
+        AsyncMock(return_value={}),
+    ):
+        ports = await coresys.apps.get_used_host_port_bindings(
+            exclude_homeassistant=True
+        )
+
+    assert (
+        ports[
+            DockerPortBinding(
+                ip=IPV4_WILDCARD,
+                public_port=2233,
+                type="tcp",
+                private_port=22,
+            )
+        ]
+        == install_app_ssh.instance.name
+    )
+    assert (
+        ports[
+            DockerPortBinding(
+                ip=IPV6_WILDCARD,
+                public_port=2233,
+                type="tcp",
+                private_port=22,
+            )
+        ]
+        == install_app_ssh.instance.name
+    )
+
+
+async def test_get_used_host_port_bindings_includes_host_network_unmapped_ports(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Host network app ports should be included even when not explicitly mapped."""
+    install_app_ssh.state = AppState.STARTED
+    install_app_ssh.ports = {"22/tcp": None}
+
+    with (
+        patch.object(
+            type(install_app_ssh), "host_network", new=PropertyMock(return_value=True)
+        ),
+        patch.object(
+            coresys.docker,
+            "get_used_host_port_bindings",
+            AsyncMock(return_value={}),
+        ),
+    ):
+        ports = await coresys.apps.get_used_host_port_bindings(
+            exclude_homeassistant=True
+        )
+
+    assert (
+        ports[
+            DockerPortBinding(
+                ip=IPV4_WILDCARD,
+                public_port=22,
+                type="tcp",
+                private_port=22,
+            )
+        ]
+        == install_app_ssh.instance.name
+    )
+    assert (
+        ports[
+            DockerPortBinding(
+                ip=IPV6_WILDCARD,
+                public_port=22,
+                type="tcp",
+                private_port=22,
+            )
+        ]
+        == install_app_ssh.instance.name
+    )
+
+
+async def test_get_used_host_port_bindings_includes_host_network_ingress_port(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Host network ingress port should always be added when set."""
+    install_app_ssh.state = AppState.STOPPED
+    install_app_ssh.ports = None
+
+    with (
+        patch.object(
+            type(install_app_ssh), "host_network", new=PropertyMock(return_value=True)
+        ),
+        patch.object(
+            type(install_app_ssh), "ingress_port", new=PropertyMock(return_value=18443)
+        ),
+        patch.object(
+            coresys.docker,
+            "get_used_host_port_bindings",
+            AsyncMock(return_value={}),
+        ),
+    ):
+        ports = await coresys.apps.get_used_host_port_bindings(
+            exclude_homeassistant=True
+        )
+
+    assert (
+        ports[
+            DockerPortBinding(
+                ip=DOCKER_IPV4_NETWORK_MASK[1],
+                public_port=18443,
+                type="tcp",
+                private_port=18443,
+            )
+        ]
+        == install_app_ssh.instance.name
+    )

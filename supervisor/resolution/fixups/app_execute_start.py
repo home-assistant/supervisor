@@ -1,6 +1,7 @@
 """Helpers to fix app by starting it."""
 
 import logging
+from typing import Any
 
 from ...const import AppState
 from ...coresys import CoreSys
@@ -19,7 +20,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupAppExecuteStart(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Initialize the fixup class."""
         if not reference:
             return

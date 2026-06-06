@@ -1,5 +1,6 @@
 """Data objects."""
 
+from typing import Any
 from uuid import uuid4
 
 import attr
@@ -20,6 +21,7 @@ class Issue:
     type: IssueType = attr.ib()
     context: ContextType = attr.ib()
     reference: str | None = attr.ib(default=None)
+    reference_extra: dict[str, Any] | None = attr.ib(default=None)
     uuid: str = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
 
 
@@ -30,6 +32,7 @@ class Suggestion:
     type: SuggestionType = attr.ib()
     context: ContextType = attr.ib()
     reference: str | None = attr.ib(default=None)
+    reference_extra: dict[str, Any] | None = attr.ib(default=None)
     uuid: str = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
 
 

@@ -1,6 +1,7 @@
 """Helper to fix an issue with a mount by retrying it."""
 
 import logging
+from typing import Any
 
 from ...coresys import CoreSys
 from ...exceptions import MountError, MountNotFound, ResolutionFixupError
@@ -18,7 +19,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupMountExecuteReload(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Attempt to remount using the same config to fix failure."""
         try:
             await self.sys_mounts.reload_mount(reference)

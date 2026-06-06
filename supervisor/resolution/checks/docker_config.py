@@ -1,5 +1,7 @@
 """Helper to check if docker config for container needs an update."""
 
+from typing import Any
+
 from ...apps.const import MappingType
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -70,7 +72,11 @@ class CheckDockerConfig(CheckBase):
                 suggestions=[SuggestionType.EXECUTE_REBUILD],
             )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         self._check_docker_config()
         return bool(self.current_issues)

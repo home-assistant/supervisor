@@ -1,5 +1,7 @@
 """Helpers to check if backed up."""
 
+from typing import Any
+
 from ...backups.const import BackupType
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -24,7 +26,11 @@ class CheckBackups(CheckBase):
                 suggestions=[SuggestionType.CREATE_FULL_BACKUP],
             )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         return (
             len(

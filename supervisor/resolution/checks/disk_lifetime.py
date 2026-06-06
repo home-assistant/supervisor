@@ -1,5 +1,7 @@
 """Helpers to check disk lifetime issues."""
 
+from typing import Any
+
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType
@@ -21,7 +23,11 @@ class CheckDiskLifetime(CheckBase):
                 IssueType.DISK_LIFETIME, ContextType.SYSTEM
             )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         # Get the current data disk device
         if not self.sys_dbus.agent.datadisk.current_device:

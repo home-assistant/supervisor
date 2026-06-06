@@ -1,6 +1,7 @@
 """Helpers to check for multiple data disks."""
 
 from pathlib import Path
+from typing import Any
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -36,7 +37,11 @@ class CheckMultipleDataDisks(CheckBase):
                     ],
                 )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         if not reference:
             return False

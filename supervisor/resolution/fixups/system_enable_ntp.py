@@ -1,6 +1,7 @@
 """Enable NTP fixup."""
 
 import logging
+from typing import Any
 
 from ...coresys import CoreSys
 from ...dbus.const import StartUnitMode
@@ -18,7 +19,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemEnableNTP(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Starting systemd-timesyncd service")
         await self.sys_dbus.systemd.start_unit(

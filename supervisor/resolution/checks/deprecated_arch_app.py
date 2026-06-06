@@ -1,5 +1,7 @@
 """Helpers to check for apps using deprecated compatibility entries."""
 
+from typing import Any
+
 from ...const import AppStage, CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
@@ -35,7 +37,11 @@ class CheckDeprecatedArchApp(CheckBase):
                     suggestions=[SuggestionType.EXECUTE_REMOVE],
                 )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         if not reference:
             return False

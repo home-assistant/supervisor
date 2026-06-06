@@ -77,6 +77,8 @@ class UnhealthyReason(StrEnum):
 class IssueType(StrEnum):
     """Issue type."""
 
+    APP_PORT_CONFLICT = "app_port_conflict"
+    APP_PORT_CONFLICT_CORE = "app_port_conflict_core"
     BOOT_FAIL = "boot_fail"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
@@ -115,6 +117,7 @@ class SuggestionType(StrEnum):
 
     ADOPT_DATA_DISK = "adopt_data_disk"
     CLEAR_FULL_BACKUP = "clear_full_backup"
+    CLEAR_PORT_CONFIG = "clear_port_config"
     CREATE_FULL_BACKUP = "create_full_backup"
     DISABLE_BOOT = "disable_boot"
     ENABLE_NTP = "enable_ntp"

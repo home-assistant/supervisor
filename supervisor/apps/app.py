@@ -14,7 +14,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Final, cast
+from typing import Any, Final, Literal, cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -1227,6 +1227,34 @@ class App(AppModel):
             if self._wait_for_startup_task is asyncio.current_task():
                 self._wait_for_startup_task = None
 
+    def create_port_conflict_issue(
+        self, port: int, source: Literal["core"] | None = None
+    ) -> None:
+        """Create a port conflict issue for the given port.
+
+        Source can only be "core" or None currently, may be extended in future.
+        If problematic port is explicitly mapped by user, suggest clearing port
+        config as a potential fix. Else we just note the issue.
+        """
+        ports = self.ports or {}
+        suggestions = (
+            [SuggestionType.CLEAR_PORT_CONFIG]
+            if any(public_port == port for public_port in ports.values())
+            else None
+        )
+        issue_type = (
+            IssueType.APP_PORT_CONFLICT_CORE
+            if source == "core"
+            else IssueType.APP_PORT_CONFLICT
+        )
+        self.sys_resolution.create_issue(
+            issue_type,
+            ContextType.ADDON,
+            reference=self.slug,
+            reference_extra={"port": port},
+            suggestions=suggestions,
+        )
+
     @Job(
         name="addon_start",
         on_condition=AppsJobError,
@@ -1275,11 +1303,9 @@ class App(AppModel):
         try:
             await self.instance.run()
         except DockerContainerPortConflict as err:
-            raise AppPortConflict(
-                _LOGGER.error,
-                name=self.slug,
-                port=cast(dict[str, Any], err.extra_fields)["port"],
-            ) from err
+            port = cast(dict[str, Any], err.extra_fields)["port"]
+            self.create_port_conflict_issue(port)
+            raise AppPortConflict(_LOGGER.error, name=self.slug, port=port) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for app %s: %s", self.slug, err)
             self._update_state(operation_error=True)

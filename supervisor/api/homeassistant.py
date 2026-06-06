@@ -37,7 +37,9 @@ from ..const import (
     ATTR_WATCHDOG,
 )
 from ..coresys import CoreSysAttributes
+from ..docker.manager import IPV4_WILDCARD, IPV6_WILDCARD, DockerPortBinding
 from ..exceptions import APIDBMigrationInProgress, APIError
+from ..homeassistant.core import ComponentType, PortConflict
 from ..validate import docker_image, network_port, version_tag
 from .const import ATTR_BACKGROUND, ATTR_FORCE, ATTR_SAFE_MODE
 from .utils import api_process, api_validate, background_task
@@ -132,7 +134,63 @@ class APIHomeAssistant(CoreSysAttributes):
             self.sys_homeassistant.boot = body[ATTR_BOOT]
 
         if ATTR_PORT in body:
-            self.sys_homeassistant.api_port = body[ATTR_PORT]
+            self.sys_homeassistant.api_port = new_port = body[ATTR_PORT]
+
+            # This API is called after Home Assistant has started. So port conflict
+            # detection here is not validation, its too late for that. Instead
+            # we record the new port, attempt to resolve the conflict if possible,
+            # and log errors and abort any waiting startup sequence if not.
+            used = await self.sys_apps.get_used_host_port_bindings(
+                exclude_homeassistant=True
+            )
+            new_bindings = {
+                DockerPortBinding(
+                    ip=IPV4_WILDCARD,
+                    public_port=new_port,
+                    type="tcp",
+                    private_port=new_port,
+                ),
+                DockerPortBinding(
+                    ip=IPV6_WILDCARD,
+                    public_port=new_port,
+                    type="tcp",
+                    private_port=new_port,
+                ),
+            }
+
+            # Loop through all used bindings to find any conflicts with the chosen port
+            # IP specific bindings mean its possible for multiple components to conflict
+            # here so go through all even if we find a conflict.
+            for binding, name in used.items():
+                if not any(
+                    binding.is_conflict(new_binding) for new_binding in new_bindings
+                ):
+                    continue
+
+                component: Any
+                if apps := [
+                    app for app in self.sys_apps.installed if app.instance.name == name
+                ]:
+                    component_type = ComponentType.APP
+                    component = apps[0]
+                elif plugins := [
+                    plugin
+                    for plugin in self.sys_plugins.all_plugins
+                    if plugin.instance.name == name
+                ]:
+                    component_type = ComponentType.PLUGIN
+                    component = plugins[0]
+                else:
+                    component_type = ComponentType.UNKNOWN
+                    component = name
+
+                await self.sys_homeassistant.core.set_port_conflict(
+                    PortConflict(
+                        component_type=component_type,
+                        component=component,
+                        port=new_port,
+                    )
+                )
 
         if ATTR_SSL in body:
             self.sys_homeassistant.api_ssl = body[ATTR_SSL]

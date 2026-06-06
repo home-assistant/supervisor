@@ -1,6 +1,7 @@
 """Helpers to check for duplicate OS installations."""
 
 import logging
+from typing import Any
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -83,7 +84,11 @@ class CheckDuplicateOSInstallation(CheckBase):
                 )
                 return
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         # Check all partitions for duplicates since issue is created without reference
         for device_spec, _, _ in _get_device_specifications():

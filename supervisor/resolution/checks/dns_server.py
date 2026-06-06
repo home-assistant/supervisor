@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import timedelta
-from typing import Literal
+from typing import Any, Literal
 
 from aiodns import DNSResolver
 from aiodns.error import DNSError
@@ -58,7 +58,11 @@ class CheckDNSServer(CheckBase):
                 await async_capture_exception(result)
 
     @Job(name="check_dns_server_approve", conditions=[JobCondition.INTERNET_SYSTEM])
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         if reference not in self.dns_servers:
             return False

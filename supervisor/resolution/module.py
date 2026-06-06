@@ -216,9 +216,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         context: ContextType,
         reference: str | None = None,
         suggestions: list[SuggestionType] | None = None,
+        reference_extra: dict[str, Any] | None = None,
     ) -> None:
         """Create issues and suggestion."""
-        self.add_issue(Issue(issue, context, reference), suggestions)
+        self.add_issue(Issue(issue, context, reference, reference_extra), suggestions)
 
     def add_issue(
         self, issue: Issue, suggestions: list[SuggestionType] | None = None
@@ -227,7 +228,12 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         if suggestions:
             for suggestion in suggestions:
                 self.add_suggestion(
-                    Suggestion(suggestion, issue.context, issue.reference)
+                    Suggestion(
+                        suggestion,
+                        issue.context,
+                        issue.reference,
+                        issue.reference_extra,
+                    )
                 )
 
         if issue in self._issues:
@@ -309,20 +315,26 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             ),
         )
 
-    def suggestions_for_issue(self, issue: Issue) -> set[Suggestion]:
+    def suggestions_for_issue(self, issue: Issue) -> list[Suggestion]:
         """Get suggestions that fix an issue."""
-        return {
-            suggestion
-            for fix in self.fixup.fixes_for_issue(issue)
-            for suggestion in fix.all_suggestions
-            if suggestion.reference == issue.reference
-        }
+        suggestions: list[Suggestion] = []
+        seen: set[str] = set()
+        for fix in self.fixup.fixes_for_issue(issue):
+            for suggestion in fix.all_suggestions:
+                if suggestion.reference != issue.reference or suggestion.uuid in seen:
+                    continue
+                seen.add(suggestion.uuid)
+                suggestions.append(suggestion)
+        return suggestions
 
-    def issues_for_suggestion(self, suggestion: Suggestion) -> set[Issue]:
+    def issues_for_suggestion(self, suggestion: Suggestion) -> list[Issue]:
         """Get issues fixed by a suggestion."""
-        return {
-            issue
-            for fix in self.fixup.fixes_for_suggestion(suggestion)
-            for issue in fix.all_issues
-            if issue.reference == suggestion.reference
-        }
+        issues: list[Issue] = []
+        seen: set[str] = set()
+        for fix in self.fixup.fixes_for_suggestion(suggestion):
+            for issue in fix.all_issues:
+                if issue.reference != suggestion.reference or issue.uuid in seen:
+                    continue
+                seen.add(issue.uuid)
+                issues.append(issue)
+        return issues

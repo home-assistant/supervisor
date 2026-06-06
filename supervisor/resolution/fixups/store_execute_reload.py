@@ -1,6 +1,7 @@
 """Helpers to check and fix issues with free space."""
 
 import logging
+from typing import Any
 
 from ...const import BusEvent
 from ...coresys import CoreSys
@@ -31,7 +32,11 @@ class FixupStoreExecuteReload(FixupBase):
         conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.FREE_SPACE],
         on_condition=ResolutionFixupJobError,
     )
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Initialize the fixup class."""
         if not reference:
             return

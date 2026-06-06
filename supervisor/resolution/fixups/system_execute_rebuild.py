@@ -1,6 +1,7 @@
 """Helper to fix an issue with the system by rebuilding containers."""
 
 import asyncio
+from typing import Any
 
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
@@ -16,7 +17,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemExecuteRebuild(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Rebuild containers with docker config issues."""
         await asyncio.gather(
             *[

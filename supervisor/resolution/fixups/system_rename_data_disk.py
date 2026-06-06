@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from ...coresys import CoreSys
 from ...dbus.udisks2.data import DeviceSpecification
@@ -21,7 +22,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemRenameDataDisk(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Initialize the fixup class."""
         if not reference:
             return

@@ -1,6 +1,7 @@
 """Helper to fix missing image for app."""
 
 import logging
+from typing import Any
 
 from ...coresys import CoreSys
 from ...exceptions import (
@@ -30,7 +31,11 @@ class FixupAppExecuteRepair(FixupBase):
         super().__init__(coresys)
         self.attempts = 0
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Pull the apps image."""
         if not reference:
             return

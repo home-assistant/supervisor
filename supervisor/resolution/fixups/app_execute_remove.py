@@ -1,6 +1,7 @@
 """Helpers to fix app issue by removing it."""
 
 import logging
+from typing import Any
 
 from ...coresys import CoreSys
 from ...exceptions import AppsError, ResolutionFixupError
@@ -18,7 +19,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupAppExecuteRemove(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Initialize the fixup class."""
         if not reference:
             return

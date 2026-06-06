@@ -1,5 +1,7 @@
 """Helpers to check core security."""
 
+from typing import Any
+
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...dbus.const import ConnectionState, ConnectionStateFlags
@@ -27,7 +29,11 @@ class CheckNetworkInterfaceIPV4(CheckBase):
                     inet.interface_name,
                 )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> bool:
         """Approve check if it is affected by issue."""
         if not reference:
             return False

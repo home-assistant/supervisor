@@ -1,6 +1,7 @@
 """Helper to fix an issue with an app by rebuilding its container."""
 
 import logging
+from typing import Any
 
 from ...coresys import CoreSys
 from ...docker.const import ContainerState
@@ -18,7 +19,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupAppExecuteRebuild(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(
+        self,
+        reference: str | None = None,
+        reference_extra: dict[str, Any] | None = None,
+    ) -> None:
         """Rebuild the app's container."""
         if not reference:
             return
