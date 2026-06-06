@@ -512,8 +512,6 @@ class HomeAssistantCore(JobGroup):
                     await self.instance.start()
                 except DockerError as err:
                     raise HomeAssistantError from err
-
-                await self._block_till_run()
             # No Instance/Container found, extended start
             else:
                 # Create new API token

@@ -10,6 +10,8 @@ from supervisor.const import AppState
 from supervisor.exceptions import AppsError
 from supervisor.homeassistant.core import ComponentType, PortConflict
 
+from tests.common import force_app_state
+
 
 @pytest.mark.parametrize("app_state", [AppState.STOPPED, AppState.ERROR])
 async def test_set_port_conflict_app_not_running_creates_issue_only(
@@ -17,7 +19,7 @@ async def test_set_port_conflict_app_not_running_creates_issue_only(
 ):
     """Test app conflicts create issue but do not stop or abort if app is not running."""
     app = install_app_ssh
-    app.state = app_state
+    force_app_state(app, app_state)
     app.create_port_conflict_issue = Mock()
     app.stop = AsyncMock()
 
@@ -43,7 +45,7 @@ async def test_set_port_conflict_app_running_stops_without_abort_on_success(
 ):
     """Test running app conflicts are resolved by stopping app when possible."""
     app = install_app_ssh
-    app.state = app_state
+    force_app_state(app, app_state)
     app.create_port_conflict_issue = Mock()
     app.stop = AsyncMock()
 
@@ -69,7 +71,7 @@ async def test_set_port_conflict_app_running_aborts_on_stop_failure(
 ):
     """Test running app conflicts abort startup if stop fails while waiting."""
     app = install_app_ssh
-    app.state = app_state
+    force_app_state(app, app_state)
     app.create_port_conflict_issue = Mock()
     app.stop = AsyncMock(side_effect=AppsError())
 

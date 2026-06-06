@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock
 from supervisor.const import AppState
 from supervisor.resolution.checks.app_port_conflict_core import CheckAppPortConflictCore
 
+from tests.common import force_app_state
+
 
 async def test_approve_check_missing_reference_data(coresys):
     """Test approval fails if required fields are missing."""
@@ -44,7 +46,7 @@ async def test_approve_check_resolved_when_app_running_and_core_up(
     """Test approval fails when conflict is considered resolved."""
     check = CheckAppPortConflictCore(coresys)
     app = install_app_ssh
-    app.state = AppState.STARTED
+    force_app_state(app, AppState.STARTED)
     coresys.homeassistant.api.check_api_state = AsyncMock(return_value=True)
 
     assert not await check.approve_check(
@@ -57,7 +59,7 @@ async def test_approve_check_host_network_app_still_affected(coresys, install_ap
     """Test host network app is considered still affected."""
     check = CheckAppPortConflictCore(coresys)
     app = install_app_ssh
-    app.state = AppState.STOPPED
+    force_app_state(app, AppState.STOPPED)
     app.data["host_network"] = True
 
     assert await check.approve_check(
@@ -70,7 +72,7 @@ async def test_approve_check_port_mapping_still_present(coresys, install_app_ssh
     """Test app is affected if conflicting mapping is still configured."""
     check = CheckAppPortConflictCore(coresys)
     app = install_app_ssh
-    app.state = AppState.STOPPED
+    force_app_state(app, AppState.STOPPED)
 
     app.persist["network"] = {"8123/tcp": coresys.homeassistant.api_port}
 

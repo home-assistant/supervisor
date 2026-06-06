@@ -48,9 +48,9 @@ async def test_fixup(coresys: CoreSys):
         patch.object(FixupPluginExecuteRebuild, "process_fixup") as plugin_fixup,
     ):
         await system_execute_rebuild()
-        app_fixup.assert_called_once_with(reference="local_ssh")
-        core_fixup.assert_called_once()
-        plugin_fixup.assert_called_once_with(reference="audio")
+        app_fixup.assert_called_once_with(reference="local_ssh", reference_extra=None)
+        core_fixup.assert_called_once_with(reference=None, reference_extra=None)
+        plugin_fixup.assert_called_once_with(reference="audio", reference_extra=None)
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions

@@ -14,6 +14,8 @@ from supervisor.homeassistant.core import ComponentType
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.resolution.const import IssueType, SuggestionType
 
+from tests.common import force_app_state
+
 
 async def test_api_set_options_port_no_conflict(
     core_api_client_with_root: tuple[TestClient, str],
@@ -225,7 +227,7 @@ async def test_api_set_options_port_conflict_integration_stopped_app_creates_iss
     """Stopped app conflict should create issue but not stop app or abort startup."""
     api_client, root = core_api_client_with_root
     new_port = 18128
-    install_app_ssh.state = AppState.STOPPED
+    force_app_state(install_app_ssh, AppState.STOPPED)
     install_app_ssh.persist["network"] = {"22/tcp": new_port}
 
     used_bindings = {
@@ -274,7 +276,7 @@ async def test_api_set_options_port_conflict_integration_running_app_stops(
     """Running app conflict should try stopping app and create an issue."""
     api_client, root = core_api_client_with_root
     new_port = 18129
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     install_app_ssh.persist["network"] = {"22/tcp": new_port}
 
     used_bindings = {
@@ -315,7 +317,7 @@ async def test_api_set_options_port_conflict_integration_aborts_if_unresolved(
     """Running app conflict should abort startup sequence if stop fails."""
     api_client, root = core_api_client_with_root
     new_port = 18130
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
 
     used_bindings = {
         DockerPortBinding(

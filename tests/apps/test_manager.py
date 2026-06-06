@@ -689,7 +689,7 @@ async def test_get_used_host_port_bindings_includes_stopped_app_ports(
     coresys: CoreSys, install_app_ssh: App
 ):
     """Stopped app configured ports should be included as potential conflicts."""
-    install_app_ssh.state = AppState.STOPPED
+    force_app_state(install_app_ssh, AppState.STOPPED)
     install_app_ssh.ports = {"22/tcp": 2233}
 
     with patch.object(
@@ -729,7 +729,7 @@ async def test_get_used_host_port_bindings_includes_host_network_unmapped_ports(
     coresys: CoreSys, install_app_ssh: App
 ):
     """Host network app ports should be included even when not explicitly mapped."""
-    install_app_ssh.state = AppState.STARTED
+    force_app_state(install_app_ssh, AppState.STARTED)
     install_app_ssh.ports = {"22/tcp": None}
 
     with (
@@ -774,7 +774,7 @@ async def test_get_used_host_port_bindings_includes_host_network_ingress_port(
     coresys: CoreSys, install_app_ssh: App
 ):
     """Host network ingress port should always be added when set."""
-    install_app_ssh.state = AppState.STOPPED
+    force_app_state(install_app_ssh, AppState.STOPPED)
     install_app_ssh.ports = None
 
     with (

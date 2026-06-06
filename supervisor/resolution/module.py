@@ -315,26 +315,22 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             ),
         )
 
-    def suggestions_for_issue(self, issue: Issue) -> list[Suggestion]:
+    def suggestions_for_issue(self, issue: Issue) -> set[Suggestion]:
         """Get suggestions that fix an issue."""
-        suggestions: list[Suggestion] = []
-        seen: set[str] = set()
-        for fix in self.fixup.fixes_for_issue(issue):
-            for suggestion in fix.all_suggestions:
-                if suggestion.reference != issue.reference or suggestion.uuid in seen:
-                    continue
-                seen.add(suggestion.uuid)
-                suggestions.append(suggestion)
-        return suggestions
+        return {
+            suggestion
+            for fix in self.fixup.fixes_for_issue(issue)
+            for suggestion in fix.all_suggestions
+            if suggestion.reference == issue.reference
+            and suggestion.reference_extra == issue.reference_extra
+        }
 
-    def issues_for_suggestion(self, suggestion: Suggestion) -> list[Issue]:
+    def issues_for_suggestion(self, suggestion: Suggestion) -> set[Issue]:
         """Get issues fixed by a suggestion."""
-        issues: list[Issue] = []
-        seen: set[str] = set()
-        for fix in self.fixup.fixes_for_suggestion(suggestion):
-            for issue in fix.all_issues:
-                if issue.reference != suggestion.reference or issue.uuid in seen:
-                    continue
-                seen.add(issue.uuid)
-                issues.append(issue)
-        return issues
+        return {
+            issue
+            for fix in self.fixup.fixes_for_suggestion(suggestion)
+            for issue in fix.all_issues
+            if issue.reference == suggestion.reference
+            and issue.reference_extra == suggestion.reference_extra
+        }
