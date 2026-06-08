@@ -180,11 +180,18 @@ async def test_proxy_large_message(
         install_app_ssh.supervisor_token
     )
 
-    # Test message over size limit of 4MB
-    await client.send_bytes(bytearray(1024 * 1024 * 4))
-    msg = await client.receive()
-    assert msg.type == WSMsgType.CLOSE
-    assert msg.data == WSCloseCode.MESSAGE_TOO_BIG
+    # Test message over size limit of 4MB. Since aiohttp 3.14.1 the server
+    # rejects the oversized frame from its header and resets the connection
+    # before the full payload is sent, so the send itself may raise in
+    # addition to the CLOSE frame. See aio-libs/aiohttp#12817.
+    try:
+        await client.send_bytes(bytearray(1024 * 1024 * 4))
+    except ConnectionError:
+        pass
+    else:
+        msg = await client.receive()
+        assert msg.type == WSMsgType.CLOSE
+        assert msg.data == WSCloseCode.MESSAGE_TOO_BIG
 
     assert ha_ws_server.closed
 
