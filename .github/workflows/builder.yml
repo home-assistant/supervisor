@@ -127,7 +127,7 @@ jobs:
 
       - name: Build and publish wheels
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'true'
-        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
+        uses: home-assistant/wheels@34957438948e0b3dcde73c77750643dadae594f5 # 2026.06.0
         with:
           wheels-key: ${{ secrets.WHEELS_KEY }}
           abi: ${{ env.WHEELS_ABI }}
@@ -140,7 +140,7 @@ jobs:
 
       - name: Build local wheels
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
-        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
+        uses: home-assistant/wheels@34957438948e0b3dcde73c77750643dadae594f5 # 2026.06.0
         with:
           wheels-host: ""
           wheels-user: ""
