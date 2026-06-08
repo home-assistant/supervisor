@@ -171,8 +171,39 @@ class HomeAssistantError(HassioError):
     """Home Assistant exception."""
 
 
-class HomeAssistantUpdateError(HomeAssistantError):
+class HomeAssistantUpdateError(HomeAssistantError, APIError):
     """Error on update of a Home Assistant."""
+
+    error_key = "homeassistant_update_error"
+    message_template = "Updating Home Assistant failed"
+
+
+class HomeAssistantUpdateImageError(HomeAssistantUpdateError):
+    """Raise when the Home Assistant image cannot be downloaded during update."""
+
+    error_key = "homeassistant_update_image_error"
+    message_template = "Downloading Home Assistant version {version} failed"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
+
+
+class HomeAssistantUpdateAlreadyInstalledError(HomeAssistantUpdateError):
+    """Raise when the requested Home Assistant version is already installed."""
+
+    error_key = "homeassistant_update_already_installed_error"
+    message_template = "Home Assistant version {version} is already installed"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
 
 
 class HomeAssistantCrashError(HomeAssistantError):
