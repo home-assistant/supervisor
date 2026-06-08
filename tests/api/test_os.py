@@ -9,6 +9,7 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent import OSAgent
+from supervisor.dbus.agent.boards import BoardManager
 from supervisor.dbus.agent.boards.interface import BoardProxy
 from supervisor.host.control import SystemControl
 from supervisor.os.manager import OSManager
@@ -692,3 +693,22 @@ async def test_api_board_raspberrypi_requires_os_agent_version(
 
     resp = await api_client.post(f"{prefix}/os/boards/raspberrypi/firmware/update")
     assert resp.status == 404
+
+
+@pytest.mark.usefixtures("os_agent_version")
+async def test_api_board_raspberrypi_firmware_unavailable_on_board(
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test 404 is returned for raspberrypi endpoints on a board without firmware."""
+    api_client, prefix = api_client_with_prefix
+
+    with patch.object(
+        BoardManager, "has_rpi_firmware", new=PropertyMock(return_value=False)
+    ):
+        resp = await api_client.get(f"{prefix}/os/boards/raspberrypi/firmware")
+        assert resp.status == 404
+
+        resp = await api_client.post(f"{prefix}/os/boards/raspberrypi/firmware/update")
+        assert resp.status == 404

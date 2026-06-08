@@ -238,7 +238,7 @@ class APIOS(CoreSysAttributes):
             )
 
         if not self.sys_dbus.agent.board.has_rpi_firmware:
-            raise BoardInvalidError(
+            raise APINotFound(
                 "Raspberry Pi firmware is not available on this board", _LOGGER.error
             )
 
