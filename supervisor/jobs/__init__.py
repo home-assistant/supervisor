@@ -141,6 +141,20 @@ class SupervisorJob:
     extra: dict[str, Any] | None = None
     child_job_syncs: list[ChildJobSyncFilter] | None = None
     parent_job_syncs: list[ParentJobSync] = field(init=False, factory=list)
+    _child_sync_baselines: dict[ChildJobSyncFilter, float] = field(
+        init=False, factory=dict
+    )
+
+    def register_child_sync(self, sync: ChildJobSyncFilter) -> float:
+        """Return the progress baseline a child sync owns on this job.
+
+        The first child to match a sync captures this job's current progress as
+        the baseline of the sync's allocation band. Children matching the same
+        sync afterwards (e.g. a docker image pull retried after a failure) reuse
+        that baseline so they restart the band instead of stacking progress on
+        top of the previous attempt.
+        """
+        return self._child_sync_baselines.setdefault(sync, self.progress)
 
     def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
@@ -335,11 +349,8 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                 if not curr_parent.child_job_syncs:
                     continue
 
-                # HACK: If parent trigger the same child job, we just skip this second
-                # sync. Maybe it would be better to have this reflected in the job stage
-                # and reset progress to 0 instead? There is no support for such stage
-                # information on Core update entities today though.
-                if curr_parent.done is True or curr_parent.progress >= 100:
+                # A finished parent can no longer take progress updates
+                if curr_parent.done is True:
                     _LOGGER.debug(
                         "Skipping parent job sync for done parent job %s",
                         curr_parent.name,
@@ -349,15 +360,28 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                 # Break after first match at each parent as it doesn't make sense
                 # to match twice. But it could match multiple parents
                 for sync in curr_parent.child_job_syncs:
-                    if sync.matches(job):
-                        job.parent_job_syncs.append(
-                            ParentJobSync(
-                                curr_parent.uuid,
-                                starting_progress=curr_parent.progress,
-                                progress_allocation=sync.progress_allocation,
-                            )
-                        )
+                    if not sync.matches(job):
+                        continue
+
+                    # Reset the parent to the baseline this sync owns so a
+                    # re-triggered child (e.g. an image pull retried after a
+                    # failure) restarts its allocation band instead of stacking
+                    # on top of the previous attempt's progress.
+                    baseline = curr_parent.register_child_sync(sync)
+                    if baseline >= 100:
                         break
+                    # Guard avoids triggering a redundant on change when unchanged
+                    # pylint: disable-next=R1730
+                    if curr_parent.progress > baseline:  # noqa: PLR1730
+                        curr_parent.progress = baseline
+                    job.parent_job_syncs.append(
+                        ParentJobSync(
+                            curr_parent.uuid,
+                            starting_progress=baseline,
+                            progress_allocation=sync.progress_allocation,
+                        )
+                    )
+                    break
 
         self._jobs[job.uuid] = job
         return job

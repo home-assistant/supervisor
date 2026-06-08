@@ -430,6 +430,138 @@ async def test_install_exposes_core_install_job_with_progress(
     assert install_events[-1]["done"] is True
 
 
+def _core_install_progress(ha_ws_client: AsyncMock) -> list[float]:
+    """Return the progress values reported for the Core install job over the WS."""
+    return [
+        msg["data"]["data"]["progress"]
+        for c in ha_ws_client.async_send_command.call_args_list
+        if (msg := c.args[0])["data"].get("event") == WSEvent.JOB
+        and msg["data"]["data"]["name"] == "home_assistant_core_install"
+    ]
+
+
+async def test_install_progress_excludes_supervisor_self_update(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test a Supervisor self-update pull does not count towards Core install progress.
+
+    When Supervisor needs updating first, that runs its own docker image pull
+    (a ``docker_interface_install`` job carrying the Supervisor container
+    reference). The Core install job's ``child_job_syncs`` is scoped to the Home
+    Assistant container, so the Supervisor pull must not move the Core install
+    progress.
+    """
+    coresys.security.force = True
+
+    logs = load_json_fixture("docker_pull_image_log_containerd_snapshot.json")
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
+
+    progress_after_self_update: list[float] = []
+
+    async def fake_supervisor_update(*args, **kwargs) -> None:
+        """Emulate a Supervisor self-update pulling its own image."""
+        child = coresys.jobs.new_job(
+            "docker_interface_install", reference="hassio_supervisor"
+        )
+        with child.start():
+            child.progress = 100
+        progress_after_self_update.append(coresys.jobs.current.progress)
+
+    with (
+        patch.object(HomeAssistantCore, "start"),
+        patch.object(DockerHomeAssistant, "cleanup"),
+        patch.object(
+            Updater,
+            "image_homeassistant",
+            new=PropertyMock(return_value="homeassistant"),
+        ),
+        patch.object(
+            Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
+        ),
+        patch.object(
+            DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
+        ),
+        patch.object(
+            type(coresys.supervisor),
+            "need_update",
+            new=PropertyMock(return_value=True),
+        ),
+        patch.object(
+            type(coresys.updater), "auto_update", new=PropertyMock(return_value=True)
+        ),
+        patch.object(coresys.supervisor, "update", new=fake_supervisor_update),
+    ):
+        await coresys.homeassistant.core.install()
+
+    await asyncio.sleep(0)
+
+    # The Supervisor self-update pull reached 100% but must not have moved the
+    # Core install job (it would be 100 here if the sync were not scoped).
+    assert progress_after_self_update == [0]
+    # The Core image pull afterwards still drives the job to completion.
+    assert _core_install_progress(ha_ws_client)[-1] == 100
+
+
+async def test_install_resets_progress_on_retry(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test a failed install attempt resets progress instead of overshooting.
+
+    The Core image pull runs in a retry loop. Docker resumes already-downloaded
+    layers, so a retry's fresh pull reports them immediately and would otherwise
+    push the synced progress straight to 100% if it stacked on top of the failed
+    attempt. The sync resets to the baseline on a re-triggered child, so the bar
+    restarts rather than overshooting.
+    """
+    coresys.security.force = True
+
+    partial_then_error = [
+        {
+            "status": "Pulling from home-assistant/odroid-n2-homeassistant",
+            "id": "1.2.3",
+        },
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "1578b14a573c"},
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 500, "total": 1000},
+            "id": "1578b14a573c",
+        },
+        {"errorDetail": {"message": "failure"}, "error": "failure"},
+    ]
+    full = load_json_fixture("docker_pull_image_log_containerd_snapshot.json")
+    coresys.docker.images.pull.side_effect = [
+        AsyncIterator(partial_then_error),
+        AsyncIterator(full),
+    ]
+
+    with (
+        patch.object(HomeAssistantCore, "start"),
+        patch.object(DockerHomeAssistant, "cleanup"),
+        patch.object(
+            Updater,
+            "image_homeassistant",
+            new=PropertyMock(return_value="homeassistant"),
+        ),
+        patch.object(
+            Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
+        ),
+        patch.object(
+            DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
+        ),
+        patch("supervisor.homeassistant.core.asyncio.sleep"),
+    ):
+        await coresys.homeassistant.core.install()
+
+    await asyncio.sleep(0)
+
+    progress = _core_install_progress(ha_ws_client)
+    first_nonzero = next(i for i, value in enumerate(progress) if value > 0)
+    # The first attempt moved the bar, then the retry reset it back to 0 before
+    # climbing to completion (rather than continuing from the failed progress).
+    assert 0 in progress[first_nonzero:]
+    assert progress[-1] == 100
+
+
 @pytest.mark.parametrize(
     ("container_exc", "image_exc", "delete_calls"),
     [
