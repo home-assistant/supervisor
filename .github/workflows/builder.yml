@@ -332,32 +332,41 @@ jobs:
           docker logs --tail 50 hassio_supervisor
           exit 1
 
-      # Wait for Core to come up so subsequent steps (backup, addon install) succeed.
-      # On first startup, Supervisor installs Core via the "home_assistant_core_install"
-      # job (which pulls the image and then starts Core). Jobs with cleanup=True are
-      # removed from the jobs list once done, so we poll until it's gone.
+      # Wait for Core to be fully ready before backup/app actions.
+      # Relying only on install-job presence is racy because the job may not yet be
+      # visible when we first poll. Instead, wait for a positive Core running state.
       - name: Wait for Core to be started
         run: |
-          echo "Waiting for Home Assistant Core to be installed and started..."
+          echo "Waiting for Home Assistant Core API to report running state..."
           timeout=300
           elapsed=0
 
           while [ $elapsed -lt $timeout ]; do
-            jobs=$(docker exec hassio_cli ha jobs info --no-progress --raw-json | jq -r '.data.jobs[] | select(.name == "home_assistant_core_install" and .done == false) | .name' 2>/dev/null)
-            if [ -z "$jobs" ]; then
-              echo "Home Assistant Core install/start complete (took ${elapsed}s)"
+            core_info="$(docker exec hassio_cli ha core info --no-progress --raw-json 2>/dev/null || true)"
+            core_result="$(echo "$core_info" | jq -r '.result // empty' 2>/dev/null)"
+            core_state="$(echo "$core_info" | jq -r '.data.state // empty' 2>/dev/null)"
+
+            if [ "$core_result" = "ok" ] && [ "$core_state" = "running" ]; then
+              echo "Home Assistant Core is running (took ${elapsed}s)"
               exit 0
             fi
 
             if [ $((elapsed % 15)) -eq 0 ]; then
-              echo "Core still installing... (${elapsed}s/${timeout}s)"
+              install_job="$(docker exec hassio_cli ha jobs info --no-progress --raw-json 2>/dev/null | jq -r '.data.jobs[]? | select(.name == "home_assistant_core_install" and .done == false) | .name')"
+              if [ -n "$install_job" ]; then
+                echo "Core still installing... (${elapsed}s/${timeout}s)"
+              elif [ "$core_result" = "ok" ]; then
+                echo "Core state is '${core_state}', waiting for 'running'... (${elapsed}s/${timeout}s)"
+              else
+                echo "Core API not ready yet... (${elapsed}s/${timeout}s)"
+              fi
             fi
 
             sleep 5
             elapsed=$((elapsed + 5))
           done
 
-          echo "ERROR: Home Assistant Core failed to install/start within ${timeout}s"
+          echo "ERROR: Home Assistant Core failed to reach running state within ${timeout}s"
           docker logs --tail 50 hassio_supervisor
           exit 1
 
