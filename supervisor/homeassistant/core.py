@@ -19,7 +19,7 @@ from ..bus import EventListener
 from ..const import ATTR_HOMEASSISTANT, BusEvent, CoreState
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
-from ..docker.homeassistant import DockerHomeAssistant
+from ..docker.homeassistant import HASS_DOCKER_NAME, DockerHomeAssistant
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
@@ -190,9 +190,15 @@ class HomeAssistantCore(JobGroup):
         # We assume for now the docker image pull is 100% of this task. But from
         # a user perspective that isn't true. Other steps that take time which
         # is not accounted for in progress include: image cleanup and Home
-        # Assistant start.
+        # Assistant start. The reference is scoped to the Home Assistant
+        # container so a Supervisor self-update done first (which also pulls an
+        # image via docker_interface_install) does not count towards this job.
         child_job_syncs=[
-            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+            ChildJobSyncFilter(
+                "docker_interface_install",
+                reference=HASS_DOCKER_NAME,
+                progress_allocation=1.0,
+            )
         ],
     )
     async def install(self) -> None:
@@ -307,7 +313,11 @@ class HomeAssistantCore(JobGroup):
         # is not accounted for in progress include: partial backup, image
         # cleanup, and Home Assistant restart
         child_job_syncs=[
-            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+            ChildJobSyncFilter(
+                "docker_interface_install",
+                reference=HASS_DOCKER_NAME,
+                progress_allocation=1.0,
+            )
         ],
     )
     async def update(

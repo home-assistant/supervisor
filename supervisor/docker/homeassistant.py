@@ -36,7 +36,7 @@ from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _VERIFY_TRUST: AwesomeVersion = AwesomeVersion("2021.5.0")
-_HASS_DOCKER_NAME: str = "homeassistant"
+HASS_DOCKER_NAME: str = "homeassistant"
 ENV_S6_GRACETIME = re.compile(r"^S6_SERVICES_GRACETIME=([0-9]+)$")
 ENV_RESTORE_JOB_ID = "SUPERVISOR_RESTORE_JOB_ID"
 
@@ -59,7 +59,7 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def name(self) -> str:
         """Return name of Docker container."""
-        return _HASS_DOCKER_NAME
+        return HASS_DOCKER_NAME
 
     @property
     def timeout(self) -> int:
