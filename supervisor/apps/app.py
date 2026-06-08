@@ -35,6 +35,7 @@ from ..const import (
     ATTR_INGRESS_PANEL,
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
+    ATTR_LOCATION,
     ATTR_NETWORK,
     ATTR_OPTIONS,
     ATTR_PORTS,
@@ -270,9 +271,6 @@ class App(AppModel):
             await self.sys_hardware.helper.last_boot() != self.sys_config.last_boot
         )
 
-        if self.is_detached:
-            await super().refresh_path_cache()
-
         self._listeners.append(
             self.sys_bus.register_event(
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
@@ -387,30 +385,23 @@ class App(AppModel):
     @property
     def with_icon(self) -> bool:
         """Return True if an icon exists."""
-        if self.is_detached or not self.app_store:
-            return super().with_icon
-        return self.app_store.with_icon
+        # A detached app has no store source to read assets from.
+        return self.app_store is not None and self.app_store.with_icon
 
     @property
     def with_logo(self) -> bool:
         """Return True if a logo exists."""
-        if self.is_detached or not self.app_store:
-            return super().with_logo
-        return self.app_store.with_logo
+        return self.app_store is not None and self.app_store.with_logo
 
     @property
     def with_changelog(self) -> bool:
         """Return True if a changelog exists."""
-        if self.is_detached or not self.app_store:
-            return super().with_changelog
-        return self.app_store.with_changelog
+        return self.app_store is not None and self.app_store.with_changelog
 
     @property
     def with_documentation(self) -> bool:
         """Return True if a documentation exists."""
-        if self.is_detached or not self.app_store:
-            return super().with_documentation
-        return self.app_store.with_documentation
+        return self.app_store is not None and self.app_store.with_documentation
 
     @property
     def available(self) -> bool:
@@ -705,6 +696,25 @@ class App(AppModel):
     def latest_need_build(self) -> bool:
         """Return True if the latest version of the app needs a local build."""
         return ATTR_IMAGE not in self.data_store
+
+    @property
+    def path_location(self) -> Path:
+        """Return path to this app's source, resolved from the store.
+
+        The source location is owned by the store and recomputed on every store
+        reload, so it is derived here instead of being persisted (which used to
+        go stale, e.g. after the addons->apps path migration). It only exists
+        for a store-backed app: callers must ensure the app is attached (the
+        store is loaded before apps during setup, see Core.setup ordering) and
+        guard on is_detached. Reaching here while detached is a programming
+        error.
+        """
+        if self.is_detached:
+            raise RuntimeError(
+                f"App {self.slug} has no source location: not available in the "
+                "store (detached, or store accessed before it was loaded)"
+            )
+        return Path(self.data_store[ATTR_LOCATION])
 
     @property
     def path_data(self) -> Path:
@@ -1790,7 +1800,6 @@ class App(AppModel):
 
     async def refresh_path_cache(self) -> None:
         """Refresh cache of existing paths."""
-        if self.is_detached or not self.app_store:
-            await super().refresh_path_cache()
-        else:
+        # Asset paths live in the store source; a detached app has none.
+        if self.app_store:
             await self.app_store.refresh_path_cache()

@@ -57,7 +57,6 @@ from ..const import (
     ATTR_KERNEL_MODULES,
     ATTR_LABELS,
     ATTR_LEGACY,
-    ATTR_LOCATION,
     ATTR_MACHINE,
     ATTR_MAP,
     ATTR_NAME,
@@ -548,7 +547,9 @@ SCHEMA_APP_SYSTEM = vol.All(
     _migrate_app_config(),
     _SCHEMA_APP_CONFIG.extend(
         {
-            vol.Required(ATTR_LOCATION): str,
+            # The source location is owned by the store and resolved at runtime
+            # (see App.path_location); it is intentionally not persisted here.
+            # REMOVE_EXTRA drops any stale value left in older apps.json files.
             vol.Required(ATTR_REPOSITORY): str,
             vol.Required(ATTR_TRANSLATIONS, default=dict): {
                 str: SCHEMA_APP_TRANSLATIONS
