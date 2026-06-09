@@ -705,16 +705,15 @@ class App(AppModel):
         reload, so it is derived here instead of being persisted (which used to
         go stale, e.g. after the addons->apps path migration). It only exists
         for a store-backed app: callers must ensure the app is attached (the
-        store is loaded before apps during setup, see Core.setup ordering) and
-        guard on is_detached. Reaching here while detached is a programming
-        error.
+        store is loaded before apps during setup, see Core.setup ordering).
+        Reaching here without a store representation is a programming error.
         """
-        if self.is_detached:
+        if self.app_store is None:
             raise RuntimeError(
                 f"App {self.slug} has no source location: not available in the "
                 "store (detached, or store accessed before it was loaded)"
             )
-        return Path(self.data_store[ATTR_LOCATION])
+        return Path(self.app_store.data[ATTR_LOCATION])
 
     @property
     def path_data(self) -> Path:
