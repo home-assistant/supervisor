@@ -672,6 +672,9 @@ class AppModel(JobGroup, ABC):
 
     async def long_description(self) -> str | None:
         """Return README.md as long_description."""
+        # A detached app has no store source to read the README from.
+        if self.is_detached:
+            return None
 
         def read_readme() -> str | None:
             readme = Path(self.path_location, "README.md")

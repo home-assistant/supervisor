@@ -18,7 +18,7 @@ from securetar import SecureTarArchive, SecureTarFile
 from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel
-from supervisor.const import ATTR_ADVANCED, AppBoot, AppState, BusEvent
+from supervisor.const import ATTR_ADVANCED, ATTR_LOCATION, AppBoot, AppState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -1344,3 +1344,33 @@ async def test_app_start_port_conflict_error(
         f"Cannot start container addon_local_ssh because port {port} is already in use"
         in caplog.text
     )
+
+
+async def test_path_location_derived_from_store(coresys: CoreSys, install_app_ssh: App):
+    """Test source location comes from the store, not the install snapshot."""
+    slug = install_app_ssh.slug
+    store_location = coresys.store.data.apps[slug][ATTR_LOCATION]
+
+    # location is no longer persisted; a stale value in the snapshot is ignored.
+    install_app_ssh.data[ATTR_LOCATION] = "/data/addons/git/stale/ssh"
+    assert install_app_ssh.path_location == Path(store_location)
+
+
+async def test_path_location_detached_raises(coresys: CoreSys, install_app_ssh: App):
+    """Test a detached app has no resolvable source location."""
+    slug = install_app_ssh.slug
+
+    # Simulate a removed/unloaded repository: drop the store representation.
+    coresys.store.data.apps.pop(slug)
+    coresys.apps.store.pop(slug, None)
+    assert install_app_ssh.is_detached
+
+    with pytest.raises(RuntimeError):
+        _ = install_app_ssh.path_location
+
+    # Asset accessors report absence instead of crashing.
+    assert install_app_ssh.with_icon is False
+    assert install_app_ssh.with_logo is False
+    assert install_app_ssh.with_changelog is False
+    assert install_app_ssh.with_documentation is False
+    assert await install_app_ssh.long_description() is None
