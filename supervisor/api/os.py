@@ -234,12 +234,13 @@ class APIOS(CoreSysAttributes):
         ):
             raise APINotFound(
                 f"OS Agent {RPI_FIRMWARE_MIN_OS_AGENT_VERSION} or newer required "
-                "for Raspberry Pi firmware management"
+                "for Raspberry Pi firmware management",
+                _LOGGER.debug,
             )
 
         if not self.sys_dbus.agent.board.has_rpi_firmware:
-            raise BoardInvalidError(
-                "Raspberry Pi firmware is not available on this board", _LOGGER.error
+            raise APINotFound(
+                "Raspberry Pi firmware is not available on this board", _LOGGER.debug
             )
 
     @api_process
