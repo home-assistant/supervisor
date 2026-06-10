@@ -306,7 +306,16 @@ class App(AppModel):
             await self.instance.check_image(self.version, default_image, self.arch)
         except DockerNotFound:
             _LOGGER.info("No %s app Docker image %s found", self.slug, self.image)
-            if self.need_build:
+            if self.need_build and self.is_detached:
+                # Image is gone and there is no store source to rebuild from.
+                # A rebuild repair would be futile; the detached-app check
+                # surfaces a remove suggestion instead.
+                _LOGGER.warning(
+                    "App %s is missing its image and is detached from its store; "
+                    "it cannot be rebuilt and should be removed",
+                    self.slug,
+                )
+            elif self.need_build:
                 # Don't run a local build during setup. Surface a repair so
                 # the resolution autofix loop can handle it off the critical
                 # path.
