@@ -39,7 +39,7 @@ _V2_FRONTEND_PATHS: Final = (
 
 # Block Anytime
 BLACKLIST: Final = re.compile(
-    r"^(?:"
+    r"^(?:/v2)?(?:"  # both implicit v1 and v2 paths
     r"|/homeassistant/api/hassio/.*"
     r"|/core/api/hassio/.*"
     r")$"
