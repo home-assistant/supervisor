@@ -6,10 +6,10 @@ import re
 
 from awesomeversion import AwesomeVersion
 
-from ..const import LABEL_MACHINE
+from ..const import LABEL_MACHINE, LABEL_TYPE
 from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
-from ..homeassistant.const import LANDINGPAGE
+from ..homeassistant.const import LANDINGPAGE, LANDINGPAGE_TYPE
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import (
@@ -43,6 +43,18 @@ ENV_RESTORE_JOB_ID = "SUPERVISOR_RESTORE_JOB_ID"
 
 class DockerHomeAssistant(DockerInterface):
     """Docker Supervisor wrapper for Home Assistant."""
+
+    @property
+    def version(self) -> AwesomeVersion | None:
+        """Return version of Home Assistant Docker image.
+
+        Landingpage images always resolve to LANDINGPAGE, regardless of the
+        version stamped into the io.hass.version label. The io.hass.type label
+        is the authoritative signal for "this is a landingpage".
+        """
+        if self.meta_labels.get(LABEL_TYPE) == LANDINGPAGE_TYPE:
+            return LANDINGPAGE
+        return super().version
 
     @property
     def machine(self) -> str | None:
