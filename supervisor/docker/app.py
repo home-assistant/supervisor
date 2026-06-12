@@ -128,20 +128,6 @@ class DockerApp(DockerInterface):
         return NO_ADDDRESS
 
     @property
-    def external_mac_address(self) -> str | None:
-        """Return MAC address of the isolated network endpoint, if any."""
-        if not (config := self.app.network_isolation) or not self._meta:
-            return None
-
-        network = DockerExternalNetworks.network_name(config)
-        try:
-            return (
-                self._meta["NetworkSettings"]["Networks"][network]["MacAddress"] or None
-            )
-        except KeyError, TypeError:
-            return None
-
-    @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
         return self.app.timeout
@@ -636,6 +622,7 @@ class DockerApp(DockerInterface):
                     ExtraNetworkEndpoint(
                         network=network_name,
                         ipv4=config.ipv4,
+                        mac=DockerExternalNetworks.mac_from_ip(config.ipv4),
                         gw_priority=EXTERNAL_NETWORK_GW_PRIORITY,
                     )
                 ]

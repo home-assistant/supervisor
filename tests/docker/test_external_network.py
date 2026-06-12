@@ -14,6 +14,7 @@ from supervisor.docker.const import (
     ExtraNetworkEndpoint,
     NetworkIsolationConfig,
 )
+from supervisor.docker.external_network import DockerExternalNetworks
 from supervisor.exceptions import DockerError, HostNetworkNotFound
 
 from ..const import TEST_INTERFACE_ETH_NAME
@@ -144,6 +145,7 @@ async def test_connect_container(coresys: CoreSys):
         ExtraNetworkEndpoint(
             network=TEST_NETWORK_NAME,
             ipv4=IPv4Address("192.168.2.50"),
+            mac="02:42:c0:a8:02:32",
             gw_priority=100,
         ),
     )
@@ -154,8 +156,21 @@ async def test_connect_container(coresys: CoreSys):
             "EndpointConfig": {
                 "IPAMConfig": {"IPv4Address": "192.168.2.50"},
                 "GwPriority": 100,
+                "MacAddress": "02:42:c0:a8:02:32",
             },
         }
+    )
+
+
+def test_mac_from_ip():
+    """Test stable MAC address derivation from IPv4."""
+    assert (
+        DockerExternalNetworks.mac_from_ip(IPv4Address("192.168.2.50"))
+        == "02:42:c0:a8:02:32"
+    )
+    assert (
+        DockerExternalNetworks.mac_from_ip(IPv4Address("10.0.0.1"))
+        == "02:42:0a:00:00:01"
     )
 
 

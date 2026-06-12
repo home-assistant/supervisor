@@ -60,6 +60,7 @@ def test_schema_invalid(config: dict[str, str]):
 async def test_network_isolation_persistence(coresys: CoreSys, install_app_ssh: App):
     """Test network isolation setting round-trips through persisted data."""
     assert install_app_ssh.network_isolation is None
+    assert install_app_ssh.external_mac_address is None
 
     install_app_ssh.network_isolation = TEST_CONFIG
     assert install_app_ssh.persist[ATTR_NETWORK_ISOLATION] == {
@@ -68,6 +69,8 @@ async def test_network_isolation_persistence(coresys: CoreSys, install_app_ssh: 
         ATTR_IPV4: "192.168.2.50",
     }
     assert install_app_ssh.network_isolation == TEST_CONFIG
+    # MAC is derived from the static IP, known without a running container
+    assert install_app_ssh.external_mac_address == "02:42:c0:a8:02:32"
 
     install_app_ssh.network_isolation = None
     assert install_app_ssh.network_isolation is None

@@ -54,6 +54,17 @@ class DockerExternalNetworks(CoreSysAttributes):
         return f"hassio-{config.driver}-{config.interface}"
 
     @staticmethod
+    def mac_from_ip(ipv4: IPv4Address) -> str:
+        """Return a stable, locally administered MAC address for an IPv4.
+
+        Same derivation Docker used for macvlan endpoints before engine 28
+        switched to random MACs per endpoint creation. Pinning it keeps the
+        app's MAC stable across container recreations so users can rely on
+        it in router/firewall rules.
+        """
+        return "02:42:" + ":".join(f"{octet:02x}" for octet in ipv4.packed)
+
+    @staticmethod
     def capable_interface(interface: Interface) -> bool:
         """Return True if a host interface can host an external network."""
         return (
@@ -220,6 +231,8 @@ class DockerExternalNetworks(CoreSysAttributes):
             "IPAMConfig": {"IPv4Address": str(endpoint.ipv4)},
             "GwPriority": endpoint.gw_priority,
         }
+        if endpoint.mac:
+            endpoint_config["MacAddress"] = endpoint.mac
         try:
             await network.connect(
                 {"Container": container_id, "EndpointConfig": endpoint_config}

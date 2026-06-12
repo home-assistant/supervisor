@@ -188,6 +188,7 @@ class ExtraNetworkEndpoint:
 
     network: str
     ipv4: IPv4Address
+    mac: str | None = None
     gw_priority: int = 0
 
 

@@ -66,6 +66,7 @@ from ..docker.const import (
     ContainerState,
     NetworkIsolationConfig,
 )
+from ..docker.external_network import DockerExternalNetworks
 from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
@@ -367,8 +368,14 @@ class App(AppModel):
 
     @property
     def external_mac_address(self) -> str | None:
-        """Return MAC address of the isolated network endpoint, if any."""
-        return self.instance.external_mac_address
+        """Return MAC address of the isolated network endpoint, if assigned.
+
+        Derived from the static IP, so it is known without a running
+        container (the endpoint is connected with exactly this MAC).
+        """
+        if not (config := self.network_isolation):
+            return None
+        return DockerExternalNetworks.mac_from_ip(config.ipv4)
 
     @property
     def data(self) -> Data:

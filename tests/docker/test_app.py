@@ -632,6 +632,7 @@ async def test_app_run_with_network_isolation(
     assert connect.call_args.args[2] == ExtraNetworkEndpoint(
         network="hassio-macvlan-eth0",
         ipv4=IPv4Address("192.168.2.50"),
+        mac="02:42:c0:a8:02:32",
         gw_priority=EXTERNAL_NETWORK_GW_PRIORITY,
     )
     create_config = coresys.docker.containers.create.call_args.args[0]
@@ -709,36 +710,3 @@ async def test_app_run_network_isolation_fallback_blocked(
         await docker_app.run()
 
     coresys.docker.containers.create.assert_not_called()
-
-
-def test_external_mac_address(coresys: CoreSys, addonsdata_system: dict[str, Data]):
-    """Test MAC address of the isolated network endpoint."""
-    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
-    docker_app._meta = {
-        "NetworkSettings": {
-            "Networks": {
-                "hassio": {
-                    "IPAddress": "172.30.33.5",
-                    "MacAddress": "02:42:AC:1E:21:05",
-                },
-                "hassio-macvlan-eth0": {
-                    "IPAddress": "192.168.2.50",
-                    "MacAddress": "02:42:C0:A8:02:32",
-                },
-            }
-        }
-    }
-
-    # No isolation assigned
-    assert docker_app.external_mac_address is None
-
-    with patch.object(
-        App,
-        "network_isolation",
-        new=PropertyMock(return_value=NETWORK_ISOLATION_CONFIG),
-    ):
-        assert docker_app.external_mac_address == "02:42:C0:A8:02:32"
-
-        # Not attached (e.g. fallback run or stopped container)
-        docker_app._meta = {"NetworkSettings": {"Networks": {}}}
-        assert docker_app.external_mac_address is None

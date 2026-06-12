@@ -105,8 +105,8 @@ async def test_options_set_and_clear(
         "ipv4": "192.168.2.50",
     }
     assert result["data"]["network_isolation_available"] is True
-    # Container is not running with the endpoint attached
-    assert result["data"]["network_isolation_mac"] is None
+    # MAC is derived from the static IP, known without a running container
+    assert result["data"]["network_isolation_mac"] == "02:42:c0:a8:02:32"
 
     resp = await client.post(
         f"{root}/{TEST_ADDON_SLUG}/options", json={"network_isolation": None}
