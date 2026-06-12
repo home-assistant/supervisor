@@ -32,6 +32,7 @@ from ..const import (
     ATTR_DEVICETREE,
     ATTR_DISCOVERY,
     ATTR_DOCKER_API,
+    ATTR_DRIVER,
     ATTR_ENVIRONMENT,
     ATTR_FIELDS,
     ATTR_FULL_ACCESS,
@@ -53,6 +54,8 @@ from ..const import (
     ATTR_INGRESS_STREAM,
     ATTR_INGRESS_TOKEN,
     ATTR_INIT,
+    ATTR_INTERFACE,
+    ATTR_IPV4,
     ATTR_JOURNALD,
     ATTR_KERNEL_MODULES,
     ATTR_LABELS,
@@ -61,6 +64,7 @@ from ..const import (
     ATTR_MAP,
     ATTR_NAME,
     ATTR_NETWORK,
+    ATTR_NETWORK_ISOLATION,
     ATTR_OPTIONS,
     ATTR_PANEL_ADMIN,
     ATTR_PANEL_ICON,
@@ -106,11 +110,12 @@ from ..const import (
     AppStartup,
     AppState,
 )
-from ..docker.const import Capabilities
+from ..docker.const import Capabilities, ExternalNetworkDriver
 from ..validate import (
     docker_image,
     docker_ports,
     docker_ports_description,
+    ipv4_address,
     network_port,
     token,
     uuid_match,
@@ -520,6 +525,18 @@ SCHEMA_APP_TRANSLATIONS = vol.Schema(
 )
 
 
+SCHEMA_NETWORK_ISOLATION = vol.Schema(
+    {
+        vol.Required(ATTR_INTERFACE): str,
+        vol.Required(ATTR_IPV4): ipv4_address,
+        vol.Optional(ATTR_DRIVER, default=ExternalNetworkDriver.MACVLAN): vol.Coerce(
+            ExternalNetworkDriver
+        ),
+    },
+    extra=vol.REMOVE_EXTRA,
+)
+
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_APP_USER = vol.Schema(
     {
@@ -532,6 +549,7 @@ SCHEMA_APP_USER = vol.Schema(
         vol.Optional(ATTR_AUTO_UPDATE, default=False): vol.Boolean(),
         vol.Optional(ATTR_BOOT): vol.Coerce(AppBoot),
         vol.Optional(ATTR_NETWORK): docker_ports,
+        vol.Optional(ATTR_NETWORK_ISOLATION): SCHEMA_NETWORK_ISOLATION,
         vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),

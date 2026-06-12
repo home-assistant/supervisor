@@ -543,6 +543,7 @@ async def coresys(
     coresys_obj._docker = docker
     coresys_obj.docker.coresys = coresys_obj
     docker.monitor.coresys = coresys_obj
+    docker.external_networks.coresys = coresys_obj
 
     # Set internet state
     coresys_obj.supervisor._connectivity = True

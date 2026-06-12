@@ -67,8 +67,9 @@ def rating_security(app: AppModel) -> int:
     elif app.hassio_role == ROLE_ADMIN:
         rating += -2
 
-    # Not secure Networking
-    if app.host_network:
+    # Not secure Networking. With an isolated physical network endpoint
+    # assigned the app does not run in the host network namespace.
+    if app.host_network and not app.network_isolation:
         rating += -1
 
     # Insecure PID namespace

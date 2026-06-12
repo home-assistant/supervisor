@@ -52,10 +52,12 @@ from .const import (
     LABEL_MANAGED,
     Capabilities,
     DockerMount,
+    ExtraNetworkEndpoint,
     MountType,
     RestartPolicy,
     Ulimit,
 )
+from .external_network import DockerExternalNetworks
 from .manifest import RegistryManifestFetcher
 from .monitor import DockerMonitor
 from .network import DockerNetwork
@@ -279,6 +281,9 @@ class DockerAPI(CoreSysAttributes):
         )
 
         self._network: DockerNetwork | None = None
+        self._external_networks: DockerExternalNetworks = DockerExternalNetworks(
+            coresys
+        )
         self._info: DockerInfo | None = None
         self.config: DockerConfig = DockerConfig()
         self._monitor: DockerMonitor = DockerMonitor(coresys, self.docker)
@@ -301,6 +306,11 @@ class DockerAPI(CoreSysAttributes):
         if not self._network:
             raise RuntimeError("Docker Network not initialized!")
         return self._network
+
+    @property
+    def external_networks(self) -> DockerExternalNetworks:
+        """Get external networks manager."""
+        return self._external_networks
 
     @property
     def images(self) -> DockerImages:
@@ -468,6 +478,7 @@ class DockerAPI(CoreSysAttributes):
         network_mode: str | None = None,
         networking_config: dict[str, Any] | None = None,
         ipv4: IPv4Address | None = None,
+        extra_networks: list[ExtraNetworkEndpoint] | None = None,
         skip_cidfile: bool = False,
         **kwargs,
     ) -> DockerContainer:
@@ -560,6 +571,14 @@ class DockerAPI(CoreSysAttributes):
                 else:
                     with suppress(DockerError):
                         await self.network.detach_default_bridge(container.id, name)
+
+                # Connect additional (external) network endpoints. Unlike the
+                # internal network these are essential for the container's
+                # purpose, so failures abort the start.
+                for endpoint in extra_networks or []:
+                    await self.external_networks.connect_container(
+                        container.id, name, endpoint
+                    )
             else:
                 try:
                     host_network = await self.docker.networks.get(DOCKER_NETWORK_HOST)

@@ -47,6 +47,7 @@ from ..const import (
     DOCKER_NETWORK,
 )
 from ..coresys import CoreSysAttributes
+from ..docker.external_network import DockerExternalNetworks
 from ..exceptions import APIError, APINotFound, HostNetworkNotFound
 from ..host.configuration import (
     AccessPoint,
@@ -62,6 +63,7 @@ from ..host.configuration import (
     WifiConfig,
 )
 from ..host.const import AuthMethod, InterfaceType, WifiMode
+from .const import ATTR_NETWORK_ISOLATION_CAPABLE
 from .utils import api_process, api_validate
 
 _SCHEMA_IPV4_CONFIG = vol.Schema(
@@ -172,6 +174,9 @@ def interface_struct(interface: Interface) -> dict[str, Any]:
         ATTR_VLAN: vlan_struct(interface.vlan) if interface.vlan else None,
         ATTR_MDNS: interface.mdns,
         ATTR_LLMNR: interface.llmnr,
+        ATTR_NETWORK_ISOLATION_CAPABLE: DockerExternalNetworks.capable_interface(
+            interface
+        ),
     }
 
 

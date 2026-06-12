@@ -100,6 +100,7 @@ class IssueType(StrEnum):
     MISSING_IMAGE = "missing_image"
     MOUNT_FAILED = "mount_failed"
     MULTIPLE_DATA_DISKS = "multiple_data_disks"
+    NETWORK_ISOLATION_FAILED = "network_isolation_failed"
     NO_CURRENT_BACKUP = "no_current_backup"
     NTP_SYNC_FAILED = "ntp_sync_failed"
     PWNED = "pwned"
