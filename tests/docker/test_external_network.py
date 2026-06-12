@@ -41,9 +41,16 @@ EXPECTED_NETWORK_PARAMS = {
             }
         ],
     },
-    "EnableIPv6": False,
+    "EnableIPv6": True,
     "Options": {"parent": TEST_INTERFACE_ETH_NAME},
     "Labels": {"supervisor_managed": ""},
+}
+
+EXPECTED_ENDPOINT_SYSCTLS = {
+    "com.docker.network.endpoint.sysctls": (
+        "net.ipv6.conf.IFNAME.accept_ra=2,"
+        "net.ipv6.conf.IFNAME.accept_ra_rt_info_max_plen=64"
+    )
 }
 
 
@@ -66,7 +73,17 @@ async def test_ensure_keeps_matching_network(coresys: CoreSys):
     """Test existing matching network is kept."""
     coresys.docker.docker.networks.reset_mock()
     network = MagicMock(spec=AiodockerNetwork)
-    network.show.return_value = EXPECTED_NETWORK_PARAMS | {"Containers": {}}
+    # The engine lists its auto-allocated IPv6 ULA in the IPAM config
+    network.show.return_value = EXPECTED_NETWORK_PARAMS | {
+        "IPAM": {
+            "Driver": "default",
+            "Config": [
+                {"Subnet": "fd61:6c69:6e74:6f6e::/64"},
+                *EXPECTED_NETWORK_PARAMS["IPAM"]["Config"],
+            ],
+        },
+        "Containers": {},
+    }
     coresys.docker.docker.networks.get.return_value = network
 
     assert await coresys.docker.external_networks.ensure(TEST_CONFIG) == (
@@ -120,6 +137,26 @@ async def test_ensure_drifted_network_in_use(coresys: CoreSys):
     coresys.docker.docker.networks.create.assert_not_called()
 
 
+async def test_ensure_recreates_ipv4_only_network(coresys: CoreSys):
+    """Test network without IPv6 (pre-SLAAC support) is recreated."""
+    coresys.docker.docker.networks.reset_mock()
+    network = MagicMock(spec=AiodockerNetwork)
+    network.show.return_value = EXPECTED_NETWORK_PARAMS | {
+        "EnableIPv6": False,
+        "Containers": {},
+    }
+    coresys.docker.docker.networks.get.return_value = network
+
+    assert await coresys.docker.external_networks.ensure(TEST_CONFIG) == (
+        TEST_NETWORK_NAME
+    )
+
+    network.delete.assert_called_once()
+    coresys.docker.docker.networks.create.assert_called_once_with(
+        EXPECTED_NETWORK_PARAMS
+    )
+
+
 async def test_ensure_interface_missing(coresys: CoreSys):
     """Test missing host interface raises."""
     with pytest.raises(HostNetworkNotFound):
@@ -156,6 +193,7 @@ async def test_connect_container(coresys: CoreSys):
             "EndpointConfig": {
                 "IPAMConfig": {"IPv4Address": "192.168.2.50"},
                 "GwPriority": 100,
+                "DriverOpts": EXPECTED_ENDPOINT_SYSCTLS,
                 "MacAddress": "02:42:c0:a8:02:32",
             },
         }

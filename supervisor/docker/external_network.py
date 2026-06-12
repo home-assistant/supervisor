@@ -31,6 +31,17 @@ MIN_EXTERNAL_NETWORK_DOCKER: Final = AwesomeVersion("28.0.0")
 EXTERNAL_NETWORK_GW_PRIORITY: Final = 100
 
 DOCKER_PARENT_INTERFACE: Final = "parent"
+DOCKER_ENDPOINT_SYSCTLS: Final = "com.docker.network.endpoint.sysctls"
+
+# IPv6 addressing on the physical network comes from SLAAC, not Docker IPAM.
+# Accept router advertisements even with IP forwarding enabled in the
+# container (e.g. Thread border routers) and process RFC 4191 route
+# information options (off by kernel default), so routes announced by border
+# routers on the local network reach the container.
+EXTERNAL_NETWORK_SYSCTLS: Final = (
+    "net.ipv6.conf.IFNAME.accept_ra=2,"
+    "net.ipv6.conf.IFNAME.accept_ra_rt_info_max_plen=64"
+)
 
 
 class DockerExternalNetworks(CoreSysAttributes):
@@ -113,8 +124,10 @@ class DockerExternalNetworks(CoreSysAttributes):
         return {
             "Name": self.network_name(config),
             "Driver": config.driver.value,
+            # No IPv6 subnet: the engine allocates a ULA to satisfy the
+            # driver, real IPv6 addressing comes from SLAAC on the LAN
             "IPAM": {"Driver": "default", "Config": [ipam_config]},
-            "EnableIPv6": False,
+            "EnableIPv6": True,
             "Options": {DOCKER_PARENT_INTERFACE: interface.name},
             "Labels": {LABEL_MANAGED: ""},
         }
@@ -129,11 +142,20 @@ class DockerExternalNetworks(CoreSysAttributes):
             != params["Options"][DOCKER_PARENT_INTERFACE]
         ):
             return False
+        if meta.get("EnableIPv6", False) != params["EnableIPv6"]:
+            return False
 
+        # Find the IPv4 entry; the engine may list its allocated IPv6 ULA too
         wanted_ipam: dict[str, Any] = params["IPAM"]["Config"][0]
-        current_ipam_configs = meta.get("IPAM", {}).get("Config") or [{}]
-        current_ipam: dict[str, Any] = current_ipam_configs[0]
-        return current_ipam.get("Subnet") == wanted_ipam["Subnet"] and current_ipam.get(
+        current_ipam: dict[str, Any] | None = next(
+            (
+                entry
+                for entry in meta.get("IPAM", {}).get("Config") or []
+                if entry.get("Subnet") == wanted_ipam["Subnet"]
+            ),
+            None,
+        )
+        return current_ipam is not None and current_ipam.get(
             "Gateway"
         ) == wanted_ipam.get("Gateway")
 
@@ -230,6 +252,7 @@ class DockerExternalNetworks(CoreSysAttributes):
         endpoint_config: dict[str, Any] = {
             "IPAMConfig": {"IPv4Address": str(endpoint.ipv4)},
             "GwPriority": endpoint.gw_priority,
+            "DriverOpts": {DOCKER_ENDPOINT_SYSCTLS: EXTERNAL_NETWORK_SYSCTLS},
         }
         if endpoint.mac:
             endpoint_config["MacAddress"] = endpoint.mac
