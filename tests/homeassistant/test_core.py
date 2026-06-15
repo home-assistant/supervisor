@@ -25,7 +25,7 @@ from supervisor.exceptions import (
     SupervisorUpdateError,
 )
 from supervisor.homeassistant.api import APIState
-from supervisor.homeassistant.const import WSEvent
+from supervisor.homeassistant.const import LANDINGPAGE, WSEvent
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.resolution.const import ContextType, IssueType
@@ -851,6 +851,33 @@ async def test_core_loads_wrong_image_for_machine(
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
     )
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_load_preinstalled_landingpage_keeps_version(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test load keeps LANDINGPAGE when the landingpage image has a real version label.
+
+    Regression test: the landingpage image stamps a real Core version into its
+    io.hass.version label while keeping io.hass.type=landingpage. On a Supervisor
+    restart the persisted version (LANDINGPAGE) must not be overwritten with that
+    real version, otherwise the landingpage is mistaken for an installed Core and
+    Core never gets installed.
+    """
+    coresys.homeassistant.version = LANDINGPAGE
+    coresys.homeassistant.override_image = True
+    container.show.return_value["Config"] = {
+        "Labels": {
+            "io.hass.type": "landingpage",
+            "io.hass.version": "2026.06.3",
+        }
+    }
+
+    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+        await coresys.homeassistant.core.load()
+
+    assert coresys.homeassistant.version == LANDINGPAGE
 
 
 async def test_core_load_allows_image_override(

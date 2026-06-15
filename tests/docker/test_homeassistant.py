@@ -227,6 +227,36 @@ async def test_landingpage_start(coresys: CoreSys, container: DockerContainer):
         assert "volumes" not in run.call_args.kwargs
 
 
+async def test_version_landingpage_from_type_label(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test landingpage image resolves to LANDINGPAGE despite a real version label."""
+    container.show.return_value["Config"] = {
+        "Labels": {
+            "io.hass.type": "landingpage",
+            "io.hass.version": "2026.06.3",
+        }
+    }
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2026.06.3"))
+
+    assert coresys.homeassistant.core.instance.version == LANDINGPAGE
+
+
+async def test_version_core_from_version_label(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test non-landingpage image resolves to the io.hass.version label value."""
+    container.show.return_value["Config"] = {
+        "Labels": {
+            "io.hass.type": "homeassistant",
+            "io.hass.version": "2026.06.3",
+        }
+    }
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2026.06.3"))
+
+    assert coresys.homeassistant.core.instance.version == AwesomeVersion("2026.06.3")
+
+
 async def test_timeout(coresys: CoreSys, container: DockerContainer):
     """Test timeout for set from S6_SERVICES_GRACETIME."""
     assert coresys.homeassistant.core.instance.timeout == 260
