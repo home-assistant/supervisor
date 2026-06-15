@@ -683,6 +683,15 @@ async def test_app_options_device_policy_check(
             "features",
             new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
         ),
+        # Make the event device match. option_device_paths reads the merged
+        # options, which the test's persist override doesn't populate, so without
+        # this mock the match guard returns early and the policy check below is
+        # never reached (the assertion would then pass for the wrong reason).
+        patch.object(
+            type(install_app_ssh),
+            "option_device_paths",
+            new=PropertyMock(return_value={by_id_path}),
+        ),
         # Mock policy to block this device
         patch.object(
             coresys.hardware.policy,
