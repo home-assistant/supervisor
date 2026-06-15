@@ -1,4 +1,4 @@
-"""Handle REST API for resoulution."""
+"""Handle REST API for resolution."""
 
 import asyncio
 from collections.abc import Awaitable
@@ -26,8 +26,8 @@ from .utils import api_process, api_validate
 SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): bool})
 
 
-class APIResoulution(CoreSysAttributes):
-    """Handle REST API for resoulution."""
+class APIResolution(CoreSysAttributes):
+    """Handle REST API for resolution."""
 
     def _extract_issue(self, request: web.Request) -> Issue:
         """Extract issue from request or raise."""

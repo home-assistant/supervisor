@@ -180,7 +180,7 @@ class Core(CoreSysAttributes):
             self.sys_discovery.load(),
             # Load ingress
             self.sys_ingress.load(),
-            # Load Resoulution
+            # Load Resolution
             self.sys_resolution.load(),
         ]
 
