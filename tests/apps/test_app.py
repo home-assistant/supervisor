@@ -1176,6 +1176,35 @@ async def test_app_loads_missing_image_build(coresys: CoreSys, install_app_ssh: 
     assert any(s.type == SuggestionType.EXECUTE_REPAIR for s in suggestions)
 
 
+async def test_app_loads_missing_image_build_detached(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test detached build app does not surface a (futile) rebuild repair."""
+    slug = install_app_ssh.slug
+    # Detach: drop the store representation so there is no source to build from.
+    coresys.store.data.apps.pop(slug)
+    coresys.apps.store.pop(slug, None)
+    assert install_app_ssh.is_detached
+    assert install_app_ssh.need_build
+
+    coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+
+    with patch.object(
+        coresys.docker,
+        "run_command",
+        return_value=CommandReturn(0, ["Build successful"]),
+    ) as mock_run_command:
+        await install_app_ssh.load()
+
+    # No build attempted and no rebuild repair raised; removal is offered by
+    # the detached-app check instead.
+    mock_run_command.assert_not_called()
+    issue = Issue(IssueType.MISSING_IMAGE, ContextType.ADDON, reference=slug)
+    assert issue not in coresys.resolution.issues
+
+
 @pytest.mark.usefixtures("mock_amd64_arch_supported")
 async def test_app_loads_missing_image_pull(coresys: CoreSys, install_app_ssh: App):
     """Test pullable app installs the missing image during load."""

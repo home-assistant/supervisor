@@ -49,6 +49,16 @@ class FixupAppExecuteRepair(FixupBase):
             )
             return
 
+        if app.is_detached and app.need_build:
+            # No store source to rebuild from; the repair cannot succeed. The
+            # detached-app check surfaces a remove suggestion instead.
+            _LOGGER.warning(
+                "Cannot repair app %s as it is detached from its store and "
+                "needs a local build, dismissing suggestion",
+                reference,
+            )
+            return
+
         _LOGGER.info("Installing image for app %s", reference)
         self.attempts += 1
         try:
