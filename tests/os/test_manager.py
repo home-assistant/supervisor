@@ -261,3 +261,22 @@ async def test_load_slot_status_fresh_install(
     assert len(coresys.os.slots) == 6
     assert coresys.os.get_slot_name("A") == "kernel.0"
     assert coresys.os.get_slot_name("B") == "kernel.1"
+
+
+@pytest.mark.parametrize(
+    ("os_available", "expected_service"),
+    [
+        ("17.3", "hassos-config.service"),
+        ("18.0.rc1", "haos-config.service"),
+        ("18.0", "haos-config.service"),
+    ],
+    indirect=["os_available"],
+)
+async def test_config_sync_service_name(
+    coresys: CoreSys, os_available: None, expected_service: str
+) -> None:
+    """Test config_sync uses the correct service name per OS version."""
+    with patch.object(coresys.host.services, "restart", new=AsyncMock()) as restart:
+        await coresys.os.config_sync()
+
+    restart.assert_called_once_with(expected_service)

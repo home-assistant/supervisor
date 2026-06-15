@@ -267,7 +267,14 @@ class OSManager(CoreSysAttributes):
         _LOGGER.info(
             "Synchronizing configuration from USB with Home Assistant Operating System."
         )
-        await self.sys_host.services.restart("hassos-config.service")
+        # hassos-config.service was renamed to haos-config.service in HAOS 18.0.
+        # The unit's Alias= is not reported by systemd's ListUnits, which
+        # ServiceManager.exists() relies on, so call the correct unit here.
+        if self.version is not None and self.version >= AwesomeVersion("18.0.rc1"):
+            service = "haos-config.service"
+        else:
+            service = "hassos-config.service"
+        await self.sys_host.services.restart(service)
 
     @Job(
         name="os_manager_update",
