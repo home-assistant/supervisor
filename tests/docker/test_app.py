@@ -634,6 +634,12 @@ async def test_app_options_device_hw_listener(
             "features",
             new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
         ),
+        # Mock option_device_paths to ensure it returns the by-id path
+        patch.object(
+            type(install_app_ssh),
+            "option_device_paths",
+            new=PropertyMock(return_value={by_id_path}),
+        ),
         patch.object(
             CGroup, "add_devices_allowed", new_callable=AsyncMock
         ) as add_devices,
