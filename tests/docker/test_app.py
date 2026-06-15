@@ -28,6 +28,7 @@ from supervisor.docker.const import (
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import CoreDNSError, DockerNotFound
 from supervisor.hardware.data import Device
+from supervisor.host.const import HostFeature
 from supervisor.os.manager import OSManager
 from supervisor.plugins.dns import PluginDns
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -432,6 +433,11 @@ async def test_app_new_device(
         patch.object(App, "write_options"),
         patch.object(OSManager, "available", new=PropertyMock(return_value=is_os)),
         patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
+        patch.object(
             CGroup, "add_devices_allowed", new_callable=AsyncMock
         ) as add_devices,
     ):
@@ -459,6 +465,11 @@ async def test_app_new_device_no_haos(
     with (
         patch.object(App, "write_options"),
         patch.object(OSManager, "available", new=PropertyMock(return_value=False)),
+        patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
         patch.object(
             CGroup, "add_devices_allowed", new_callable=AsyncMock
         ) as add_devices,
@@ -619,6 +630,11 @@ async def test_app_options_device_hw_listener(
         # called exactly once — from the hardware event via the options listener.
         patch.object(OSManager, "available", new=PropertyMock(return_value=False)),
         patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
+        patch.object(
             CGroup, "add_devices_allowed", new_callable=AsyncMock
         ) as add_devices,
     ):
@@ -656,6 +672,11 @@ async def test_app_options_device_policy_check(
     with (
         patch.object(App, "write_options"),
         patch.object(OSManager, "available", new=PropertyMock(return_value=True)),
+        patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
         # Mock policy to block this device
         patch.object(
             coresys.hardware.policy,
