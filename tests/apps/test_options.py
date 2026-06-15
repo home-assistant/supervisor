@@ -351,6 +351,69 @@ def test_device_schema_wrong_type(coresys):
         )({"name": "Pascal", "input": 12345})
 
 
+def test_extract_device_paths(coresys):
+    """Test extract_device_paths collects configured device paths.
+
+    It must walk every schema shape (flat, optional, filtered, list, nested
+    dict and list of dicts) and return the raw configured paths without
+    resolving them against live hardware, while skipping non-device options,
+    unset keys and empty values.
+    """
+    options = AppOptions(
+        coresys,
+        {
+            "single": "device",
+            "optional": "device?",
+            "filtered": "device(subsystem=tty)",
+            "many": ["device"],
+            "group": {"inner": "device", "name": "str"},
+            "repeated": [{"dev": "device", "label": "str"}],
+            "plain": "str",
+            "empty": "device?",
+            "missing": "device",
+        },
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )
+
+    assert options.extract_device_paths(
+        {
+            "single": "/dev/ttyUSB0",
+            "optional": "/dev/serial/by-id/usb-aaa",
+            "filtered": "/dev/ttyACM0",
+            "many": ["/dev/bus/usb/001/002", "/dev/bus/usb/001/003"],
+            "group": {"inner": "/dev/gpiochip0", "name": "x"},
+            "repeated": [
+                {"dev": "/dev/video0", "label": "cam0"},
+                {"dev": "/dev/video1", "label": "cam1"},
+            ],
+            "plain": "not a device",
+            "empty": "",
+            # "missing" is intentionally absent from the options
+        }
+    ) == {
+        Path("/dev/ttyUSB0"),
+        Path("/dev/serial/by-id/usb-aaa"),
+        Path("/dev/ttyACM0"),
+        Path("/dev/bus/usb/001/002"),
+        Path("/dev/bus/usb/001/003"),
+        Path("/dev/gpiochip0"),
+        Path("/dev/video0"),
+        Path("/dev/video1"),
+    }
+
+    # No device options configured returns an empty set
+    assert (
+        AppOptions(
+            coresys,
+            {"name": "str", "port": "port"},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        ).extract_device_paths({"name": "Pascal", "port": 8080})
+        == set()
+    )
+
+
 def test_simple_schema_password(coresys):
     """Test with simple schema password pwned."""
     validate = AppOptions(
