@@ -378,7 +378,7 @@ async def test_app_stop_delete_host_error(
         capture_exception.assert_called_once_with(err)
 
 
-TEST_DEV_PATH = "/dev/ttyAMA0"
+TEST_DEV_PATH = "/dev/ttyACM0"
 TEST_SYSFS_PATH = "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM0"
 TEST_HW_DEVICE = Device(
     name="ttyACM0",
