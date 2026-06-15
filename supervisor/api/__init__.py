@@ -34,7 +34,7 @@ from .network import APINetwork
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
-from .resolution import APIResoulution
+from .resolution import APIResolution
 from .root import APIRoot
 from .security import APISecurity
 from .services import APIServices
@@ -430,7 +430,7 @@ class RestAPI(CoreSysAttributes):
 
     def _register_resolution(self, app: web.Application) -> None:
         """Register info functions."""
-        api_resolution = APIResoulution()
+        api_resolution = APIResolution()
         api_resolution.coresys = self.coresys
 
         app.add_routes(
