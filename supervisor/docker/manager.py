@@ -331,7 +331,6 @@ class DockerAPI(CoreSysAttributes):
         self._manifest_fetcher: RegistryManifestFetcher = RegistryManifestFetcher(
             coresys
         )
-        self._host_port_binding_cache: dict[DockerPortBinding, str] | None = None
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""

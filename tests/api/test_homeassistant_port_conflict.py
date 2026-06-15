@@ -37,7 +37,7 @@ async def test_api_set_options_port_no_conflict(
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),
@@ -74,7 +74,7 @@ async def test_api_set_options_port_conflict_with_app(
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),
@@ -115,7 +115,7 @@ async def test_api_set_options_port_conflict_with_plugin(
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),
@@ -156,7 +156,7 @@ async def test_api_set_options_port_conflict_with_unknown_component(
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),
@@ -203,7 +203,7 @@ async def test_api_set_options_port_conflict_dual_stack_dispatches_twice(
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),
@@ -243,7 +243,7 @@ async def test_api_set_options_port_conflict_integration_stopped_app_creates_iss
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),
@@ -291,7 +291,7 @@ async def test_api_set_options_port_conflict_integration_running_app_stops(
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),
@@ -332,7 +332,7 @@ async def test_api_set_options_port_conflict_integration_aborts_if_unresolved(
     with (
         patch.object(HomeAssistant, "save_data"),
         patch.object(
-            coresys.apps,
+            coresys.docker,
             "get_used_host_port_bindings",
             AsyncMock(return_value=used_bindings),
         ),

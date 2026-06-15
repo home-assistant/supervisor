@@ -122,11 +122,6 @@ class HomeAssistantCore(JobGroup):
         """Return True if system is in error."""
         return self._error_state
 
-    @property
-    def is_starting(self) -> bool:
-        """Return True if Home Assistant is currently starting."""
-        return self._startup_abort is not None
-
     async def load(self) -> None:
         """Prepare Home Assistant object."""
         self._watchdog_listener = self.sys_bus.register_event(

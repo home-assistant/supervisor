@@ -140,9 +140,13 @@ class APIHomeAssistant(CoreSysAttributes):
             # detection here is not validation, its too late for that. Instead
             # we record the new port, attempt to resolve the conflict if possible,
             # and log errors and abort any waiting startup sequence if not.
-            used = await self.sys_apps.get_used_host_port_bindings(
-                exclude_homeassistant=True
-            )
+            used = {
+                binding: name
+                for binding, name in (
+                    await self.sys_docker.get_used_host_port_bindings()
+                ).items()
+                if name != self.sys_homeassistant.core.instance.name
+            }
             new_bindings = {
                 DockerPortBinding(
                     ip=IPV4_WILDCARD,

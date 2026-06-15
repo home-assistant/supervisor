@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from pathlib import PurePath
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
@@ -18,7 +18,7 @@ from supervisor.const import AppState, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
-from supervisor.docker.manager import IPV4_WILDCARD, CommandReturn, DockerPortBinding
+from supervisor.docker.manager import CommandReturn
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HassioError
 from supervisor.store.repository import Repository
@@ -630,47 +630,6 @@ async def test_app_reset_options(
 
     # Persisted options should be empty (meaning defaults will be used)
     assert install_app_example.persist["options"] == {}
-
-
-@pytest.mark.parametrize(
-    ("component", "expected_message"),
-    [
-        ("homeassistant", "Port 8123 is already in use by homeassistant"),
-        ("addon_local_example", "Port 8123 is already in use by addon_local_example"),
-        ("hassio_dns", "Port 8123 is already in use by hassio_dns"),
-    ],
-)
-async def test_app_options_validation_port_conflict(
-    app_api_client_with_root: tuple[TestClient, str],
-    install_app_ssh: App,
-    component: str,
-    expected_message: str,
-):
-    """Test app options validation rejects ports already used by core/app/plugin."""
-    client, root = app_api_client_with_root
-
-    used_bindings = {
-        DockerPortBinding(
-            ip=IPV4_WILDCARD,
-            public_port=8123,
-            type="tcp",
-            private_port=8123,
-        ): component
-    }
-
-    with patch.object(
-        install_app_ssh.sys_apps,
-        "get_used_host_port_bindings",
-        AsyncMock(return_value=used_bindings),
-    ):
-        resp = await client.post(
-            f"{root}/{install_app_ssh.slug}/options",
-            json={"network": {"22/tcp": 8123}},
-        )
-
-    assert resp.status == 400
-    body = await resp.json()
-    assert body["message"] == expected_message
 
 
 @pytest.mark.usefixtures("install_app_example")

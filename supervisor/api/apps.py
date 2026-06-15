@@ -101,7 +101,6 @@ from ..const import (
     AppBootConfig,
 )
 from ..coresys import CoreSysAttributes
-from ..docker.manager import IPV4_WILDCARD, IPV6_WILDCARD, DockerPortBinding
 from ..docker.stats import DockerStats
 from ..exceptions import (
     APIAppNotInstalled,
@@ -110,12 +109,11 @@ from ..exceptions import (
     APINotFound,
     AppBootConfigCannotChangeError,
     AppConfigurationInvalidError,
-    AppNetworkPortInUseError,
     AppNotSupportedWriteStdinError,
     PwnedError,
     PwnedSecret,
 )
-from ..validate import RE_DOCKER_PORT, docker_ports
+from ..validate import docker_ports
 from .const import ATTR_BOOT_CONFIG, ATTR_REMOVE_CONFIG, ATTR_SIGNED
 from .utils import api_process, api_validate, json_loads
 
@@ -320,73 +318,6 @@ class APIApps(CoreSysAttributes):
         app: App = self.get_app_for_request(request)
         return await self.info_data(app, request)
 
-    async def _validate_ports(self, app: App, new_ports: dict[str, int]) -> None:
-        """Validate that the new ports don't conflict with other apps, plugins or Home Assistant."""
-        # Find currently used bindings and bindings currently used by the app
-        # For validation we assume the app will bind to the same IP address(es) as it currently does, but with the new port(s)
-        # This is a best effort to detect conflicts with other apps, but it won't detect conflicts if the app changes the IP address it binds to.
-        all_used = await self.sys_apps.get_used_host_port_bindings()
-        used = {
-            binding: component
-            for binding, component in all_used.items()
-            if component != app.instance.name
-        }
-        app_used = {
-            binding
-            for binding, component in all_used.items()
-            if component == app.instance.name
-        }
-
-        for def_port, host_port in new_ports.items():
-            if not host_port and not app.host_network:
-                continue
-            if not (def_port_match := RE_DOCKER_PORT.match(def_port)):
-                continue
-
-            binding_type = (def_port_match.group("type") or "/tcp")[1:]
-            private_port = int(def_port_match.group("port"))
-
-            # Private ports are public ports for apps on host network, so we need to check them as well
-            if not host_port and app.host_network:
-                host_port = private_port
-
-            port_bindings: set[DockerPortBinding] = {
-                DockerPortBinding(
-                    ip=binding.ip,
-                    public_port=host_port,
-                    type=binding_type,
-                    private_port=private_port,
-                )
-                for binding in app_used
-                if binding.type == binding_type and binding.private_port == private_port
-            }
-
-            # If the app isn't running or not currently binding the port we assume they bind to the wildcard IPs
-            if not port_bindings:
-                port_bindings = {
-                    DockerPortBinding(
-                        ip=IPV4_WILDCARD,
-                        public_port=host_port,
-                        type=binding_type,
-                        private_port=private_port,
-                    ),
-                    DockerPortBinding(
-                        ip=IPV6_WILDCARD,
-                        public_port=host_port,
-                        type=binding_type,
-                        private_port=private_port,
-                    ),
-                }
-
-            # Finally check if any of the bindings conflict with other components
-            for used_binding, component in used.items():
-                if any(binding.is_conflict(used_binding) for binding in port_bindings):
-                    raise AppNetworkPortInUseError(
-                        _LOGGER.warning,
-                        port=host_port,
-                        component=component,
-                    )
-
     @api_process
     async def options(self, request: web.Request) -> None:
         """Store user options for app."""
@@ -410,8 +341,6 @@ class APIApps(CoreSysAttributes):
             raise AppBootConfigCannotChangeError(
                 app=app.slug, boot_config=app.boot_config.value
             )
-        if (new_ports := body.get(ATTR_NETWORK)) is not None:
-            await self._validate_ports(app, new_ports)
 
         # Process options changes now that validation has passed
         # This way we don't risk leaving the app in a half-configured state if validation fails
