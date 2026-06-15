@@ -55,6 +55,23 @@ async def api_token_validation(aiohttp_client, coresys: CoreSys) -> TestClient:
     return await aiohttp_client(api.webapp)
 
 
+@pytest.fixture(
+    name="api_token_validation_with_prefix",
+    params=[pytest.param("", id="v1"), pytest.param("/v2", id="v2")],
+)
+async def fixture_api_token_validation_with_prefix(
+    request: pytest.FixtureRequest,
+    api_token_validation: TestClient,
+) -> tuple[TestClient, str]:
+    """Provide (client, path_prefix) for token_validation on both API versions.
+
+    Mirrors api_client_with_prefix, but keeps the real token_validation
+    middleware (which api_client/api_client_v2 replace with a stub) so security
+    checks like the blacklist are actually exercised on the v1 and v2 paths.
+    """
+    return api_token_validation, request.param
+
+
 @pytest.fixture(name="plugin_tokens")
 async def fixture_plugin_tokens(coresys: CoreSys) -> None:
     """Mock plugin tokens used in middleware."""
@@ -161,6 +178,19 @@ async def test_bad_requests(
     assert message in caplog.text
 
 
+def _versioned_path(prefix: str, path: str) -> str:
+    """Translate a v1 middleware path to the requested API version.
+
+    The v2 sub-app keeps the same paths behind a /v2 prefix, except the add-on
+    routes which are renamed /addons/... -> /apps/.... The role/bypass/core_only
+    expectations are otherwise identical, which is exactly the v1<->v2 pattern
+    parity these tests guard.
+    """
+    if not prefix:
+        return path
+    return prefix + path.replace("/addons", "/apps")
+
+
 @pytest.mark.parametrize(
     ("request_method", "request_path", "success_roles"),
     [
@@ -191,35 +221,81 @@ async def test_bad_requests(
 )
 @pytest.mark.usefixtures("plugin_tokens")
 async def test_token_validation(
-    api_token_validation: TestClient,
+    api_token_validation_with_prefix: tuple[TestClient, str],
     install_app_example: App,
     request_method: str,
     request_path: str,
     success_roles: set[str],
 ):
-    """Test token validation paths."""
+    """Test token validation paths on both API versions."""
+    client, prefix = api_token_validation_with_prefix
+    request_path = _versioned_path(prefix, request_path)
     install_app_example.persist["access_token"] = "abc123"
     install_app_example.data["hassio_api"] = True
     for role in success_roles:
         install_app_example.data["hassio_role"] = role
-        resp = await getattr(api_token_validation, request_method)(
+        resp = await getattr(client, request_method)(
             request_path, headers={"Authorization": "Bearer abc123"}
         )
         assert resp.status == 200
 
     for role in set(ROLE_ALL) - success_roles:
         install_app_example.data["hassio_role"] = role
-        resp = await getattr(api_token_validation, request_method)(
+        resp = await getattr(client, request_method)(
             request_path, headers={"Authorization": "Bearer abc123"}
         )
         assert resp.status == 403
 
 
 @pytest.mark.usefixtures("plugin_tokens")
-async def test_home_assistant_paths(api_token_validation: TestClient, coresys: CoreSys):
-    """Test Home Assistant only paths."""
+async def test_home_assistant_paths(
+    api_token_validation_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test Home Assistant only paths on both API versions."""
+    client, prefix = api_token_validation_with_prefix
     coresys.homeassistant.supervisor_token = "abc123"
-    resp = await api_token_validation.post(
-        "/addons/local_test/sys_options", headers={"Authorization": "Bearer abc123"}
+    resp = await client.post(
+        _versioned_path(prefix, "/addons/local_test/sys_options"),
+        headers={"Authorization": "Bearer abc123"},
     )
     assert resp.status == 200
+
+
+@pytest.mark.usefixtures("plugin_tokens")
+async def test_blacklist(
+    api_token_validation_with_prefix: tuple[TestClient, str],
+    install_app_example: App,
+):
+    """Test the Core API hassio loopback is blocked on every API version."""
+    client, prefix = api_token_validation_with_prefix
+    install_app_example.persist["access_token"] = "abc123"
+    install_app_example.data["hassio_api"] = True
+    install_app_example.data["hassio_role"] = "admin"
+
+    # The hassio loopback is blacklisted regardless of role
+    resp = await client.get(
+        f"{prefix}/core/api/hassio/app", headers={"Authorization": "Bearer abc123"}
+    )
+    assert resp.status == 403
+
+    # A normal (non-hassio) Core API call through the same proxy is allowed
+    resp = await client.get(
+        f"{prefix}/core/api/states", headers={"Authorization": "Bearer abc123"}
+    )
+    assert resp.status == 200
+
+
+@pytest.mark.usefixtures("plugin_tokens")
+async def test_blacklist_legacy_alias(
+    api_token_validation: TestClient,
+    install_app_example: App,
+):
+    """Test the legacy /homeassistant proxy alias (v1 only) is blacklisted."""
+    install_app_example.persist["access_token"] = "abc123"
+    install_app_example.data["hassio_api"] = True
+    install_app_example.data["hassio_role"] = "admin"
+
+    resp = await api_token_validation.get(
+        "/homeassistant/api/hassio/app", headers={"Authorization": "Bearer abc123"}
+    )
+    assert resp.status == 403

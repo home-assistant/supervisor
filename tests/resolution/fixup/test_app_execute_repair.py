@@ -40,6 +40,35 @@ async def test_fixup(docker: DockerAPI, coresys: CoreSys, install_app_ssh: App):
     assert not coresys.resolution.suggestions
 
 
+async def test_fixup_detached_build_app_skips(
+    docker: DockerAPI, coresys: CoreSys, install_app_ssh: App
+):
+    """Test fixup skips a detached app that needs a local build (no source)."""
+    docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+    # Detach: no store source to build from, and no image to pull.
+    coresys.store.data.apps.pop("local_ssh")
+    coresys.apps.store.pop("local_ssh", None)
+    assert install_app_ssh.is_detached
+    assert install_app_ssh.need_build
+
+    app_execute_repair = FixupAppExecuteRepair(coresys)
+    coresys.resolution.create_issue(
+        IssueType.MISSING_IMAGE,
+        ContextType.ADDON,
+        reference="local_ssh",
+        suggestions=[SuggestionType.EXECUTE_REPAIR],
+    )
+    with patch.object(DockerInterface, "install") as install:
+        await app_execute_repair()
+        install.assert_not_called()
+
+    # Dismissed gracefully without attempting a build or raising.
+    assert not coresys.resolution.issues
+    assert not coresys.resolution.suggestions
+
+
 async def test_fixup_max_auto_attempts(
     docker: DockerAPI, coresys: CoreSys, install_app_ssh: App
 ):
