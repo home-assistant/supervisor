@@ -1,11 +1,11 @@
 """Helpers to check and fix issues with free space."""
 
 import logging
-from typing import Any
 
 from ...coresys import CoreSys
 from ...exceptions import ResolutionFixupError, StoreError, StoreNotFound
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -19,20 +19,16 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupStoreExecuteRemove(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
-        if not reference:
+        if not suggestion.reference:
             return
 
-        _LOGGER.info("Remove invalid Store: %s", reference)
+        _LOGGER.info("Remove invalid Store: %s", suggestion.reference)
         try:
-            repository = self.sys_store.get(reference)
+            repository = self.sys_store.get(suggestion.reference)
         except StoreNotFound:
-            _LOGGER.warning("Can't find store %s for fixup", reference)
+            _LOGGER.warning("Can't find store %s for fixup", suggestion.reference)
             return
 
         # Remove repository

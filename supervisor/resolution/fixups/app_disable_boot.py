@@ -1,11 +1,11 @@
 """Helpers to fix app by disabling boot."""
 
 import logging
-from typing import Any
 
 from ...const import AppBoot
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -19,17 +19,15 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupAppDisableBoot(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
-        if not reference:
+        if not suggestion.reference:
             return
 
-        if not (app := self.sys_apps.get_local_only(reference)):
-            _LOGGER.info("Cannot change app %s as it does not exist", reference)
+        if not (app := self.sys_apps.get_local_only(suggestion.reference)):
+            _LOGGER.info(
+                "Cannot change app %s as it does not exist", suggestion.reference
+            )
             return
 
         # Disable boot on app

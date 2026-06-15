@@ -1,10 +1,9 @@
 """Helpers to check for app port conflicts."""
 
-from typing import Any
-
 from ...const import AppState, CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType
+from ..data import Issue
 from .base import CheckBase
 
 
@@ -29,21 +28,17 @@ class CheckAppPortConflict(CheckBase):
         or dismiss existing issues rather then make new ones.
         """
 
-    async def approve_check(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
         if (
-            not reference
-            or not reference_extra
-            or not (conflict_port := reference_extra.get("port"))
+            not issue.reference
+            or not issue.reference_extra
+            or not (conflict_port := issue.reference_extra.get("port"))
         ):
             return False
 
         # Uninstalled
-        if not (app := self.sys_apps.get_local_only(reference)):
+        if not (app := self.sys_apps.get_local_only(issue.reference)):
             return False
 
         # If the app is running then the conflict has been resolved

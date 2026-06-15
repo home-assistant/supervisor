@@ -2,10 +2,10 @@
 
 import asyncio
 import logging
-from typing import Any
 
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -19,11 +19,7 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemExecuteReboot(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Rebooting the host")
         await asyncio.shield(self.sys_host.control.reboot())

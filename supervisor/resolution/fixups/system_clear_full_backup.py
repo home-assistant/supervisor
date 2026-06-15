@@ -1,12 +1,12 @@
 """Helpers to check and fix issues with free space."""
 
 import logging
-from typing import Any
 
 from ...backups.const import BackupType
 from ...coresys import CoreSys
 from ...exceptions import BackupFileNotFoundError
 from ..const import MINIMUM_FULL_BACKUPS, ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -20,11 +20,7 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemClearFullBackup(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
         full_backups = [
             x for x in self.sys_backups.list_backups if x.sys_type == BackupType.FULL

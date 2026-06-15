@@ -1,7 +1,6 @@
 """Helpers to check for a disabled data disk."""
 
 from pathlib import Path
-from typing import Any
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -9,6 +8,7 @@ from ...dbus.udisks2.block import UDisks2Block
 from ...dbus.udisks2.data import DeviceSpecification
 from ...os.const import FILESYSTEM_LABEL_DISABLED_DATA_DISK
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Issue
 from .base import CheckBase
 
 
@@ -34,17 +34,13 @@ class CheckDisabledDataDisk(CheckBase):
                     ],
                 )
 
-    async def approve_check(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
-        if not reference:
+        if not issue.reference:
             return False
 
         resolved = await self.sys_dbus.udisks2.resolve_device(
-            DeviceSpecification(path=Path(reference))
+            DeviceSpecification(path=Path(issue.reference))
         )
         return resolved and self._is_disabled_data_disk(resolved[0])
 

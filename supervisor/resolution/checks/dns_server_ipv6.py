@@ -2,7 +2,6 @@
 
 import asyncio
 from datetime import timedelta
-from typing import Any
 
 from aiodns.error import DNSError
 
@@ -12,6 +11,7 @@ from ...jobs.const import JobCondition, JobThrottle
 from ...jobs.decorator import Job
 from ...utils.sentry import async_capture_exception
 from ..const import DNS_ERROR_NO_DATA, ContextType, IssueType
+from ..data import Issue
 from .base import CheckBase
 from .dns_server import check_server
 
@@ -53,17 +53,13 @@ class CheckDNSServerIPv6(CheckBase):
     @Job(
         name="check_dns_server_ipv6_approve", conditions=[JobCondition.INTERNET_SYSTEM]
     )
-    async def approve_check(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
-        if reference not in self.dns_servers:
+        if issue.reference not in self.dns_servers:
             return False
 
         try:
-            await check_server(self.sys_loop, reference, "AAAA")
+            await check_server(self.sys_loop, issue.reference, "AAAA")
         except DNSError as dns_error:
             if dns_error.args[0] != DNS_ERROR_NO_DATA:
                 return True

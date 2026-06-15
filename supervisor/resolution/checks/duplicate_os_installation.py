@@ -1,12 +1,12 @@
 """Helpers to check for duplicate OS installations."""
 
 import logging
-from typing import Any
 
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...dbus.udisks2.data import DeviceSpecification
 from ..const import ContextType, IssueType, UnhealthyReason
+from ..data import Issue
 from .base import CheckBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -84,11 +84,7 @@ class CheckDuplicateOSInstallation(CheckBase):
                 )
                 return
 
-    async def approve_check(
-        self,
-        reference: str | None = None,
-        reference_extra: dict[str, Any] | None = None,
-    ) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
         # Check all partitions for duplicates since issue is created without reference
         for device_spec, _, _ in _get_device_specifications():

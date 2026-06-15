@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock
 
 from supervisor.const import AppState
 from supervisor.resolution.checks.app_port_conflict_core import CheckAppPortConflictCore
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 from tests.common import force_app_state
 
@@ -14,9 +16,24 @@ async def test_approve_check_missing_reference_data(coresys):
     """Test approval fails if required fields are missing."""
     check = CheckAppPortConflictCore(coresys)
 
-    assert not await check.approve_check(None, {"port": coresys.homeassistant.api_port})
-    assert not await check.approve_check("test", None)
-    assert not await check.approve_check("test", {"other": 1234})
+    assert not await check.approve_check(
+        Issue(
+            IssueType.APP_PORT_CONFLICT_CORE,
+            ContextType.ADDON,
+            reference_extra={"port": coresys.homeassistant.api_port},
+        )
+    )
+    assert not await check.approve_check(
+        Issue(IssueType.APP_PORT_CONFLICT_CORE, ContextType.ADDON, reference="test")
+    )
+    assert not await check.approve_check(
+        Issue(
+            IssueType.APP_PORT_CONFLICT_CORE,
+            ContextType.ADDON,
+            reference="test",
+            reference_extra={"other": 1234},
+        )
+    )
 
 
 async def test_approve_check_homeassistant_port_changed(coresys, install_app_ssh):
@@ -25,8 +42,12 @@ async def test_approve_check_homeassistant_port_changed(coresys, install_app_ssh
     app = install_app_ssh
 
     assert not await check.approve_check(
-        app.slug,
-        {"port": coresys.homeassistant.api_port + 1},
+        Issue(
+            IssueType.APP_PORT_CONFLICT_CORE,
+            ContextType.ADDON,
+            reference=app.slug,
+            reference_extra={"port": coresys.homeassistant.api_port + 1},
+        )
     )
 
 
@@ -35,8 +56,12 @@ async def test_approve_check_uninstalled_app(coresys):
     check = CheckAppPortConflictCore(coresys)
 
     assert not await check.approve_check(
-        "missing-app",
-        {"port": coresys.homeassistant.api_port},
+        Issue(
+            IssueType.APP_PORT_CONFLICT_CORE,
+            ContextType.ADDON,
+            reference="missing-app",
+            reference_extra={"port": coresys.homeassistant.api_port},
+        )
     )
 
 
@@ -50,8 +75,12 @@ async def test_approve_check_resolved_when_app_running_and_core_up(
     coresys.homeassistant.api.check_api_state = AsyncMock(return_value=True)
 
     assert not await check.approve_check(
-        app.slug,
-        {"port": coresys.homeassistant.api_port},
+        Issue(
+            IssueType.APP_PORT_CONFLICT_CORE,
+            ContextType.ADDON,
+            reference=app.slug,
+            reference_extra={"port": coresys.homeassistant.api_port},
+        )
     )
 
 
@@ -63,8 +92,12 @@ async def test_approve_check_host_network_app_still_affected(coresys, install_ap
     app.data["host_network"] = True
 
     assert await check.approve_check(
-        app.slug,
-        {"port": coresys.homeassistant.api_port},
+        Issue(
+            IssueType.APP_PORT_CONFLICT_CORE,
+            ContextType.ADDON,
+            reference=app.slug,
+            reference_extra={"port": coresys.homeassistant.api_port},
+        )
     )
 
 
@@ -77,6 +110,10 @@ async def test_approve_check_port_mapping_still_present(coresys, install_app_ssh
     app.persist["network"] = {"8123/tcp": coresys.homeassistant.api_port}
 
     assert await check.approve_check(
-        app.slug,
-        {"port": coresys.homeassistant.api_port},
+        Issue(
+            IssueType.APP_PORT_CONFLICT_CORE,
+            ContextType.ADDON,
+            reference=app.slug,
+            reference_extra={"port": coresys.homeassistant.api_port},
+        )
     )

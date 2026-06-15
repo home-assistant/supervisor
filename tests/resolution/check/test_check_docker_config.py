@@ -139,7 +139,9 @@ async def test_check(docker: DockerAPI, coresys: CoreSys, folder: str):
         in coresys.resolution.suggestions
     )
 
-    assert await docker_config.approve_check()
+    assert await docker_config.approve_check(
+        Issue(IssueType.DOCKER_CONFIG, ContextType.SYSTEM)
+    )
 
     # IF config issue is resolved, all issues are removed except the main one. Which will be removed if check isn't approved
     docker.containers.get = _make_mock_container_get([])
@@ -148,7 +150,9 @@ async def test_check(docker: DockerAPI, coresys: CoreSys, folder: str):
         await coresys.homeassistant.load()
         await coresys.apps.load()
 
-    assert not await docker_config.approve_check()
+    assert not await docker_config.approve_check(
+        Issue(IssueType.DOCKER_CONFIG, ContextType.SYSTEM)
+    )
     assert len(coresys.resolution.issues) == 1
     assert len(coresys.resolution.suggestions) == 1
     assert (
