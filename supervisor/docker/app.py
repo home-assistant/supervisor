@@ -892,6 +892,15 @@ class DockerApp(DockerInterface):
         if not allowed_paths & {device.path, device.sysfs, *device.links}:
             return
 
+        # Check hardware access policy before granting cgroup access
+        if not self.sys_hardware.policy.allowed_for_access(device):
+            _LOGGER.error(
+                "App %s tried to access blocked device %s via hardware event!",
+                self.app.name,
+                device.name,
+            )
+            return
+
         try:
             docker_container = await self.sys_docker.containers.get(self.name)
         except aiodocker.DockerError as err:

@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 import aiodocker
+import attr
 import pytest
 
 from supervisor.apps import validate as vd
@@ -380,7 +381,7 @@ TEST_DEV_PATH = "/dev/ttyAMA0"
 TEST_SYSFS_PATH = "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM0"
 TEST_HW_DEVICE = Device(
     name="ttyACM0",
-    path=Path("/dev/ttyAMA0"),
+    path=Path("/dev/ttyACM0"),
     sysfs=Path(
         "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM0"
     ),
@@ -395,7 +396,7 @@ TEST_HW_DEVICE = Device(
         Path("/dev/serial/by-path/platform-xhci-hcd.0.auto-usb-0:1.1:1.0"),
         Path("/dev/serial/by-path/platform-xhci-hcd.0.auto-usbv2-0:1.1:1.0"),
     ],
-    attributes={},
+    attributes={"MAJOR": "166", "MINOR": "0"},
     children=[],
 )
 
@@ -442,7 +443,7 @@ async def test_app_new_device(
             TEST_HW_DEVICE,
         )
 
-        add_devices.assert_called_once_with(123, "c 0:0 rwm")
+        add_devices.assert_called_once_with(123, "c 166:0 rwm")
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
@@ -599,11 +600,17 @@ async def test_app_options_device_hw_listener(
     container.id = 123
     docker._info = replace(docker.info, cgroup="1")  # pylint: disable=protected-access
 
-    # Re-enumerated device: same by-id symlink, different kernel node (ttyACM1).
-    reenumerated_device = replace(
+    # Re-enumerated device: same by-id symlink, different kernel node and minor number.
+    # When a USB device is unplugged and plugged back in, the kernel may assign a new
+    # device node (ttyACM0 → ttyACM1) with a different minor number.
+    reenumerated_device = attr.evolve(
         TEST_HW_DEVICE,
         name="ttyACM1",
         path=Path("/dev/ttyACM1"),
+        sysfs=Path(
+            "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM1"
+        ),
+        attributes={"MAJOR": "166", "MINOR": "1"},  # minor number changed from 0 to 1
     )
 
     with (
@@ -618,4 +625,49 @@ async def test_app_options_device_hw_listener(
         await install_app_ssh.start()
         await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, reenumerated_device)
 
-        add_devices.assert_called_once_with(123, "c 0:0 rwm")
+        # Verify cgroup permission was granted for the re-enumerated device with new minor number
+        add_devices.assert_called_once_with(123, "c 166:1 rwm")
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_options_device_policy_check(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: MagicMock,
+    docker: DockerAPI,
+):
+    """Test hardware policy blocks device access even for options-based devices.
+
+    Scenario: an add-on has a device option configured, but the device is blocked
+    by hardware policy (e.g., used by system). The hardware event handler must
+    respect the policy and not grant cgroup access.
+    """
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_ssh.data["devices"] = []
+
+    # Configure a device-type option
+    by_id_path = TEST_HW_DEVICE.links[0]
+    install_app_ssh.data["schema"] = {"device": "device"}
+    install_app_ssh.persist["options"] = {"device": str(by_id_path)}
+
+    container.id = 123
+    docker._info = replace(docker.info, cgroup="1")  # pylint: disable=protected-access
+
+    with (
+        patch.object(App, "write_options"),
+        patch.object(OSManager, "available", new=PropertyMock(return_value=True)),
+        # Mock policy to block this device
+        patch.object(
+            coresys.hardware.policy,
+            "allowed_for_access",
+            return_value=False,
+        ),
+        patch.object(
+            CGroup, "add_devices_allowed", new_callable=AsyncMock
+        ) as add_devices,
+    ):
+        await install_app_ssh.start()
+        await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, TEST_HW_DEVICE)
+
+        # Verify cgroup permission was NOT granted due to policy block
+        add_devices.assert_not_called()
