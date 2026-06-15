@@ -127,20 +127,24 @@ async def test_api_create_dbus_error_mount_not_added(
     )
     systemd_service.response_start_transient_unit = DBusError(ErrorType.FAILED, "fail")
 
-    resp = await api_client.post(
-        f"{prefix}/mounts",
-        json={
-            "name": "backup_test",
-            "type": "cifs",
-            "usage": "backup",
-            "server": "backup.local",
-            "share": "backups",
-        },
-    )
-    assert resp.status == 400
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert result["message"] == "Could not mount backup_test due to: fail"
+    # Mount failures reflect host/config conditions, not Supervisor bugs, so they
+    # must be reported as client-side errors without capturing to Sentry.
+    with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
+        resp = await api_client.post(
+            f"{prefix}/mounts",
+            json={
+                "name": "backup_test",
+                "type": "cifs",
+                "usage": "backup",
+                "server": "backup.local",
+                "share": "backups",
+            },
+        )
+        assert resp.status == 400
+        result = await resp.json()
+        assert result["result"] == "error"
+        assert result["message"] == "Could not mount backup_test due to: fail"
+        capture_exception.assert_not_called()
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
@@ -154,23 +158,25 @@ async def test_api_create_dbus_error_mount_not_added(
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
     systemd_unit_service.active_state = ["failed", "failed", "inactive"]
 
-    resp = await api_client.post(
-        f"{prefix}/mounts",
-        json={
-            "name": "backup_test",
-            "type": "cifs",
-            "usage": "backup",
-            "server": "backup.local",
-            "share": "backups",
-        },
-    )
-    assert resp.status == 400
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert (
-        result["message"]
-        == "Mounting backup_test did not succeed. Check host logs for errors from mount or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details."
-    )
+    with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
+        resp = await api_client.post(
+            f"{prefix}/mounts",
+            json={
+                "name": "backup_test",
+                "type": "cifs",
+                "usage": "backup",
+                "server": "backup.local",
+                "share": "backups",
+            },
+        )
+        assert resp.status == 400
+        result = await resp.json()
+        assert result["result"] == "error"
+        assert (
+            result["message"]
+            == "Mounting backup_test did not succeed. Check host logs for errors from mount or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details."
+        )
+        capture_exception.assert_not_called()
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
