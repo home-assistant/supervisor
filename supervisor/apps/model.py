@@ -359,6 +359,11 @@ class AppModel(JobGroup, ABC):
         return [Path(node) for node in self.data.get(ATTR_DEVICES, [])]
 
     @property
+    def option_device_paths(self) -> set[Path]:
+        """Return raw device paths configured in options without full validation."""
+        return self.schema.extract_device_paths(self.options)
+
+    @property
     def environment(self) -> dict[str, str] | None:
         """Return environment of app."""
         return self.data.get(ATTR_ENVIRONMENT)

@@ -618,8 +618,9 @@ class DockerApp(DockerInterface):
             _LOGGER.warning("Can't update DNS for %s", self.name)
             await async_capture_exception(err)
 
-        # Hardware Access
-        if self.app.static_devices:
+        # Hardware Access — register listener for both manifest static_devices and
+        # options-based devices (e.g. Z-Wave JS `device:` option).
+        if self.app.static_devices or self.app.option_device_paths:
             self._hw_listener = self.sys_bus.register_event(
                 BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events
             )
@@ -887,10 +888,17 @@ class DockerApp(DockerInterface):
     )
     async def _hardware_events(self, device: Device) -> None:
         """Process Hardware events for adjust device access."""
-        if not any(
-            device_path in (device.path, device.sysfs)
-            for device_path in self.app.static_devices
-        ):
+        allowed_paths = set(self.app.static_devices) | self.app.option_device_paths
+        if not allowed_paths & {device.path, device.sysfs, *device.links}:
+            return
+
+        # Check hardware access policy before granting cgroup access
+        if not self.sys_hardware.policy.allowed_for_access(device):
+            _LOGGER.error(
+                "App %s tried to access blocked device %s via hardware event!",
+                self.app.name,
+                device.name,
+            )
             return
 
         try:

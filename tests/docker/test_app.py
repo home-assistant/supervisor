@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 import aiodocker
+import attr
 import pytest
 
 from supervisor.apps import validate as vd
@@ -27,6 +28,7 @@ from supervisor.docker.const import (
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import CoreDNSError, DockerNotFound
 from supervisor.hardware.data import Device
+from supervisor.host.const import HostFeature
 from supervisor.os.manager import OSManager
 from supervisor.plugins.dns import PluginDns
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -376,11 +378,11 @@ async def test_app_stop_delete_host_error(
         capture_exception.assert_called_once_with(err)
 
 
-TEST_DEV_PATH = "/dev/ttyAMA0"
+TEST_DEV_PATH = "/dev/ttyACM0"
 TEST_SYSFS_PATH = "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM0"
 TEST_HW_DEVICE = Device(
     name="ttyACM0",
-    path=Path("/dev/ttyAMA0"),
+    path=Path("/dev/ttyACM0"),
     sysfs=Path(
         "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM0"
     ),
@@ -395,7 +397,7 @@ TEST_HW_DEVICE = Device(
         Path("/dev/serial/by-path/platform-xhci-hcd.0.auto-usb-0:1.1:1.0"),
         Path("/dev/serial/by-path/platform-xhci-hcd.0.auto-usbv2-0:1.1:1.0"),
     ],
-    attributes={},
+    attributes={"MAJOR": "166", "MINOR": "0"},
     children=[],
 )
 
@@ -431,6 +433,11 @@ async def test_app_new_device(
         patch.object(App, "write_options"),
         patch.object(OSManager, "available", new=PropertyMock(return_value=is_os)),
         patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
+        patch.object(
             CGroup, "add_devices_allowed", new_callable=AsyncMock
         ) as add_devices,
     ):
@@ -442,7 +449,7 @@ async def test_app_new_device(
             TEST_HW_DEVICE,
         )
 
-        add_devices.assert_called_once_with(123, "c 0:0 rwm")
+        add_devices.assert_called_once_with(123, "c 166:0 rwm")
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
@@ -458,6 +465,11 @@ async def test_app_new_device_no_haos(
     with (
         patch.object(App, "write_options"),
         patch.object(OSManager, "available", new=PropertyMock(return_value=False)),
+        patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
         patch.object(
             CGroup, "add_devices_allowed", new_callable=AsyncMock
         ) as add_devices,
@@ -572,3 +584,126 @@ async def test_ulimits_integration(coresys: CoreSys, install_app_ssh: App):
     assert core_limit is not None
     assert core_limit.soft == 0
     assert core_limit.hard == 0
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_options_device_hw_listener(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: MagicMock,
+    docker: DockerAPI,
+):
+    """Test hw_listener fires for a by-id option device after re-enumeration.
+
+    Scenario: the user picks a by-id path (stable symlink) in the add-on options.
+    On USB re-enumeration the kernel assigns a new device node (minor number
+    changes, e.g. ttyACM0 → ttyACM1) but the by-id symlink remains the same.
+    The hardware event must still be processed and cgroup permissions updated.
+    """
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_ssh.data["devices"] = []  # no static devices
+
+    # Configure a device-type option with the by-id path from TEST_HW_DEVICE.
+    by_id_path = TEST_HW_DEVICE.links[0]
+    install_app_ssh.data["schema"] = {"device": "device"}
+    install_app_ssh.persist["options"] = {"device": str(by_id_path)}
+
+    container.id = 123
+    docker._info = replace(docker.info, cgroup="1")  # pylint: disable=protected-access
+
+    # Re-enumerated device: same by-id symlink, different kernel node and minor number.
+    # When a USB device is unplugged and plugged back in, the kernel may assign a new
+    # device node (ttyACM0 → ttyACM1) with a different minor number.
+    reenumerated_device = attr.evolve(
+        TEST_HW_DEVICE,
+        name="ttyACM1",
+        path=Path("/dev/ttyACM1"),
+        sysfs=Path(
+            "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM1"
+        ),
+        attributes={"MAJOR": "166", "MINOR": "1"},  # minor number changed from 0 to 1
+    )
+
+    with (
+        patch.object(App, "write_options"),
+        # HAOS not available: proactive cgroup call is skipped, so add_devices is
+        # called exactly once — from the hardware event via the options listener.
+        patch.object(OSManager, "available", new=PropertyMock(return_value=False)),
+        patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
+        # Mock option_device_paths to ensure it returns the by-id path
+        patch.object(
+            type(install_app_ssh),
+            "option_device_paths",
+            new=PropertyMock(return_value={by_id_path}),
+        ),
+        patch.object(
+            CGroup, "add_devices_allowed", new_callable=AsyncMock
+        ) as add_devices,
+    ):
+        await install_app_ssh.start()
+        await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, reenumerated_device)
+
+        # Verify cgroup permission was granted for the re-enumerated device with new minor number
+        add_devices.assert_called_once_with(123, "c 166:1 rwm")
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_options_device_policy_check(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: MagicMock,
+    docker: DockerAPI,
+):
+    """Test hardware policy blocks device access even for options-based devices.
+
+    Scenario: an add-on has a device option configured, but the device is blocked
+    by hardware policy (e.g., used by system). The hardware event handler must
+    respect the policy and not grant cgroup access.
+    """
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_ssh.data["devices"] = []
+
+    # Configure a device-type option
+    by_id_path = TEST_HW_DEVICE.links[0]
+    install_app_ssh.data["schema"] = {"device": "device"}
+    install_app_ssh.persist["options"] = {"device": str(by_id_path)}
+
+    container.id = 123
+    docker._info = replace(docker.info, cgroup="1")  # pylint: disable=protected-access
+
+    with (
+        patch.object(App, "write_options"),
+        patch.object(OSManager, "available", new=PropertyMock(return_value=True)),
+        patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
+        # Make the event device match. option_device_paths reads the merged
+        # options, which the test's persist override doesn't populate, so without
+        # this mock the match guard returns early and the policy check below is
+        # never reached (the assertion would then pass for the wrong reason).
+        patch.object(
+            type(install_app_ssh),
+            "option_device_paths",
+            new=PropertyMock(return_value={by_id_path}),
+        ),
+        # Mock policy to block this device
+        patch.object(
+            coresys.hardware.policy,
+            "allowed_for_access",
+            return_value=False,
+        ),
+        patch.object(
+            CGroup, "add_devices_allowed", new_callable=AsyncMock
+        ) as add_devices,
+    ):
+        await install_app_ssh.start()
+        await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, TEST_HW_DEVICE)
+
+        # Verify cgroup permission was NOT granted due to policy block
+        add_devices.assert_not_called()
