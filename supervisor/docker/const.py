@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from ipaddress import IPv4Address
 from pathlib import PurePath
 import re
 import signal
 from typing import Any
 
-from ..const import MACHINE_ID
+from ..const import ATTR_DRIVER, ATTR_INTERFACE, ATTR_IPV4, MACHINE_ID
 
 RE_RETRYING_DOWNLOAD_STATUS = re.compile(r"Retrying in \d+ seconds?")
 
@@ -146,6 +147,49 @@ class Ulimit:
             "Soft": self.soft,
             "Hard": self.hard,
         }
+
+
+class ExternalNetworkDriver(StrEnum):
+    """Docker network driver bridging containers to a physical interface."""
+
+    MACVLAN = "macvlan"
+    IPVLAN = "ipvlan"
+
+
+@dataclass(slots=True, frozen=True)
+class NetworkIsolationConfig:
+    """User-assigned isolated physical network endpoint for an app."""
+
+    driver: ExternalNetworkDriver
+    interface: str
+    ipv4: IPv4Address
+
+    @classmethod
+    def from_dict(cls, data: dict[str, str]) -> NetworkIsolationConfig:
+        """Create instance from dictionary representation."""
+        return cls(
+            driver=ExternalNetworkDriver(data[ATTR_DRIVER]),
+            interface=data[ATTR_INTERFACE],
+            ipv4=IPv4Address(data[ATTR_IPV4]),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        """To dictionary representation."""
+        return {
+            ATTR_DRIVER: self.driver.value,
+            ATTR_INTERFACE: self.interface,
+            ATTR_IPV4: str(self.ipv4),
+        }
+
+
+@dataclass(slots=True, frozen=True)
+class ExtraNetworkEndpoint:
+    """Additional network endpoint connected to a container before start."""
+
+    network: str
+    ipv4: IPv4Address
+    mac: str | None = None
+    gw_priority: int = 0
 
 
 ENV_CORE_API_SOCKET = "SUPERVISOR_CORE_API_SOCKET"

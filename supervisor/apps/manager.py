@@ -126,8 +126,11 @@ class AppManager(CoreSysAttributes):
         for app in self.installed:
             if app.boot != AppBoot.AUTO or app.startup != stage:
                 continue
+            # Apps with an isolated network endpoint do not run in the host
+            # network namespace, their traffic never passes the Docker gateway
             if (
                 app.host_network
+                and not app.network_isolation
                 and UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED
                 in self.sys_resolution.unhealthy
             ):

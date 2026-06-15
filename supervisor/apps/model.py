@@ -89,7 +89,7 @@ from ..const import (
     CpuArch,
 )
 from ..coresys import CoreSys
-from ..docker.const import Capabilities
+from ..docker.const import Capabilities, NetworkIsolationConfig
 from ..exceptions import (
     AppFileReadError,
     AppNotSupportedArchitectureError,
@@ -332,6 +332,14 @@ class AppModel(JobGroup, ABC):
     def host_network(self) -> bool:
         """Return True if app run on host network."""
         return self.data[ATTR_HOST_NETWORK]
+
+    @property
+    def network_isolation(self) -> NetworkIsolationConfig | None:
+        """Return isolated physical network endpoint assigned to the app.
+
+        Only installed apps can have one assigned (user setting).
+        """
+        return None
 
     @property
     def host_pid(self) -> bool:

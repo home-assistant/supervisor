@@ -516,6 +516,45 @@ class AppBootConfigCannotChangeError(AppsError, APIError):
         super().__init__(None, logger)
 
 
+class AppNetworkIsolationNotSupportedError(AppAPIError):
+    """Raise when network isolation is assigned to an app without host networking."""
+
+    error_key = "addon_network_isolation_not_supported_error"
+    message_template = (
+        "Network isolation can only be assigned to app {addon} if it uses "
+        "host networking"
+    )
+
+
+class AppNetworkIsolationDockerVersionError(AppAPIError):
+    """Raise when the Docker engine is too old for network isolation."""
+
+    error_key = "addon_network_isolation_docker_version_error"
+    message_template = (
+        "Network isolation for app {addon} requires Docker {minimum_version} or newer"
+    )
+
+
+class AppNetworkIsolationInvalidInterfaceError(AppAPIError):
+    """Raise when the host interface cannot be used for network isolation."""
+
+    error_key = "addon_network_isolation_invalid_interface_error"
+    message_template = (
+        "Interface {interface} cannot be used for network isolation of "
+        "app {addon}: {reason}"
+    )
+
+
+class AppNetworkIsolationInvalidAddressError(AppAPIError):
+    """Raise when the IP address cannot be used for network isolation."""
+
+    error_key = "addon_network_isolation_invalid_address_error"
+    message_template = (
+        "IP address {address} cannot be used for network isolation of "
+        "app {addon}: {reason}"
+    )
+
+
 class AppNotRunningError(AppsError, APIError):
     """Raise when an app is not running."""
 

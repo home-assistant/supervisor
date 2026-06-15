@@ -66,6 +66,16 @@ RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 # pylint: disable=invalid-name
 network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
+
+
+def ipv4_address(value: str) -> str:
+    """Validate an IPv4 address and normalize it to its string form."""
+    try:
+        return str(ipaddress.IPv4Address(value))
+    except (ValueError, TypeError) as err:
+        raise vol.Invalid(f"Invalid IPv4 address: {value}") from err
+
+
 # Path component pattern for Docker image names (supports {arch}/{machine} templates)
 _RE_IMAGE_PATH_COMPONENT = re.compile(r"^[a-z0-9{][a-z0-9.\-_{}]*$")
 

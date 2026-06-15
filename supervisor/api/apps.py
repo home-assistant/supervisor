@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable
+from contextlib import suppress
 import logging
 from typing import Any, TypedDict
 
@@ -11,6 +12,7 @@ from voluptuous.humanize import humanize_error
 
 from ..apps.app import App
 from ..apps.utils import rating_security
+from ..apps.validate import SCHEMA_NETWORK_ISOLATION
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADVANCED,
@@ -37,6 +39,7 @@ from ..const import (
     ATTR_DNS,
     ATTR_DOCKER_API,
     ATTR_DOCUMENTATION,
+    ATTR_DRIVER,
     ATTR_FORCE,
     ATTR_FULL_ACCESS,
     ATTR_GPIO,
@@ -67,6 +70,7 @@ from ..const import (
     ATTR_NAME,
     ATTR_NETWORK,
     ATTR_NETWORK_DESCRIPTION,
+    ATTR_NETWORK_ISOLATION,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
     ATTR_OPTIONS,
@@ -99,6 +103,11 @@ from ..const import (
     AppBootConfig,
 )
 from ..coresys import CoreSysAttributes
+from ..docker.const import ExternalNetworkDriver, NetworkIsolationConfig
+from ..docker.external_network import (
+    MIN_EXTERNAL_NETWORK_DOCKER,
+    DockerExternalNetworks,
+)
 from ..docker.stats import DockerStats
 from ..exceptions import (
     APIAppNotInstalled,
@@ -107,23 +116,47 @@ from ..exceptions import (
     APINotFound,
     AppBootConfigCannotChangeError,
     AppConfigurationInvalidError,
+    AppNetworkIsolationDockerVersionError,
+    AppNetworkIsolationInvalidAddressError,
+    AppNetworkIsolationInvalidInterfaceError,
+    AppNetworkIsolationNotSupportedError,
     AppNotSupportedWriteStdinError,
+    DockerError,
+    HostNetworkNotFound,
     PwnedError,
     PwnedSecret,
 )
 from ..validate import docker_ports
-from .const import ATTR_BOOT_CONFIG, ATTR_REMOVE_CONFIG, ATTR_SIGNED
+from .const import (
+    ATTR_BOOT_CONFIG,
+    ATTR_NETWORK_ISOLATION_AVAILABLE,
+    ATTR_NETWORK_ISOLATION_MAC,
+    ATTR_REMOVE_CONFIG,
+    ATTR_SIGNED,
+)
 from .utils import api_process, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): str})
 
+# Only the macvlan driver is supported for now
+SCHEMA_NETWORK_ISOLATION_OPTIONS = SCHEMA_NETWORK_ISOLATION.extend(
+    {
+        vol.Optional(ATTR_DRIVER, default=ExternalNetworkDriver.MACVLAN): vol.All(
+            vol.Coerce(ExternalNetworkDriver), vol.In([ExternalNetworkDriver.MACVLAN])
+        ),
+    }
+)
+
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_BOOT): vol.Coerce(AppBoot),
         vol.Optional(ATTR_NETWORK): vol.Maybe(docker_ports),
+        vol.Optional(ATTR_NETWORK_ISOLATION): vol.Maybe(
+            SCHEMA_NETWORK_ISOLATION_OPTIONS
+        ),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
         vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
@@ -249,6 +282,12 @@ class APIApps(CoreSysAttributes):
             ATTR_BUILD: app.need_build,
             ATTR_NETWORK: app.ports,
             ATTR_NETWORK_DESCRIPTION: app.ports_description,
+            ATTR_NETWORK_ISOLATION: config.to_dict()
+            if (config := app.network_isolation)
+            else None,
+            ATTR_NETWORK_ISOLATION_AVAILABLE: app.host_network
+            and self.sys_docker.external_networks.available,
+            ATTR_NETWORK_ISOLATION_MAC: app.external_mac_address,
             ATTR_HOST_NETWORK: app.host_network,
             ATTR_HOST_PID: app.host_pid,
             ATTR_HOST_IPC: app.host_ipc,
@@ -337,6 +376,13 @@ class APIApps(CoreSysAttributes):
             app.auto_update = body[ATTR_AUTO_UPDATE]
         if ATTR_NETWORK in body:
             app.ports = body[ATTR_NETWORK]
+        if ATTR_NETWORK_ISOLATION in body:
+            if (isolation := body[ATTR_NETWORK_ISOLATION]) is None:
+                app.network_isolation = None
+            else:
+                config = NetworkIsolationConfig.from_dict(isolation)
+                self._validate_network_isolation(app, config)
+                app.network_isolation = config
         if ATTR_AUDIO_INPUT in body:
             app.audio_input = body[ATTR_AUDIO_INPUT]
         if ATTR_AUDIO_OUTPUT in body:
@@ -348,6 +394,72 @@ class APIApps(CoreSysAttributes):
             app.watchdog = body[ATTR_WATCHDOG]
 
         await app.save_persist()
+
+        # Clean up external networks no longer referenced by any app
+        if ATTR_NETWORK_ISOLATION in body:
+            with suppress(DockerError):
+                await self.sys_docker.external_networks.gc()
+
+    def _validate_network_isolation(
+        self, app: App, config: NetworkIsolationConfig
+    ) -> None:
+        """Validate a network isolation config against app and host state."""
+        if not app.host_network:
+            raise AppNetworkIsolationNotSupportedError(app=app)
+        if not self.sys_docker.external_networks.available:
+            raise AppNetworkIsolationDockerVersionError(
+                app=app, minimum_version=str(MIN_EXTERNAL_NETWORK_DOCKER)
+            )
+
+        try:
+            interface = self.sys_host.network.get(config.interface)
+        except HostNetworkNotFound:
+            raise AppNetworkIsolationInvalidInterfaceError(
+                app=app, interface=config.interface, reason="interface not found"
+            ) from None
+        if not DockerExternalNetworks.capable_interface(interface):
+            raise AppNetworkIsolationInvalidInterfaceError(
+                app=app,
+                interface=config.interface,
+                reason="must be a connected ethernet interface with IPv4",
+            )
+
+        subnet = DockerExternalNetworks.interface_subnet(interface)
+        if (
+            subnet is None
+            or config.ipv4 not in subnet
+            or config.ipv4 in {subnet.network_address, subnet.broadcast_address}
+        ):
+            raise AppNetworkIsolationInvalidAddressError(
+                app=app,
+                address=str(config.ipv4),
+                reason=f"not a usable address within subnet {subnet}",
+            )
+        if interface.ipv4 and (
+            config.ipv4 == interface.ipv4.gateway
+            or any(
+                config.ipv4 == address.ip
+                for address in interface.ipv4.address
+                if address.version == 4
+            )
+        ):
+            raise AppNetworkIsolationInvalidAddressError(
+                app=app,
+                address=str(config.ipv4),
+                reason="already used by the host or its gateway",
+            )
+
+        for other in self.sys_apps.installed:
+            if other.slug == app.slug:
+                continue
+            if (
+                other_config := other.network_isolation
+            ) and other_config.ipv4 == config.ipv4:
+                raise AppNetworkIsolationInvalidAddressError(
+                    app=app,
+                    address=str(config.ipv4),
+                    reason=f"already assigned to app {other.slug}",
+                )
 
     @api_process
     async def sys_options(self, request: web.Request) -> None:

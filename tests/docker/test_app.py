@@ -14,22 +14,34 @@ from supervisor.apps import validate as vd
 from supervisor.apps.app import App
 from supervisor.apps.model import Data
 from supervisor.apps.options import AppOptions
-from supervisor.const import BusEvent
+from supervisor.const import ATTR_NETWORK_ISOLATION, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent.cgroup import CGroup
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import (
     DockerMount,
+    ExternalNetworkDriver,
+    ExtraNetworkEndpoint,
     MountBindOptions,
     MountType,
+    NetworkIsolationConfig,
     PropagationMode,
 )
+from supervisor.docker.external_network import (
+    EXTERNAL_NETWORK_GW_PRIORITY,
+    DockerExternalNetworks,
+)
 from supervisor.docker.manager import DockerAPI
-from supervisor.exceptions import CoreDNSError, DockerNotFound
+from supervisor.exceptions import CoreDNSError, DockerError, DockerNotFound
 from supervisor.hardware.data import Device
 from supervisor.os.manager import OSManager
 from supervisor.plugins.dns import PluginDns
-from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+)
 from supervisor.resolution.data import Issue, Suggestion
 
 from ..common import load_json_fixture
@@ -52,6 +64,12 @@ def fixture_addonsdata_user() -> dict[str, Data]:
     """Mock AppsData.user."""
     with patch("supervisor.apps.data.AppsData.user", new_callable=PropertyMock) as mock:
         mock.return_value = MagicMock()
+        # No network isolation assigned (a mock would parse as truthy config)
+        persist = mock.return_value.__getitem__.return_value
+        mock_value = MagicMock()
+        persist.get.side_effect = lambda key, default=None: (
+            default if key == ATTR_NETWORK_ISOLATION else mock_value
+        )
         yield mock
 
 
@@ -572,3 +590,123 @@ async def test_ulimits_integration(coresys: CoreSys, install_app_ssh: App):
     assert core_limit is not None
     assert core_limit.soft == 0
     assert core_limit.hard == 0
+
+
+NETWORK_ISOLATION_CONFIG = NetworkIsolationConfig(
+    driver=ExternalNetworkDriver.MACVLAN,
+    interface="eth0",
+    ipv4=IPv4Address("192.168.2.50"),
+)
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_run_with_network_isolation(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test app runs in bridge mode with an extra external network endpoint."""
+    await coresys.dbus.timedate.connect(coresys.dbus.bus)
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+
+    with (
+        patch.object(DockerApp, "stop"),
+        patch.object(
+            AppOptions, "validate", new=PropertyMock(return_value=lambda _: None)
+        ),
+        patch.object(PluginDns, "add_host"),
+        patch.object(
+            App,
+            "network_isolation",
+            new=PropertyMock(return_value=NETWORK_ISOLATION_CONFIG),
+        ),
+        patch.object(
+            DockerExternalNetworks,
+            "ensure",
+            return_value="hassio-macvlan-eth0",
+        ) as ensure,
+        patch.object(DockerExternalNetworks, "connect_container") as connect,
+    ):
+        await docker_app.run()
+
+    ensure.assert_called_once_with(NETWORK_ISOLATION_CONFIG)
+    connect.assert_called_once()
+    assert connect.call_args.args[2] == ExtraNetworkEndpoint(
+        network="hassio-macvlan-eth0",
+        ipv4=IPv4Address("192.168.2.50"),
+        mac="02:42:c0:a8:02:32",
+        gw_priority=EXTERNAL_NETWORK_GW_PRIORITY,
+    )
+    create_config = coresys.docker.containers.create.call_args.args[0]
+    assert create_config["HostConfig"]["NetworkMode"] == "default"
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_run_network_isolation_fallback(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test app falls back to host network if endpoint setup fails."""
+    await coresys.dbus.timedate.connect(coresys.dbus.bus)
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+
+    with (
+        patch.object(DockerApp, "stop"),
+        patch.object(
+            AppOptions, "validate", new=PropertyMock(return_value=lambda _: None)
+        ),
+        patch.object(PluginDns, "add_host"),
+        patch.object(
+            App,
+            "network_isolation",
+            new=PropertyMock(return_value=NETWORK_ISOLATION_CONFIG),
+        ),
+        patch.object(
+            DockerExternalNetworks,
+            "ensure",
+            side_effect=DockerError("fail"),
+        ),
+        patch.object(DockerExternalNetworks, "connect_container") as connect,
+    ):
+        await docker_app.run()
+
+    connect.assert_not_called()
+    create_config = coresys.docker.containers.create.call_args.args[0]
+    assert create_config["HostConfig"]["NetworkMode"] == "host"
+    assert (
+        Issue(
+            IssueType.NETWORK_ISOLATION_FAILED,
+            ContextType.ADDON,
+            reference="test_addon",
+        )
+        in coresys.resolution.issues
+    )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_run_network_isolation_fallback_blocked(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test host network fallback is blocked on unprotected Docker gateway."""
+    await coresys.dbus.timedate.connect(coresys.dbus.bus)
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED)
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+    coresys.docker.containers.create.reset_mock()
+
+    with (
+        patch.object(DockerApp, "stop"),
+        patch.object(
+            AppOptions, "validate", new=PropertyMock(return_value=lambda _: None)
+        ),
+        patch.object(
+            App,
+            "network_isolation",
+            new=PropertyMock(return_value=NETWORK_ISOLATION_CONFIG),
+        ),
+        patch.object(
+            DockerExternalNetworks,
+            "ensure",
+            side_effect=DockerError("fail"),
+        ),
+        pytest.raises(DockerError),
+    ):
+        await docker_app.run()
+
+    coresys.docker.containers.create.assert_not_called()

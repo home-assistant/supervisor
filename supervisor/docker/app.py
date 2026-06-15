@@ -35,12 +35,19 @@ from ..exceptions import (
     DockerJobError,
     DockerNotFound,
     HardwareNotFound,
+    HostNetworkNotFound,
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
-from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
+from ..resolution.const import (
+    CGROUP_V2_VERSION,
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+)
 from ..utils.sentry import async_capture_exception
 from .const import (
     ADDON_BUILDER_IMAGE,
@@ -63,11 +70,13 @@ from .const import (
     PATH_SSL,
     Capabilities,
     DockerMount,
+    ExtraNetworkEndpoint,
     MountBindOptions,
     MountType,
     PropagationMode,
     Ulimit,
 )
+from .external_network import EXTERNAL_NETWORK_GW_PRIORITY, DockerExternalNetworks
 from .interface import DockerInterface
 
 if TYPE_CHECKING:
@@ -102,18 +111,21 @@ class DockerApp(DockerInterface):
     @property
     def ip_address(self) -> IPv4Address:
         """Return IP address of this container."""
+        # Extract IP-Address from internal network endpoint. With network
+        # isolation a host_network app runs attached to the internal network,
+        # so this is the address Supervisor and other containers can reach.
+        if self._meta:
+            try:
+                if ip := self._meta["NetworkSettings"]["Networks"]["hassio"][
+                    "IPAddress"
+                ]:
+                    return IPv4Address(ip)
+            except KeyError, TypeError, ValueError:
+                pass
+
         if self.app.host_network:
             return self.sys_docker.network.gateway
-        if not self._meta:
-            return NO_ADDDRESS
-
-        # Extract IP-Address
-        try:
-            return IPv4Address(
-                self._meta["NetworkSettings"]["Networks"]["hassio"]["IPAddress"]
-            )
-        except KeyError, TypeError, ValueError:
-            return NO_ADDDRESS
+        return NO_ADDDRESS
 
     @property
     def timeout(self) -> int:
@@ -271,7 +283,7 @@ class DockerApp(DockerInterface):
     @property
     def network_mode(self) -> Literal["host"] | None:
         """Return network mode for app."""
-        if self.app.host_network:
+        if self.app.host_network and not self.app.network_isolation:
             return "host"
         return None
 
@@ -574,6 +586,47 @@ class DockerApp(DockerInterface):
         # Don't set a hostname if no separate UTS namespace is used
         hostname = None if self.uts_mode else self.app.hostname
 
+        network_mode = self.network_mode
+        extra_networks: list[ExtraNetworkEndpoint] | None = None
+        if config := self.app.network_isolation:
+            try:
+                network_name = await self.sys_docker.external_networks.ensure(config)
+            except (HostNetworkNotFound, DockerError) as err:
+                self.sys_resolution.create_issue(
+                    IssueType.NETWORK_ISOLATION_FAILED,
+                    ContextType.ADDON,
+                    reference=self.app.slug,
+                )
+                # The boot gate for unprotected Docker gateways does not apply
+                # to isolated apps, so it must not be bypassed by the fallback
+                if (
+                    UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED
+                    in self.sys_resolution.unhealthy
+                ):
+                    raise DockerError(
+                        f"Can't set up isolated network on {config.interface} for "
+                        f"app {self.app.slug} and host network fallback is blocked "
+                        f"by inactive gateway firewall rules: {err}",
+                        _LOGGER.error,
+                    ) from err
+                _LOGGER.warning(
+                    "Can't set up isolated network on %s for app %s, "
+                    "falling back to host network: %s",
+                    config.interface,
+                    self.app.slug,
+                    err,
+                )
+                network_mode = "host"
+            else:
+                extra_networks = [
+                    ExtraNetworkEndpoint(
+                        network=network_name,
+                        ipv4=config.ipv4,
+                        mac=DockerExternalNetworks.mac_from_ip(config.ipv4),
+                        gw_priority=EXTERNAL_NETWORK_GW_PRIORITY,
+                    )
+                ]
+
         # Create & Run container
         try:
             await self._run(
@@ -583,7 +636,8 @@ class DockerApp(DockerInterface):
                 detach=True,
                 init=self.app.default_init,
                 stdin_open=self.app.with_stdin,
-                network_mode=self.network_mode,
+                network_mode=network_mode,
+                extra_networks=extra_networks,
                 pid_mode=self.pid_mode,
                 uts_mode=self.uts_mode,
                 ports=self.ports,
@@ -608,6 +662,14 @@ class DockerApp(DockerInterface):
             raise
 
         _LOGGER.info("Starting Docker app %s with version %s", self.image, self.version)
+
+        # Isolated networking is active, clear any earlier fallback issue
+        if extra_networks and (
+            issue := self.sys_resolution.get_issue_if_present(
+                self.app.network_isolation_failed_issue
+            )
+        ):
+            self.sys_resolution.dismiss_issue(issue)
 
         # Write data to DNS server
         try:

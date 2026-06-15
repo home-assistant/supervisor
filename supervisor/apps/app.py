@@ -37,6 +37,7 @@ from ..const import (
     ATTR_INGRESS_TOKEN,
     ATTR_LOCATION,
     ATTR_NETWORK,
+    ATTR_NETWORK_ISOLATION,
     ATTR_OPTIONS,
     ATTR_PORTS,
     ATTR_PROTECTED,
@@ -60,7 +61,12 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..docker.app import DockerApp
-from ..docker.const import EXIT_CODE_SIGTERM_DEFAULT, ContainerState
+from ..docker.const import (
+    EXIT_CODE_SIGTERM_DEFAULT,
+    ContainerState,
+    NetworkIsolationConfig,
+)
+from ..docker.external_network import DockerExternalNetworks
 from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
@@ -164,6 +170,9 @@ class App(AppModel):
         self._device_access_missing_issue = Issue(
             IssueType.DEVICE_ACCESS_MISSING, ContextType.ADDON, reference=self.slug
         )
+        self._network_isolation_failed_issue = Issue(
+            IssueType.NETWORK_ISOLATION_FAILED, ContextType.ADDON, reference=self.slug
+        )
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -178,6 +187,11 @@ class App(AppModel):
     def device_access_missing_issue(self) -> Issue:
         """Get issue used if device access is missing and can't be automatically added."""
         return self._device_access_missing_issue
+
+    @property
+    def network_isolation_failed_issue(self) -> Issue:
+        """Get issue used if the isolated network endpoint can't be set up."""
+        return self._network_isolation_failed_issue
 
     @property
     def state(self) -> AppState:
@@ -351,6 +365,17 @@ class App(AppModel):
     def ip_address(self) -> IPv4Address:
         """Return IP of app instance."""
         return self.instance.ip_address
+
+    @property
+    def external_mac_address(self) -> str | None:
+        """Return MAC address of the isolated network endpoint, if assigned.
+
+        Derived from the static IP, so it is known without a running
+        container (the endpoint is connected with exactly this MAC).
+        """
+        if not (config := self.network_isolation):
+            return None
+        return DockerExternalNetworks.mac_from_ip(config.ipv4)
 
     @property
     def data(self) -> Data:
@@ -594,6 +619,22 @@ class App(AppModel):
                 new_ports[container_port] = host_port
 
         self.persist[ATTR_NETWORK] = new_ports
+
+    @property
+    def network_isolation(self) -> NetworkIsolationConfig | None:
+        """Return isolated physical network endpoint assigned by the user."""
+        if not (data := self.persist.get(ATTR_NETWORK_ISOLATION)):
+            return None
+        return NetworkIsolationConfig.from_dict(data)
+
+    @network_isolation.setter
+    def network_isolation(self, value: NetworkIsolationConfig | None) -> None:
+        """Assign or clear the isolated physical network endpoint."""
+        if value is None:
+            self.persist.pop(ATTR_NETWORK_ISOLATION, None)
+            return
+
+        self.persist[ATTR_NETWORK_ISOLATION] = value.to_dict()
 
     @property
     def ingress_url(self) -> str | None:
@@ -993,8 +1034,14 @@ class App(AppModel):
             await service.del_service_data(self)
 
         # Remove from app manager
+        had_network_isolation = self.network_isolation is not None
         self.sys_apps.local.pop(self.slug)
         await self.sys_apps.data.uninstall(self)
+
+        # Clean up external networks no longer referenced by any app
+        if had_network_isolation:
+            with suppress(DockerError):
+                await self.sys_docker.external_networks.gc()
 
         # Cleanup Ingress tokens
         if need_ingress_token_cleanup:
