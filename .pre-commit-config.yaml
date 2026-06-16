@@ -7,6 +7,14 @@ repos:
           - --fix
       - id: ruff-format
         files: ^((supervisor|tests)/.+)?[^/]+\.py$
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=astroid,hass
+          - --skip="./.*,*.json"
+        exclude: ^supervisor/api/panel/
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
