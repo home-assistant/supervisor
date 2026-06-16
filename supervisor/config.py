@@ -62,7 +62,7 @@ DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
 
 # We filter out UTC because it's the system default fallback
 # Core also does not respect the container timezone and resets timezones
-# to UTC if the user overflight the onboarding.
+# to UTC if the user skimmed through the onboarding.
 _UTC = "UTC"
 
 
