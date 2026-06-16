@@ -256,7 +256,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
 
     @property
     def ignore_conditions(self) -> list[JobCondition]:
-        """Return a list of ignore condition."""
+        """Return a list of ignore conditions."""
         return self._data[ATTR_IGNORE_CONDITIONS]
 
     @ignore_conditions.setter
