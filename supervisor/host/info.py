@@ -94,7 +94,7 @@ class InfoCenter(CoreSysAttributes):
 
     @property
     def dt_synchronized(self) -> bool | None:
-        """Return true if host time is syncronized."""
+        """Return true if host time is synchronized."""
         return self.sys_dbus.timedate.ntp_synchronized
 
     @property

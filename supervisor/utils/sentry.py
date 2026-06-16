@@ -109,7 +109,7 @@ def fire_and_forget_capture_message(
 def close_sentry() -> None:
     """Close the current sentry client.
 
-    This method is irreversible. A new client will have to be initialized to re-open connetion.
+    This method is irreversible. A new client will have to be initialized to re-open connection.
     """
     if sentry_sdk.is_initialized():
         _LOGGER.info("Closing connection to Supervisor Sentry")

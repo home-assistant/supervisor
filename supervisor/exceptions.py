@@ -788,7 +788,7 @@ class HostError(HassioError):
 
 
 class HostNotSupportedError(HassioNotSupportedError):
-    """Host function is not supprted."""
+    """Host function is not supported."""
 
 
 class HostServiceError(HostError):
@@ -1173,7 +1173,7 @@ class PulseAudioError(HassioError):
 
 
 class ResolutionError(HassioError):
-    """Raise if an error is happning on resoltuion."""
+    """Raise if an error is happening on resolution."""
 
 
 class ResolutionCheckError(ResolutionError):
@@ -1185,7 +1185,7 @@ class ResolutionNotFound(ResolutionError):
 
 
 class ResolutionFixupError(HassioError):
-    """Rasie if a fixup fails."""
+    """Raise if a fixup fails."""
 
 
 class ResolutionFixupJobError(ResolutionFixupError, JobException):

@@ -41,7 +41,7 @@ class UDisks2Partition(DBusInterfaceProxy):
     @property
     @dbus_property
     def number(self) -> int:
-        """Parition number in partition table."""
+        """Partition number in partition table."""
         return self.properties[DBUS_ATTR_NUMBER]
 
     @property

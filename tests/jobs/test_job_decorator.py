@@ -30,7 +30,7 @@ from supervisor.utils.dt import utcnow
 
 
 async def test_healthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
-    """Test the healty decorator."""
+    """Test the healthy decorator."""
 
     class TestClass:
         """Test class."""
@@ -680,7 +680,7 @@ async def test_job_group_reject(coresys: CoreSys):
             on_condition=JobException,
         )
         async def unrelated_method(self) -> bool:
-            """Unrelated method, sparate job with separate lock."""
+            """Unrelated method, separate job with separate lock."""
             return True
 
     test = TestClass(coresys)

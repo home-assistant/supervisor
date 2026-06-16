@@ -105,7 +105,7 @@ class NetworkManager(DBusInterfaceProxy):
     async def activate_connection(
         self, connection_object: str, device_object: str
     ) -> NetworkConnection:
-        """Activate a connction on a device."""
+        """Activate a connection on a device."""
         obj_active_con = await self.connected_dbus.call(
             "activate_connection", connection_object, device_object, DBUS_OBJECT_BASE
         )
@@ -117,7 +117,7 @@ class NetworkManager(DBusInterfaceProxy):
     async def add_and_activate_connection(
         self, settings: Any, device_object: str
     ) -> tuple[NetworkSetting, NetworkConnection]:
-        """Activate a connction on a device."""
+        """Activate a connection on a device."""
         (
             _,
             obj_active_con,
@@ -199,7 +199,7 @@ class NetworkManager(DBusInterfaceProxy):
             # If none of our managed devices were removed then most likely this is just veths changing.
             # We don't care about veths and reprocessing all their changes can swamp a system when
             # docker is having issues. This does mean we may miss activation of a new managed device
-            # in rare occaisions but we'll catch it on the next host update scheduled task.
+            # in rare occasions but we'll catch it on the next host update scheduled task.
             return
 
         interfaces: dict[str, NetworkInterface] = {}
@@ -234,12 +234,12 @@ class NetworkManager(DBusInterfaceProxy):
                     return
                 except Exception as err:  # pylint: disable=broad-except
                     _LOGGER.exception(
-                        "Unkown error while processing %s: %s", device, err
+                        "Unknown error while processing %s: %s", device, err
                     )
                     await async_capture_exception(err)
                     continue
 
-            # Skeep interface
+            # Skip interface
             if (
                 interface.type
                 not in [

@@ -639,7 +639,7 @@ async def test_start_existing_container(coresys: CoreSys, container: DockerConta
 
 @pytest.mark.parametrize("exists", [True, False])
 async def test_stop(coresys: CoreSys, container: DockerContainer, exists: bool):
-    """Test stoppping Home Assistant."""
+    """Test stopping Home Assistant."""
     if exists:
         container.show.return_value["State"]["Status"] = "running"
         container.show.return_value["State"]["Running"] = True

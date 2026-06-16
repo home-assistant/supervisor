@@ -13,7 +13,7 @@ from supervisor.utils.common import write_json_or_yaml_file
 def test_loading_traslations(coresys: CoreSys, tmp_path: Path):
     """Test loading add-translation."""
     (tmp_path / "translations").mkdir(parents=True)
-    # no transaltions
+    # no translations
     assert _read_app_translations(tmp_path) == {}
 
     for file in ("en.json", "es.json"):

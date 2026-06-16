@@ -71,7 +71,7 @@ SAMPLE_EVENT_AIOHTTP_EXTERNAL = {
             "Sec-WebSocket-Key": "BD239eBT8pDIxStE6QO+Qw==",
             "Sec-WebSocket-Protocol": "tty",
             "Accept-Encoding": "gzip, deflate, br",
-            "Referer": "http://debian-supervised-dev.lan:8123/somehwere",
+            "Referer": "http://debian-supervised-dev.lan:8123/somewhere",
         },
         "data": None,
     },

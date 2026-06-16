@@ -49,17 +49,17 @@ class NetworkManagerDNS(DBusInterfaceProxy):
 
     @property
     def mode(self) -> str | None:
-        """Return Propertie mode."""
+        """Return property mode."""
         return self._mode
 
     @property
     def rc_manager(self) -> str | None:
-        """Return Propertie RcManager."""
+        """Return property RcManager."""
         return self._rc_manager
 
     @property
     def configuration(self) -> list[DNSConfiguration]:
-        """Return Propertie configuraton."""
+        """Return property configuration."""
         return self._configuration
 
     async def connect(self, bus: MessageBus) -> None:
@@ -84,7 +84,7 @@ class NetworkManagerDNS(DBusInterfaceProxy):
         self._mode = self.properties.get(DBUS_ATTR_MODE)
         self._rc_manager = self.properties.get(DBUS_ATTR_RCMANAGER)
 
-        # Parse configuraton
+        # Parse configuration
         if not changed or DBUS_ATTR_CONFIGURATION in changed:
             self._configuration = [
                 DNSConfiguration(

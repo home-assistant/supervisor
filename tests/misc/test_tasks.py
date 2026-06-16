@@ -191,7 +191,7 @@ async def test_reload_updater_triggers_supervisor_update(
         ),
         patch.object(Supervisor, "update") as update,
     ):
-        # Set supervisor's version intially
+        # Set supervisor's version initially
         await coresys.updater.reload()
         assert coresys.supervisor.latest_version == AwesomeVersion("2024.10.0")
 

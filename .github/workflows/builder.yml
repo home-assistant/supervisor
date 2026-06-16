@@ -452,6 +452,6 @@ jobs:
             exit 1
           fi
 
-      - name: Get supervisor logs on failiure
+      - name: Get supervisor logs on failure
         if: ${{ cancelled() || failure() }}
         run: docker logs hassio_supervisor
