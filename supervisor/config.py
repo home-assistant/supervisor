@@ -61,7 +61,7 @@ CID_FILES = PurePath("cid_files")
 DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
 
 # We filter out UTC because it's the system default fallback
-# Core also not respect the cotnainer timezone and reset timezones
+# Core also not respect the container timezone and reset timezones
 # to UTC if the user overflight the onboarding.
 _UTC = "UTC"
 

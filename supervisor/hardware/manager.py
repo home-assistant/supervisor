@@ -140,14 +140,14 @@ class HardwareManager(CoreSysAttributes):
         """Import fresh from udev database."""
         self._devices.clear()
 
-        # Exctract all devices
+        # Extract all devices
         for device in self.udev.list_devices():
             # Skip devices without mapping
             try:
                 if not device.device_node or self.helper.hide_virtual_device(device):
                     continue
             except UnicodeDecodeError as err:
-                # Some udev properties have an unkown/different encoding. This is a general
+                # Some udev properties have an unknown/different encoding. This is a general
                 # problem with pyudev, see https://github.com/pyudev/pyudev/pull/230
                 _LOGGER.warning("Ignoring udev device due to error: %s", err)
                 continue

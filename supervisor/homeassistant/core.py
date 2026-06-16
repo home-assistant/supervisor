@@ -381,7 +381,7 @@ class HomeAssistantCore(JobGroup):
                 await self.start()
             _LOGGER.info("Successfully started Home Assistant %s", to_version)
 
-            # Successfull - last step
+            # Successful - last step
             await self.sys_homeassistant.save_data()
 
         # A failed image install (e.g. the version does not exist) leaves the

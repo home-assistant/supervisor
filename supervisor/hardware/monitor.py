@@ -55,7 +55,7 @@ class HwMonitor(CoreSysAttributes):
         _LOGGER.info("Stopped Supervisor hardware monitor")
 
     def _udev_events(self, kernel: pyudev.Device):
-        """Incomming events from udev."""
+        """Incoming events from udev."""
         _LOGGER.debug("Hardware monitor: %s - %s", kernel.action, pformat(kernel))
 
         if kernel.action in (UdevKernelAction.UNBIND, UdevKernelAction.BIND):
@@ -63,7 +63,7 @@ class HwMonitor(CoreSysAttributes):
         self.sys_create_task(self._async_udev_events(kernel))
 
     async def _async_udev_events(self, kernel: pyudev.Device):
-        """Incomming events from udev into loop."""
+        """Incoming events from udev into loop."""
         # Update device List
         if not kernel.device_node or self.sys_hardware.helper.hide_virtual_device(
             kernel
@@ -103,7 +103,7 @@ class HwMonitor(CoreSysAttributes):
             # Is not ready
             if not udev:
                 _LOGGER.warning(
-                    "Ignore device %s / failes to initialize by udev", kernel.sys_path
+                    "Ignore device %s / fails to initialize by udev", kernel.sys_path
                 )
                 return
 

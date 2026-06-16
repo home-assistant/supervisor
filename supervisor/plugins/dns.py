@@ -263,7 +263,7 @@ class PluginDns(PluginBase):
         # Reinitializing aiohttp.ClientSession after DNS setup makes sure that
         # aiodns is using the right DNS servers (see #5857).
         # At this point it should be fairly safe to replace the session since
-        # we only use the session synchronously during setup and not thorugh the
+        # we only use the session synchronously during setup and not through the
         # API which previously caused issues (see #5851).
         await self.coresys.init_websession()
 

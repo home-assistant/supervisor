@@ -243,7 +243,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         )
 
     async def load(self):
-        """Load the resoulution manager."""
+        """Load the resolution manager."""
         # Initial healthcheck check
         await self.healthcheck()
 

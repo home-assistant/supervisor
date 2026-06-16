@@ -1,4 +1,4 @@
-"""Helpers to check for detached apps due to repo misisng."""
+"""Helpers to check for detached apps due to repo missing."""
 
 from ...const import CoreState
 from ...coresys import CoreSys

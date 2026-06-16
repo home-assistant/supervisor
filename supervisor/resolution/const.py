@@ -1,4 +1,4 @@
-"""Constants for the resoulution manager."""
+"""Constants for the resolution manager."""
 
 from enum import StrEnum
 from pathlib import Path
@@ -111,7 +111,7 @@ class IssueType(StrEnum):
 
 
 class SuggestionType(StrEnum):
-    """Sugestion type."""
+    """Suggestion type."""
 
     ADOPT_DATA_DISK = "adopt_data_disk"
     CLEAR_FULL_BACKUP = "clear_full_backup"

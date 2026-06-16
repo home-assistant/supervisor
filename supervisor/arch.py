@@ -1,4 +1,4 @@
-"""Handle Arch for underlay maschine/platforms."""
+"""Handle Arch for underlay machine/platforms."""
 
 import logging
 from pathlib import Path

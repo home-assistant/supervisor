@@ -410,7 +410,7 @@ class Backup(JobGroup):
             size_bytes = tarfile_path.stat().st_size
             with tarfile.open(tarfile_path, "r:") as backup:
                 if "./snapshot.json" in [entry.name for entry in backup.getmembers()]:
-                    # Old backups stil uses "snapshot.json", we need to support that forever
+                    # Old backups still uses "snapshot.json", we need to support that forever
                     json_file = backup.extractfile("./snapshot.json")
                 else:
                     json_file = backup.extractfile("./backup.json")

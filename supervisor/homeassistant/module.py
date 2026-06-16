@@ -482,7 +482,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         def _restore_home_assistant() -> Any:
             """Restores data and reads metadata from backup.
 
-            Returns: Home Assistant metdata
+            Returns: Home Assistant metadata
             """
             with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
                 temp_path = Path(temp)

@@ -1,4 +1,4 @@
-"""Confgiuration Objects for App Config."""
+"""Configuration Objects for App Config."""
 
 from dataclasses import dataclass
 

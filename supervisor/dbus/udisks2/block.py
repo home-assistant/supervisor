@@ -107,7 +107,7 @@ class UDisks2Block(DBusInterfaceProxy):
     @property
     @dbus_property
     def id(self) -> str:
-        """Return unique identifer."""
+        """Return unique identifier."""
         return self.properties[DBUS_ATTR_ID]
 
     @property
