@@ -79,7 +79,7 @@ class FixupAppClearPortConfig(FixupBase):
     @property
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.APP_PORT_CONFLICT, IssueType.APP_PORT_CONFLICT_CORE]
+        return [IssueType.APP_PORT_CONFLICT]
 
     @property
     def auto(self) -> bool:

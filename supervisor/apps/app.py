@@ -1242,13 +1242,8 @@ class App(AppModel):
             if any(public_port == port for public_port in ports.values())
             else None
         )
-        issue_type = (
-            IssueType.APP_PORT_CONFLICT_CORE
-            if source == "core"
-            else IssueType.APP_PORT_CONFLICT
-        )
         self.sys_resolution.create_issue(
-            issue_type,
+            IssueType.APP_PORT_CONFLICT,
             ContextType.ADDON,
             reference=self.slug,
             reference_extra={"port": port},

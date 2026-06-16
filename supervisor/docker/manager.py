@@ -383,30 +383,6 @@ class DockerAPI(CoreSysAttributes):
         """Stop docker events monitor."""
         await self.monitor.unload()
 
-    async def get_used_host_port_bindings(self) -> dict[DockerPortBinding, str]:
-        """Return a mapping of host port binding -> container name for all running containers.
-
-        Containers using host networking do not publish ports through Docker port bindings,
-        so only explicitly mapped ports (PublicPort entries) are visible here.
-        """
-        try:
-            containers = await self.docker.containers.list()
-        except aiodocker.DockerError as err:
-            _LOGGER.debug("Failed to refresh host port binding cache: %s", err)
-            return {}
-
-        bindings: dict[DockerPortBinding, str] = {}
-        for container in containers:
-            name: str = (container["Names"] or ["unknown"])[0].lstrip("/")
-            bindings.update(
-                {
-                    DockerPortBinding.from_dict(port_binding): name
-                    for port_binding in container["Ports"] or []
-                    if port_binding.get("PublicPort") is not None
-                }
-            )
-        return bindings
-
     def _create_container_config(
         self,
         image: str,

@@ -19,14 +19,7 @@ from supervisor.docker.const import (
     MountBindOptions,
     MountType,
 )
-from supervisor.docker.manager import (
-    IPV4_WILDCARD,
-    IPV6_WILDCARD,
-    CommandReturn,
-    DockerAPI,
-    DockerPortBinding,
-    PullLogEntry,
-)
+from supervisor.docker.manager import CommandReturn, DockerAPI, PullLogEntry
 from supervisor.exceptions import (
     DockerError,
     DockerNoSpaceOnDevice,
@@ -254,64 +247,6 @@ async def test_run_command_with_mounts(docker: DockerAPI):
         },
         name=None,
     )
-
-
-async def test_get_used_host_port_bindings_parses_aiodocker_list_model(
-    docker: DockerAPI,
-):
-    """Test get_used_host_port_bindings parses data returned by containers.list."""
-    docker.docker.containers.list = AsyncMock(
-        return_value=[
-            {
-                "Names": ["/addon_local_ssh"],
-                "Ports": [
-                    {
-                        "IP": "0.0.0.0",
-                        "PublicPort": 2222,
-                        "PrivatePort": 22,
-                        "Type": "tcp",
-                    },
-                    {
-                        "IP": "::",
-                        "PublicPort": 2222,
-                        "PrivatePort": 22,
-                        "Type": "tcp",
-                    },
-                    {
-                        "IP": "0.0.0.0",
-                        "PrivatePort": 53,
-                        "Type": "udp",
-                    },
-                ],
-            }
-        ]
-    )
-
-    ports = await docker.get_used_host_port_bindings()
-
-    assert (
-        ports[
-            DockerPortBinding(
-                ip=IPV4_WILDCARD,
-                public_port=2222,
-                private_port=22,
-                type="tcp",
-            )
-        ]
-        == "addon_local_ssh"
-    )
-    assert (
-        ports[
-            DockerPortBinding(
-                ip=IPV6_WILDCARD,
-                public_port=2222,
-                private_port=22,
-                type="tcp",
-            )
-        ]
-        == "addon_local_ssh"
-    )
-    assert not any(binding.type == "udp" for binding in ports)
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")

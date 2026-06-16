@@ -78,7 +78,6 @@ class IssueType(StrEnum):
     """Issue type."""
 
     APP_PORT_CONFLICT = "app_port_conflict"
-    APP_PORT_CONFLICT_CORE = "app_port_conflict_core"
     BOOT_FAIL = "boot_fail"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
