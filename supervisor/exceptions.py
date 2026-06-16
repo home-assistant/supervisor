@@ -1412,8 +1412,14 @@ class SecurityJobError(SecurityError, JobException):
 # Mount
 
 
-class MountError(HassioError):
-    """Raise on an error related to mounting/unmounting."""
+class MountError(APIError):
+    """Raise on an error related to mounting/unmounting.
+
+    Mount failures generally reflect user configuration or host conditions
+    (unreachable server, wrong credentials, ...) rather than a Supervisor bug.
+    Modeling them as APIError keeps them out of the unexpected-error path that
+    logs a traceback and reports to Sentry.
+    """
 
 
 class MountActivationError(MountError):
@@ -1424,7 +1430,7 @@ class MountInvalidError(MountError):
     """Raise on invalid mount attempt."""
 
 
-class MountNotFound(MountError):
+class MountNotFound(MountError, APINotFound):
     """Raise on mount not found."""
 
 
