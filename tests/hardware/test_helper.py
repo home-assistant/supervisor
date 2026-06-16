@@ -71,7 +71,7 @@ def test_have_gpio(coresys: CoreSys):
 
 
 def test_hide_virtual_device(coresys: CoreSys):
-    """Test hidding virtual devices."""
+    """Test hiding virtual devices."""
     udev_device = MagicMock()
 
     udev_device.sys_path = "/sys/devices/platform/test"

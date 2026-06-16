@@ -40,7 +40,7 @@ async def test_simple_task_repeat(coresys):
 
 
 async def test_simple_task_shutdown(coresys):
-    """Schedule a simple task with shudown."""
+    """Schedule a simple task with shutdown."""
     await coresys.core.set_state(CoreState.RUNNING)
     trigger = []
 

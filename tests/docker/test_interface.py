@@ -220,7 +220,7 @@ async def test_current_state(
 async def test_current_state_failures(coresys: CoreSys):
     """Test failure states for current state."""
     coresys.docker.containers.get.side_effect = aiodocker.DockerError(
-        404, {"message": "dne"}
+        404, {"message": "does not exist"}
     )
     assert (
         await coresys.homeassistant.core.instance.current_state()

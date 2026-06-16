@@ -880,7 +880,7 @@ async def test_migration_blocks_shutdown(
     coresys: CoreSys,
     action: str,
 ):
-    """Test that an offline db migration in progress stops users from shuting down or rebooting system."""
+    """Test that an offline db migration in progress stops users from shutting down or rebooting system."""
     api_client, prefix = api_client_with_prefix
     coresys.homeassistant.api.get_api_state.return_value = APIState("NOT_RUNNING", True)
 

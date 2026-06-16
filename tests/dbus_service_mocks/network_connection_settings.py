@@ -17,7 +17,7 @@ DEFAULT_OBJECT_PATH = "/org/freedesktop/NetworkManager/Settings/1"
 # nmcli con add type ethernet con-name "Test"
 # busctl call org.freedesktop.NetworkManager /org/freedesktop/NetworkManager/Settings/5 org.freedesktop.NetworkManager.Settings.Connection GetSettings --json=pretty
 # Note that "id" and "type" seem to be the bare minimum an update call, so they can be
-# ommitted here.
+# omitted here.
 MINIMAL_SETTINGS_FIXTURE = {
     "ipv4": {
         "address-data": Variant("aa{sv}", []),

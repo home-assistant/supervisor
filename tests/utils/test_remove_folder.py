@@ -8,7 +8,7 @@ from supervisor.utils import remove_folder
 
 def test_remove_all(tmp_path):
     """Test remove folder."""
-    # Prepair test folder
+    # Prepare test folder
     temp_orig = tmp_path.joinpath("orig")
     fixture_data = Path(__file__).parents[1].joinpath("fixtures/tar_data")
     shutil.copytree(fixture_data, temp_orig, symlinks=True)
@@ -20,7 +20,7 @@ def test_remove_all(tmp_path):
 
 def test_remove_content(tmp_path):
     """Test remove content of folder."""
-    # Prepair test folder
+    # Prepare test folder
     temp_orig = tmp_path.joinpath("orig")
     fixture_data = Path(__file__).parents[1].joinpath("fixtures/tar_data")
     shutil.copytree(fixture_data, temp_orig, symlinks=True)

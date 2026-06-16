@@ -72,7 +72,7 @@ def full_backup_mock(backup_mock):
 async def fixture_backup_locations(
     request: pytest.FixtureRequest, coresys: CoreSys, mount_propagation, mock_is_mount
 ) -> list[LOCATION_TYPE]:
-    """Return a list of prcoessed backup locations."""
+    """Return a list of processed backup locations."""
     locations: list[LOCATION_TYPE] = []
     loaded = False
     for location in request.param:

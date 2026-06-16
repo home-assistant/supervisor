@@ -1,4 +1,4 @@
-"""Test apps schema to UI schema convertion."""
+"""Test apps schema to UI schema conversion."""
 
 from pathlib import Path
 

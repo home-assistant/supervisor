@@ -827,7 +827,7 @@ async def test_backup_with_extras(
     backup_type: str,
     inputs: dict[str, Any],
 ):
-    """Test backup including extra metdata."""
+    """Test backup including extra metadata."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
@@ -1087,7 +1087,7 @@ async def test_partial_backup_all_apps(
     coresys: CoreSys,
     install_app_ssh: App,
 ):
-    """Test backup including extra metdata."""
+    """Test backup including extra metadata."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
@@ -1338,7 +1338,7 @@ async def test_protected_backup(
         body["data"]["backups"][0]["location_attributes"][".local"]["protected"] is True
     )
     # NOTE: It is not safe to check size exactly here, as order of keys in
-    # `homeassistant.json` and potentially other random data (e.g. isntance UUID,
+    # `homeassistant.json` and potentially other random data (e.g. instance UUID,
     # backup slug) does change the size of the backup (due to gzip).
     assert body["data"]["backups"][0]["location_attributes"][".local"]["size_bytes"] > 0
 

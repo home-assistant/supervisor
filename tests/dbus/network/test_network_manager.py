@@ -163,13 +163,13 @@ async def test_handling_bad_devices(
         )
         assert f"Can't process {device}" not in caplog.text
 
-    # Unparseable introspections shouldn't happen, this one is logged and captured
+    # Unparsable introspections shouldn't happen, this one is logged and captured
     await network_manager.update()
     with patch.object(DBus, "init_proxy", side_effect=(err := DBusParseError())):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/102"]}
         )
-        assert f"Unkown error while processing {device}" in caplog.text
+        assert f"Unknown error while processing {device}" in caplog.text
         capture_exception.assert_called_once_with(err)
 
     # We should be able to debug these situations if necessary
