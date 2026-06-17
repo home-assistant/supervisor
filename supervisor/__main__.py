@@ -70,7 +70,6 @@ if __name__ == "__main__":
 
     # Create startup task that can be cancelled gracefully
     startup_task = loop.create_task(coresys.core.start())
-    shutdown_tasks: list[asyncio.Task] = []
 
     async def host_is_shutting_down() -> bool:
         """Return True if systemd is shutting the host down.
@@ -103,10 +102,7 @@ if __name__ == "__main__":
             _LOGGER.warning("Supervisor startup interrupted by shutdown signal")
             startup_task.cancel()
 
-        if shutdown_tasks and not shutdown_tasks[0].done():
-            return
-
-        shutdown_tasks[:] = [coresys.create_task(stop_supervisor())]
+        coresys.create_task(stop_supervisor())
 
     bootstrap.register_signal_handlers(loop, shutdown_handler)
 

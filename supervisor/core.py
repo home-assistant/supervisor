@@ -43,6 +43,7 @@ class Core(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._state: CoreState = CoreState.INITIALIZE
         self.exit_code: int = 0
+        self._shutdown_event: asyncio.Event = asyncio.Event()
 
     @property
     def state(self) -> CoreState:
@@ -363,29 +364,65 @@ class Core(CoreSysAttributes):
         _LOGGER.info("Supervisor is down - %d", self.exit_code)
         self.sys_loop.stop()
 
-    async def shutdown(self, *, remove_homeassistant_container: bool = False) -> None:
-        """Shutdown all running containers in correct order."""
-        # don't process scheduler anymore
-        if self.state == CoreState.RUNNING:
-            await self.set_state(CoreState.SHUTDOWN)
+    async def teardown_services(
+        self, *, remove_homeassistant_container: bool = False
+    ) -> None:
+        """Stop all add-ons and Home Assistant Core in correct order.
 
-        # Shutdown Application Apps, using Home Assistant API
+        Does not change Core state and does not stop plugins. Used during
+        backup restore (state stays FREEZE, plugins keep running) and as
+        the inner step of shutdown().
+        """
+        # Stop application add-ons (using Home Assistant API)
         await self.sys_apps.shutdown(AppStartup.APPLICATION)
 
-        # Close Home Assistant
+        # Close Home Assistant Core
         with suppress(HassioError):
             await self.sys_homeassistant.core.stop(
                 remove_container=remove_homeassistant_container
             )
 
-        # Shutdown System Apps
+        # Stop system add-ons
         await self.sys_apps.shutdown(AppStartup.SERVICES)
         await self.sys_apps.shutdown(AppStartup.SYSTEM)
         await self.sys_apps.shutdown(AppStartup.INITIALIZE)
 
-        # Shutdown all Plugins
-        if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
+    async def shutdown(self) -> None:
+        """Shut down managed services and plugins.
+
+        Real shutdown ceremony invoked from the SIGTERM signal handler
+        and the host reboot/power-off API. Reentrant: concurrent callers
+        observe state == SHUTDOWN and await the in-flight shutdown rather
+        than re-running the sequence.
+        """
+        # Nothing coherent to shut down before startup completes; the caller
+        # (e.g. signal handler) is expected to follow up with stop().
+        if self.state in STARTING_STATES:
+            _LOGGER.warning(
+                "Ignoring shutdown request, Supervisor has not finished starting"
+            )
+            return
+
+        # Supervisor is already tearing itself down, no point running shutdown
+        if self.state in (CoreState.STOPPING, CoreState.CLOSE):
+            _LOGGER.warning("Ignoring shutdown request, Supervisor is already stopping")
+            return
+
+        # Another shutdown is in progress, wait for it to complete
+        if self.state == CoreState.SHUTDOWN:
+            await self._shutdown_event.wait()
+            return
+
+        try:
+            # Wrap state transition inside try so waiters are released even if
+            # set_state() is cancelled mid-write: Core._state has already been
+            # updated to SHUTDOWN by then (see set_state()), so concurrent
+            # callers would otherwise block on _shutdown_event forever.
+            await self.set_state(CoreState.SHUTDOWN)
+            await self.teardown_services()
             await self.sys_plugins.shutdown()
+        finally:
+            self._shutdown_event.set()
 
     async def _update_last_boot(self) -> None:
         """Update last boot time."""

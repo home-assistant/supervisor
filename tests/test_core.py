@@ -2,6 +2,7 @@
 
 # pylint: disable=W0212
 import asyncio
+from contextlib import suppress
 import datetime
 import errno
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -233,3 +234,134 @@ async def test_setup_unhandled_exception_captured(
     capture_mock.assert_called_once()
     assert "Fatal error happening on load Task" in caplog.text
     assert UnhealthyReason.SETUP in coresys.resolution.unhealthy
+
+
+async def test_shutdown_reentrant_waits(coresys: CoreSys):
+    """Concurrent shutdown() calls await the in-flight shutdown rather than re-running."""
+    call_count = 0
+    shutdown_started = asyncio.Event()
+    proceed = asyncio.Event()
+
+    original_shutdown = coresys.apps.shutdown
+
+    async def slow_app_shutdown(startup):
+        nonlocal call_count
+        call_count += 1
+        shutdown_started.set()
+        await proceed.wait()
+        return await original_shutdown(startup)
+
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(coresys.apps, "shutdown", side_effect=slow_app_shutdown):
+        task1 = asyncio.create_task(coresys.core.shutdown())
+        await shutdown_started.wait()
+
+        # Second call should wait, not start a new shutdown
+        task2 = asyncio.create_task(coresys.core.shutdown())
+        await asyncio.sleep(0.05)
+
+        proceed.set()
+        await asyncio.gather(task1, task2)
+
+    # AppStartup has 4 levels (APPLICATION/SERVICES/SYSTEM/INITIALIZE); a single
+    # shutdown call iterates them. A re-entered shutdown would double the count.
+    assert call_count == 4
+    assert coresys.core._shutdown_event.is_set()
+
+
+async def test_shutdown_releases_event_when_set_state_cancelled(coresys: CoreSys):
+    """Cancellation mid set_state() must still release waiters.
+
+    set_state() updates Core._state before awaiting the run-state file write.
+    If cancellation hits during that await, in-memory state is already
+    SHUTDOWN. Without the try/finally around set_state(), _shutdown_event
+    would never be set and concurrent callers would deadlock on wait().
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    cancel_during_write = asyncio.Event()
+
+    async def cancel_during_set_state(*_args, **_kwargs):
+        cancel_during_write.set()
+        await asyncio.sleep(3600)  # wait long enough to be cancelled
+
+    with patch.object(
+        coresys.core, "_write_run_state", side_effect=cancel_during_set_state
+    ):
+        task = asyncio.create_task(coresys.core.shutdown())
+        await cancel_during_write.wait()
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    # In-memory state moved to SHUTDOWN before the cancellation point
+    assert coresys.core.state == CoreState.SHUTDOWN
+    # finally must have run so any future caller does not deadlock
+    assert coresys.core._shutdown_event.is_set()
+
+
+async def test_shutdown_transitions_state(coresys: CoreSys):
+    """Shutdown moves Core into SHUTDOWN state so HA Core/WS observers react."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    await coresys.core.shutdown()
+    assert coresys.core.state == CoreState.SHUTDOWN
+
+
+async def test_teardown_services_does_not_change_state(coresys: CoreSys):
+    """Teardown leaves Core state alone so callers (e.g. backup restore) control it."""
+    await coresys.core.set_state(CoreState.FREEZE)
+    await coresys.core.teardown_services()
+    assert coresys.core.state == CoreState.FREEZE
+
+
+async def test_teardown_services_does_not_stop_plugins(coresys: CoreSys):
+    """Plugins must keep running across teardown so restore can talk to them."""
+    await coresys.core.set_state(CoreState.FREEZE)
+    with patch.object(coresys.plugins, "shutdown") as mock_plugins_shutdown:
+        await coresys.core.teardown_services()
+    mock_plugins_shutdown.assert_not_called()
+
+
+async def test_shutdown_stops_plugins(coresys: CoreSys):
+    """Real shutdown stops plugins as the final step."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    with patch.object(coresys.plugins, "shutdown") as mock_plugins_shutdown:
+        await coresys.core.shutdown()
+    mock_plugins_shutdown.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "state", [CoreState.STOPPING, CoreState.CLOSE], ids=["stopping", "close"]
+)
+async def test_shutdown_ignored_during_stop(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, state: CoreState
+):
+    """Shutdown is ignored when Supervisor is already stopping."""
+    await coresys.core.set_state(state)
+
+    with patch.object(coresys.apps, "shutdown") as mock_app_shutdown:
+        await coresys.core.shutdown()
+
+    mock_app_shutdown.assert_not_called()
+    assert "Ignoring shutdown request, Supervisor is already stopping" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "state",
+    [CoreState.INITIALIZE, CoreState.STARTUP, CoreState.SETUP],
+    ids=["initialize", "startup", "setup"],
+)
+async def test_shutdown_skipped_during_startup(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, state: CoreState
+):
+    """Shutdown returns early when Supervisor has not finished starting yet."""
+    await coresys.core.set_state(state)
+
+    with patch.object(coresys.apps, "shutdown") as mock_app_shutdown:
+        await coresys.core.shutdown()
+
+    mock_app_shutdown.assert_not_called()
+    assert (
+        "Ignoring shutdown request, Supervisor has not finished starting" in caplog.text
+    )

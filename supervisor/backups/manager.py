@@ -864,7 +864,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         try:
             # Stop Home-Assistant / Apps
-            await self.sys_core.shutdown(remove_homeassistant_container=True)
+            await self.sys_core.teardown_services(remove_homeassistant_container=True)
 
             success = await self._do_restore(
                 backup,
