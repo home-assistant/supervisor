@@ -1049,6 +1049,10 @@ class DockerError(HassioError):
     """Docker API/Transport errors."""
 
 
+class DockerTimeoutError(DockerError):
+    """Docker operation timed out."""
+
+
 class DockerBuildError(DockerError):
     """Docker error during build."""
 

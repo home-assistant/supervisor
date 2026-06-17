@@ -35,6 +35,7 @@ from ..exceptions import (
     DockerNotFound,
     DockerRegistryAuthError,
     DockerRegistryRateLimitExceeded,
+    DockerTimeoutError,
     GithubContainerRegistryRateLimitExceeded,
 )
 from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
@@ -410,6 +411,10 @@ class DockerInterface(JobGroup, ABC):
         try:
             container = await self.sys_docker.containers.get(self.name)
             return await container.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout occurred while getting container information for {self.name}: {err!s}"
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 return None

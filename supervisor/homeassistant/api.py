@@ -17,7 +17,7 @@ from ..const import SOCKET_CORE
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import ENV_CORE_API_SOCKET, ContainerState
 from ..docker.monitor import DockerContainerStateEvent
-from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
+from ..exceptions import DockerError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils import version_is_new_enough
 from .const import LANDINGPAGE
 from .websocket import WSClient
@@ -190,6 +190,19 @@ class HomeAssistantAPI(CoreSysAttributes):
                     seconds=tokens["expires_in"]
                 )
 
+    async def _ensure_core_running(self) -> None:
+        """Ensure Core container is running before communicating with it."""
+        try:
+            if not await self.sys_homeassistant.core.instance.is_running():
+                raise HomeAssistantAPIError(
+                    "Core container is not running", _LOGGER.debug
+                )
+        except DockerError as err:
+            _LOGGER.debug("Error checking if Core container is running: %s", err)
+            raise HomeAssistantAPIError(
+                "Unable to determine if Core container is running"
+            ) from err
+
     async def connect_websocket(self) -> WSClient:
         """Connect a WebSocket to Core, handling auth as appropriate.
 
@@ -201,8 +214,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             HomeAssistantAPIError: On connection or auth failure.
 
         """
-        if not await self.sys_homeassistant.core.instance.is_running():
-            raise HomeAssistantAPIError("Core container is not running", _LOGGER.debug)
+        await self._ensure_core_running()
 
         if self.use_unix_socket:
             return await WSClient.connect(self.session, self.ws_url)
@@ -265,8 +277,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                 network errors, timeouts, or connection failures
 
         """
-        if not await self.sys_homeassistant.core.instance.is_running():
-            raise HomeAssistantAPIError("Core container is not running", _LOGGER.debug)
+        await self._ensure_core_running()
 
         url = f"{self.api_url}/{path}"
         headers = headers or {}
