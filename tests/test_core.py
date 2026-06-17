@@ -269,29 +269,34 @@ async def test_shutdown_reentrant_waits(coresys: CoreSys):
     assert coresys.core._shutdown_event.is_set()
 
 
-async def test_shutdown_event_reset_between_cycles(coresys: CoreSys):
-    """Repeated shutdown cycles (e.g. backup restore) work because the event is reset."""
+async def test_shutdown_transitions_state(coresys: CoreSys):
+    """Shutdown moves Core into SHUTDOWN state so HA Core/WS observers react."""
     await coresys.core.set_state(CoreState.RUNNING)
-
     await coresys.core.shutdown()
-    assert coresys.core._shutdown_event.is_set()
+    assert coresys.core.state == CoreState.SHUTDOWN
 
-    # Simulate restore returning to RUNNING and shutting down again
+
+async def test_teardown_services_does_not_change_state(coresys: CoreSys):
+    """Teardown leaves Core state alone so callers (e.g. backup restore) control it."""
+    await coresys.core.set_state(CoreState.FREEZE)
+    await coresys.core.teardown_services()
+    assert coresys.core.state == CoreState.FREEZE
+
+
+async def test_teardown_services_does_not_stop_plugins(coresys: CoreSys):
+    """Plugins must keep running across teardown so restore can talk to them."""
+    await coresys.core.set_state(CoreState.FREEZE)
+    with patch.object(coresys.plugins, "shutdown") as mock_plugins_shutdown:
+        await coresys.core.teardown_services()
+    mock_plugins_shutdown.assert_not_called()
+
+
+async def test_shutdown_stops_plugins(coresys: CoreSys):
+    """Real shutdown stops plugins as the final step."""
     await coresys.core.set_state(CoreState.RUNNING)
-
-    second_entered = False
-    original_shutdown = coresys.apps.shutdown
-
-    async def track_app_shutdown(startup):
-        nonlocal second_entered
-        second_entered = True
-        return await original_shutdown(startup)
-
-    with patch.object(coresys.apps, "shutdown", side_effect=track_app_shutdown):
+    with patch.object(coresys.plugins, "shutdown") as mock_plugins_shutdown:
         await coresys.core.shutdown()
-
-    assert second_entered
-    assert coresys.core._shutdown_event.is_set()
+    mock_plugins_shutdown.assert_called_once()
 
 
 @pytest.mark.parametrize(
