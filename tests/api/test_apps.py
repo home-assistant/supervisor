@@ -57,6 +57,55 @@ async def test_apps_info(
     assert result["data"]["watchdog"] is False
 
 
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+async def test_apps_info_options_redacted_for_other_app(
+    api_client: TestClient,
+    install_app_ssh: App,
+    install_app_example: App,
+):
+    """Test a default-role app cannot read another app's options via info."""
+    install_app_example.data["hassio_role"] = "default"
+
+    # Request originates from local_example, reading local_ssh's info
+    resp = await api_client.get(f"/addons/{TEST_ADDON_SLUG}/info")
+    result = await resp.json()
+    # Non-secret metadata is still exposed...
+    assert result["data"]["slug"] == TEST_ADDON_SLUG
+    # ...but user options (which may hold secrets) are redacted
+    assert install_app_ssh.options != {}
+    assert result["data"]["options"] == {}
+
+
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+async def test_apps_info_options_exposed_to_manager(
+    api_client: TestClient,
+    install_app_ssh: App,
+    install_app_example: App,
+):
+    """Test a manager-role app can read another app's options via info."""
+    install_app_example.data["hassio_role"] = "manager"
+
+    # Request originates from local_example (manager), reading local_ssh's info
+    resp = await api_client.get(f"/addons/{TEST_ADDON_SLUG}/info")
+    result = await resp.json()
+    assert install_app_ssh.options != {}
+    assert result["data"]["options"] == install_app_ssh.options
+
+
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_apps_info_options_visible_for_self(
+    api_client: TestClient,
+    install_app_ssh: App,
+):
+    """Test a default-role app can always read its own options via info."""
+    install_app_ssh.data["hassio_role"] = "default"
+
+    resp = await api_client.get("/addons/self/info")
+    result = await resp.json()
+    assert install_app_ssh.options != {}
+    assert result["data"]["options"] == install_app_ssh.options
+
+
 # DEPRECATED - Remove with legacy routing logic on 1/2023
 async def test_apps_info_not_installed(
     api_client: TestClient, coresys: CoreSys, test_repository: Repository
