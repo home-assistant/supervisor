@@ -542,24 +542,6 @@ class AppPortConflict(AppsError, APIError):
         super().__init__(None, logger)
 
 
-class AppNetworkPortInUseError(AppsError, APIError):
-    """Raise if a requested host port is already in use by another component."""
-
-    error_key = "app_network_port_in_use"
-    message_template = "Port {port} is already in use by {component}"
-
-    def __init__(
-        self,
-        logger: Callable[..., None] | None = None,
-        *,
-        port: int,
-        component: str,
-    ) -> None:
-        """Raise & log."""
-        self.extra_fields = {"port": port, "component": component}
-        super().__init__(None, logger)
-
-
 class AppNotSupportedError(HassioNotSupportedError):
     """App doesn't support a function."""
 
