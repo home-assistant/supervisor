@@ -413,8 +413,12 @@ class Core(CoreSysAttributes):
             await self._shutdown_event.wait()
             return
 
-        await self.set_state(CoreState.SHUTDOWN)
         try:
+            # Wrap state transition inside try so waiters are released even if
+            # set_state() is cancelled mid-write: Core._state has already been
+            # updated to SHUTDOWN by then (see set_state()), so concurrent
+            # callers would otherwise block on _shutdown_event forever.
+            await self.set_state(CoreState.SHUTDOWN)
             await self.teardown_services()
             await self.sys_plugins.shutdown()
         finally:

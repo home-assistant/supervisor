@@ -2,6 +2,7 @@
 
 # pylint: disable=W0212
 import asyncio
+from contextlib import suppress
 import datetime
 import errno
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -266,6 +267,37 @@ async def test_shutdown_reentrant_waits(coresys: CoreSys):
     # AppStartup has 4 levels (APPLICATION/SERVICES/SYSTEM/INITIALIZE); a single
     # shutdown call iterates them. A re-entered shutdown would double the count.
     assert call_count == 4
+    assert coresys.core._shutdown_event.is_set()
+
+
+async def test_shutdown_releases_event_when_set_state_cancelled(coresys: CoreSys):
+    """Cancellation mid set_state() must still release waiters.
+
+    set_state() updates Core._state before awaiting the run-state file write.
+    If cancellation hits during that await, in-memory state is already
+    SHUTDOWN. Without the try/finally around set_state(), _shutdown_event
+    would never be set and concurrent callers would deadlock on wait().
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    cancel_during_write = asyncio.Event()
+
+    async def cancel_during_set_state(*_args, **_kwargs):
+        cancel_during_write.set()
+        await asyncio.sleep(3600)  # wait long enough to be cancelled
+
+    with patch.object(
+        coresys.core, "_write_run_state", side_effect=cancel_during_set_state
+    ):
+        task = asyncio.create_task(coresys.core.shutdown())
+        await cancel_during_write.wait()
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+    # In-memory state moved to SHUTDOWN before the cancellation point
+    assert coresys.core.state == CoreState.SHUTDOWN
+    # finally must have run so any future caller does not deadlock
     assert coresys.core._shutdown_event.is_set()
 
 
