@@ -238,19 +238,24 @@ class App(AppModel):
         if new_state == AppState.STARTED or old_state == AppState.STARTUP:
             self._startup_event.set()
 
-        # Dismiss boot failed issue if present and we started
-        if new_state == AppState.STARTED and (
-            issue := self.sys_resolution.get_issue_if_present(self.boot_failed_issue)
-        ):
-            self.sys_resolution.dismiss_issue(issue)
+        # Dismiss boot failed or port conflict issue if present and we started
+        if new_state == AppState.STARTED:
+            for issue in self.sys_resolution.issues:
+                if (
+                    issue == self.boot_failed_issue
+                    or issue.type == IssueType.APP_PORT_CONFLICT
+                    and issue.context == ContextType.ADDON
+                    and issue.reference == self.slug
+                ):
+                    self.sys_resolution.dismiss_issue(issue)
 
         # Dismiss device access missing issue if present and we stopped
         if new_state == AppState.STOPPED and (
-            issue := self.sys_resolution.get_issue_if_present(
+            access_issue := self.sys_resolution.get_issue_if_present(
                 self.device_access_missing_issue
             )
         ):
-            self.sys_resolution.dismiss_issue(issue)
+            self.sys_resolution.dismiss_issue(access_issue)
 
         self.sys_homeassistant.websocket.supervisor_event_custom(
             WSEvent.ADDON,

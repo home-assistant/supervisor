@@ -8,7 +8,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from http import HTTPStatus
 from io import BufferedReader, BufferedWriter
-from ipaddress import IPv4Address, IPv6Address, ip_address
+from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path, PurePath
@@ -71,29 +71,6 @@ RE_PORT_CONFLICT_ERROR = re.compile(
     r"0\.0\.0\.0:(\d+).*"
     r"(?:address already in use|port is already allocated)$"
 )
-
-
-@dataclass(frozen=True, slots=True)
-class DockerPortBinding:
-    """Docker port binding information."""
-
-    ip: IPv4Address | IPv6Address | None
-    public_port: int | None
-    type: str
-    private_port: int
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> DockerPortBinding:
-        """Create a DockerPortBinding from a dictionary."""
-        ip_raw = data.get("IP")
-        return cls(
-            ip=ip_address(ip_raw)
-            if isinstance(ip_raw, int | str | bytes) and ip_raw
-            else None,
-            public_port=data.get("PublicPort"),
-            type=data["Type"],
-            private_port=data["PrivatePort"],
-        )
 
 
 @dataclass(slots=True, frozen=True)

@@ -1291,6 +1291,17 @@ async def test_app_manual_only_boot(install_app_example: App):
             ),
             [SuggestionType.EXECUTE_RESTART],
         ),
+        (
+            AppState.ERROR,
+            AppState.STARTED,
+            Issue(
+                IssueType.APP_PORT_CONFLICT,
+                ContextType.ADDON,
+                reference=TEST_ADDON_SLUG,
+                reference_extra={"port": 2222},
+            ),
+            [SuggestionType.CLEAR_PORT_CONFIG],
+        ),
     ],
 )
 async def test_app_state_dismisses_issue(

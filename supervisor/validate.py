@@ -158,8 +158,7 @@ def validate_repository(repository: str) -> str:
 # pylint: disable=no-value-for-parameter
 repositories = vol.All([validate_repository], vol.Unique())
 
-RE_DOCKER_PORT = re.compile(r"^(?P<port>\d+)(?P<type>/tcp|/udp)?$")
-docker_port = vol.All(str, vol.Match(RE_DOCKER_PORT))
+docker_port = vol.All(str, vol.Match(r"^\d+(?:/tcp|/udp)?$"))
 docker_ports = vol.Schema({docker_port: vol.Maybe(network_port)})
 docker_ports_description = vol.Schema({docker_port: str})
 
