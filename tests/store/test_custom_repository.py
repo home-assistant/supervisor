@@ -131,7 +131,10 @@ async def test_add_invalid_repository_file(
         ).validate()
 
     assert "http://example.com" in coresys.store.repository_urls
-    assert coresys.resolution.suggestions[-1].type == SuggestionType.EXECUTE_REMOVE
+    assert {suggestion.type for suggestion in coresys.resolution.suggestions} == {
+        SuggestionType.EXECUTE_RESET,
+        SuggestionType.EXECUTE_REMOVE,
+    }
 
 
 @pytest.mark.parametrize(
