@@ -59,7 +59,7 @@ from .docker.utils import get_registry_from_image
 from .utils.validate import validate_timezone
 
 # Move to store.validate when addons_repository config removed
-RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-.]+))?$")
+RE_REPOSITORY = re.compile(r"^(?P<url>[^#]+)(?:#(?P<branch>[\w\-./]+))?$")
 RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 
 # pylint: disable=no-value-for-parameter
