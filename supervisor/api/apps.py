@@ -95,6 +95,8 @@ from ..const import (
     ATTR_WATCHDOG,
     ATTR_WEBUI,
     REQUEST_FROM,
+    ROLE_ADMIN,
+    ROLE_MANAGER,
     AppBoot,
     AppBootConfig,
 )
@@ -221,8 +223,19 @@ class APIApps(CoreSysAttributes):
         """Reload all app data from store."""
         await asyncio.shield(self.sys_store.reload())
 
-    async def info_data(self, app: App) -> dict[str, Any]:
+    async def info_data(self, app: App, request: web.Request) -> dict[str, Any]:
         """Build and return app information dict (raises on invalid state)."""
+        # User options may contain secrets. Expose them only to trusted callers:
+        # Home Assistant Core (and other non-app internals), the app itself, or
+        # an app with the manager/admin role. Any other app reading a different
+        # app's info gets the options redacted.
+        request_from = request.get(REQUEST_FROM)
+        expose_options = (
+            not isinstance(request_from, App)
+            or request_from is app
+            or request_from.hassio_role in (ROLE_MANAGER, ROLE_ADMIN)
+        )
+
         return {
             ATTR_NAME: app.name,
             ATTR_SLUG: app.slug,
@@ -238,7 +251,7 @@ class APIApps(CoreSysAttributes):
             ATTR_RATING: rating_security(app),
             ATTR_BOOT_CONFIG: app.boot_config,
             ATTR_BOOT: app.boot,
-            ATTR_OPTIONS: app.options,
+            ATTR_OPTIONS: app.options if expose_options else {},
             ATTR_SCHEMA: app.schema_ui,
             ATTR_ARCH: app.supported_arch,
             ATTR_MACHINE: app.supported_machine,
@@ -303,7 +316,7 @@ class APIApps(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return app information."""
         app: App = self.get_app_for_request(request)
-        return await self.info_data(app)
+        return await self.info_data(app, request)
 
     @api_process
     async def options(self, request: web.Request) -> None:
