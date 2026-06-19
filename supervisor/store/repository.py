@@ -208,6 +208,16 @@ class RepositoryGit(Repository, ABC):
             _LOGGER.error("Can't reset repository %s: %s", self.slug, err)
             raise StoreRepositoryUnknownError(repo=self.slug) from err
 
+        # A reset only recovers a corrupt local copy. If the freshly cloned
+        # repository still doesn't validate, the problem is upstream (for
+        # example the repository configuration was removed), so report the
+        # failure instead of silently considering it fixed.
+        if not await self.validate():
+            _LOGGER.error(
+                "Reset of repository %s did not yield a valid repo", self.slug
+            )
+            raise StoreRepositoryUnknownError(repo=self.slug)
+
 
 class RepositoryLocal(RepositoryBuiltin):
     """A local app repository."""

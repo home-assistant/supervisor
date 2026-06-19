@@ -19,7 +19,7 @@ from supervisor.resolution.const import (
 from supervisor.resolution.data import Issue, Suggestion
 from supervisor.resolution.fixups.store_execute_reset import FixupStoreExecuteReset
 from supervisor.store.git import GitRepo
-from supervisor.store.repository import Repository
+from supervisor.store.repository import Repository, RepositoryGit
 
 
 @pytest.fixture(name="mock_addons_git", autouse=True)
@@ -72,6 +72,7 @@ async def test_fixup(coresys: CoreSys):
     with (
         patch.object(GitRepo, "load"),
         patch.object(GitRepo, "_clone", new=mock_clone),
+        patch.object(RepositoryGit, "validate", return_value=True),
         patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
     ):
         await store_execute_reset()
@@ -81,6 +82,38 @@ async def test_fixup(coresys: CoreSys):
     assert not corrupt_marker.exists()
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
+    assert len(list(coresys.config.path_tmp.iterdir())) == 0
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+async def test_fixup_still_invalid_after_reset(coresys: CoreSys):
+    """Test issue is kept when the repository is still invalid after reset."""
+    store_execute_reset = FixupStoreExecuteReset(coresys)
+    test_repo = coresys.config.path_apps_git / "94cfad5a"
+
+    add_store_reset_suggestion(coresys)
+    test_repo.mkdir(parents=True)
+
+    async def mock_clone(obj: GitRepo, path: Path | None = None):
+        """Mock of clone method."""
+        path = path or obj.path
+        await coresys.run_in_executor((path / ".git").mkdir)
+
+    coresys.store.repositories["94cfad5a"] = Repository.create(
+        coresys, "https://github.com/home-assistant/addons-example"
+    )
+    with (
+        patch.object(GitRepo, "load"),
+        patch.object(GitRepo, "_clone", new=mock_clone),
+        # Repository re-clones fine but its content is still not valid
+        patch.object(RepositoryGit, "validate", return_value=False),
+        patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
+    ):
+        await store_execute_reset()
+
+    # The reset did not actually fix the repository, so the issue must remain
+    assert len(coresys.resolution.suggestions) == 1
+    assert len(coresys.resolution.issues) == 1
     assert len(list(coresys.config.path_tmp.iterdir())) == 0
 
 
