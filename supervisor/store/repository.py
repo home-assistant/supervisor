@@ -215,7 +215,7 @@ class RepositoryGit(Repository, ABC):
         # failure instead of silently considering it fixed.
         if not await self.validate():
             raise StoreInvalidAppRepo(
-                f"Repository {self.slug} is still not a valid add-on repository "
+                f"Repository {self.slug} is still not a valid app repository "
                 "after reset",
                 logger=_LOGGER.error,
             )
