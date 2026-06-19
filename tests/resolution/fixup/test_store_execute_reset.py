@@ -87,11 +87,17 @@ async def test_fixup(coresys: CoreSys):
 
 @pytest.mark.usefixtures("supervisor_internet")
 async def test_fixup_still_invalid_after_reset(coresys: CoreSys):
-    """Test issue is kept when the repository is still invalid after reset."""
+    """Test reset suggestion is dropped but issue kept when repo stays invalid."""
     store_execute_reset = FixupStoreExecuteReset(coresys)
     test_repo = coresys.config.path_apps_git / "94cfad5a"
 
     add_store_reset_suggestion(coresys)
+    # A remove suggestion is offered alongside reset for corrupt repositories
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, reference="94cfad5a"
+        )
+    )
     test_repo.mkdir(parents=True)
 
     async def mock_clone(obj: GitRepo, path: Path | None = None):
@@ -111,8 +117,13 @@ async def test_fixup_still_invalid_after_reset(coresys: CoreSys):
     ):
         await store_execute_reset()
 
-    # The reset did not actually fix the repository, so the issue must remain
-    assert len(coresys.resolution.suggestions) == 1
+    # Retrying the reset won't help, so its suggestion is dropped to stop the
+    # hourly auto-retry. The issue and the remove suggestion must remain.
+    suggestion_types = {
+        suggestion.type for suggestion in coresys.resolution.suggestions
+    }
+    assert SuggestionType.EXECUTE_RESET not in suggestion_types
+    assert SuggestionType.EXECUTE_REMOVE in suggestion_types
     assert len(coresys.resolution.issues) == 1
     assert len(list(coresys.config.path_tmp.iterdir())) == 0
 
