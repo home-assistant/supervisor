@@ -126,12 +126,15 @@ async def test_add_invalid_repository_file(
             set(current) | {"http://example.com"}, issue_on_error=True
         )
 
-        assert not await get_repository_by_url(
-            store_manager, "http://example.com"
-        ).validate()
+        repository = get_repository_by_url(store_manager, "http://example.com")
+        assert not await repository.validate()
 
     assert "http://example.com" in coresys.store.repository_urls
-    assert {suggestion.type for suggestion in coresys.resolution.suggestions} == {
+    assert {
+        suggestion.type
+        for suggestion in coresys.resolution.suggestions
+        if suggestion.reference == repository.slug
+    } == {
         SuggestionType.EXECUTE_RESET,
         SuggestionType.EXECUTE_REMOVE,
     }
