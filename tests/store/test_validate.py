@@ -11,6 +11,8 @@ from supervisor.store.validate import repositories
     [
         (["core", "local"], True),
         (["https://github.com/hassio-addons/repository"], True),
+        (["https://github.com/hassio-addons/repository#beta"], True),
+        (["https://github.com/hassio-addons/repository#feature/hot-new-stuff"], True),
         (["not_a_url"], False),
         (["https://fail.com/duplicate", "https://fail.com/duplicate"], False),
     ],
