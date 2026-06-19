@@ -21,6 +21,7 @@ from ..exceptions import (
     ConfigurationFileError,
     StoreError,
     StoreGitError,
+    StoreInvalidAppRepo,
     StoreRepositoryLocalCannotReset,
     StoreRepositoryUnknownError,
 )
@@ -213,10 +214,11 @@ class RepositoryGit(Repository, ABC):
         # example the repository configuration was removed), so report the
         # failure instead of silently considering it fixed.
         if not await self.validate():
-            _LOGGER.error(
-                "Reset of repository %s did not yield a valid repo", self.slug
+            raise StoreInvalidAppRepo(
+                f"Repository {self.slug} is still not a valid add-on repository "
+                "after reset",
+                logger=_LOGGER.error,
             )
-            raise StoreRepositoryUnknownError(repo=self.slug)
 
 
 class RepositoryLocal(RepositoryBuiltin):
