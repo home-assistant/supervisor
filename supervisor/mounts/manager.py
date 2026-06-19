@@ -160,7 +160,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         )
 
         # Try to reload failed mounts and report issues if failure persists
-        failures = [mounts[i] for i in range(len(mounts)) if results[i] is not True]
+        failures = [
+            mount for mount, result in zip(mounts, results) if result is not True
+        ]
         await self._mount_errors_to_issues(
             failures, [self.reload_mount(mount.name) for mount in failures]
         )

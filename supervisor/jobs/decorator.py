@@ -470,7 +470,9 @@ class Job(CoreSysAttributes):
             )
 
             if update_failures := [
-                out_of_date[i].slug for i in range(len(errors)) if errors[i] is not None
+                plugin.slug
+                for plugin, error in zip(out_of_date, errors)
+                if error is not None
             ]:
                 raise JobConditionException(
                     f"'{method_name}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
