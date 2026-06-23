@@ -413,7 +413,7 @@ class DockerInterface(JobGroup, ABC):
             return await container.show()
         except TimeoutError as err:
             raise DockerTimeoutError(
-                f"Timeout occurred while getting container information for {self.name}: {err!s}"
+                f"Timeout occurred while getting container information for {self.name}"
             ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
