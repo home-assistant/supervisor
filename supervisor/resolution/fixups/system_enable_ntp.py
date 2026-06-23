@@ -5,6 +5,7 @@ import logging
 from ...coresys import CoreSys
 from ...dbus.const import StartUnitMode
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemEnableNTP(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Starting systemd-timesyncd service")
         await self.sys_dbus.systemd.start_unit(

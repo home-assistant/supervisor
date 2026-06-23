@@ -9,6 +9,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.dns_server import CheckDNSServer
 from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 
 @pytest.fixture(name="dns_query")
@@ -70,15 +71,42 @@ async def test_approve(coresys: CoreSys, supervisor_internet, dns_query: AsyncMo
     assert dns_server.dns_servers == ["dns://192.168.30.1"]
     dns_query.side_effect = DNSError()
 
-    assert await dns_server.approve_check(reference="dns://1.1.1.1") is False
+    assert (
+        await dns_server.approve_check(
+            Issue(
+                IssueType.DNS_SERVER_FAILED,
+                ContextType.DNS_SERVER,
+                reference="dns://1.1.1.1",
+            )
+        )
+        is False
+    )
     dns_query.assert_not_called()
 
-    assert await dns_server.approve_check(reference="dns://192.168.30.1") is True
+    assert (
+        await dns_server.approve_check(
+            Issue(
+                IssueType.DNS_SERVER_FAILED,
+                ContextType.DNS_SERVER,
+                reference="dns://192.168.30.1",
+            )
+        )
+        is True
+    )
     dns_query.assert_called_once_with("_checkdns.home-assistant.io", "A")
 
     dns_query.reset_mock()
     dns_query.side_effect = None
-    assert await dns_server.approve_check(reference="dns://192.168.30.1") is False
+    assert (
+        await dns_server.approve_check(
+            Issue(
+                IssueType.DNS_SERVER_FAILED,
+                ContextType.DNS_SERVER,
+                reference="dns://192.168.30.1",
+            )
+        )
+        is False
+    )
     dns_query.assert_called_once_with("_checkdns.home-assistant.io", "A")
 
 

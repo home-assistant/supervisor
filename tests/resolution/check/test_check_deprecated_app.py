@@ -7,6 +7,7 @@ from supervisor.const import AppStage, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.deprecated_app import CheckDeprecatedApp
 from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
@@ -41,12 +42,30 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     deprecated_app = CheckDeprecatedApp(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
-    assert await deprecated_app.approve_check(reference=install_app_ssh.slug) is False
+    assert (
+        await deprecated_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is False
+    )
 
     # Mock test app as deprecated
     install_app_ssh.data["stage"] = AppStage.DEPRECATED
 
-    assert await deprecated_app.approve_check(reference=install_app_ssh.slug) is True
+    assert (
+        await deprecated_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is True
+    )
 
 
 async def test_did_run(coresys: CoreSys):

@@ -7,6 +7,7 @@ from supervisor.const import AppStage, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.deprecated_arch_app import CheckDeprecatedArchApp
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
@@ -97,38 +98,80 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     await coresys.core.set_state(CoreState.SETUP)
 
     assert (
-        await deprecated_arch_app.approve_check(reference=install_app_ssh.slug) is False
+        await deprecated_arch_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is False
     )
 
     install_app_ssh.data["arch"] = ["armv7"]
 
     assert (
-        await deprecated_arch_app.approve_check(reference=install_app_ssh.slug) is True
+        await deprecated_arch_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is True
     )
 
     install_app_ssh.data["arch"] = ["armv7", "amd64"]
 
     assert (
-        await deprecated_arch_app.approve_check(reference=install_app_ssh.slug) is False
+        await deprecated_arch_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is False
     )
 
     install_app_ssh.data["arch"] = ["amd64"]
     install_app_ssh.data["machine"] = ["raspberrypi3"]
 
     assert (
-        await deprecated_arch_app.approve_check(reference=install_app_ssh.slug) is True
+        await deprecated_arch_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is True
     )
 
     install_app_ssh.data["machine"] = ["raspberrypi3", install_app_ssh.sys_machine]
 
     assert (
-        await deprecated_arch_app.approve_check(reference=install_app_ssh.slug) is False
+        await deprecated_arch_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is False
     )
 
     install_app_ssh.data["stage"] = AppStage.DEPRECATED
 
     assert (
-        await deprecated_arch_app.approve_check(reference=install_app_ssh.slug) is False
+        await deprecated_arch_app.approve_check(
+            Issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is False
     )
 
 

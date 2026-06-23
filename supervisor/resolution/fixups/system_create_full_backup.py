@@ -4,6 +4,7 @@ import logging
 
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemCreateFullBackup(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Creating a full backup")
         await self.sys_backups.do_backup_full()

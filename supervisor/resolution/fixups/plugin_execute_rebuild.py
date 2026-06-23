@@ -2,6 +2,7 @@
 
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 
@@ -13,13 +14,13 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupPluginExecuteRebuild(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Rebuild the plugin's container."""
         plugin = next(
             (
                 plugin
                 for plugin in self.sys_plugins.all_plugins
-                if plugin.slug == reference
+                if plugin.slug == suggestion.reference
             ),
             None,
         )

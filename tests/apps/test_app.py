@@ -1291,6 +1291,17 @@ async def test_app_manual_only_boot(install_app_example: App):
             ),
             [SuggestionType.EXECUTE_RESTART],
         ),
+        (
+            AppState.ERROR,
+            AppState.STARTED,
+            Issue(
+                IssueType.APP_PORT_CONFLICT,
+                ContextType.ADDON,
+                reference=TEST_ADDON_SLUG,
+                reference_extra={"port": 2222},
+            ),
+            [SuggestionType.CLEAR_PORT_CONFIG],
+        ),
     ],
 )
 async def test_app_state_dismisses_issue(
@@ -1354,6 +1365,7 @@ async def test_app_start_port_conflict_error(
 ):
     """Test port conflict error when trying to start app."""
     install_app_ssh.data["image"] = "test/amd64-addon-ssh"
+    install_app_ssh.persist["network"] = {"22/tcp": port}
     coresys.docker.containers.create.return_value.start.side_effect = (
         aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, docker_message)
     )
@@ -1372,6 +1384,68 @@ async def test_app_start_port_conflict_error(
     assert (
         f"Cannot start container addon_local_ssh because port {port} is already in use"
         in caplog.text
+    )
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": port}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+
+
+@pytest.mark.usefixtures(
+    "container", "mock_amd64_arch_supported", "path_extern", "tmp_supervisor_data"
+)
+async def test_app_restart_port_conflict_creates_issue(
+    coresys: CoreSys,
+    install_app_ssh: App,
+):
+    """Test restart path creates conflict issue and suggestion when port is explicit."""
+    port = 2222
+    docker_message = (
+        "failed to set up container networking: driver failed programming external "
+        "connectivity on endpoint addon_local_ssh: failed to bind host port for "
+        "0.0.0.0:2222:172.30.33.4:22/tcp: address already in use"
+    )
+    install_app_ssh.data["image"] = "test/amd64-addon-ssh"
+    install_app_ssh.persist["network"] = {"22/tcp": port}
+    coresys.docker.containers.create.return_value.start.side_effect = (
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, docker_message)
+    )
+    await install_app_ssh.load()
+
+    with (
+        patch.object(App, "stop", AsyncMock()),
+        patch.object(App, "write_options"),
+        pytest.raises(
+            AppPortConflict,
+            check=lambda exc: exc.extra_fields == {"name": "local_ssh", "port": port},
+        ),
+    ):
+        await install_app_ssh.restart()
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": port}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
     )
 
 

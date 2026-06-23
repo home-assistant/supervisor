@@ -609,6 +609,7 @@ class HomeAssistantCore(JobGroup):
 
         deadline = datetime.now() + STARTUP_API_RESPONSE_TIMEOUT
         last_state = None
+        last_progress_log = datetime.now()
         while not (timeout := datetime.now() >= deadline):
             await asyncio.sleep(SECONDS_BETWEEN_API_CHECKS)
 
@@ -636,6 +637,11 @@ class HomeAssistantCore(JobGroup):
                 if state.offline_db_migration:
                     # Keep extended the deadline while database migration is active
                     deadline = datetime.now() + DATABASE_MIGRATION_TIMEOUT
+
+            # Periodic progress log so the user knows we are still waiting
+            if (datetime.now() - last_progress_log).total_seconds() >= 60:
+                _LOGGER.info("Still waiting for Home Assistant Core to start...")
+                last_progress_log = datetime.now()
 
         self._error_state = True
         if timeout:

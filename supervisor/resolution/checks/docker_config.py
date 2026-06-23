@@ -70,7 +70,7 @@ class CheckDockerConfig(CheckBase):
                 suggestions=[SuggestionType.EXECUTE_REBUILD],
             )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
         self._check_docker_config()
         return bool(self.current_issues)

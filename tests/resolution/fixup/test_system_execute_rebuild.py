@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Suggestion
 from supervisor.resolution.fixups.app_execute_rebuild import FixupAppExecuteRebuild
 from supervisor.resolution.fixups.core_execute_rebuild import FixupCoreExecuteRebuild
 from supervisor.resolution.fixups.plugin_execute_rebuild import (
@@ -48,9 +49,19 @@ async def test_fixup(coresys: CoreSys):
         patch.object(FixupPluginExecuteRebuild, "process_fixup") as plugin_fixup,
     ):
         await system_execute_rebuild()
-        app_fixup.assert_called_once_with(reference="local_ssh")
-        core_fixup.assert_called_once()
-        plugin_fixup.assert_called_once_with(reference="audio")
+        app_fixup.assert_called_once_with(
+            Suggestion(
+                SuggestionType.EXECUTE_REBUILD, ContextType.ADDON, reference="local_ssh"
+            )
+        )
+        core_fixup.assert_called_once_with(
+            Suggestion(SuggestionType.EXECUTE_REBUILD, ContextType.CORE)
+        )
+        plugin_fixup.assert_called_once_with(
+            Suggestion(
+                SuggestionType.EXECUTE_REBUILD, ContextType.PLUGIN, reference="audio"
+            )
+        )
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions

@@ -3,6 +3,7 @@
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType
+from ..data import Issue
 from .base import CheckBase
 
 
@@ -16,12 +17,12 @@ class CheckDiskLifetime(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
-        if await self.approve_check():
+        if await self.approve_check(Issue(self.issue, self.context)):
             self.sys_resolution.create_issue(
                 IssueType.DISK_LIFETIME, ContextType.SYSTEM
             )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
         # Get the current data disk device
         if not self.sys_dbus.agent.datadisk.current_device:
