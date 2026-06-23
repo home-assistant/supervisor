@@ -25,6 +25,7 @@ from supervisor.exceptions import (
     DockerNotFound,
     DockerRegistryAuthError,
     DockerRegistryRateLimitExceeded,
+    DockerTimeoutError,
     GithubContainerRegistryRateLimitExceeded,
 )
 from supervisor.homeassistant.const import WSEvent, WSType
@@ -231,6 +232,14 @@ async def test_current_state_failures(coresys: CoreSys):
         500, {"message": "fail"}
     )
     with pytest.raises(DockerAPIError):
+        await coresys.homeassistant.core.instance.current_state()
+
+
+async def test_current_state_timeout(coresys: CoreSys):
+    """Test timeout while reading container state raises DockerTimeoutError."""
+    coresys.docker.containers.get.side_effect = TimeoutError("timed out")
+
+    with pytest.raises(DockerTimeoutError, match="Timeout occurred"):
         await coresys.homeassistant.core.instance.current_state()
 
 
