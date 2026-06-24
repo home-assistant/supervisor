@@ -632,6 +632,92 @@ async def test_run_container_start_timeout(coresys: CoreSys):
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_attach_network_failure_logs_warning(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test run logs warning and continues when attach to hassio-network fails."""
+    with (
+        patch.object(
+            coresys.docker.network,
+            "attach_container",
+            new=AsyncMock(side_effect=DockerError("failed")),
+        ),
+        patch.object(
+            coresys.docker.network,
+            "detach_default_bridge",
+            new=AsyncMock(),
+        ) as detach_default_bridge,
+    ):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+    assert "Can't attach test to hassio-network!" in caplog.text
+    detach_default_bridge.assert_not_called()
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_get_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when loading host network times out."""
+    coresys.docker.docker.networks.get.side_effect = TimeoutError()
+
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting host network information"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_get_docker_error(coresys: CoreSys):
+    """Test run raises DockerError when loading host network fails."""
+    coresys.docker.docker.networks.get.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}
+    )
+
+    with pytest.raises(
+        DockerError, match="Can't get host network information from Docker"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_disconnect_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when disconnect from host network times out."""
+    host_network = MagicMock(spec=DockerNetwork)
+    host_network.show.return_value = {"Containers": {"abc": {"Name": "test"}}}
+    host_network.disconnect.side_effect = TimeoutError()
+    coresys.docker.docker.networks.get.return_value = host_network
+
+    with pytest.raises(
+        DockerTimeoutError,
+        match="Timeout disconnecting container test from host network",
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_disconnect_non_not_found_error(coresys: CoreSys):
+    """Test run raises DockerError when host network disconnect fails with non-404."""
+    host_network = MagicMock(spec=DockerNetwork)
+    host_network.show.return_value = {"Containers": {"abc": {"Name": "test"}}}
+    host_network.disconnect.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}
+    )
+    coresys.docker.docker.networks.get.return_value = host_network
+
+    with pytest.raises(
+        DockerError, match="Can't disconnect container test from host network"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_run_metadata_timeout(coresys: CoreSys, container: DockerContainer):
     """Test run() raises DockerTimeoutError when container.show times out after start."""
     container.show.side_effect = TimeoutError()
