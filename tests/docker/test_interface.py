@@ -1142,3 +1142,35 @@ async def test_install_unknown_registry_rate_limit_raises_generic_exception(
     assert not isinstance(exc_info.value, GithubContainerRegistryRateLimitExceeded)
     _assert_docker_ratelimit_issue(coresys, False)
     capture_exception.assert_not_called()
+
+
+async def test_attach_container_get_timeout_falls_through_to_image(coresys: CoreSys):
+    """Test attach suppresses TimeoutError from containers.get and falls through to image inspect."""
+    coresys.docker.containers.get.side_effect = TimeoutError()
+    coresys.docker.images.inspect.return_value.setdefault("Config", {})["Image"] = (
+        "sha256:abc123"
+    )
+    # Should not raise - timeout is suppressed, falls back to image inspect
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+    coresys.docker.images.inspect.assert_called()
+
+
+async def test_attach_fallback_image_inspect_timeout(coresys: CoreSys):
+    """Test attach raises DockerTimeoutError when fallback image inspect times out."""
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
+    coresys.docker.images.inspect.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout occurred while inspecting image"
+    ):
+        await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+
+
+async def test_exists_timeout_suppressed(
+    coresys: CoreSys, test_docker_interface: DockerInterface
+):
+    """Test exists returns False and suppresses TimeoutError from images.inspect."""
+    coresys.docker.images.inspect.side_effect = TimeoutError()
+    result = await test_docker_interface.exists()
+    assert result is False

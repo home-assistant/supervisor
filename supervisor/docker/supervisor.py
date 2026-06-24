@@ -8,7 +8,7 @@ import os
 import aiodocker
 from awesomeversion.awesomeversion import AwesomeVersion
 
-from ..exceptions import DockerError
+from ..exceptions import DockerError, DockerTimeoutError
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import PropagationMode
@@ -52,6 +52,10 @@ class DockerSupervisor(DockerInterface):
         try:
             docker_container = await self.sys_docker.containers.get(self.name)
             self._meta = await docker_container.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout getting supervisor container metadata"
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Could not get supervisor container metadata: {err!s}"
@@ -82,6 +86,11 @@ class DockerSupervisor(DockerInterface):
         try:
             docker_container = await self.sys_docker.containers.get(self.name)
             container_metadata = await docker_container.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout getting Supervisor container for retag",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Could not get Supervisor container for retag: {err}", _LOGGER.error
@@ -102,6 +111,10 @@ class DockerSupervisor(DockerInterface):
                 ),
                 self.sys_docker.images.tag(metadata_image, self.image, tag="latest"),
             )
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout retagging Supervisor version", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't retag Supervisor version: {err}", _LOGGER.error
@@ -116,6 +129,10 @@ class DockerSupervisor(DockerInterface):
         try:
             docker_container = await self.sys_docker.containers.get(self.name)
             container_metadata = await docker_container.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout getting container to fix start tag", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't get container to fix start tag: {err}", _LOGGER.error
@@ -134,6 +151,11 @@ class DockerSupervisor(DockerInterface):
                 self.sys_docker.images.inspect(metadata_image),
                 self.sys_docker.images.inspect(f"{image}:{version!s}"),
             )
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout getting image metadata to fix start tag",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't get image metadata to fix start tag: {err}", _LOGGER.error
@@ -161,5 +183,7 @@ class DockerSupervisor(DockerInterface):
                     ),
                 )
 
+        except TimeoutError as err:
+            raise DockerTimeoutError("Timeout fixing start tag", _LOGGER.error) from err
         except aiodocker.DockerError as err:
             raise DockerError(f"Can't fix start tag: {err}", _LOGGER.error) from err
