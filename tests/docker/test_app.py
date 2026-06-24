@@ -26,7 +26,7 @@ from supervisor.docker.const import (
     PropagationMode,
 )
 from supervisor.docker.manager import DockerAPI
-from supervisor.exceptions import CoreDNSError, DockerNotFound
+from supervisor.exceptions import CoreDNSError, DockerNotFound, DockerTimeoutError
 from supervisor.hardware.data import Device
 from supervisor.host.const import HostFeature
 from supervisor.os.manager import OSManager
@@ -707,3 +707,92 @@ async def test_app_options_device_policy_check(
 
         # Verify cgroup permission was NOT granted due to policy block
         add_devices.assert_not_called()
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_build_builder_cleanup_timeout(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test _build raises DockerTimeoutError when builder cleanup times out."""
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+
+    mock_build_env = MagicMock()
+    mock_build_env.is_valid = AsyncMock()
+    coresys.docker.containers.get.return_value.delete.side_effect = TimeoutError()
+
+    with (
+        patch(
+            "supervisor.docker.app.AppBuild.create",
+            AsyncMock(return_value=mock_build_env),
+        ),
+        pytest.raises(
+            DockerTimeoutError, match="Timeout cleaning up existing builder container"
+        ),
+    ):
+        await docker_app.install(docker_app.version, need_build=True)
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_build_inspect_timeout(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test _build raises DockerTimeoutError when image inspect times out after build."""
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+
+    mock_build_env = MagicMock()
+    mock_build_env.is_valid = AsyncMock()
+    mock_build_env.get_docker_config_json.return_value = None
+    mock_build_env.get_docker_args.return_value = {}
+
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+    coresys.docker.run_command = AsyncMock(return_value=MagicMock(exit_code=0, log=[]))
+    coresys.docker.images.inspect.side_effect = TimeoutError()
+
+    with (
+        patch(
+            "supervisor.docker.app.AppBuild.create",
+            AsyncMock(return_value=mock_build_env),
+        ),
+        pytest.raises(
+            DockerTimeoutError,
+            match="Timeout getting image metadata .* after build",
+        ),
+    ):
+        await docker_app.install(docker_app.version, need_build=True)
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_write_stdin_get_timeout(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test write_stdin raises DockerTimeoutError when containers.get times out."""
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+    coresys.docker.containers.get.side_effect = TimeoutError()
+
+    with pytest.raises(DockerTimeoutError, match="Timeout attaching to .* stdin"):
+        await docker_app.write_stdin(b"hello")
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_hardware_events_get_timeout(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test hardware event path raises DockerTimeoutError on container lookup timeout."""
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+    docker_app.app.data["devices"] = [TEST_DEV_PATH]
+
+    with patch.object(
+        type(coresys.host),
+        "features",
+        new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+    ):
+        with patch.object(App, "write_options"):
+            await docker_app.app.start()
+
+        coresys.docker.containers.get.side_effect = TimeoutError()
+        with pytest.raises(
+            DockerTimeoutError, match="Timeout processing Hardware Event"
+        ):
+            await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, TEST_HW_DEVICE)
