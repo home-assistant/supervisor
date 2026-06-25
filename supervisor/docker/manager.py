@@ -697,7 +697,8 @@ class DockerAPI(CoreSysAttributes):
                 ) from err
             _LOGGER.info("Pulling image %s:%s", image, tag)
             try:
-                await self.images.pull(image, tag=tag, timeout=None)
+                # Timeout is disabled for pull operations by default, matching docker-py behavior.
+                await self.images.pull(image, tag=tag)
             except aiodocker.DockerError as pull_err:
                 raise DockerError(
                     f"Can't pull image {image}:{tag}: {pull_err}", _LOGGER.error
@@ -749,10 +750,9 @@ class DockerAPI(CoreSysAttributes):
         raises only if the get fails afterwards. Additionally it fires progress reports for the pull
         on the bus so listeners can use that to update status for users.
         """
-        # Use timeout=None to disable timeout for pull operations, matching docker-py behavior.
-        # aiodocker converts None to ClientTimeout(total=None) which disables the timeout.
+        # Timeout is disabled for pull operations by default, matching docker-py behavior.
         async for e in self.images.pull(
-            repository, tag=tag, platform=platform, auth=auth, stream=True, timeout=None
+            repository, tag=tag, platform=platform, auth=auth, stream=True
         ):
             entry = PullLogEntry.from_pull_log_dict(job_id, e)
             if entry.error:

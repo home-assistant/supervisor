@@ -91,7 +91,7 @@ async def test_run_command_pulls_image_when_not_found(
     )
 
     # Verify pull was called
-    docker.images.pull.assert_called_once_with("alpine", tag="3.18", timeout=None)
+    docker.images.pull.assert_called_once_with("alpine", tag="3.18")
 
     # Verify the command still executed successfully
     assert result.exit_code == 0
