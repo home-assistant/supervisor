@@ -250,31 +250,25 @@ async def test_api_os_update_no_auto_reboot_creates_issue(
     tmp_supervisor_data,
     path_extern: None,
     supervisor_internet,
+    os_available,
 ):
     """Successful OS update does not auto-reboot and creates a reboot issue."""
     api_client, prefix = api_client_with_prefix
     await coresys.core.set_state(CoreState.RUNNING)
 
-    coresys.os._available = True
-    coresys.os._board = "generic-x86-64"
-    coresys.os._os_name = "haos"
-    coresys.os._version = AwesomeVersion("12.0")
-    coresys.updater._data = {
-        "ota": (
-            "https://github.com/home-assistant/operating-system/releases/download/"
-            "{version}/{os_name}_{board}-{version}.raucb"
-        ),
-        "hassos_unrestricted": AwesomeVersion("13.0"),
-    }
-
     async def fake_download(url, raucb) -> None:
         raucb.touch()
 
     with (
+        patch.object(
+            coresys.os,
+            "_get_download_url",
+            return_value="https://example.invalid/update.raucb",
+        ),
         patch.object(coresys.os, "_download_raucb", side_effect=fake_download),
         patch.object(coresys.host.control, "reboot") as reboot,
     ):
-        resp = await api_client.post(f"{prefix}/os/update", json={})
+        resp = await api_client.post(f"{prefix}/os/update", json={"version": "13.0"})
 
     assert resp.status == 200
     reboot.assert_not_called()
@@ -294,27 +288,21 @@ async def test_api_os_update_failure_no_reboot_no_issue(
     tmp_supervisor_data,
     path_extern: None,
     supervisor_internet,
+    os_available,
 ):
     """Failed OS update does not auto-reboot and does not create reboot issue."""
     api_client, prefix = api_client_with_prefix
     await coresys.core.set_state(CoreState.RUNNING)
 
-    coresys.os._available = True
-    coresys.os._board = "generic-x86-64"
-    coresys.os._os_name = "haos"
-    coresys.os._version = AwesomeVersion("12.0")
-    coresys.updater._data = {
-        "ota": (
-            "https://github.com/home-assistant/operating-system/releases/download/"
-            "{version}/{os_name}_{board}-{version}.raucb"
-        ),
-        "hassos_unrestricted": AwesomeVersion("13.0"),
-    }
-
     async def fake_download(url, raucb) -> None:
         raucb.touch()
 
     with (
+        patch.object(
+            coresys.os,
+            "_get_download_url",
+            return_value="https://example.invalid/update.raucb",
+        ),
         patch.object(coresys.os, "_download_raucb", side_effect=fake_download),
         patch.object(
             coresys.dbus.rauc,
@@ -323,7 +311,7 @@ async def test_api_os_update_failure_no_reboot_no_issue(
         ),
         patch.object(coresys.host.control, "reboot") as reboot,
     ):
-        resp = await api_client.post(f"{prefix}/os/update", json={})
+        resp = await api_client.post(f"{prefix}/os/update", json={"version": "13.0"})
 
     assert resp.status == 400
     result = await resp.json()
