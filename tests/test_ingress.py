@@ -71,6 +71,18 @@ async def test_dynamic_ports(coresys: CoreSys):
     assert port_test1 <= 65500
 
 
+async def test_dynamic_port_avoids_reserved_ports(coresys: CoreSys):
+    """Test dynamic port allocation avoids the app's own mapped ports."""
+    # Reserve all but a single port from the range so the only valid choice
+    # is the one not reserved.
+    reserved_ports = set(range(62000, 65501)) - {62345}
+
+    port = await coresys.ingress.get_dynamic_port("test", reserved_ports)
+
+    assert port == 62345
+    assert port not in reserved_ports
+
+
 async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
     """Test saving ingress data to file."""
     config_file = tmp_supervisor_data / "ingress.json"

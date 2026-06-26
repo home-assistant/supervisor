@@ -888,8 +888,15 @@ class App(AppModel):
             return
 
         if self.data[ATTR_INGRESS_PORT] == 0:
+            # Reserve the ports the app maps itself so the dynamic ingress port
+            # can never coincide with a port the app exposes directly (which
+            # would bypass ingress authentication).
+            reserved_ports = {
+                int(container_port.partition("/")[0])
+                for container_port in (self.ports or {})
+            }
             self.data[ATTR_INGRESS_PORT] = await self.sys_ingress.get_dynamic_port(
-                self.slug
+                self.slug, reserved_ports
             )
 
     @Job(

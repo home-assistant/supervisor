@@ -158,15 +158,25 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
         return True
 
-    async def get_dynamic_port(self, app_slug: str) -> int:
-        """Get/Create a dynamic port from range."""
+    async def get_dynamic_port(
+        self, app_slug: str, reserved_ports: set[int] | None = None
+    ) -> int:
+        """Get/Create a dynamic port from range.
+
+        reserved_ports lists ports the app maps to the host itself. Avoiding
+        them makes sure the dynamically chosen ingress port can never coincide
+        with a port the app exposes directly, which would make the ingress
+        endpoint reachable on the host bypassing ingress authentication.
+        """
         if app_slug in self.ports:
             return self.ports[app_slug]
 
+        reserved_ports = reserved_ports or set()
         port = None
         while (
             port is None
             or port in self.ports.values()
+            or port in reserved_ports
             or await check_port(self.sys_docker.network.gateway, port)
         ):
             port = random.randint(62000, 65500)
