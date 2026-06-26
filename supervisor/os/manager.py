@@ -325,9 +325,14 @@ class OSManager(CoreSysAttributes):
         # Update success
         if 0 in completed:
             _LOGGER.info(
-                "Install of Home Assistant Operating System %s success", version
+                "Install of Home Assistant Operating System %s success; reboot required",
+                version,
             )
-            self.sys_create_task(self.sys_host.control.reboot())
+            self.sys_resolution.create_issue(
+                IssueType.REBOOT_REQUIRED,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.EXECUTE_REBOOT],
+            )
             return
 
         # Update failed
