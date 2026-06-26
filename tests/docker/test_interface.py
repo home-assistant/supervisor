@@ -55,7 +55,7 @@ async def test_docker_image_platform(
     coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
     await test_docker_interface.install(AwesomeVersion("1.2.3"), "test", arch=cpu_arch)
     coresys.docker.images.pull.assert_called_once_with(
-        "test", tag="1.2.3", platform=platform, auth=None, stream=True, timeout=None
+        "test", tag="1.2.3", platform=platform, auth=None, stream=True
     )
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -72,12 +72,7 @@ async def test_docker_image_default_platform(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test",
-            tag="1.2.3",
-            platform="linux/amd64",
-            auth=None,
-            stream=True,
-            timeout=None,
+            "test", tag="1.2.3", platform="linux/amd64", auth=None, stream=True
         )
 
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
@@ -132,7 +127,6 @@ async def test_private_registry_credentials_passed_to_pull(
         platform="linux/amd64",
         auth=expected_auth,
         stream=True,
-        timeout=None,
     )
 
 
@@ -442,12 +436,7 @@ async def test_install_fires_progress_events(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test",
-            tag="1.2.3",
-            platform="linux/amd64",
-            auth=None,
-            stream=True,
-            timeout=None,
+            "test", tag="1.2.3", platform="linux/amd64", auth=None, stream=True
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -905,12 +894,7 @@ async def test_install_progress_containerd_snapshot(
     with patch.object(Supervisor, "arch", PropertyMock(return_value="amd64")):
         await test_docker_interface.mock_install()
         coresys.docker.images.pull.assert_called_once_with(
-            "test",
-            tag="1.2.3",
-            platform="linux/amd64",
-            auth=None,
-            stream=True,
-            timeout=None,
+            "test", tag="1.2.3", platform="linux/amd64", auth=None, stream=True
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -1142,3 +1126,35 @@ async def test_install_unknown_registry_rate_limit_raises_generic_exception(
     assert not isinstance(exc_info.value, GithubContainerRegistryRateLimitExceeded)
     _assert_docker_ratelimit_issue(coresys, False)
     capture_exception.assert_not_called()
+
+
+async def test_attach_container_get_timeout_falls_through_to_image(coresys: CoreSys):
+    """Test attach suppresses TimeoutError from containers.get and falls through to image inspect."""
+    coresys.docker.containers.get.side_effect = TimeoutError()
+    coresys.docker.images.inspect.return_value.setdefault("Config", {})["Image"] = (
+        "sha256:abc123"
+    )
+    # Should not raise - timeout is suppressed, falls back to image inspect
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+    coresys.docker.images.inspect.assert_called()
+
+
+async def test_attach_fallback_image_inspect_timeout(coresys: CoreSys):
+    """Test attach raises DockerTimeoutError when fallback image inspect times out."""
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
+    coresys.docker.images.inspect.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout occurred while inspecting image"
+    ):
+        await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+
+
+async def test_exists_timeout_suppressed(
+    coresys: CoreSys, test_docker_interface: DockerInterface
+):
+    """Test exists returns False and suppresses TimeoutError from images.inspect."""
+    coresys.docker.images.inspect.side_effect = TimeoutError()
+    result = await test_docker_interface.exists()
+    assert result is False

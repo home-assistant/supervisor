@@ -401,7 +401,7 @@ class DockerInterface(JobGroup, ABC):
 
     async def exists(self) -> bool:
         """Return True if Docker image exists in local repository."""
-        with suppress(aiodocker.DockerError):
+        with suppress(aiodocker.DockerError, TimeoutError):
             await self.sys_docker.images.inspect(f"{self.image}:{self.version!s}")
             return True
         return False
@@ -442,7 +442,7 @@ class DockerInterface(JobGroup, ABC):
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
         """Attach to running Docker container."""
-        with suppress(aiodocker.DockerError):
+        with suppress(aiodocker.DockerError, TimeoutError):
             docker_container = await self.sys_docker.containers.get(self.name)
             self._meta = await docker_container.show()
             self.sys_docker.monitor.watch_container(self._meta)
@@ -465,6 +465,10 @@ class DockerInterface(JobGroup, ABC):
                 self._meta = await self.sys_docker.images.inspect(
                     f"{self.image}:{version!s}"
                 )
+            except TimeoutError as err:
+                raise DockerTimeoutError(
+                    f"Timeout occurred while inspecting image {self.image}:{version!s}"
+                ) from err
             except aiodocker.DockerError as err:
                 if err.status != HTTPStatus.NOT_FOUND:
                     raise DockerAPIError(
