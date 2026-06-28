@@ -105,6 +105,7 @@ class IssueType(StrEnum):
     NTP_SYNC_FAILED = "ntp_sync_failed"
     PWNED = "pwned"
     REBOOT_REQUIRED = "reboot_required"
+    RPI_FIRMWARE_UPDATE_AVAILABLE = "rpi_firmware_update_available"
     RPI_FIRMWARE_UPDATE_BLOCKED = "rpi_firmware_update_blocked"
     SECURITY = "security"
     UPDATE_FAILED = "update_failed"
@@ -132,3 +133,4 @@ class SuggestionType(StrEnum):
     EXECUTE_UPDATE = "execute_update"
     REGISTRY_LOGIN = "registry_login"
     RENAME_DATA_DISK = "rename_data_disk"
+    UPDATE_RPI_FIRMWARE = "update_rpi_firmware"

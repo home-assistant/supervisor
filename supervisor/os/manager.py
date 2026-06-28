@@ -22,6 +22,7 @@ from ..exceptions import (
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.utils import dismiss_rpi_firmware_update_issues
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -374,6 +375,7 @@ class OSManager(CoreSysAttributes):
             ) from err
 
         _LOGGER.info("Raspberry Pi firmware update completed; reboot required")
+        dismiss_rpi_firmware_update_issues(self.coresys)
         self.sys_resolution.create_issue(
             IssueType.REBOOT_REQUIRED,
             ContextType.SYSTEM,

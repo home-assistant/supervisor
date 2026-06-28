@@ -574,6 +574,7 @@ async def test_api_config_swap_old_os(
 @pytest.mark.usefixtures("os_agent_version")
 async def test_api_board_raspberrypi_info(
     api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
     os_available,
 ):
@@ -591,6 +592,26 @@ async def test_api_board_raspberrypi_info(
         "update_pending": False,
         "blocked_reason": None,
     }
+    issue = Issue(
+        IssueType.RPI_FIRMWARE_UPDATE_AVAILABLE,
+        ContextType.SYSTEM,
+        reference_extra={
+            "current_version": "1618412973",
+            "latest_version": "1700000000",
+        },
+    )
+    assert issue in coresys.resolution.issues
+    assert (
+        Suggestion(
+            SuggestionType.UPDATE_RPI_FIRMWARE,
+            ContextType.SYSTEM,
+            reference_extra={
+                "current_version": "1618412973",
+                "latest_version": "1700000000",
+            },
+        )
+        in coresys.resolution.suggestions
+    )
 
 
 @pytest.mark.usefixtures("os_agent_version")
@@ -609,7 +630,15 @@ async def test_api_board_raspberrypi_info_blocked_creates_issue(
     resp = await api_client.get(f"{prefix}/os/boards/raspberrypi/firmware")
     assert resp.status == 200
     assert (
-        Issue(IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM)
+        Issue(
+            IssueType.RPI_FIRMWARE_UPDATE_BLOCKED,
+            ContextType.SYSTEM,
+            reference_extra={
+                "current_version": "1618412973",
+                "latest_version": "1700000000",
+                "blocked_reason": "unsupported_boot_device",
+            },
+        )
         in coresys.resolution.issues
     )
 
@@ -618,10 +647,12 @@ async def test_api_board_raspberrypi_info_blocked_creates_issue(
     await coresys.dbus.agent.board.rpi_firmware.update()
     resp = await api_client.get(f"{prefix}/os/boards/raspberrypi/firmware")
     assert resp.status == 200
-    assert (
-        Issue(IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM)
-        not in coresys.resolution.issues
-    )
+    assert not [
+        issue
+        for issue in coresys.resolution.issues
+        if issue.type == IssueType.RPI_FIRMWARE_UPDATE_BLOCKED
+        and issue.context == ContextType.SYSTEM
+    ]
 
 
 @pytest.mark.usefixtures("os_agent_version")
@@ -635,6 +666,11 @@ async def test_api_board_raspberrypi_update(
     api_client, prefix = api_client_with_prefix
     rpi_service: RPiFirmwareService = os_agent_services["agent_boards_rpi_firmware"]
     assert rpi_service.update_called is False
+    coresys.resolution.create_issue(
+        IssueType.RPI_FIRMWARE_UPDATE_AVAILABLE,
+        ContextType.SYSTEM,
+        suggestions=[SuggestionType.UPDATE_RPI_FIRMWARE],
+    )
 
     resp = await api_client.post(f"{prefix}/os/boards/raspberrypi/firmware/update")
     assert resp.status == 200
@@ -649,6 +685,12 @@ async def test_api_board_raspberrypi_update(
         Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
         in coresys.resolution.suggestions
     )
+    assert not [
+        issue
+        for issue in coresys.resolution.issues
+        if issue.type == IssueType.RPI_FIRMWARE_UPDATE_AVAILABLE
+        and issue.context == ContextType.SYSTEM
+    ]
 
 
 @pytest.mark.usefixtures("os_agent_version")
@@ -668,7 +710,15 @@ async def test_api_board_raspberrypi_update_blocked(
     assert resp.status == 400
     assert rpi_service.update_called is False
     assert (
-        Issue(IssueType.RPI_FIRMWARE_UPDATE_BLOCKED, ContextType.SYSTEM)
+        Issue(
+            IssueType.RPI_FIRMWARE_UPDATE_BLOCKED,
+            ContextType.SYSTEM,
+            reference_extra={
+                "current_version": "1618412973",
+                "latest_version": "1700000000",
+                "blocked_reason": "unsupported_boot_device",
+            },
+        )
         in coresys.resolution.issues
     )
     # No reboot issue should be raised when the update was rejected.
