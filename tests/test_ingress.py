@@ -73,14 +73,17 @@ async def test_dynamic_ports(coresys: CoreSys):
 
 async def test_dynamic_port_avoids_reserved_ports(coresys: CoreSys):
     """Test dynamic port allocation avoids the app's own mapped ports."""
-    # Reserve all but a single port from the range so the only valid choice
-    # is the one not reserved.
-    reserved_ports = set(range(62000, 65501)) - {62345}
+    with (
+        patch("supervisor.ingress.check_port", return_value=False),
+        patch(
+            "supervisor.ingress.random.randint", side_effect=[62345, 62346]
+        ) as randint,
+    ):
+        port = await coresys.ingress.get_dynamic_port("test", {62345})
 
-    port = await coresys.ingress.get_dynamic_port("test", reserved_ports)
-
-    assert port == 62345
-    assert port not in reserved_ports
+    # First draw hits the reserved port and is rejected, second is accepted.
+    assert randint.call_count == 2
+    assert port == 62346
 
 
 async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
