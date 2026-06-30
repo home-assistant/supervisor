@@ -236,6 +236,13 @@ class Systemd(DBusInterfaceProxy):
         return await self.connected_dbus.Manager.call("list_units")
 
     @dbus_connected
+    async def list_units_filtered(
+        self, states: list[str]
+    ) -> list[tuple[str, str, str, str, str, str, str, int, str, str]]:
+        """Return a list of available systemd services filtered by state."""
+        return await self.connected_dbus.Manager.call("list_units_filtered", states)
+
+    @dbus_connected
     async def get_system_state(self) -> SystemState:
         """Return the systemd manager state."""
         return SystemState(await self.connected_dbus.Manager.get("system_state"))
