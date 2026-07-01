@@ -53,10 +53,12 @@ from .const import (
     MOUNT_DOCKER,
     MOUNT_UDEV,
     PATH_ALL_ADDON_CONFIGS,
+    PATH_ALL_APP_CONFIGS,
     PATH_BACKUP,
     PATH_HOMEASSISTANT_CONFIG,
     PATH_HOMEASSISTANT_CONFIG_LEGACY,
     PATH_LOCAL_ADDONS,
+    PATH_LOCAL_APPS,
     PATH_MEDIA,
     PATH_PRIVATE_DATA,
     PATH_PUBLIC_CONFIG,
@@ -382,13 +384,18 @@ class DockerApp(DockerInterface):
         else:
             # Map app's public config folder if not using deprecated config option
             if self.app.app_config_used:
+                config_mapping_type = (
+                    MappingType.APP_CONFIG
+                    if MappingType.APP_CONFIG in app_mapping
+                    else MappingType.ADDON_CONFIG
+                )
                 mounts.append(
                     DockerMount(
                         type=MountType.BIND,
                         source=self.app.path_extern_config.as_posix(),
-                        target=app_mapping[MappingType.ADDON_CONFIG].path
+                        target=app_mapping[config_mapping_type].path
                         or PATH_PUBLIC_CONFIG.as_posix(),
-                        read_only=app_mapping[MappingType.ADDON_CONFIG].read_only,
+                        read_only=app_mapping[config_mapping_type].read_only,
                     )
                 )
 
@@ -406,14 +413,24 @@ class DockerApp(DockerInterface):
                     )
                 )
 
-        if MappingType.ALL_ADDON_CONFIGS in app_mapping:
+        all_app_configs_mapping_type = None
+        if MappingType.ALL_APP_CONFIGS in app_mapping:
+            all_app_configs_mapping_type = MappingType.ALL_APP_CONFIGS
+        elif MappingType.ALL_ADDON_CONFIGS in app_mapping:
+            all_app_configs_mapping_type = MappingType.ALL_ADDON_CONFIGS
+
+        if all_app_configs_mapping_type:
             mounts.append(
                 DockerMount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_app_configs.as_posix(),
-                    target=app_mapping[MappingType.ALL_ADDON_CONFIGS].path
-                    or PATH_ALL_ADDON_CONFIGS.as_posix(),
-                    read_only=app_mapping[MappingType.ALL_ADDON_CONFIGS].read_only,
+                    target=app_mapping[all_app_configs_mapping_type].path
+                    or (
+                        PATH_ALL_APP_CONFIGS.as_posix()
+                        if all_app_configs_mapping_type == MappingType.ALL_APP_CONFIGS
+                        else PATH_ALL_ADDON_CONFIGS.as_posix()
+                    ),
+                    read_only=app_mapping[all_app_configs_mapping_type].read_only,
                 )
             )
 
@@ -427,14 +444,24 @@ class DockerApp(DockerInterface):
                 )
             )
 
-        if MappingType.ADDONS in app_mapping:
+        apps_mapping_type = None
+        if MappingType.APPS in app_mapping:
+            apps_mapping_type = MappingType.APPS
+        elif MappingType.ADDONS in app_mapping:
+            apps_mapping_type = MappingType.ADDONS
+
+        if apps_mapping_type:
             mounts.append(
                 DockerMount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_apps_local.as_posix(),
-                    target=app_mapping[MappingType.ADDONS].path
-                    or PATH_LOCAL_ADDONS.as_posix(),
-                    read_only=app_mapping[MappingType.ADDONS].read_only,
+                    target=app_mapping[apps_mapping_type].path
+                    or (
+                        PATH_LOCAL_APPS.as_posix()
+                        if apps_mapping_type == MappingType.APPS
+                        else PATH_LOCAL_ADDONS.as_posix()
+                    ),
+                    read_only=app_mapping[apps_mapping_type].read_only,
                 )
             )
 

@@ -742,7 +742,10 @@ class App(AppModel):
     @property
     def app_config_used(self) -> bool:
         """App is using its public config folder."""
-        return MappingType.ADDON_CONFIG in self.map_volumes
+        return (
+            MappingType.APP_CONFIG in self.map_volumes
+            or MappingType.ADDON_CONFIG in self.map_volumes
+        )
 
     @property
     def path_config(self) -> Path:
