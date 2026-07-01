@@ -191,6 +191,36 @@ def test_app_map_app_configs_folder(
 
 
 @pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize(
+    ("mapping", "target"),
+    [
+        ("all_addon_configs", "/addon_configs"),
+        ("all_app_configs", "/app_configs"),
+    ],
+)
+def test_app_map_all_configs_folder_targets(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    mapping: str,
+    target: str,
+):
+    """Test app/all-app configs mappings resolve to expected default targets."""
+    config = load_json_fixture("app-config-map-app_config.json")
+    config["map"].append(mapping)
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    assert (
+        DockerMount(
+            type=MountType.BIND,
+            source=coresys.config.path_extern_app_configs.as_posix(),
+            target=target,
+            read_only=True,
+        )
+        in docker_app.mounts
+    )
+
+
+@pytest.mark.usefixtures("path_extern")
 def test_app_map_app_config_folder(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
@@ -233,6 +263,87 @@ def test_app_map_app_config_folder_with_custom_target(
         )
         in docker_app.mounts
     )
+
+
+@pytest.mark.usefixtures("path_extern")
+def test_app_map_app_config_folder_with_custom_target_new_map_type(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test app_config map type uses app's public config folder with custom target."""
+    config = load_json_fixture("app-config-map-app_config.json")
+    config["map"].remove("addon_config")
+    config["map"].append(
+        {"type": "app_config", "read_only": False, "path": "/custom/target/path"}
+    )
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    assert (
+        DockerMount(
+            type=MountType.BIND,
+            source=docker_app.app.path_extern_config.as_posix(),
+            target="/custom/target/path",
+            read_only=False,
+        )
+        in docker_app.mounts
+    )
+
+
+@pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize(
+    ("app_mapping", "legacy_mapping", "source", "app_target", "legacy_target"),
+    [
+        (
+            "apps",
+            "addons",
+            "path_extern_apps_local",
+            "/apps/selected",
+            "/addons/ignored",
+        ),
+        (
+            "all_app_configs",
+            "all_addon_configs",
+            "path_extern_app_configs",
+            "/app_configs/selected",
+            "/addon_configs/ignored",
+        ),
+        (
+            "app_config",
+            "addon_config",
+            "path_extern_config",
+            "/app_config/selected",
+            "/addon_config/ignored",
+        ),
+    ],
+)
+def test_app_map_prefers_app_mapping_over_legacy_when_both_present(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    app_mapping: str,
+    legacy_mapping: str,
+    source: str,
+    app_target: str,
+    legacy_target: str,
+):
+    """When both app and legacy map types are present, the legacy mount is ignored."""
+    config = load_json_fixture("basic-app-config.json")
+    config["map"] = [
+        {"type": legacy_mapping, "read_only": True, "path": legacy_target},
+        {"type": app_mapping, "read_only": False, "path": app_target},
+    ]
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    assert (
+        DockerMount(
+            type=MountType.BIND,
+            source=getattr(coresys.config, source).as_posix()
+            if source != "path_extern_config"
+            else docker_app.app.path_extern_config.as_posix(),
+            target=app_target,
+            read_only=False,
+        )
+        in docker_app.mounts
+    )
+    assert legacy_target not in [mount.target for mount in docker_app.mounts]
 
 
 @pytest.mark.usefixtures("path_extern")
