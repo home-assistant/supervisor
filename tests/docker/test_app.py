@@ -220,6 +220,36 @@ def test_app_map_all_configs_folder_targets(
 
 
 @pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize(
+    ("mapping", "target"),
+    [
+        ("addons", "/addons"),
+        ("apps", "/apps"),
+    ],
+)
+def test_app_map_apps_folder_targets(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    mapping: str,
+    target: str,
+):
+    """Test apps/addons mappings resolve to expected default targets."""
+    config = load_json_fixture("app-config-map-app_config.json")
+    config["map"].append(mapping)
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    assert (
+        DockerMount(
+            type=MountType.BIND,
+            source=coresys.config.path_extern_apps_local.as_posix(),
+            target=target,
+            read_only=True,
+        )
+        in docker_app.mounts
+    )
+
+
+@pytest.mark.usefixtures("path_extern")
 def test_app_map_app_config_folder(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
