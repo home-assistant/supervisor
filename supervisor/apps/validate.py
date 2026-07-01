@@ -133,7 +133,7 @@ from .options import RE_SCHEMA_ELEMENT
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(
-    r"^(data|config|ssl|addons|backup|share|media|homeassistant_config|all_addon_configs|addon_config)(?::(rw|ro))?$"
+    r"^(data|config|ssl|apps|addons|backup|share|media|homeassistant_config|all_app_configs|all_addon_configs|app_config|addon_config)(?::(rw|ro))?$"
 )
 RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
 
@@ -246,6 +246,22 @@ def _warn_app_config(config: dict[str, Any]):
             "App '%s' uses deprecated 'codenotary' field in config. This field is no longer used and will be ignored. Please report this to the maintainer.",
             name,
         )
+
+    # Deprecated map types, deprecated as of 2026.07
+    _LEGACY_MAP_TYPES = {
+        MappingType.ADDONS: MappingType.APPS,
+        MappingType.ALL_ADDON_CONFIGS: MappingType.ALL_APP_CONFIGS,
+        MappingType.ADDON_CONFIG: MappingType.APP_CONFIG,
+    }
+    for volume in config.get(ATTR_MAP, []):
+        volume_type = volume.get(ATTR_TYPE) if isinstance(volume, dict) else None
+        if volume_type in _LEGACY_MAP_TYPES:
+            _LOGGER.warning(
+                "App '%s' uses legacy map type '%s'. Please update to '%s'. Please report this to the maintainer.",
+                name,
+                volume_type,
+                _LEGACY_MAP_TYPES[volume_type],
+            )
 
     # Dynamic ingress port selection (ingress_port: 0) picks a random port from
     # the INGRESS_DYNAMIC_PORT_MIN-INGRESS_DYNAMIC_PORT_MAX range. An app must
@@ -391,6 +407,26 @@ def _migrate_app_config(protocol=False):
                     "App config using deprecated map option '%s' instead of '%s'. Please report this to the maintainer of %s",
                     MappingType.CONFIG,
                     MappingType.HOMEASSISTANT_CONFIG,
+                    name,
+                )
+
+        # 2026-07 addon-based map options replaced by app-based options.
+        for app_mapping_type, legacy_mapping_type in (
+            (MappingType.APPS, MappingType.ADDONS),
+            (MappingType.ALL_APP_CONFIGS, MappingType.ALL_ADDON_CONFIGS),
+            (MappingType.APP_CONFIG, MappingType.ADDON_CONFIG),
+        ):
+            if any(
+                volume and volume[ATTR_TYPE] == app_mapping_type for volume in volumes
+            ) and any(
+                volume and volume[ATTR_TYPE] == legacy_mapping_type
+                for volume in volumes
+            ):
+                _LOGGER.warning(
+                    "App config using incompatible map options, '%s' and '%s'. Legacy option '%s' will be ignored. Please report this to the maintainer of %s",
+                    app_mapping_type,
+                    legacy_mapping_type,
+                    legacy_mapping_type,
                     name,
                 )
 
