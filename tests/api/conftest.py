@@ -76,20 +76,15 @@ async def _common_test_api_advanced_logs(
     )
     journald_logs.return_value.__aenter__.return_value = mock_response
 
-    identifiers = (
-        [syslog_identifier] if isinstance(syslog_identifier, str) else syslog_identifier
-    )
-
     resp = await api_client.get(f"{path_prefix}/logs/latest")
     assert resp.status == 200
 
-    assert journald_logs.call_count == len(identifiers) + 1
+    assert journald_logs.call_count == 2
 
-    # Check the calls for getting epoch(s)
-    for idx, identifier in enumerate(identifiers):
-        epoch_call = journald_logs.call_args_list[idx]
-        assert epoch_call[1]["params"] == {"CONTAINER_NAME": identifier}
-        assert epoch_call[1]["range_header"] == "entries=:-1:2"
+    # Check the call for getting epoch(s)
+    epoch_call = journald_logs.call_args_list[0]
+    assert epoch_call[1]["params"] == {"CONTAINER_NAME": syslog_identifier}
+    assert epoch_call[1]["range_header"] == "entries=:-1:2"
 
     # Check the second call for getting logs with the epoch
     logs_call = journald_logs.call_args_list[-1]

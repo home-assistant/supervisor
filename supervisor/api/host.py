@@ -231,12 +231,13 @@ class APIHost(CoreSysAttributes):
                     "Latest logs can only be fetched for a specific identifier."
                 )
 
-            identifiers = [identifier] if isinstance(identifier, str) else identifier
-
             try:
-                epoch = await self._get_latest_container_epoch(identifiers)
+                epoch = await self._get_container_last_epoch(identifier)
                 params["CONTAINER_LOG_EPOCH"] = epoch
             except HostLogError as err:
+                identifiers = (
+                    [identifier] if isinstance(identifier, str) else identifier
+                )
                 raise APIError(
                     "Cannot determine CONTAINER_LOG_EPOCH of "
                     f"{', '.join(identifiers)}, latest logs not available."
@@ -337,28 +338,6 @@ class APIHost(CoreSysAttributes):
             request, identifier, follow, latest, no_colors, default_verbose
         )
 
-    async def _get_latest_container_epoch(self, identifiers: list[str]) -> str:
-        """Get newest available container log epoch from one or more identifiers."""
-        latest_epoch: int | None = None
-
-        for identifier in identifiers:
-            try:
-                epoch = await self._get_container_last_epoch(identifier)
-                if epoch is None:
-                    continue
-                latest_epoch = max(latest_epoch or 0, int(epoch))
-            except (HostLogError, ValueError, TypeError):
-                # One identifier may not have logs yet during migration; try others.
-                continue
-
-        if latest_epoch is None:
-            raise HostLogError(
-                "Could not get last container epoch from systemd-journal-gatewayd",
-                _LOGGER.error,
-            )
-
-        return str(latest_epoch)
-
     @api_process
     async def disk_usage(self, request: web.Request) -> dict[str, Any]:
         """Return a breakdown of storage usage for the system."""
@@ -409,8 +388,8 @@ class APIHost(CoreSysAttributes):
             ],
         }
 
-    async def _get_container_last_epoch(self, identifier: str) -> str | None:
-        """Get Docker's internal log epoch of the latest log entry for the given identifier."""
+    async def _get_container_last_epoch(self, identifier: str | list[str]) -> str:
+        """Get Docker's internal log epoch of the latest log entry for given identifier(s)."""
         try:
             async with self.sys_host.logs.journald_logs(
                 params={"CONTAINER_NAME": identifier},
@@ -428,7 +407,9 @@ class APIHost(CoreSysAttributes):
         try:
             return json.loads(text.strip().split("\n")[-1])["CONTAINER_LOG_EPOCH"]
         except (json.JSONDecodeError, KeyError, IndexError) as err:
+            identifiers = [identifier] if isinstance(identifier, str) else identifier
             raise HostLogError(
-                f"Failed to parse CONTAINER_LOG_EPOCH of {identifier} container, got: {text}",
+                "Failed to parse CONTAINER_LOG_EPOCH of "
+                f"{', '.join(identifiers)} container, got: {text}",
                 _LOGGER.error,
             ) from err
