@@ -1,5 +1,6 @@
 """Init file for Supervisor app data."""
 
+import asyncio
 from dataclasses import dataclass
 import errno
 import logging
@@ -111,22 +112,10 @@ class StoreData(CoreSysAttributes):
 
     async def update(self) -> None:
         """Read data from app repository."""
-        # read core repository
-        apps = await self._read_apps_folder(
-            self.sys_config.path_apps_core, REPOSITORY_CORE
-        )
-
-        # read local repository
-        apps.update(
-            await self._read_apps_folder(
-                self.sys_config.path_apps_local, REPOSITORY_LOCAL
-            )
-        )
-
         # add built-in repositories information
         repositories = await self.sys_run_in_executor(self._get_builtin_repositories)
 
-        # read custom git repositories
+        # discover custom git repositories
         def _read_git_repositories() -> list[ProcessedRepository]:
             return [
                 repo
@@ -135,9 +124,25 @@ class StoreData(CoreSysAttributes):
                 and (repo := _read_git_repository(repository_element))
             ]
 
-        for repo in await self.sys_run_in_executor(_read_git_repositories):
+        git_repositories = await self.sys_run_in_executor(_read_git_repositories)
+        for repo in git_repositories:
             repositories[repo.slug] = repo.config
-            apps.update(await self._read_apps_folder(repo.path, repo.slug))
+
+        # Read all repository app folders in parallel; they are independent and
+        # each produces apps under its own repository-prefixed slug.
+        folders = [
+            (self.sys_config.path_apps_core, REPOSITORY_CORE),
+            (self.sys_config.path_apps_local, REPOSITORY_LOCAL),
+            *((repo.path, repo.slug) for repo in git_repositories),
+        ]
+        folder_apps = await asyncio.gather(
+            *(self._read_apps_folder(path, slug) for path, slug in folders)
+        )
+
+        # Merge in folder order to preserve the previous precedence
+        apps: dict[str, dict[str, Any]] = {}
+        for result in folder_apps:
+            apps.update(result)
 
         self.repositories = repositories
         self.apps = apps
