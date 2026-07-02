@@ -612,8 +612,11 @@ class RestAPI(CoreSysAttributes):
 
             @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
             async def get_app_logs(request, *args, **kwargs):
-                addon = api_apps.get_app_for_request(request)
-                kwargs["identifier"] = f"addon_{addon.slug}"
+                app_obj = api_apps.get_app_for_request(request)
+                kwargs["identifier"] = [
+                    f"addon_{app_obj.slug}",
+                    f"app_{app_obj.slug}",
+                ]
                 return await self._api_host.advanced_logs(request, *args, **kwargs)
 
             # Legacy routing to support requests for not installed apps
@@ -673,8 +676,11 @@ class RestAPI(CoreSysAttributes):
 
             @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
             async def get_app_logs_v2(request, *args, **kwargs):
-                addon = api_apps.get_app_for_request(request)
-                kwargs["identifier"] = f"addon_{addon.slug}"
+                app_obj = api_apps.get_app_for_request(request)
+                kwargs["identifier"] = [
+                    f"addon_{app_obj.slug}",
+                    f"app_{app_obj.slug}",
+                ]
                 return await self._api_host.advanced_logs(request, *args, **kwargs)
 
             app.add_routes(
