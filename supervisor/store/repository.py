@@ -21,6 +21,7 @@ from ..exceptions import (
     ConfigurationFileError,
     StoreError,
     StoreGitError,
+    StoreInvalidAppRepo,
     StoreRepositoryLocalCannotReset,
     StoreRepositoryUnknownError,
 )
@@ -207,6 +208,17 @@ class RepositoryGit(Repository, ABC):
         except StoreGitError as err:
             _LOGGER.error("Can't reset repository %s: %s", self.slug, err)
             raise StoreRepositoryUnknownError(repo=self.slug) from err
+
+        # A reset only recovers a corrupt local copy. If the freshly cloned
+        # repository still doesn't validate, the problem is upstream (for
+        # example the repository configuration was removed), so report the
+        # failure instead of silently considering it fixed.
+        if not await self.validate():
+            raise StoreInvalidAppRepo(
+                f"Repository {self.slug} is still not a valid app repository "
+                "after reset",
+                logger=_LOGGER.error,
+            )
 
 
 class RepositoryLocal(RepositoryBuiltin):
