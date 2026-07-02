@@ -367,13 +367,13 @@ class Core(CoreSysAttributes):
     async def teardown_services(
         self, *, remove_homeassistant_container: bool = False
     ) -> None:
-        """Stop all add-ons and Home Assistant Core in correct order.
+        """Stop all apps and Home Assistant Core in correct order.
 
         Does not change Core state and does not stop plugins. Used during
         backup restore (state stays FREEZE, plugins keep running) and as
         the inner step of shutdown().
         """
-        # Stop application add-ons (using Home Assistant API)
+        # Stop application apps (using Home Assistant API)
         await self.sys_apps.shutdown(AppStartup.APPLICATION)
 
         # Close Home Assistant Core
@@ -382,7 +382,7 @@ class Core(CoreSysAttributes):
                 remove_container=remove_homeassistant_container
             )
 
-        # Stop system add-ons
+        # Stop system apps
         await self.sys_apps.shutdown(AppStartup.SERVICES)
         await self.sys_apps.shutdown(AppStartup.SYSTEM)
         await self.sys_apps.shutdown(AppStartup.INITIALIZE)
