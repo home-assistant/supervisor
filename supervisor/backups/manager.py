@@ -976,7 +976,7 @@ class BackupManager(FileConfiguration, JobGroup):
             *[app.is_running() for app in installed]
         )
         running_apps = [
-            installed[ind] for ind in range(len(installed)) if is_running[ind]
+            app for app, running in zip(installed, is_running, strict=True) if running
         ]
 
         # Create thaw task first to ensure we eventually undo freezes even if the below fails
