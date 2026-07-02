@@ -815,7 +815,7 @@ class HostContainerLogEpochError(APIUnknownSupervisorError, HostLogError):
     """Failed to determine container log epoch via journald."""
 
     error_key = "host_container_log_epoch_error"
-    message_template = "Cannot determine CONTAINER_LOG_EPOCH of {identifiers}"
+    message_template = "Cannot determine {symbol} of {identifiers}"
 
     def __init__(
         self,
@@ -824,7 +824,10 @@ class HostContainerLogEpochError(APIUnknownSupervisorError, HostLogError):
         identifiers: list[str],
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"identifiers": ", ".join(identifiers)}
+        self.extra_fields = {
+            "symbol": "CONTAINER_LOG_EPOCH",
+            "identifiers": ", ".join(identifiers),
+        }
         super().__init__(logger)
 
 
