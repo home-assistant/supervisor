@@ -19,7 +19,7 @@ DEFAULT_LOG_RANGE_FOLLOW = "entries=:-99:18446744073709551615"
 
 async def _common_test_api_advanced_logs(
     path_prefix: str,
-    syslog_identifier: str,
+    syslog_identifier: str | list[str],
     formatter: LogFormatter,
     api_client: TestClient,
     journald_logs: MagicMock,
@@ -76,18 +76,23 @@ async def _common_test_api_advanced_logs(
     )
     journald_logs.return_value.__aenter__.return_value = mock_response
 
+    identifiers = (
+        [syslog_identifier] if isinstance(syslog_identifier, str) else syslog_identifier
+    )
+
     resp = await api_client.get(f"{path_prefix}/logs/latest")
     assert resp.status == 200
 
-    assert journald_logs.call_count == 2
+    assert journald_logs.call_count == len(identifiers) + 1
 
-    # Check the first call for getting epoch
-    epoch_call = journald_logs.call_args_list[0]
-    assert epoch_call[1]["params"] == {"CONTAINER_NAME": syslog_identifier}
-    assert epoch_call[1]["range_header"] == "entries=:-1:2"
+    # Check the calls for getting epoch(s)
+    for idx, identifier in enumerate(identifiers):
+        epoch_call = journald_logs.call_args_list[idx]
+        assert epoch_call[1]["params"] == {"CONTAINER_NAME": identifier}
+        assert epoch_call[1]["range_header"] == "entries=:-1:2"
 
     # Check the second call for getting logs with the epoch
-    logs_call = journald_logs.call_args_list[1]
+    logs_call = journald_logs.call_args_list[-1]
     assert logs_call[1]["params"]["SYSLOG_IDENTIFIER"] == syslog_identifier
     assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"
     assert logs_call[1]["range_header"] == "entries=:0:18446744073709551615"
@@ -143,7 +148,7 @@ async def advanced_logs_tester(
 
     async def test_logs(
         path_prefix: str,
-        syslog_identifier: str,
+        syslog_identifier: str | list[str],
         formatter: LogFormatter = LogFormatter.PLAIN,
         *,
         v2_path_prefix: str | None = None,

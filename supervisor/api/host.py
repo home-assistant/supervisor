@@ -204,7 +204,7 @@ class APIHost(CoreSysAttributes):
     async def advanced_logs_handler(
         self,
         request: web.Request,
-        identifier: str | None = None,
+        identifier: str | list[str] | None = None,
         follow: bool = False,
         latest: bool = False,
         no_colors: bool = False,
@@ -231,12 +231,15 @@ class APIHost(CoreSysAttributes):
                     "Latest logs can only be fetched for a specific identifier."
                 )
 
+            identifiers = [identifier] if isinstance(identifier, str) else identifier
+
             try:
-                epoch = await self._get_container_last_epoch(identifier)
+                epoch = await self._get_latest_container_epoch(identifiers)
                 params["CONTAINER_LOG_EPOCH"] = epoch
             except HostLogError as err:
                 raise APIError(
-                    f"Cannot determine CONTAINER_LOG_EPOCH of {identifier}, latest logs not available."
+                    "Cannot determine CONTAINER_LOG_EPOCH of "
+                    f"{', '.join(identifiers)}, latest logs not available."
                 ) from err
 
         accept_header = request.headers.get(ACCEPT)
@@ -323,7 +326,7 @@ class APIHost(CoreSysAttributes):
     async def advanced_logs(
         self,
         request: web.Request,
-        identifier: str | None = None,
+        identifier: str | list[str] | None = None,
         follow: bool = False,
         latest: bool = False,
         no_colors: bool = False,
@@ -333,6 +336,28 @@ class APIHost(CoreSysAttributes):
         return await self.advanced_logs_handler(
             request, identifier, follow, latest, no_colors, default_verbose
         )
+
+    async def _get_latest_container_epoch(self, identifiers: list[str]) -> str:
+        """Get newest available container log epoch from one or more identifiers."""
+        latest_epoch: int | None = None
+
+        for identifier in identifiers:
+            try:
+                epoch = await self._get_container_last_epoch(identifier)
+                if epoch is None:
+                    continue
+                latest_epoch = max(latest_epoch or 0, int(epoch))
+            except (HostLogError, ValueError, TypeError):
+                # One identifier may not have logs yet during migration; try others.
+                continue
+
+        if latest_epoch is None:
+            raise HostLogError(
+                "Could not get last container epoch from systemd-journal-gatewayd",
+                _LOGGER.error,
+            )
+
+        return str(latest_epoch)
 
     @api_process
     async def disk_usage(self, request: web.Request) -> dict[str, Any]:
