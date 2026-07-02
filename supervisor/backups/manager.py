@@ -975,7 +975,9 @@ class BackupManager(FileConfiguration, JobGroup):
         is_running: list[bool] = await asyncio.gather(
             *[app.is_running() for app in installed]
         )
-        running_apps = [app for app, running in zip(installed, is_running, strict=True) if running]
+        running_apps = [
+            app for app, running in zip(installed, is_running, strict=True) if running
+        ]
 
         # Create thaw task first to ensure we eventually undo freezes even if the below fails
         self._thaw_task = asyncio.shield(
