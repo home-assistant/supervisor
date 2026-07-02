@@ -60,6 +60,12 @@ async def test_check_frontend_connection_error(coresys: CoreSys, websession: Mag
     assert await check_frontend(coresys) is ProbeResult.NO_RESPONSE
 
 
+async def test_check_frontend_timeout(coresys: CoreSys, websession: MagicMock):
+    """Frontend check returns BAD_RESPONSE on timeout (not a mutual-TLS reject)."""
+    websession.get = MagicMock(side_effect=TimeoutError())
+    assert await check_frontend(coresys) is ProbeResult.BAD_RESPONSE
+
+
 # --- check_websocket ---
 
 
@@ -95,6 +101,14 @@ async def test_check_websocket_connect_error(coresys: CoreSys, websession: Magic
     """Websocket check returns NO_RESPONSE if the handshake fails."""
     websession.ws_connect = AsyncMock(side_effect=aiohttp.ClientConnectionError("nope"))
     assert await check_websocket(coresys) is ProbeResult.NO_RESPONSE
+
+
+async def test_check_websocket_handshake_timeout(
+    coresys: CoreSys, websession: MagicMock
+):
+    """Websocket check returns BAD_RESPONSE on handshake timeout, not NO_RESPONSE."""
+    websession.ws_connect = AsyncMock(side_effect=TimeoutError())
+    assert await check_websocket(coresys) is ProbeResult.BAD_RESPONSE
 
 
 async def test_check_websocket_non_dict_payload(

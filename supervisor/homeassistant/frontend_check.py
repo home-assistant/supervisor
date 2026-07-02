@@ -30,13 +30,17 @@ _WS_RECEIVE_TIMEOUT = 10.0
 class ProbeResult(Enum):
     """Outcome of an external frontend probe.
 
-    The distinction between BAD_RESPONSE and NO_RESPONSE matters: a bad
-    response means we connected and the endpoint is genuinely broken (roll
-    back), while no response means the request never completed (the connection
-    dropped at the TLS handshake, transport, or read). The latter is expected
-    when Core requires a client certificate (`ssl_peer_certificate`) and
-    rejects our unauthenticated connection, so it must not by itself be
-    treated as a broken frontend.
+    The distinction between BAD_RESPONSE and NO_RESPONSE matters: both mean
+    the frontend is genuinely broken and warrant a rollback, except that
+    NO_RESPONSE is specifically a connection that was reset or dropped before
+    we got anything. That is exactly how Core rejects us when it requires a
+    client certificate (`ssl_peer_certificate`) that we don't present, so
+    NO_RESPONSE must not by itself be treated as a broken frontend.
+
+    A timeout is deliberately BAD_RESPONSE, not NO_RESPONSE: mutual TLS
+    rejects an unauthenticated connection within a few packets, so it never
+    manifests as a timeout. A probe that times out reached the listener but
+    never answered, which points to a real problem rather than mutual TLS.
     """
 
     OK = "ok"
@@ -61,7 +65,10 @@ async def check_frontend(coresys: CoreSys) -> ProbeResult:
                     content_type,
                 )
                 return ProbeResult.BAD_RESPONSE
-    except (aiohttp.ClientError, TimeoutError) as err:
+    except TimeoutError:
+        _LOGGER.error("Frontend at %s did not respond in time", url)
+        return ProbeResult.BAD_RESPONSE
+    except aiohttp.ClientError as err:
         _LOGGER.error("Cannot reach frontend at %s: %s", url, err)
         return ProbeResult.NO_RESPONSE
 
@@ -83,7 +90,10 @@ async def check_websocket(coresys: CoreSys) -> ProbeResult:
             coresys.websession.ws_connect(url, ssl=False),
             timeout=_WS_HANDSHAKE_TIMEOUT,
         )
-    except (aiohttp.ClientError, TimeoutError) as err:
+    except TimeoutError:
+        _LOGGER.error("WebSocket handshake with %s did not complete in time", url)
+        return ProbeResult.BAD_RESPONSE
+    except aiohttp.ClientError as err:
         _LOGGER.error("WebSocket probe to %s failed: %s", url, err)
         return ProbeResult.NO_RESPONSE
 
