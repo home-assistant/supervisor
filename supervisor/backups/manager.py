@@ -295,10 +295,16 @@ class BackupManager(FileConfiguration, JobGroup):
             if location == DEFAULT
             else {location_name: self.backup_locations[location_name]}
         )
+        # List the backup files of all locations in parallel; a slow or
+        # network-backed location should not hold up the others.
+        location_items = list(locations.items())
+        location_files = await asyncio.gather(
+            *(self._list_backup_files(path) for _, path in location_items)
+        )
         tasks = [
             self.sys_create_task(_load_backup(_location, tar_file))
-            for _location, path in locations.items()
-            for tar_file in await self._list_backup_files(path)
+            for (_location, _), tar_files in zip(location_items, location_files)
+            for tar_file in tar_files
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))

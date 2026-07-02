@@ -43,6 +43,7 @@ from ..exceptions import (
     DockerNoSpaceOnDevice,
     DockerNotFound,
     DockerRegistryRateLimitExceeded,
+    DockerTimeoutError,
 )
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
@@ -288,7 +289,12 @@ class DockerAPI(CoreSysAttributes):
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""
-        self._info = await DockerInfo.new(await self.docker.system.info())
+        try:
+            self._info = await DockerInfo.new(await self.docker.system.info())
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout while getting Docker information", _LOGGER.error
+            ) from err
         await self.config.read_data()
         self._network = await DockerNetwork(self.docker).post_init(
             self.config.enable_ipv6, self.config.mtu
@@ -457,6 +463,68 @@ class DockerAPI(CoreSysAttributes):
 
         return config
 
+    async def _setup_container_network(
+        self,
+        container: DockerContainer,
+        *,
+        name: str | None,
+        hostname: str | None,
+        network_mode: str | None,
+        networking_config: dict[str, Any] | None,
+        ipv4: IPv4Address | None,
+    ) -> None:
+        """Set up networking for container before start."""
+        if networking_config or network_mode not in ("host", None):
+            return
+
+        # Attach network
+        if not network_mode:
+            alias = [hostname] if hostname else None
+            try:
+                await self.network.attach_container(
+                    container.id, name, alias=alias, ipv4=ipv4
+                )
+            except DockerError:
+                _LOGGER.warning(
+                    "Can't attach %s to hassio-network!", name or container.id
+                )
+            else:
+                with suppress(DockerError):
+                    await self.network.detach_default_bridge(container.id, name)
+            return
+
+        try:
+            host_network = await self.docker.networks.get(DOCKER_NETWORK_HOST)
+            host_network_meta = await host_network.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout getting host network information from Docker",
+                _LOGGER.error,
+            ) from err
+        except aiodocker.DockerError as err:
+            raise DockerError(
+                f"Can't get host network information from Docker: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+        # Check if container is register on host
+        # https://github.com/moby/moby/issues/23302
+        if name and name in (
+            val.get("Name") for val in host_network_meta.get("Containers", {}).values()
+        ):
+            try:
+                await host_network.disconnect({"Container": name, "Force": True})
+            except TimeoutError as err:
+                raise DockerTimeoutError(
+                    f"Timeout disconnecting container {name} from host network",
+                    _LOGGER.error,
+                ) from err
+            except aiodocker.DockerError as err:
+                if err.status != HTTPStatus.NOT_FOUND:
+                    raise DockerError(
+                        f"Can't disconnect container {name} from host network: {err!s}"
+                    ) from err
+
     async def _run(
         self,
         image: str,
@@ -526,6 +594,10 @@ class DockerAPI(CoreSysAttributes):
         )
         try:
             container = await self.containers.create(config, name=name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout creating container from {image}:{tag}", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(
@@ -545,50 +617,22 @@ class DockerAPI(CoreSysAttributes):
             await self.sys_run_in_executor(setup_cidfile, cidfile_path)
 
         # Setup network for host and default modes
-        if not networking_config and network_mode in ("host", None):
-            # Attach network
-            if not network_mode:
-                alias = [hostname] if hostname else None
-                try:
-                    await self.network.attach_container(
-                        container.id, name, alias=alias, ipv4=ipv4
-                    )
-                except DockerError:
-                    _LOGGER.warning(
-                        "Can't attach %s to hassio-network!", name or container.id
-                    )
-                else:
-                    with suppress(DockerError):
-                        await self.network.detach_default_bridge(container.id, name)
-            else:
-                try:
-                    host_network = await self.docker.networks.get(DOCKER_NETWORK_HOST)
-                    host_network_meta = await host_network.show()
-                except aiodocker.DockerError as err:
-                    raise DockerError(
-                        f"Can't get host network information from Docker: {err!s}",
-                        _LOGGER.error,
-                    ) from err
-
-                # Check if container is register on host
-                # https://github.com/moby/moby/issues/23302
-                if name and name in (
-                    val.get("Name")
-                    for val in host_network_meta.get("Containers", {}).values()
-                ):
-                    try:
-                        await host_network.disconnect(
-                            {"Container": name, "Force": True}
-                        )
-                    except aiodocker.DockerError as err:
-                        if err.status != HTTPStatus.NOT_FOUND:
-                            raise DockerError(
-                                f"Can't disconnect container {name} from host network: {err!s}"
-                            ) from err
+        await self._setup_container_network(
+            container,
+            name=name,
+            hostname=hostname,
+            network_mode=network_mode,
+            networking_config=networking_config,
+            ipv4=ipv4,
+        )
 
         # Run container
         try:
             await container.start()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout starting {name or container.id}", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.INTERNAL_SERVER_ERROR and (
                 match := RE_PORT_CONFLICT_ERROR.match(err.message)
@@ -615,6 +659,10 @@ class DockerAPI(CoreSysAttributes):
         # Get container metadata after the container is started
         try:
             container_attrs = await container.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout inspecting started container {name}", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerAPIError(
                 f"Can't inspect started container {name}: {err}", _LOGGER.error
@@ -638,6 +686,10 @@ class DockerAPI(CoreSysAttributes):
         # Ensure image exists, pull if not found
         try:
             await self.images.inspect(f"{image}:{tag}")
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout inspecting image {image}:{tag}", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             if err.status != HTTPStatus.NOT_FOUND:
                 raise DockerError(
@@ -645,6 +697,7 @@ class DockerAPI(CoreSysAttributes):
                 ) from err
             _LOGGER.info("Pulling image %s:%s", image, tag)
             try:
+                # Timeout is disabled for pull operations by default, matching docker-py behavior.
                 await self.images.pull(image, tag=tag)
             except aiodocker.DockerError as pull_err:
                 raise DockerError(
@@ -662,12 +715,16 @@ class DockerAPI(CoreSysAttributes):
                 skip_cidfile=True,
                 **kwargs,
             )
+        except DockerError as err:
+            # _run() already logs the root cause when creating DockerError-derived exceptions.
+            # Re-raise here with command context without duplicating error-level logging.
+            raise DockerError(f"Can't execute command: {err}") from err
 
+        try:
             # wait until command is done
             result = await container.wait()
             log = await container.log(stdout=stdout, stderr=stderr, follow=False)
-
-        except (DockerError, aiodocker.DockerError) as err:
+        except aiodocker.DockerError as err:
             raise DockerError(f"Can't execute command: {err}", _LOGGER.error) from err
 
         finally:
@@ -693,10 +750,9 @@ class DockerAPI(CoreSysAttributes):
         raises only if the get fails afterwards. Additionally it fires progress reports for the pull
         on the bus so listeners can use that to update status for users.
         """
-        # Use timeout=None to disable timeout for pull operations, matching docker-py behavior.
-        # aiodocker converts None to ClientTimeout(total=None) which disables the timeout.
+        # Timeout is disabled for pull operations by default, matching docker-py behavior.
         async for e in self.images.pull(
-            repository, tag=tag, platform=platform, auth=auth, stream=True, timeout=None
+            repository, tag=tag, platform=platform, auth=auth, stream=True
         ):
             entry = PullLogEntry.from_pull_log_dict(job_id, e)
             if entry.error:
@@ -715,6 +771,8 @@ class DockerAPI(CoreSysAttributes):
         try:
             output = await self.docker.containers.prune()
             _LOGGER.debug("Containers prune: %s", output)
+        except TimeoutError:
+            _LOGGER.warning("Error for containers prune: timed out")
         except aiodocker.DockerError as err:
             _LOGGER.warning("Error for containers prune: %s", err)
 
@@ -722,6 +780,8 @@ class DockerAPI(CoreSysAttributes):
         try:
             output = await self.images.prune(filters={"dangling": "false"})
             _LOGGER.debug("Images prune: %s", output)
+        except TimeoutError:
+            _LOGGER.warning("Error for images prune: timed out")
         except aiodocker.DockerError as err:
             _LOGGER.warning("Error for images prune: %s", err)
 
@@ -729,6 +789,8 @@ class DockerAPI(CoreSysAttributes):
         try:
             output = await self.images.prune_builds()
             _LOGGER.debug("Builds prune: %s", output)
+        except TimeoutError:
+            _LOGGER.warning("Error for builds prune: timed out")
         except aiodocker.DockerError as err:
             _LOGGER.warning("Error for builds prune: %s", err)
 
@@ -736,6 +798,8 @@ class DockerAPI(CoreSysAttributes):
         try:
             output = await self.docker.volumes.prune()
             _LOGGER.debug("Volumes prune: %s", output)
+        except TimeoutError:
+            _LOGGER.warning("Error for volumes prune: timed out")
         except aiodocker.DockerError as err:
             _LOGGER.warning("Error for volumes prune: %s", err)
 
@@ -743,6 +807,8 @@ class DockerAPI(CoreSysAttributes):
         try:
             output = await self.docker.networks.prune()
             _LOGGER.debug("Networks prune: %s", output)
+        except TimeoutError:
+            _LOGGER.warning("Error for networks prune: timed out")
         except aiodocker.DockerError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
 
@@ -763,13 +829,24 @@ class DockerAPI(CoreSysAttributes):
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        network = await self.docker.networks.get(network_name)
-        network_meta = await network.show()
+        try:
+            network = await self.docker.networks.get(network_name)
+            network_meta = await network.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout loading network metadata for {network_name}",
+                _LOGGER.warning,
+            ) from err
 
         for cid, data in network_meta.get("Containers", {}).items():
             try:
                 await self.containers.get(cid)
                 continue
+            except TimeoutError as err:
+                raise DockerTimeoutError(
+                    f"Timeout checking container {cid} on {network_name}",
+                    _LOGGER.warning,
+                ) from err
             except aiodocker.DockerError as err:
                 if err.status != HTTPStatus.NOT_FOUND:
                     _LOGGER.warning(
@@ -783,7 +860,7 @@ class DockerAPI(CoreSysAttributes):
                 _LOGGER.debug(
                     "Docker network %s is corrupt on container: %s", network_name, cid
                 )
-                with suppress(aiodocker.DockerError):
+                with suppress(aiodocker.DockerError, TimeoutError):
                     await network.disconnect(
                         {"Container": data.get("Name", cid), "Force": True}
                     )
@@ -796,6 +873,11 @@ class DockerAPI(CoreSysAttributes):
             docker_container = await self.containers.get(name)
             container_metadata = await docker_container.show()
             docker_image = await self.images.inspect(f"{image}:{version}")
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting container {name} or image {image}:{version} to check state",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 return False
@@ -820,6 +902,11 @@ class DockerAPI(CoreSysAttributes):
         try:
             docker_container = await self.containers.get(name)
             container_metadata = await docker_container.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting container {name} for stopping",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 # Generally suppressed so we don't log this
@@ -847,6 +934,10 @@ class DockerAPI(CoreSysAttributes):
         """Start Docker container."""
         try:
             docker_container = await self.containers.get(name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting {name} for starting up", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(
@@ -859,6 +950,8 @@ class DockerAPI(CoreSysAttributes):
         _LOGGER.info("Starting %s", name)
         try:
             await docker_container.start()
+        except TimeoutError as err:
+            raise DockerTimeoutError(f"Timeout starting {name}", _LOGGER.error) from err
         except aiodocker.DockerError as err:
             raise DockerError(f"Can't start {name}: {err}", _LOGGER.error) from err
 
@@ -866,6 +959,11 @@ class DockerAPI(CoreSysAttributes):
         """Restart docker container."""
         try:
             container = await self.containers.get(name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting container {name} for restarting",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(
@@ -885,6 +983,10 @@ class DockerAPI(CoreSysAttributes):
         """Return Docker logs of container."""
         try:
             container = await self.containers.get(name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting container {name} for logs", _LOGGER.warning
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(
@@ -908,6 +1010,10 @@ class DockerAPI(CoreSysAttributes):
         try:
             docker_container = await self.containers.get(name)
             container_metadata = await docker_container.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout inspecting container '{name}'", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(
@@ -936,6 +1042,10 @@ class DockerAPI(CoreSysAttributes):
         """Execute a command inside Docker container."""
         try:
             docker_container = await self.containers.get(name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting container {name} to run command"
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(
@@ -975,6 +1085,10 @@ class DockerAPI(CoreSysAttributes):
             raise DockerError(
                 f"Can't run command in container {name}: {err!s}"
             ) from err
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout running command in container {name}", _LOGGER.error
+            ) from err
 
         _LOGGER.debug(
             "Exec command '%s' in %s exited with %d", command, name, exit_code
@@ -990,6 +1104,10 @@ class DockerAPI(CoreSysAttributes):
                 _LOGGER.info("Removing image %s with latest", image)
                 try:
                     await self.images.delete(f"{image}:latest", force=True)
+                except TimeoutError as err:
+                    raise DockerTimeoutError(
+                        f"Timeout removing image {image}:latest", _LOGGER.warning
+                    ) from err
                 except aiodocker.DockerError as err:
                     if err.status != HTTPStatus.NOT_FOUND:
                         raise
@@ -997,6 +1115,11 @@ class DockerAPI(CoreSysAttributes):
             _LOGGER.info("Removing image %s with %s", image, version)
             try:
                 await self.images.delete(f"{image}:{version!s}", force=True)
+            except TimeoutError as err:
+                raise DockerTimeoutError(
+                    f"Timeout removing image {image}:{version!s}",
+                    _LOGGER.warning,
+                ) from err
             except aiodocker.DockerError as err:
                 if err.status != HTTPStatus.NOT_FOUND:
                     raise
@@ -1050,6 +1173,10 @@ class DockerAPI(CoreSysAttributes):
 
         try:
             return await self.images.inspect(docker_image_list[0])
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout inspecting imported image", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Could not inspect imported image due to: {err!s}", _LOGGER.error
@@ -1098,6 +1225,11 @@ class DockerAPI(CoreSysAttributes):
         try:
             try:
                 image_attr = await self.images.inspect(image)
+            except TimeoutError as err:
+                raise DockerTimeoutError(
+                    f"Timeout getting {current_image} for cleanup",
+                    _LOGGER.warning,
+                ) from err
             except aiodocker.DockerError as err:
                 if err.status == HTTPStatus.NOT_FOUND:
                     raise DockerNotFound(
@@ -1136,6 +1268,10 @@ class DockerAPI(CoreSysAttributes):
         )
         try:
             images_list = await self.images.list(filters={"reference": image_names})
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout listing images for cleanup", _LOGGER.warning
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Corrupt docker overlayfs found: {err}", _LOGGER.warning
@@ -1145,6 +1281,6 @@ class DockerAPI(CoreSysAttributes):
             if docker_image["Id"] in keep:
                 continue
 
-            with suppress(aiodocker.DockerError):
+            with suppress(aiodocker.DockerError, TimeoutError):
                 _LOGGER.info("Cleanup images: %s", docker_image["RepoTags"])
                 await self.images.delete(docker_image["Id"], force=True)

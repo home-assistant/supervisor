@@ -43,6 +43,60 @@ class Systemd(DBusServiceMock):
     )
     mock_systemd_unit: SystemdUnit | None = None
 
+    @staticmethod
+    def _units() -> list[list[str | int]]:
+        """Return static unit rows in ListUnits shape."""
+        return [
+            [
+                "etc-machine\\x2did.mount",
+                "/etc/machine-id",
+                "loaded",
+                "active",
+                "mounted",
+                "",
+                "/org/freedesktop/systemd1/unit/etc_2dmachine_5cx2did_2emount",
+                0,
+                "",
+                "/",
+            ],
+            [
+                "firewalld.service",
+                "firewalld.service",
+                "not-found",
+                "inactive",
+                "dead",
+                "",
+                "/org/freedesktop/systemd1/unit/firewalld_2eservice",
+                0,
+                "",
+                "/",
+            ],
+            [
+                "sys-devices-virtual-tty-ttypd.device",
+                "/sys/devices/virtual/tty/ttypd",
+                "loaded",
+                "active",
+                "plugged",
+                "",
+                "/org/freedesktop/systemd1/unit/sys_2ddevices_2dvirtual_2dtty_2dttypd_2edevice",
+                0,
+                "",
+                "/",
+            ],
+            [
+                "zram-swap.service",
+                "HassOS ZRAM swap",
+                "loaded",
+                "active",
+                "exited",
+                "",
+                "/org/freedesktop/systemd1/unit/zram_2dswap_2eservice",
+                0,
+                "",
+                "/",
+            ],
+        ]
+
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":
         """Get Version."""
@@ -752,53 +806,17 @@ class Systemd(DBusServiceMock):
         self,
     ) -> "a(ssssssouso)":
         """Return a list of available services."""
+        return self._units()
+
+    @dbus_method()
+    def ListUnitsFiltered(self, states: "as") -> "a(ssssssouso)":
+        """Return a list of available services filtered by state."""
+        units = self._units()
+        if not states:
+            return units
+
         return [
-            [
-                "etc-machine\\x2did.mount",
-                "/etc/machine-id",
-                "loaded",
-                "active",
-                "mounted",
-                "",
-                "/org/freedesktop/systemd1/unit/etc_2dmachine_5cx2did_2emount",
-                0,
-                "",
-                "/",
-            ],
-            [
-                "firewalld.service",
-                "firewalld.service",
-                "not-found",
-                "inactive",
-                "dead",
-                "",
-                "/org/freedesktop/systemd1/unit/firewalld_2eservice",
-                0,
-                "",
-                "/",
-            ],
-            [
-                "sys-devices-virtual-tty-ttypd.device",
-                "/sys/devices/virtual/tty/ttypd",
-                "loaded",
-                "active",
-                "plugged",
-                "",
-                "/org/freedesktop/systemd1/unit/sys_2ddevices_2dvirtual_2dtty_2dttypd_2edevice",
-                0,
-                "",
-                "/",
-            ],
-            [
-                "zram-swap.service",
-                "HassOS ZRAM swap",
-                "loaded",
-                "active",
-                "exited",
-                "",
-                "/org/freedesktop/systemd1/unit/zram_2dswap_2eservice",
-                0,
-                "",
-                "/",
-            ],
+            unit
+            for unit in units
+            if unit[2] in states or unit[3] in states or unit[4] in states
         ]

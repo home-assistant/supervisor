@@ -122,6 +122,51 @@ def test_invalid_repository():
         vd.SCHEMA_APP_CONFIG(config)
 
 
+def test_dynamic_ingress_port_rejects_reserved_port():
+    """Validate dynamic ingress port rejects mapping a reserved port."""
+    config = load_json_fixture("basic-app-config.json")
+    config["ingress"] = True
+    config["ingress_port"] = 0
+
+    # A port inside the dynamic ingress range is rejected.
+    config["ports"] = {"63000/tcp": 8080}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_APP_CONFIG(config)
+
+    # The range boundaries are inclusive.
+    config["ports"] = {"62000/tcp": 8080}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_APP_CONFIG(config)
+
+    config["ports"] = {"65500/tcp": 8080}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_APP_CONFIG(config)
+
+
+def test_dynamic_ingress_port_allows_other_ports():
+    """Validate dynamic ingress port allows ports outside the reserved range."""
+    config = load_json_fixture("basic-app-config.json")
+    config["ingress"] = True
+    config["ingress_port"] = 0
+    config["ports"] = {"8080/tcp": 8080, "61999/tcp": 61999, "65501/tcp": 65501}
+
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
+
+    assert valid_config["ingress_port"] == 0
+
+
+def test_static_ingress_port_allows_reserved_port():
+    """Validate a static ingress port may still map a port in the range."""
+    config = load_json_fixture("basic-app-config.json")
+    config["ingress"] = True
+    config["ingress_port"] = 8099
+    config["ports"] = {"63000/tcp": 8080}
+
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
+
+    assert valid_config["ingress_port"] == 8099
+
+
 def test_valid_repository():
     """Validate basic config with different valid repositories."""
     config = load_json_fixture("basic-app-config.json")

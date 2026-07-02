@@ -328,23 +328,25 @@ class APIApps(CoreSysAttributes):
 
         # Validate/Process Body
         body = await api_validate(SCHEMA_OPTIONS, request)
+        if body.get(ATTR_OPTIONS) is not None:
+            # Validate options
+            try:
+                body[ATTR_OPTIONS] = app.schema(body[ATTR_OPTIONS])
+            except vol.Invalid as ex:
+                raise AppConfigurationInvalidError(
+                    app=app.slug,
+                    validation_error=humanize_error(body[ATTR_OPTIONS], ex),
+                ) from None
+        if ATTR_BOOT in body and app.boot_config == AppBootConfig.MANUAL_ONLY:
+            raise AppBootConfigCannotChangeError(
+                app=app.slug, boot_config=app.boot_config.value
+            )
+
+        # Process options changes now that validation has passed
+        # This way we don't risk leaving the app in a half-configured state if validation fails
         if ATTR_OPTIONS in body:
-            # None resets options to defaults, otherwise validate the options
-            if body[ATTR_OPTIONS] is None:
-                app.options = None
-            else:
-                try:
-                    app.options = app.schema(body[ATTR_OPTIONS])
-                except vol.Invalid as ex:
-                    raise AppConfigurationInvalidError(
-                        app=app.slug,
-                        validation_error=humanize_error(body[ATTR_OPTIONS], ex),
-                    ) from None
+            app.options = body[ATTR_OPTIONS]
         if ATTR_BOOT in body:
-            if app.boot_config == AppBootConfig.MANUAL_ONLY:
-                raise AppBootConfigCannotChangeError(
-                    app=app.slug, boot_config=app.boot_config.value
-                )
             app.boot = body[ATTR_BOOT]
         if ATTR_AUTO_UPDATE in body:
             app.auto_update = body[ATTR_AUTO_UPDATE]

@@ -12,6 +12,7 @@ from supervisor.resolution.checks.duplicate_os_installation import (
     CheckDuplicateOSInstallation,
 )
 from supervisor.resolution.const import ContextType, IssueType, UnhealthyReason
+from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
@@ -157,7 +158,9 @@ async def test_approve_without_duplicates(coresys: CoreSys):
         return_value=mock_device,
         new_callable=AsyncMock,
     ):
-        result = await duplicate_os_installation.approve_check()
+        result = await duplicate_os_installation.approve_check(
+            Issue(IssueType.DUPLICATE_OS_INSTALLATION, ContextType.SYSTEM)
+        )
         assert result is False
 
 

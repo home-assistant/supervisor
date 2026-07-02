@@ -6,7 +6,8 @@ from unittest.mock import patch
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.free_space import CheckFreeSpace
-from supervisor.resolution.const import IssueType
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
@@ -41,10 +42,14 @@ async def test_approve(coresys: CoreSys):
     await coresys.core.set_state(CoreState.RUNNING)
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
-        assert await free_space.approve_check()
+        assert await free_space.approve_check(
+            Issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
+        )
 
     with patch("shutil.disk_usage", return_value=(42, 42, 3 * (1024.0**3))):
-        assert not await free_space.approve_check()
+        assert not await free_space.approve_check(
+            Issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
+        )
 
 
 async def test_did_run(coresys: CoreSys):

@@ -11,6 +11,7 @@ from ...exceptions import (
     ResolutionFixupError,
 )
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -30,22 +31,23 @@ class FixupAppExecuteRepair(FixupBase):
         super().__init__(coresys)
         self.attempts = 0
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Pull the apps image."""
-        if not reference:
+        if not suggestion.reference:
             return
 
-        app = self.sys_apps.get_local_only(reference)
+        app = self.sys_apps.get_local_only(suggestion.reference)
         if not app:
             _LOGGER.info(
                 "Cannot repair app %s as it is not installed, dismissing suggestion",
-                reference,
+                suggestion.reference,
             )
             return
 
         if await app.instance.exists():
             _LOGGER.info(
-                "App %s does not need repair, dismissing suggestion", reference
+                "App %s does not need repair, dismissing suggestion",
+                suggestion.reference,
             )
             return
 
@@ -55,11 +57,11 @@ class FixupAppExecuteRepair(FixupBase):
             _LOGGER.warning(
                 "Cannot repair app %s as it is detached from its store and "
                 "needs a local build, dismissing suggestion",
-                reference,
+                suggestion.reference,
             )
             return
 
-        _LOGGER.info("Installing image for app %s", reference)
+        _LOGGER.info("Installing image for app %s", suggestion.reference)
         self.attempts += 1
         try:
             await app.instance.install(app.version)
@@ -74,7 +76,7 @@ class FixupAppExecuteRepair(FixupBase):
             # credentials; registry rate limit). Surface as a fixup error so
             # FixupBase swallows it without a Sentry event. The repair stays
             # available for manual retry once the underlying cause is fixed.
-            _LOGGER.warning("Cannot repair app %s: %s", reference, err)
+            _LOGGER.warning("Cannot repair app %s: %s", suggestion.reference, err)
             raise ResolutionFixupError from err
 
     @property

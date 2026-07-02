@@ -9,7 +9,7 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import HomeAssistantAPIError
+from supervisor.exceptions import DockerError, HomeAssistantAPIError
 from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
 
@@ -297,6 +297,19 @@ async def test_make_request_not_running(coresys: CoreSys):
             pass
 
 
+async def test_make_request_running_check_docker_error(coresys: CoreSys):
+    """Test make_request wraps Docker errors from running check."""
+    coresys.homeassistant.core.instance.is_running = AsyncMock(
+        side_effect=DockerError("docker failure")
+    )
+
+    with pytest.raises(
+        HomeAssistantAPIError, match="Unable to determine if Core container is running"
+    ):
+        async with coresys.homeassistant.api.make_request("get", "api/test"):
+            pass
+
+
 @pytest.mark.usefixtures("websession")
 async def test_make_request_tcp_with_token_fetch(coresys: CoreSys):
     """Test make_request fetches token via /auth/token and makes the request."""
@@ -360,6 +373,18 @@ async def test_connect_websocket_unix(coresys: CoreSys):
 
     assert result is mock_ws_client
     mock_connect.assert_called_once()
+
+
+async def test_connect_websocket_running_check_docker_error(coresys: CoreSys):
+    """Test connect_websocket wraps Docker errors from running check."""
+    coresys.homeassistant.core.instance.is_running = AsyncMock(
+        side_effect=DockerError("docker failure")
+    )
+
+    with pytest.raises(
+        HomeAssistantAPIError, match="Unable to determine if Core container is running"
+    ):
+        await coresys.homeassistant.api.connect_websocket()
 
 
 @pytest.mark.usefixtures("websession")

@@ -10,7 +10,12 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HassOSJobError
-from supervisor.resolution.const import UnhealthyReason
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+)
 
 from tests.common import MockResponse
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -136,6 +141,18 @@ async def test_update_success_cleans_up_bundle(
 
     bundle = coresys.config.path_tmp / "hassos-13.0.raucb"
     assert not bundle.exists()
+    reboot_mock.assert_not_called()
+    assert (
+        IssueType.REBOOT_REQUIRED,
+        ContextType.SYSTEM,
+    ) in {(issue.type, issue.context) for issue in coresys.resolution.issues}
+    assert (
+        SuggestionType.EXECUTE_REBOOT,
+        ContextType.SYSTEM,
+    ) in {
+        (suggestion.type, suggestion.context)
+        for suggestion in coresys.resolution.suggestions
+    }
 
 
 async def test_board_name_supervised(coresys: CoreSys) -> None:

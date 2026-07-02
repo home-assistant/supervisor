@@ -11,6 +11,8 @@ from .const import (
     ATTR_SESSION,
     ATTR_SESSION_DATA,
     FILE_HASSIO_INGRESS,
+    INGRESS_DYNAMIC_PORT_MAX,
+    INGRESS_DYNAMIC_PORT_MIN,
     IngressSessionData,
     IngressSessionDataDict,
 )
@@ -169,7 +171,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             or port in self.ports.values()
             or await check_port(self.sys_docker.network.gateway, port)
         ):
-            port = random.randint(62000, 65500)
+            port = random.randint(INGRESS_DYNAMIC_PORT_MIN, INGRESS_DYNAMIC_PORT_MAX)
 
         # Save port for next time
         self.ports[app_slug] = port

@@ -728,8 +728,10 @@ class Backup(JobGroup):
     async def remove_delta_apps(self) -> bool:
         """Remove apps which are not in this backup."""
         success = True
+        # Resolve the backup's app slugs once for fast membership checks
+        backup_app_slugs = set(self.app_list)
         for app in self.sys_apps.installed:
-            if app.slug in self.app_list:
+            if app.slug in backup_app_slugs:
                 continue
 
             # Remove App because it's not a part of the new env

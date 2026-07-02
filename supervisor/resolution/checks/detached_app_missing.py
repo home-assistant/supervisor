@@ -3,6 +3,7 @@
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType
+from ..data import Issue
 from .base import CheckBase
 
 
@@ -29,12 +30,12 @@ class CheckDetachedAppMissing(CheckBase):
                     reference=app.slug,
                 )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
-        if not reference:
+        if not issue.reference:
             return False
 
-        app = self.sys_apps.get_local_only(reference)
+        app = self.sys_apps.get_local_only(issue.reference)
         return app is not None and app.is_detached
 
     @property

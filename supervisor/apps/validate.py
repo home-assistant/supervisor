@@ -97,6 +97,8 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
+    INGRESS_DYNAMIC_PORT_MAX,
+    INGRESS_DYNAMIC_PORT_MIN,
     MACHINE_DEPRECATED,
     ROLE_ALL,
     ROLE_DEFAULT,
@@ -244,6 +246,27 @@ def _warn_app_config(config: dict[str, Any]):
             "App '%s' uses deprecated 'codenotary' field in config. This field is no longer used and will be ignored. Please report this to the maintainer.",
             name,
         )
+
+    # Dynamic ingress port selection (ingress_port: 0) picks a random port from
+    # the INGRESS_DYNAMIC_PORT_MIN-INGRESS_DYNAMIC_PORT_MAX range. An app must
+    # not map a port from that range to the host itself, as the dynamically
+    # chosen ingress port could then coincide with it, exposing the ingress
+    # endpoint on the host and bypassing ingress authentication.
+    if config.get(ATTR_INGRESS) and config.get(ATTR_INGRESS_PORT) == 0:
+        for container_port in config.get(ATTR_PORTS, {}):
+            port_number = str(container_port).partition("/")[0]
+            if (
+                port_number.isdigit()
+                and INGRESS_DYNAMIC_PORT_MIN
+                <= int(port_number)
+                <= INGRESS_DYNAMIC_PORT_MAX
+            ):
+                raise vol.Invalid(
+                    f"App '{name}' uses dynamic ingress port selection (ingress_port: 0) "
+                    f"but maps port {port_number} which is reserved for dynamic ingress "
+                    f"ports ({INGRESS_DYNAMIC_PORT_MIN}-{INGRESS_DYNAMIC_PORT_MAX}). "
+                    "Please report this to the maintainer of the app."
+                )
 
     return config
 

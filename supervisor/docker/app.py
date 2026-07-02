@@ -34,6 +34,7 @@ from ..exceptions import (
     DockerError,
     DockerJobError,
     DockerNotFound,
+    DockerTimeoutError,
     HardwareNotFound,
 )
 from ..hardware.const import PolicyGroup
@@ -695,6 +696,11 @@ class DockerApp(DockerInterface):
         try:
             container = await self.sys_docker.containers.get(builder_name)
             await container.delete(force=True, v=True)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout cleaning up existing builder container",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             if err.status != HTTPStatus.NOT_FOUND:
                 raise DockerBuildError(
@@ -762,6 +768,10 @@ class DockerApp(DockerInterface):
         try:
             # Update meta data
             self._meta = await self.sys_docker.images.inspect(app_image_tag)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting image metadata for {app_image_tag} after build"
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerBuildError(
                 f"Can't get image metadata for {app_image_tag} after build: {err!s}"
@@ -835,6 +845,10 @@ class DockerApp(DockerInterface):
             # Load needed docker objects
             container = await self.sys_docker.containers.get(self.name)
             socket = container.attach(stdin=True)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout attaching to {self.name} stdin", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't attach to {self.name} stdin: {err!s}", _LOGGER.error
@@ -903,6 +917,11 @@ class DockerApp(DockerInterface):
 
         try:
             docker_container = await self.sys_docker.containers.get(self.name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout processing Hardware Event on {self.name}",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 if self._hw_listener:

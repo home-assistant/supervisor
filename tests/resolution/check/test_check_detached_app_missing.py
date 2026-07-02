@@ -7,6 +7,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.detached_app_missing import CheckDetachedAppMissing
 from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
@@ -45,7 +46,13 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     await coresys.core.set_state(CoreState.SETUP)
 
     assert (
-        await detached_app_missing.approve_check(reference=install_app_ssh.slug)
+        await detached_app_missing.approve_check(
+            Issue(
+                IssueType.DETACHED_ADDON_MISSING,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
         is False
     )
 
@@ -56,7 +63,14 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     install_app_ssh.data["repository"] = "abc123"
 
     assert (
-        await detached_app_missing.approve_check(reference=install_app_ssh.slug) is True
+        await detached_app_missing.approve_check(
+            Issue(
+                IssueType.DETACHED_ADDON_MISSING,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is True
     )
 
 

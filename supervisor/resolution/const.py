@@ -64,10 +64,12 @@ class UnsupportedReason(StrEnum):
 class UnhealthyReason(StrEnum):
     """Reasons for unsupported status."""
 
+    DATA_FILESYSTEM_CHECK_ERROR = "data_filesystem_check_error"
     DOCKER = "docker"
     DOCKER_GATEWAY_UNPROTECTED = "docker_gateway_unprotected"
     DUPLICATE_OS_INSTALLATION = "duplicate_os_installation"
     OSERROR_BAD_MESSAGE = "oserror_bad_message"
+    OS_FILESYSTEM_CHECK_ERROR = "os_filesystem_check_error"
     PRIVILEGED = "privileged"
     SETUP = "setup"
     SUPERVISOR = "supervisor"
@@ -77,6 +79,7 @@ class UnhealthyReason(StrEnum):
 class IssueType(StrEnum):
     """Issue type."""
 
+    APP_PORT_CONFLICT = "app_port_conflict"
     BOOT_FAIL = "boot_fail"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
@@ -106,6 +109,7 @@ class IssueType(StrEnum):
     REBOOT_REQUIRED = "reboot_required"
     RPI_FIRMWARE_UPDATE_BLOCKED = "rpi_firmware_update_blocked"
     SECURITY = "security"
+    SYSTEMD_UNIT_FAILED = "systemd_unit_failed"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
 
@@ -115,6 +119,7 @@ class SuggestionType(StrEnum):
 
     ADOPT_DATA_DISK = "adopt_data_disk"
     CLEAR_FULL_BACKUP = "clear_full_backup"
+    CLEAR_PORT_CONFIG = "clear_port_config"
     CREATE_FULL_BACKUP = "create_full_backup"
     DISABLE_BOOT = "disable_boot"
     ENABLE_NTP = "enable_ntp"

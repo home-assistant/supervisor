@@ -3,6 +3,11 @@
 This repository contains the Home Assistant Supervisor, a Python 3 based container
 orchestration and management system for Home Assistant.
 
+## Pull Request Requirements
+
+When opening a pull request in this repository, always use the description format
+from `.github/PULL_REQUEST_TEMPLATE.md`.
+
 ## Supervisor Capabilities & Features
 
 ### Architecture Overview

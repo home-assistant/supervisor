@@ -9,6 +9,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.detached_app_removed import CheckDetachedAppRemoved
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
@@ -54,7 +55,13 @@ async def test_approve(
     await coresys.core.set_state(CoreState.SETUP)
 
     assert (
-        await detached_app_removed.approve_check(reference=install_app_ssh.slug)
+        await detached_app_removed.approve_check(
+            Issue(
+                IssueType.DETACHED_ADDON_REMOVED,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
         is False
     )
 
@@ -65,7 +72,14 @@ async def test_approve(
         await coresys.store.load()
 
     assert (
-        await detached_app_removed.approve_check(reference=install_app_ssh.slug) is True
+        await detached_app_removed.approve_check(
+            Issue(
+                IssueType.DETACHED_ADDON_REMOVED,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is True
     )
 
 

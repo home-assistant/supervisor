@@ -24,6 +24,7 @@ from supervisor.exceptions import (
     DockerError,
     DockerNoSpaceOnDevice,
     DockerRegistryRateLimitExceeded,
+    DockerTimeoutError,
 )
 
 
@@ -596,3 +597,296 @@ def test_pull_log_entry_exception_generic_error():
     assert isinstance(err, DockerError)
     assert not isinstance(err, DockerRegistryRateLimitExceeded)
     assert not isinstance(err, DockerNoSpaceOnDevice)
+
+
+# ---------------------------------------------------------------------------
+# Timeout error path tests
+# ---------------------------------------------------------------------------
+
+
+async def test_post_init_system_info_timeout(docker: DockerAPI):
+    """Test post_init raises DockerTimeoutError when system.info times out."""
+    docker.docker.system.info.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout while getting Docker information"
+    ):
+        await docker.post_init()
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_container_create_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when containers.create times out."""
+    coresys.docker.containers.create.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout creating container from alpine:latest"
+    ):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_container_start_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when container.start times out."""
+    coresys.docker.containers.create.return_value.start.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout starting"):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_attach_network_failure_logs_warning(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test run logs warning and continues when attach to hassio-network fails."""
+    with (
+        patch.object(
+            coresys.docker.network,
+            "attach_container",
+            new=AsyncMock(side_effect=DockerError("failed")),
+        ),
+        patch.object(
+            coresys.docker.network,
+            "detach_default_bridge",
+            new=AsyncMock(),
+        ) as detach_default_bridge,
+    ):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+    assert "Can't attach test to hassio-network!" in caplog.text
+    detach_default_bridge.assert_not_called()
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_get_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when loading host network times out."""
+    coresys.docker.docker.networks.get.side_effect = TimeoutError()
+
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting host network information"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_get_docker_error(coresys: CoreSys):
+    """Test run raises DockerError when loading host network fails."""
+    coresys.docker.docker.networks.get.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}
+    )
+
+    with pytest.raises(
+        DockerError, match="Can't get host network information from Docker"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_disconnect_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when disconnect from host network times out."""
+    host_network = MagicMock(spec=DockerNetwork)
+    host_network.show.return_value = {"Containers": {"abc": {"Name": "test"}}}
+    host_network.disconnect.side_effect = TimeoutError()
+    coresys.docker.docker.networks.get.return_value = host_network
+
+    with pytest.raises(
+        DockerTimeoutError,
+        match="Timeout disconnecting container test from host network",
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_disconnect_non_not_found_error(coresys: CoreSys):
+    """Test run raises DockerError when host network disconnect fails with non-404."""
+    host_network = MagicMock(spec=DockerNetwork)
+    host_network.show.return_value = {"Containers": {"abc": {"Name": "test"}}}
+    host_network.disconnect.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}
+    )
+    coresys.docker.docker.networks.get.return_value = host_network
+
+    with pytest.raises(
+        DockerError, match="Can't disconnect container test from host network"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_metadata_timeout(coresys: CoreSys, container: DockerContainer):
+    """Test run() raises DockerTimeoutError when container.show times out after start."""
+    container.show.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout inspecting started container"
+    ):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+
+async def test_run_command_image_inspect_timeout(docker: DockerAPI):
+    """Test run_command raises DockerTimeoutError when image inspect times out."""
+    docker.images.inspect.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout inspecting image"):
+        await docker.run_command(image="alpine", command=["echo", "hi"])
+
+
+async def test_repair_timeouts(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, container: DockerContainer
+):
+    """Test repair logs warnings and continues when prune operations time out."""
+    coresys.docker.docker.containers.prune.side_effect = TimeoutError()
+    coresys.docker.docker.images.prune.side_effect = TimeoutError()
+    coresys.docker.docker.images.prune_builds.side_effect = TimeoutError()
+    coresys.docker.docker.volumes.prune.side_effect = TimeoutError()
+    coresys.docker.docker.networks.prune.side_effect = TimeoutError()
+    # prune_networks is called next; make networks.get raise DockerError to keep it short
+    coresys.docker.docker.networks.get.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+
+    await coresys.docker.repair()
+
+    assert "Error for containers prune: timed out" in caplog.text
+    assert "Error for images prune: timed out" in caplog.text
+    assert "Error for builds prune: timed out" in caplog.text
+    assert "Error for volumes prune: timed out" in caplog.text
+    assert "Error for networks prune: timed out" in caplog.text
+
+
+async def test_prune_networks_get_timeout(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test prune_networks raises DockerTimeoutError when networks.get/show times out."""
+    coresys.docker.docker.networks.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout loading network metadata"):
+        await coresys.docker.prune_networks("hassio")
+
+
+async def test_prune_networks_container_get_timeout(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test prune_networks raises DockerTimeoutError when containers.get times out."""
+    network = MagicMock(spec=DockerNetwork)
+    network.show.return_value = {"Containers": {"abc123": {"Name": "test"}}}
+    coresys.docker.docker.networks.get.return_value = network
+    coresys.docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout checking container abc123"):
+        await coresys.docker.prune_networks("hassio")
+
+
+async def test_container_is_initialized_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_is_initialized raises DockerTimeoutError when get/show times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout getting container"):
+        await docker.container_is_initialized(
+            "mycontainer", "myimage", AwesomeVersion("1.0")
+        )
+
+
+async def test_stop_container_get_timeout(docker: DockerAPI):
+    """Test stop_container raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting container .* for stopping"
+    ):
+        await docker.stop_container("mycontainer", timeout=10)
+
+
+async def test_start_container_get_timeout(docker: DockerAPI):
+    """Test start_container raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout getting .* for starting up"):
+        await docker.start_container("mycontainer")
+
+
+async def test_start_container_start_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test start_container raises DockerTimeoutError when container.start times out."""
+    container.start.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout starting mycontainer"):
+        await docker.start_container("mycontainer")
+
+
+async def test_restart_container_get_timeout(docker: DockerAPI):
+    """Test restart_container raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting container .* for restarting"
+    ):
+        await docker.restart_container("mycontainer", timeout=10)
+
+
+async def test_container_logs_get_timeout(docker: DockerAPI):
+    """Test container_logs raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting container .* for logs"
+    ):
+        await docker.container_logs("mycontainer")
+
+
+async def test_container_stats_get_timeout(docker: DockerAPI):
+    """Test container_stats raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout inspecting container"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_run_inside_get_timeout(docker: DockerAPI):
+    """Test container_run_inside raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting container .* to run command"
+    ):
+        await docker.container_run_inside("mycontainer", "echo hi")
+
+
+async def test_container_run_inside_exec_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_run_inside raises DockerTimeoutError when exec stream times out."""
+    container.exec.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout running command in container"
+    ):
+        await docker.container_run_inside("mycontainer", "echo hi")
+
+
+async def test_remove_image_latest_timeout(docker: DockerAPI):
+    """Test remove_image raises DockerTimeoutError when deleting latest tag times out."""
+    docker.images.delete.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout removing image .*:latest"):
+        await docker.remove_image("myimage", AwesomeVersion("1.0"), latest=True)
+
+
+async def test_remove_image_version_timeout(docker: DockerAPI):
+    """Test remove_image raises DockerTimeoutError when deleting version tag times out."""
+    # latest delete succeeds (raises NOT_FOUND which is suppressed), version times out
+    docker.images.delete.side_effect = [
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "not found"}),
+        TimeoutError(),
+    ]
+    with pytest.raises(DockerTimeoutError, match="Timeout removing image .*:1.0"):
+        await docker.remove_image("myimage", AwesomeVersion("1.0"), latest=True)
+
+
+async def test_cleanup_old_images_inspect_timeout(docker: DockerAPI):
+    """Test cleanup_old_images raises DockerTimeoutError when inspect times out."""
+    docker.images.inspect.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout getting myimage for cleanup"):
+        await docker.cleanup_old_images("myimage", AwesomeVersion("1.0"))
+
+
+async def test_cleanup_old_images_list_timeout(docker: DockerAPI):
+    """Test cleanup_old_images raises DockerTimeoutError when image list times out."""
+    docker.images.inspect.return_value = {"Id": "abc123"}
+    docker.images.list.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout listing images for cleanup"):
+        await docker.cleanup_old_images("myimage", AwesomeVersion("1.0"))

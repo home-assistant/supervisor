@@ -75,6 +75,9 @@ class EvaluateContainer(EvaluateBase):
         try:
             containers = await self.sys_docker.containers.list()
             containers_metadata = await asyncio.gather(*[c.show() for c in containers])
+        except TimeoutError:
+            _LOGGER.error("Timeout while evaluating docker containers")
+            return False
         except aiodocker.DockerError as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
             self.sys_resolution.create_issue(
