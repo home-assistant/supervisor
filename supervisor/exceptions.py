@@ -811,6 +811,23 @@ class HostLogError(HostError):
     """Internal error with host log."""
 
 
+class HostContainerLogEpochError(APIUnknownSupervisorError, HostLogError):
+    """Failed to determine container log epoch via journald."""
+
+    error_key = "host_container_log_epoch_error"
+    message_template = "Cannot determine CONTAINER_LOG_EPOCH of {identifiers}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        identifiers: list[str],
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"identifiers": ", ".join(identifiers)}
+        super().__init__(logger)
+
+
 class HostInvalidHostnameError(HostError, APIError):
     """Hostname rejected by the host as semantically invalid."""
 

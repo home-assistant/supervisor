@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from pathlib import PurePath
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
@@ -145,6 +145,27 @@ async def test_api_app_logs_not_installed(api_client: TestClient):
     assert resp.content_type == "text/plain"
     content = await resp.text()
     assert content == "App hic_sunt_leones does not exist"
+
+
+@pytest.mark.usefixtures("install_app_ssh")
+async def test_api_app_logs_latest_epoch_error(
+    api_client: TestClient, journald_logs: MagicMock
+):
+    """Test latest app logs returns sanitized error when epoch lookup fails."""
+    mock_response = MagicMock()
+    mock_response.text = AsyncMock(return_value="not-json")
+    journald_logs.return_value.__aenter__.return_value = mock_response
+
+    resp = await api_client.get("/addons/local_ssh/logs/latest")
+
+    assert resp.status == 500
+    assert resp.content_type == "text/plain"
+    content = await resp.text()
+    assert (
+        content
+        == "Cannot determine CONTAINER_LOG_EPOCH of addon_local_ssh, app_local_ssh. "
+        "Check Supervisor logs for details"
+    )
 
 
 @pytest.mark.usefixtures("docker_logs", "install_app_ssh")

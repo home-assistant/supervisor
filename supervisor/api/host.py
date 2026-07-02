@@ -37,7 +37,12 @@ from ..const import (
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIDBMigrationInProgress, APIError, HostLogError
+from ..exceptions import (
+    APIDBMigrationInProgress,
+    APIError,
+    HostContainerLogEpochError,
+    HostLogError,
+)
 from ..host.const import (
     PARAM_BOOT_ID,
     PARAM_FOLLOW,
@@ -231,17 +236,8 @@ class APIHost(CoreSysAttributes):
                     "Latest logs can only be fetched for a specific identifier."
                 )
 
-            try:
-                epoch = await self._get_container_last_epoch(identifier)
-                params["CONTAINER_LOG_EPOCH"] = epoch
-            except HostLogError as err:
-                identifiers = (
-                    [identifier] if isinstance(identifier, str) else identifier
-                )
-                raise APIError(
-                    "Cannot determine CONTAINER_LOG_EPOCH of "
-                    f"{', '.join(identifiers)}, latest logs not available."
-                ) from err
+            epoch = await self._get_container_last_epoch(identifier)
+            params["CONTAINER_LOG_EPOCH"] = epoch
 
         accept_header = request.headers.get(ACCEPT)
 
@@ -390,6 +386,8 @@ class APIHost(CoreSysAttributes):
 
     async def _get_container_last_epoch(self, identifier: str | list[str]) -> str:
         """Get Docker's internal log epoch of the latest log entry for given identifier(s)."""
+        identifiers = [identifier] if isinstance(identifier, str) else identifier
+
         try:
             async with self.sys_host.logs.journald_logs(
                 params={"CONTAINER_NAME": identifier},
@@ -399,17 +397,20 @@ class APIHost(CoreSysAttributes):
             ) as resp:
                 text = await resp.text()
         except (ClientError, TimeoutError) as err:
-            raise HostLogError(
-                "Could not get last container epoch from systemd-journal-gatewayd",
-                _LOGGER.error,
+            _LOGGER.error(
+                "Could not get last container epoch from systemd-journal-gatewayd for identifiers: %s",
+                ", ".join(identifiers),
+            )
+            raise HostContainerLogEpochError(
+                identifiers=identifiers,
             ) from err
 
         try:
             return json.loads(text.strip().split("\n")[-1])["CONTAINER_LOG_EPOCH"]
         except (json.JSONDecodeError, KeyError, IndexError) as err:
-            identifiers = [identifier] if isinstance(identifier, str) else identifier
-            raise HostLogError(
-                "Failed to parse CONTAINER_LOG_EPOCH of "
-                f"{', '.join(identifiers)} container, got: {text}",
-                _LOGGER.error,
-            ) from err
+            _LOGGER.error(
+                "Failed to parse CONTAINER_LOG_EPOCH from systemd-journald response for identifiers %s: %s",
+                ", ".join(identifiers),
+                text,
+            )
+            raise HostContainerLogEpochError(identifiers=identifiers) from err
