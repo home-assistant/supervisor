@@ -365,7 +365,7 @@ class BackupManager(FileConfiguration, JobGroup):
                     _LOGGER.error,
                 ) from err
             except OSError as err:
-                msg = f"Could delete backup at {backup_tarfile.as_posix()}: {err!s}"
+                msg = f"Cannot delete backup at {backup_tarfile.as_posix()}: {err!s}"
                 if location in {None, LOCATION_CLOUD_BACKUP}:
                     self.sys_resolution.check_oserror(err)
                 raise BackupError(msg, _LOGGER.error) from err
