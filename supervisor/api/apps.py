@@ -23,12 +23,9 @@ from ..const import (
     ATTR_AUTH_API,
     ATTR_AUTO_UPDATE,
     ATTR_AVAILABLE,
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
     ATTR_BOOT,
     ATTR_BUILD,
     ATTR_CHANGELOG,
-    ATTR_CPU_PERCENT,
     ATTR_DESCRIPTON,
     ATTR_DETACHED,
     ATTR_DEVICES,
@@ -61,14 +58,9 @@ from ..const import (
     ATTR_LOGO,
     ATTR_LONG_DESCRIPTION,
     ATTR_MACHINE,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
     ATTR_NAME,
     ATTR_NETWORK,
     ATTR_NETWORK_DESCRIPTION,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
     ATTR_OPTIONS,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
@@ -115,7 +107,7 @@ from ..exceptions import (
 )
 from ..validate import docker_ports
 from .const import ATTR_BOOT_CONFIG, ATTR_REMOVE_CONFIG, ATTR_SIGNED
-from .utils import api_process, api_validate, json_loads
+from .utils import api_process, api_stats, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -451,16 +443,7 @@ class APIApps(CoreSysAttributes):
 
         stats: DockerStats = await app.stats()
 
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+        return api_stats(stats)
 
     @api_process
     async def uninstall(self, request: web.Request) -> None:

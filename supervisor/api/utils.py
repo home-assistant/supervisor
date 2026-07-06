@@ -14,6 +14,14 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
+    ATTR_BLK_READ,
+    ATTR_BLK_WRITE,
+    ATTR_CPU_PERCENT,
+    ATTR_MEMORY_LIMIT,
+    ATTR_MEMORY_PERCENT,
+    ATTR_MEMORY_USAGE,
+    ATTR_NETWORK_RX,
+    ATTR_NETWORK_TX,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
     JSON_DATA,
@@ -27,6 +35,7 @@ from ..const import (
     RESULT_OK,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.stats import DockerStats
 from ..exceptions import APIError, HassioError
 from ..jobs import JobSchedulerOptions, SupervisorJob
 from ..utils import get_message_from_exception_chain
@@ -193,6 +202,20 @@ def api_return_ok(data: dict[str, Any] | list[Any] | None = None) -> web.Respons
         {JSON_RESULT: RESULT_OK, JSON_DATA: data or {}},
         dumps=json_dumps,
     )
+
+
+def api_stats(stats: DockerStats) -> dict[str, Any]:
+    """Return container stats as API response data."""
+    return {
+        ATTR_CPU_PERCENT: stats.cpu_percent,
+        ATTR_MEMORY_USAGE: stats.memory_usage,
+        ATTR_MEMORY_LIMIT: stats.memory_limit,
+        ATTR_MEMORY_PERCENT: stats.memory_percent,
+        ATTR_NETWORK_RX: stats.network_rx,
+        ATTR_NETWORK_TX: stats.network_tx,
+        ATTR_BLK_READ: stats.blk_read,
+        ATTR_BLK_WRITE: stats.blk_write,
+    }
 
 
 async def api_validate(

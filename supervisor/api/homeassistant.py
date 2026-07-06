@@ -14,20 +14,12 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_BACKUP,
     ATTR_BACKUPS_EXCLUDE_DATABASE,
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
     ATTR_BOOT,
-    ATTR_CPU_PERCENT,
     ATTR_DUPLICATE_LOG_FILE,
     ATTR_IMAGE,
     ATTR_IP_ADDRESS,
     ATTR_JOB_ID,
     ATTR_MACHINE,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
@@ -40,7 +32,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIDBMigrationInProgress, APIError
 from ..validate import docker_image, network_port, version_tag
 from .const import ATTR_BACKGROUND, ATTR_FORCE, ATTR_SAFE_MODE
-from .utils import api_process, api_validate, background_task
+from .utils import api_process, api_stats, api_validate, background_task
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -166,16 +158,7 @@ class APIHomeAssistant(CoreSysAttributes):
         if not stats:
             raise APIError("No stats available")
 
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+        return api_stats(stats)
 
     @api_process
     async def update(self, request: web.Request) -> dict[str, str] | None:

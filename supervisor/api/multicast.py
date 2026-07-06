@@ -8,23 +8,11 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
-from ..const import (
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
-    ATTR_CPU_PERCENT,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
-    ATTR_UPDATE_AVAILABLE,
-    ATTR_VERSION,
-    ATTR_VERSION_LATEST,
-)
+from ..const import ATTR_UPDATE_AVAILABLE, ATTR_VERSION, ATTR_VERSION_LATEST
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import version_tag
-from .utils import api_process, api_validate
+from .utils import api_process, api_stats, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -48,16 +36,7 @@ class APIMulticast(CoreSysAttributes):
         """Return resource information."""
         stats = await self.sys_plugins.multicast.stats()
 
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+        return api_stats(stats)
 
     @api_process
     async def update(self, request: web.Request) -> None:
