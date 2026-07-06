@@ -2,11 +2,10 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 import logging
 from uuid import UUID, uuid4
-
-import attr
 
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
@@ -14,16 +13,16 @@ from ..coresys import CoreSys, CoreSysAttributes
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-@attr.s(slots=True)
+@dataclass(slots=True)
 class _Task:
     """Task object."""
 
-    id: UUID = attr.ib()
-    coro_callback: Callable[..., Awaitable[None]] = attr.ib(eq=False)
-    interval: float | time = attr.ib(eq=False)
-    repeat: bool = attr.ib(eq=False)
-    job: asyncio.tasks.Task | None = attr.ib(eq=False)
-    next: asyncio.TimerHandle | None = attr.ib(eq=False)
+    id: UUID
+    coro_callback: Callable[..., Awaitable[None]] = field(compare=False)
+    interval: float | time = field(compare=False)
+    repeat: bool = field(compare=False)
+    job: asyncio.tasks.Task | None = field(compare=False)
+    next: asyncio.TimerHandle | None = field(compare=False)
 
 
 class Scheduler(CoreSysAttributes):

@@ -3,10 +3,10 @@
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
+from dataclasses import replace
 import logging
 from typing import Self, Union
 
-from attr import evolve
 from securetar import SecureTarFile
 
 from ..const import FILE_HASSIO_ADDONS, FILE_HASSIO_APPS, AppBoot, AppStartup, AppState
@@ -155,7 +155,7 @@ class AppManager(CoreSysAttributes):
                     wait_boot.append(start_task)
             except HassioError:
                 self.sys_resolution.add_issue(
-                    evolve(app.boot_failed_issue),
+                    replace(app.boot_failed_issue),
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,
@@ -175,7 +175,7 @@ class AppManager(CoreSysAttributes):
         for app in tasks:
             if app.state in {AppState.ERROR, AppState.UNKNOWN}:
                 self.sys_resolution.add_issue(
-                    evolve(app.boot_failed_issue),
+                    replace(app.boot_failed_issue),
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,

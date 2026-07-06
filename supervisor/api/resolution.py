@@ -2,10 +2,10 @@
 
 import asyncio
 from collections.abc import Awaitable
+from dataclasses import asdict
 from typing import Any
 
 from aiohttp import web
-import attr
 import voluptuous as vol
 
 from ..const import (
@@ -45,7 +45,7 @@ class APIResolution(CoreSysAttributes):
 
     def _generate_suggestion_information(self, suggestion: Suggestion):
         """Generate suggestion information for response."""
-        resp = attr.asdict(suggestion)
+        resp = asdict(suggestion)
         resp[ATTR_AUTO] = bool(
             [
                 fix
@@ -65,7 +65,7 @@ class APIResolution(CoreSysAttributes):
                 self._generate_suggestion_information(suggestion)
                 for suggestion in self.sys_resolution.suggestions
             ],
-            ATTR_ISSUES: [attr.asdict(issue) for issue in self.sys_resolution.issues],
+            ATTR_ISSUES: [asdict(issue) for issue in self.sys_resolution.issues],
             ATTR_CHECKS: [
                 {ATTR_ENABLED: check.enabled, ATTR_SLUG: check.slug}
                 for check in self.sys_resolution.check.all_checks

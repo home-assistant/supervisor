@@ -2,12 +2,10 @@
 
 import asyncio
 from collections.abc import Awaitable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import logging
 from pathlib import PurePath
 from typing import Self
-
-from attr import evolve
 
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
@@ -182,7 +180,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 await async_capture_exception(err)
 
             self.sys_resolution.add_issue(
-                evolve(mounts[i].failed_issue),
+                replace(mounts[i].failed_issue),
                 suggestions=[
                     SuggestionType.EXECUTE_RELOAD,
                     SuggestionType.EXECUTE_REMOVE,

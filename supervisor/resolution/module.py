@@ -1,10 +1,9 @@
 """Supervisor resolution center."""
 
+from dataclasses import asdict
 import errno
 import logging
 from typing import Any
-
-import attr
 
 from ..bus import EventListener
 from ..coresys import CoreSys, CoreSysAttributes
@@ -138,7 +137,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._unsupported.add(reason)
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.SUPPORTED_CHANGED,
-            attr.asdict(SupportedChanged(False, sorted(self.unsupported))),
+            asdict(SupportedChanged(False, sorted(self.unsupported))),
         )
 
     @property
@@ -153,7 +152,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._unhealthy.add(reason)
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.HEALTH_CHANGED,
-            attr.asdict(HealthChanged(False, sorted(self.unhealthy))),
+            asdict(HealthChanged(False, sorted(self.unhealthy))),
         )
 
     _OSERROR_UNHEALTHY_REASONS: dict[int, UnhealthyReason] = {
@@ -171,10 +170,9 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     def _make_issue_message(self, issue: Issue) -> dict[str, Any]:
         """Make issue into message for core."""
-        return attr.asdict(issue) | {
+        return asdict(issue) | {
             "suggestions": [
-                attr.asdict(suggestion)
-                for suggestion in self.suggestions_for_issue(issue)
+                asdict(suggestion) for suggestion in self.suggestions_for_issue(issue)
             ]
         }
 
@@ -293,7 +291,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Event on issue removal
         self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.ISSUE_REMOVED, attr.asdict(issue)
+            WSEvent.ISSUE_REMOVED, asdict(issue)
         )
 
         # Clean up any orphaned suggestions
@@ -308,7 +306,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._unsupported.remove(reason)
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.SUPPORTED_CHANGED,
-            attr.asdict(
+            asdict(
                 SupportedChanged(
                     self.sys_core.supported, sorted(self.unsupported) or None
                 )
