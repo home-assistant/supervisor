@@ -1842,12 +1842,12 @@ async def test_backup_remove_error(
     tar_file_mock.unlink.side_effect = (err := OSError())
 
     err.errno = errno.EBUSY
-    with pytest.raises(BackupError):
+    with pytest.raises(BackupError, match="Cannot delete backup at"):
         await coresys.backups.remove(backup)
     assert coresys.core.healthy is True
 
     err.errno = errno.EBADMSG
-    with pytest.raises(BackupError):
+    with pytest.raises(BackupError, match="Cannot delete backup at"):
         await coresys.backups.remove(backup)
     assert coresys.core.healthy is healthy_expected
 
