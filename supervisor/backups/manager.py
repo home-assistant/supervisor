@@ -487,7 +487,7 @@ class BackupManager(FileConfiguration, JobGroup):
             try:
                 self._backups[backup.slug].consolidate(backup)
             except BackupInvalidError as err:
-                backup.tarfile.unlink()
+                await self.sys_run_in_executor(backup.tarfile.unlink)
                 raise BackupInvalidError(
                     f"Cannot import backup {backup.slug} due to: {err!s}", _LOGGER.error
                 ) from err
