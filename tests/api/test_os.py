@@ -61,6 +61,7 @@ async def test_api_os_info(api_client_with_prefix: tuple[TestClient, str]):
     for attr in (
         "version",
         "version_latest",
+        "version_pending",
         "update_available",
         "board",
         "boot",
@@ -280,6 +281,10 @@ async def test_api_os_update_no_auto_reboot_creates_issue(
         Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
         in coresys.resolution.suggestions
     )
+
+    resp = await api_client.get(f"{prefix}/os/info")
+    result = await resp.json()
+    assert result["data"]["version_pending"] == "13.0"
 
 
 async def test_api_os_update_failure_no_reboot_no_issue(

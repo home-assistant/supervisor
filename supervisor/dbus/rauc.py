@@ -113,6 +113,11 @@ class Rauc(DBusInterfaceProxy):
         return await self.connected_dbus.Installer.call("get_slot_status")
 
     @dbus_connected
+    async def get_primary(self) -> str:
+        """Get primary boot slot."""
+        return await self.connected_dbus.Installer.call("get_primary")
+
+    @dbus_connected
     def signal_completed(self) -> DBusSignalWrapper:
         """Return a signal wrapper for completed signal."""
         return self.connected_dbus.signal(DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED)

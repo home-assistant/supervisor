@@ -33,6 +33,7 @@ from ..const import (
     ATTR_UPDATE_PENDING,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
+    ATTR_VERSION_PENDING,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, BoardInvalidError
@@ -100,6 +101,7 @@ class APIOS(CoreSysAttributes):
         return {
             ATTR_VERSION: self.sys_os.version,
             ATTR_VERSION_LATEST: self.sys_os.latest_version,
+            ATTR_VERSION_PENDING: self.sys_os.version_pending,
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
             ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
