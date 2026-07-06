@@ -333,7 +333,7 @@ class PluginDns(PluginBase):
 
         # Resets hosts
         with suppress(OSError):
-            self.hosts.unlink()
+            await self.sys_run_in_executor(self.hosts.unlink)
         await self._init_hosts()
 
         # Reset loop protection
