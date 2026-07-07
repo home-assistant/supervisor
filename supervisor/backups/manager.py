@@ -474,7 +474,12 @@ class BackupManager(FileConfiguration, JobGroup):
         )
         if not await backup.load():
             # Remove invalid backup from location it was moved to
-            await self.sys_run_in_executor(backup.tarfile.unlink)
+            try:
+                await self.sys_run_in_executor(backup.tarfile.unlink)
+            except OSError as err:
+                if location in {LOCATION_CLOUD_BACKUP, None}:
+                    self.sys_resolution.check_oserror(err)
+                _LOGGER.error("Can't remove invalid backup file: %s", err)
             return None
         _LOGGER.info("Successfully imported %s", backup.slug)
 
@@ -487,7 +492,12 @@ class BackupManager(FileConfiguration, JobGroup):
             try:
                 self._backups[backup.slug].consolidate(backup)
             except BackupInvalidError as err:
-                await self.sys_run_in_executor(backup.tarfile.unlink)
+                try:
+                    await self.sys_run_in_executor(backup.tarfile.unlink)
+                except OSError as unlink_err:
+                    if location in {LOCATION_CLOUD_BACKUP, None}:
+                        self.sys_resolution.check_oserror(unlink_err)
+                    _LOGGER.error("Can't remove invalid backup file: %s", unlink_err)
                 raise BackupInvalidError(
                     f"Cannot import backup {backup.slug} due to: {err!s}", _LOGGER.error
                 ) from err
