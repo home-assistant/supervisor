@@ -63,6 +63,11 @@ class CheckSystemdUnitFailure(CheckBase):
 
     async def run_check(self) -> None:
         """Run check to list failed systemd units."""
+        # On a supervised installation the host units are not managed by us,
+        # only report failed units on Home Assistant OS
+        if not self.sys_os.available:
+            return
+
         # Get all failed units
         failed_units = await self._get_failed_units()
         capture_coroutines: list[Awaitable[None]] = []
