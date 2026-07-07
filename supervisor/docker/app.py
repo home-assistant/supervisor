@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
+from dataclasses import replace
 from http import HTTPStatus
 from ipaddress import IPv4Address
 import logging
@@ -11,7 +12,6 @@ import tempfile
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import aiodocker
-from attr import evolve
 from awesomeversion import AwesomeVersion
 
 from ..apps.build import AppBuild
@@ -937,7 +937,7 @@ class DockerApp(DockerInterface):
             and not self.sys_os.available
         ):
             self.sys_resolution.add_issue(
-                evolve(self.app.device_access_missing_issue),
+                replace(self.app.device_access_missing_issue),
                 suggestions=[SuggestionType.EXECUTE_RESTART],
             )
             return

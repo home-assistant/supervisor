@@ -1,5 +1,6 @@
 """Filter tools."""
 
+from dataclasses import asdict
 import ipaddress
 import logging
 import os
@@ -7,7 +8,6 @@ import re
 from typing import cast
 
 from aiohttp import hdrs
-import attr
 from sentry_sdk.types import Event, Hint
 
 from ..const import DOCKER_IPV4_NETWORK_MASK, HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
@@ -127,10 +127,9 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                 "storage_driver": coresys.docker.info.storage,
             },
             "resolution": {
-                "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],
+                "issues": [asdict(issue) for issue in coresys.resolution.issues],
                 "suggestions": [
-                    attr.asdict(suggestion)
-                    for suggestion in coresys.resolution.suggestions
+                    asdict(suggestion) for suggestion in coresys.resolution.suggestions
                 ],
                 "unhealthy": sorted(coresys.resolution.unhealthy),
             },

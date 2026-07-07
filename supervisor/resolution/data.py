@@ -1,9 +1,8 @@
 """Data objects."""
 
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
-
-import attr
 
 from .const import (
     ContextType,
@@ -14,39 +13,39 @@ from .const import (
 )
 
 
-@attr.s(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True)
 class Issue:
     """Represent an Issue."""
 
-    type: IssueType = attr.ib()
-    context: ContextType = attr.ib()
-    reference: str | None = attr.ib(default=None)
-    reference_extra: dict[str, Any] | None = attr.ib(default=None, hash=False)
-    uuid: str = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
+    type: IssueType
+    context: ContextType
+    reference: str | None = None
+    reference_extra: dict[str, Any] | None = field(default=None, hash=False)
+    uuid: str = field(default_factory=lambda: uuid4().hex, compare=False, init=False)
 
 
-@attr.s(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True)
 class Suggestion:
     """Represent an Suggestion."""
 
-    type: SuggestionType = attr.ib()
-    context: ContextType = attr.ib()
-    reference: str | None = attr.ib(default=None)
-    reference_extra: dict[str, Any] | None = attr.ib(default=None, hash=False)
-    uuid: str = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
+    type: SuggestionType
+    context: ContextType
+    reference: str | None = None
+    reference_extra: dict[str, Any] | None = field(default=None, hash=False)
+    uuid: str = field(default_factory=lambda: uuid4().hex, compare=False, init=False)
 
 
-@attr.s(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True)
 class HealthChanged:
     """Describe change in system health."""
 
-    healthy: bool = attr.ib()
-    unhealthy_reasons: list[UnhealthyReason] | None = attr.ib(default=None)
+    healthy: bool
+    unhealthy_reasons: list[UnhealthyReason] | None = None
 
 
-@attr.s(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True)
 class SupportedChanged:
     """Describe change in system supported."""
 
-    supported: bool = attr.ib()
-    unsupported_reasons: list[UnsupportedReason] | None = attr.ib(default=None)
+    supported: bool
+    unsupported_reasons: list[UnsupportedReason] | None = None

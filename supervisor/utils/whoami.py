@@ -3,11 +3,11 @@
 https://github.com/home-assistant/whoami.home-assistant.io
 """
 
+from dataclasses import dataclass
 from datetime import datetime
 import logging
 
 import aiohttp
-import attr
 
 from ..exceptions import WhoamiConnectivityError, WhoamiError, WhoamiSSLError
 from .dt import utc_from_timestamp
@@ -16,12 +16,12 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 _API_CALL: str = "services.home-assistant.io/whoami/v1"
 
 
-@attr.s(slots=True, frozen=True)
+@dataclass(slots=True, frozen=True)
 class WhoamiData:
     """Client Whoami data."""
 
-    timezone: str = attr.ib()
-    dt_utc: datetime = attr.ib()
+    timezone: str
+    dt_utc: datetime
 
 
 async def retrieve_whoami(

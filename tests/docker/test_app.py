@@ -8,7 +8,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 import aiodocker
-import attr
 import pytest
 
 from supervisor.apps import validate as vd
@@ -614,7 +613,7 @@ async def test_app_options_device_hw_listener(
     # Re-enumerated device: same by-id symlink, different kernel node and minor number.
     # When a USB device is unplugged and plugged back in, the kernel may assign a new
     # device node (ttyACM0 → ttyACM1) with a different minor number.
-    reenumerated_device = attr.evolve(
+    reenumerated_device = replace(
         TEST_HW_DEVICE,
         name="ttyACM1",
         path=Path("/dev/ttyACM1"),

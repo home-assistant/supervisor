@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass, field
 import logging
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
-
-import attr
 
 from ..const import (
     ATTR_ADDON,
@@ -29,14 +28,14 @@ CMD_NEW = "post"
 CMD_DEL = "delete"
 
 
-@attr.s
+@dataclass(slots=True)
 class Message:
     """Represent a single Discovery message."""
 
-    app: str = attr.ib()
-    service: str = attr.ib()
-    config: dict[str, Any] = attr.ib(eq=False)
-    uuid: str = attr.ib(factory=lambda: uuid4().hex, eq=False)
+    app: str
+    service: str
+    config: dict[str, Any] = field(compare=False)
+    uuid: str = field(default_factory=lambda: uuid4().hex, compare=False)
 
 
 class Discovery(CoreSysAttributes, FileConfiguration):
@@ -62,7 +61,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         """Write discovery message into data file."""
         messages: list[dict[str, Any]] = []
         for message in self.list_messages:
-            messages.append(attr.asdict(message))
+            messages.append(asdict(message))
 
         self._data[ATTR_DISCOVERY].clear()
         self._data[ATTR_DISCOVERY].extend(messages)
@@ -121,7 +120,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             _LOGGER.info("Discovery %s message ignore", message.uuid)
             return
 
-        data = attr.asdict(message)
+        data = asdict(message)
         data.pop(ATTR_CONFIG)
         # Home Assistant expects the legacy "addon" key in the push payload.
         data[ATTR_ADDON] = data.pop(ATTR_APP)
