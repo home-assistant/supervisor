@@ -26,6 +26,10 @@ OS_FSCK_UNITS = {
 # Systemd fsck unit for data filesystem
 DATA_FSCK_UNIT = "systemd-fsck@dev-disk-by\\x2dlabel-hassos\\x2ddata.service"
 
+# Oneshot unit which ends up failed when the network is not up in time at
+# boot. Home Assistant works offline, so the failure is not actionable.
+NM_WAIT_ONLINE_SERVICE = "NetworkManager-wait-online.service"
+
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
@@ -88,6 +92,15 @@ class CheckSystemdUnitFailure(CheckBase):
             if unit_name == FIREWALL_SERVICE:
                 _LOGGER.debug(
                     "Ignoring failed firewall service '%s' which handles its own health state",
+                    unit_name,
+                )
+                continue
+
+            # Skip NetworkManager-wait-online which fails when the network is
+            # slow to come up at boot, Home Assistant works offline
+            if unit_name == NM_WAIT_ONLINE_SERVICE:
+                _LOGGER.debug(
+                    "Ignoring failed wait-online unit '%s'",
                     unit_name,
                 )
                 continue
