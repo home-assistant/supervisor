@@ -287,7 +287,13 @@ class OSManager(CoreSysAttributes):
             or (status := self._slots.get(primary)) is None
             or not status.bundle_version
             or not status.bootname
-            or status.bootname == self.sys_dbus.rauc.boot_slot
+        ):
+            return
+
+        # Nothing pending if the primary slot is the booted one or holds
+        # the same version as the running system
+        if (
+            status.bootname == self.sys_dbus.rauc.boot_slot
             or status.bundle_version == self.version
         ):
             return
