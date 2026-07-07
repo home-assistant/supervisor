@@ -413,7 +413,7 @@ class DockerApp(DockerInterface):
                     )
                 )
 
-        all_app_configs_mapping_type = None
+        all_app_configs_mapping_type: MappingType | None = None
         if MappingType.ALL_APP_CONFIGS in app_mapping:
             all_app_configs_mapping_type = MappingType.ALL_APP_CONFIGS
         elif MappingType.ALL_ADDON_CONFIGS in app_mapping:
@@ -445,8 +445,8 @@ class DockerApp(DockerInterface):
             )
 
         apps_mapping_type = None
-        if MappingType.APPS in app_mapping:
-            apps_mapping_type = MappingType.APPS
+        if MappingType.LOCAL_APPS in app_mapping:
+            apps_mapping_type = MappingType.LOCAL_APPS
         elif MappingType.ADDONS in app_mapping:
             apps_mapping_type = MappingType.ADDONS
 
@@ -458,7 +458,7 @@ class DockerApp(DockerInterface):
                     target=app_mapping[apps_mapping_type].path
                     or (
                         PATH_LOCAL_APPS.as_posix()
-                        if apps_mapping_type == MappingType.APPS
+                        if apps_mapping_type == MappingType.LOCAL_APPS
                         else PATH_LOCAL_ADDONS.as_posix()
                     ),
                     read_only=app_mapping[apps_mapping_type].read_only,

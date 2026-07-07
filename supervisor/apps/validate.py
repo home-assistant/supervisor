@@ -249,13 +249,12 @@ def _warn_app_config(config: dict[str, Any]):
 
     # Deprecated map types, deprecated as of 2026.07
     _LEGACY_MAP_TYPES = {
-        MappingType.ADDONS: MappingType.APPS,
+        MappingType.ADDONS: MappingType.LOCAL_APPS,
         MappingType.ALL_ADDON_CONFIGS: MappingType.ALL_APP_CONFIGS,
         MappingType.ADDON_CONFIG: MappingType.APP_CONFIG,
     }
-    for volume in config.get(ATTR_MAP, []):
-        volume_type = volume.get(ATTR_TYPE) if isinstance(volume, dict) else None
-        if volume_type in _LEGACY_MAP_TYPES:
+    for volume in config[ATTR_MAP]:
+        if (volume_type := volume[ATTR_TYPE]) in _LEGACY_MAP_TYPES:
             _LOGGER.warning(
                 "App '%s' uses legacy map type '%s'. Please update to '%s'. Please report this to the maintainer.",
                 name,
@@ -392,11 +391,16 @@ def _migrate_app_config(protocol=False):
             if any(
                 volume
                 and volume[ATTR_TYPE]
-                in {MappingType.ADDON_CONFIG, MappingType.HOMEASSISTANT_CONFIG}
+                in {
+                    MappingType.APP_CONFIG,
+                    MappingType.ADDON_CONFIG,
+                    MappingType.HOMEASSISTANT_CONFIG,
+                }
                 for volume in volumes
             ):
                 _LOGGER.warning(
-                    "App config using incompatible map options, '%s' and '%s' are ignored if '%s' is included. Please report this to the maintainer of %s",
+                    "App config using incompatible map options, '%s', '%s', and '%s' are ignored if '%s' is included. Please report this to the maintainer of %s",
+                    MappingType.APP_CONFIG,
                     MappingType.ADDON_CONFIG,
                     MappingType.HOMEASSISTANT_CONFIG,
                     MappingType.CONFIG,
@@ -412,7 +416,7 @@ def _migrate_app_config(protocol=False):
 
         # 2026-07 addon-based map options replaced by app-based options.
         for app_mapping_type, legacy_mapping_type in (
-            (MappingType.APPS, MappingType.ADDONS),
+            (MappingType.LOCAL_APPS, MappingType.ADDONS),
             (MappingType.ALL_APP_CONFIGS, MappingType.ALL_ADDON_CONFIGS),
             (MappingType.APP_CONFIG, MappingType.ADDON_CONFIG),
         ):

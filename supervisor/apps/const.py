@@ -19,7 +19,7 @@ class MappingType(StrEnum):
     DATA = "data"
     CONFIG = "config"
     SSL = "ssl"
-    APPS = "apps"
+    LOCAL_APPS = "local_apps"
     BACKUP = "backup"
     SHARE = "share"
     MEDIA = "media"
