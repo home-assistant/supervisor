@@ -55,7 +55,7 @@ RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class HostEntry:
     """Single entry in hosts."""
 

@@ -101,7 +101,7 @@ class ServiceManager(CoreSysAttributes):
             _LOGGER.warning("Can't update host service information!")
 
 
-@dataclass(frozen=True)
+@dataclass(slots=True, frozen=True)
 class ServiceInfo:
     """Represent a single Service."""
 

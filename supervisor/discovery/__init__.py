@@ -28,7 +28,7 @@ CMD_NEW = "post"
 CMD_DEL = "delete"
 
 
-@dataclass
+@dataclass(slots=True)
 class Message:
     """Represent a single Discovery message."""
 
