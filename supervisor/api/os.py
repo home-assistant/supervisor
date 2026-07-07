@@ -33,6 +33,7 @@ from ..const import (
     ATTR_UPDATE_PENDING,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
+    ATTR_VERSION_PENDING,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, BoardInvalidError
@@ -98,8 +99,14 @@ class APIOS(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return OS information."""
         return {
-            ATTR_VERSION: self.sys_os.version,
+            # Report an installed update pending activation as the current
+            # version: the Core update entity compares version with
+            # version_latest, so it would offer the update again otherwise.
+            # Once Core consumes version_pending, this can be limited to Core
+            # versions predating that support.
+            ATTR_VERSION: self.sys_os.version_pending or self.sys_os.version,
             ATTR_VERSION_LATEST: self.sys_os.latest_version,
+            ATTR_VERSION_PENDING: self.sys_os.version_pending,
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
             ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,

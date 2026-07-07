@@ -1,7 +1,7 @@
 """Test Home Assistant OS functionality."""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, call, patch
 
 from awesomeversion import AwesomeVersion
 from dbus_fast import Variant
@@ -9,7 +9,8 @@ import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HassOSJobError
+from supervisor.dbus.const import RaucState
+from supervisor.exceptions import HassOSJobError, HassOSUpdateError
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
@@ -153,6 +154,75 @@ async def test_update_success_cleans_up_bundle(
         (suggestion.type, suggestion.context)
         for suggestion in coresys.resolution.suggestions
     }
+    assert coresys.os.version_pending == AwesomeVersion("13.0")
+    assert coresys.os.need_update is False
+
+
+async def test_update_pending_version_blocked(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    path_extern: None,
+    supervisor_internet: AsyncMock,
+) -> None:
+    """Test updating to an already installed version pending reboot is rejected."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    coresys.os._available = True
+    coresys.os._board = "generic-x86-64"
+    coresys.os._os_name = "haos"
+    coresys.os._version = AwesomeVersion("12.0")
+    coresys.updater._data = {
+        "ota": (
+            "https://github.com/home-assistant/operating-system/releases/download/"
+            "{version}/{os_name}_{board}-{version}.raucb"
+        ),
+        "hassos_unrestricted": AwesomeVersion("13.0"),
+    }
+
+    async def fake_download(url: str, raucb: Path) -> None:
+        raucb.touch()
+
+    with patch.object(
+        coresys.os, "_download_raucb", side_effect=fake_download
+    ) as download:
+        await coresys.os.update()
+
+        with pytest.raises(HassOSUpdateError):
+            await coresys.os.update()
+
+    download.assert_called_once()
+
+
+async def test_mark_healthy_keeps_pending_update(coresys: CoreSys) -> None:
+    """Test mark_healthy does not mark booted slot active with pending update."""
+    coresys.os._available = True
+    coresys.os._version_pending = AwesomeVersion("13.0")
+
+    with patch.object(
+        coresys.dbus.rauc,
+        "mark",
+        AsyncMock(return_value=["kernel.1", "marked slot kernel.1 as good"]),
+    ) as mark:
+        await coresys.os.mark_healthy()
+
+    mark.assert_called_once_with(RaucState.GOOD, "booted")
+
+
+async def test_mark_healthy_marks_active_without_pending(coresys: CoreSys) -> None:
+    """Test mark_healthy marks booted slot active and good without pending update."""
+    coresys.os._available = True
+
+    with patch.object(
+        coresys.dbus.rauc,
+        "mark",
+        AsyncMock(return_value=["kernel.1", "marked slot kernel.1 as good"]),
+    ) as mark:
+        await coresys.os.mark_healthy()
+
+    assert mark.call_args_list == [
+        call(RaucState.ACTIVE, "booted"),
+        call(RaucState.GOOD, "booted"),
+    ]
 
 
 async def test_board_name_supervised(coresys: CoreSys) -> None:
@@ -278,6 +348,41 @@ async def test_load_slot_status_fresh_install(
     assert len(coresys.os.slots) == 6
     assert coresys.os.get_slot_name("A") == "kernel.0"
     assert coresys.os.get_slot_name("B") == "kernel.1"
+
+
+async def test_load_detects_pending_update(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> None:
+    """Test load recovers a pending update from rauc and raises a reboot issue."""
+    rauc_service: RaucService = all_dbus_services["rauc"]
+    rauc_service.response_get_primary = "kernel.0"
+
+    await coresys.os.load()
+
+    assert coresys.os.version_pending == AwesomeVersion("9.0.dev20220818")
+    assert (
+        IssueType.REBOOT_REQUIRED,
+        ContextType.SYSTEM,
+    ) in {(issue.type, issue.context) for issue in coresys.resolution.issues}
+    assert (
+        SuggestionType.EXECUTE_REBOOT,
+        ContextType.SYSTEM,
+    ) in {
+        (suggestion.type, suggestion.context)
+        for suggestion in coresys.resolution.suggestions
+    }
+
+
+async def test_load_no_pending_update(coresys: CoreSys) -> None:
+    """Test load finds no pending update when the primary slot is booted."""
+    await coresys.os.load()
+
+    assert coresys.os.version_pending is None
+    assert (
+        IssueType.REBOOT_REQUIRED,
+        ContextType.SYSTEM,
+    ) not in {(issue.type, issue.context) for issue in coresys.resolution.issues}
 
 
 @pytest.mark.parametrize(

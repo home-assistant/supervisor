@@ -150,6 +150,7 @@ class Rauc(DBusServiceMock):
     interface = "de.pengutronix.rauc.Installer"
     response_mark: list[str] | DBusError = ["kernel.1", "marked slot kernel.1 as good"]
     response_get_slot_status = SLOT_STATUS_FIXTURE
+    response_get_primary: str = "kernel.1"
 
     @dbus_property(access=PropertyAccess.READ)
     def Operation(self) -> "s":
@@ -204,7 +205,7 @@ class Rauc(DBusServiceMock):
     @dbus_method()
     def GetPrimary(self) -> "s":
         """Get primary slot."""
-        return "kernel.0"
+        return self.response_get_primary
 
     @dbus_method()
     def GetSlotStatus(self) -> "a(sa{sv})":
