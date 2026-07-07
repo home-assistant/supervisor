@@ -332,8 +332,11 @@ class PluginDns(PluginBase):
         await self.save_data()
 
         # Resets hosts
-        with suppress(OSError):
+        try:
             await self.sys_run_in_executor(self.hosts.unlink)
+        except OSError as err:
+            self.sys_resolution.check_oserror(err)
+            _LOGGER.debug("Can't remove hosts file: %s", err)
         await self._init_hosts()
 
         # Reset loop protection

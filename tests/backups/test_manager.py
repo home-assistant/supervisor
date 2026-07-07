@@ -2172,6 +2172,68 @@ async def test_backup_multiple_locations_oserror(
     ) is unhealthy
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+@pytest.mark.parametrize(
+    ("error_num", "unhealthy"),
+    [(errno.EBUSY, False), (errno.EBADMSG, True)],
+)
+async def test_import_backup_invalid_unlink_oserror(
+    coresys: CoreSys, error_num: int, unhealthy: bool
+):
+    """Test import backup where load fails and cleanup unlink raises OSError."""
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    err = OSError()
+    err.errno = error_num
+
+    with (
+        patch.object(Backup, "load", side_effect=[True, False]),
+        patch("pathlib.Path.unlink", side_effect=err),
+    ):
+        backup = await coresys.backups.import_backup(tar_file)
+
+    assert backup is None
+    assert (
+        UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
+    ) is unhealthy
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+@pytest.mark.parametrize(
+    ("error_num", "unhealthy"),
+    [(errno.EBUSY, False), (errno.EBADMSG, True)],
+)
+async def test_import_backup_consolidate_unlink_oserror(
+    coresys: CoreSys, error_num: int, unhealthy: bool
+):
+    """Test import backup where consolidate fails and cleanup unlink raises OSError."""
+    copy(get_fixture_path("backup_example.tar"), coresys.config.path_backup)
+    await coresys.backups.reload()
+    assert coresys.backups.get("7fed74c8")
+
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    err = OSError()
+    err.errno = error_num
+
+    with (
+        patch.object(
+            Backup, "consolidate", side_effect=BackupInvalidError("Test error")
+        ),
+        patch("pathlib.Path.unlink", side_effect=err),
+        pytest.raises(BackupInvalidError),
+    ):
+        await coresys.backups.import_backup(tar_file, location=".cloud_backup")
+
+    assert (
+        UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
+    ) is unhealthy
+
+
 @pytest.mark.parametrize("same_mount", [True, False])
 async def test_get_upload_path_for_backup_location(coresys: CoreSys, same_mount: bool):
     """Test get_upload_path_for_location with local backup location."""
