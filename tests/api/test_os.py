@@ -285,6 +285,9 @@ async def test_api_os_update_no_auto_reboot_creates_issue(
     resp = await api_client.get(f"{prefix}/os/info")
     result = await resp.json()
     assert result["data"]["version_pending"] == "13.0"
+    # Installed update is reported as current version so Core releases
+    # unaware of version_pending don't offer the update again
+    assert result["data"]["version"] == "13.0"
 
 
 async def test_api_os_update_failure_no_reboot_no_issue(
