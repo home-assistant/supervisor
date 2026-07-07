@@ -71,7 +71,6 @@ async def test_check_creates_issue_and_captures_message(
     )
 
 
-@pytest.mark.usefixtures("os_available")
 async def test_mount_unit_failures_ignored(coresys: CoreSys, capture_message: Mock):
     """Test mount unit failures are ignored."""
     systemd_unit_failure = CheckSystemdUnitFailure(coresys)
@@ -91,7 +90,6 @@ async def test_mount_unit_failures_ignored(coresys: CoreSys, capture_message: Mo
     capture_message.assert_not_called()
 
 
-@pytest.mark.usefixtures("os_available")
 async def test_firewall_service_failure_ignored(
     coresys: CoreSys, capture_message: Mock
 ):
@@ -128,8 +126,10 @@ async def test_nm_wait_online_failure_ignored(coresys: CoreSys, capture_message:
     capture_message.assert_not_called()
 
 
-async def test_check_skipped_on_supervised(coresys: CoreSys, capture_message: Mock):
-    """Test check does nothing when not running on Home Assistant OS."""
+async def test_check_creates_issue_without_sentry_on_supervised(
+    coresys: CoreSys, capture_message: Mock
+):
+    """Test check creates issue but no sentry message when not on Home Assistant OS."""
     systemd_unit_failure = CheckSystemdUnitFailure(coresys)
 
     with patch.object(
@@ -137,16 +137,19 @@ async def test_check_skipped_on_supervised(coresys: CoreSys, capture_message: Mo
         "list_units_filtered",
         new_callable=AsyncMock,
         return_value=[("example.service",)],
-    ) as list_units_filtered:
+    ):
         await systemd_unit_failure.run_check()
 
-    list_units_filtered.assert_not_called()
-    assert not coresys.resolution.issues
-    assert not coresys.resolution.suggestions
+    assert len(coresys.resolution.issues) == 1
+    assert coresys.resolution.issues[0] == Issue(
+        IssueType.SYSTEMD_UNIT_FAILED,
+        ContextType.SYSTEM,
+        reference="example.service",
+    )
+    assert len(coresys.resolution.suggestions) == 2
     capture_message.assert_not_called()
 
 
-@pytest.mark.usefixtures("os_available")
 @pytest.mark.parametrize(
     ("unit_name", "unhealthy_reason"),
     [

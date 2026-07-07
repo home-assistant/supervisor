@@ -63,11 +63,6 @@ class CheckSystemdUnitFailure(CheckBase):
 
     async def run_check(self) -> None:
         """Run check to list failed systemd units."""
-        # On a supervised installation the host units are not managed by us,
-        # only report failed units on Home Assistant OS
-        if not self.sys_os.available:
-            return
-
         # Get all failed units
         failed_units = await self._get_failed_units()
         capture_coroutines: list[Awaitable[None]] = []
@@ -133,12 +128,15 @@ class CheckSystemdUnitFailure(CheckBase):
             if issue in self.sys_resolution.issues:
                 continue
 
-            capture_coroutines.append(
-                async_capture_message(
-                    f"Systemd unit failed: {unit_name}",
-                    level="error",
+            # Only report failed units to Sentry on Home Assistant OS, there
+            # is nothing we can do about units of a supervised installation
+            if self.sys_os.available:
+                capture_coroutines.append(
+                    async_capture_message(
+                        f"Systemd unit failed: {unit_name}",
+                        level="error",
+                    )
                 )
-            )
             self.sys_resolution.add_issue(
                 issue,
                 suggestions=[
