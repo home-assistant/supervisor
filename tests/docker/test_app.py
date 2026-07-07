@@ -224,7 +224,7 @@ def test_app_map_all_configs_folder_targets(
     ("mapping", "target"),
     [
         ("addons", "/addons"),
-        ("apps", "/apps"),
+        ("local_apps", "/local_apps"),
     ],
 )
 def test_app_map_apps_folder_targets(
@@ -322,10 +322,10 @@ def test_app_map_app_config_folder_with_custom_target_new_map_type(
     ("app_mapping", "legacy_mapping", "source", "app_target", "legacy_target"),
     [
         (
-            "apps",
+            "local_apps",
             "addons",
             "path_extern_apps_local",
-            "/apps/selected",
+            "/local_apps/selected",
             "/addons/ignored",
         ),
         (

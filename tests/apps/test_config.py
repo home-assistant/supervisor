@@ -281,7 +281,7 @@ def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
 @pytest.mark.parametrize(
     ("legacy_mapping", "app_mapping"),
     [
-        ("addons", "apps"),
+        ("addons", "local_apps"),
         ("all_addon_configs", "all_app_configs"),
         ("addon_config", "app_config"),
     ],
@@ -302,11 +302,11 @@ def test_warn_legacy_map_types(
 
 
 @pytest.mark.parametrize(
-    ("app_mapping", "legacy_mapping"),
+    ("legacy_mapping", "app_mapping"),
     [
-        ("apps", "addons"),
-        ("all_app_configs", "all_addon_configs"),
-        ("app_config", "addon_config"),
+        ("addons", "local_apps"),
+        ("all_addon_configs", "all_app_configs"),
+        ("addon_config", "app_config"),
     ],
 )
 def test_warn_incompatible_map_types_legacy_ignored(

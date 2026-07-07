@@ -133,7 +133,7 @@ from .options import RE_SCHEMA_ELEMENT
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(
-    r"^(data|config|ssl|apps|addons|backup|share|media|homeassistant_config|all_app_configs|all_addon_configs|app_config|addon_config)(?::(rw|ro))?$"
+    r"^(data|config|ssl|local_apps|addons|backup|share|media|homeassistant_config|all_app_configs|all_addon_configs|app_config|addon_config)(?::(rw|ro))?$"
 )
 RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
 
@@ -420,12 +420,13 @@ def _migrate_app_config(protocol=False):
             (MappingType.ALL_APP_CONFIGS, MappingType.ALL_ADDON_CONFIGS),
             (MappingType.APP_CONFIG, MappingType.ADDON_CONFIG),
         ):
-            if any(
-                volume and volume[ATTR_TYPE] == app_mapping_type for volume in volumes
-            ) and any(
-                volume and volume[ATTR_TYPE] == legacy_mapping_type
+            matching_volumes = [
+                volume
                 for volume in volumes
-            ):
+                if volume
+                and volume[ATTR_TYPE] in {legacy_mapping_type, app_mapping_type}
+            ]
+            if len(matching_volumes) > 1:
                 _LOGGER.warning(
                     "App config using incompatible map options, '%s' and '%s'. Legacy option '%s' will be ignored. Please report this to the maintainer of %s",
                     app_mapping_type,
