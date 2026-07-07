@@ -44,6 +44,7 @@ async def test_base(coresys: CoreSys):
     assert systemd_unit_failure.states == [CoreState.SETUP]
 
 
+@pytest.mark.usefixtures("os_available")
 async def test_check_creates_issue_and_captures_message(
     coresys: CoreSys, capture_message: Mock
 ):
@@ -122,6 +123,30 @@ async def test_nm_wait_online_failure_ignored(coresys: CoreSys, capture_message:
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
+    capture_message.assert_not_called()
+
+
+async def test_check_creates_issue_without_sentry_on_supervised(
+    coresys: CoreSys, capture_message: Mock
+):
+    """Test check creates issue but no sentry message when not on Home Assistant OS."""
+    systemd_unit_failure = CheckSystemdUnitFailure(coresys)
+
+    with patch.object(
+        coresys.dbus.systemd,
+        "list_units_filtered",
+        new_callable=AsyncMock,
+        return_value=[("example.service",)],
+    ):
+        await systemd_unit_failure.run_check()
+
+    assert len(coresys.resolution.issues) == 1
+    assert coresys.resolution.issues[0] == Issue(
+        IssueType.SYSTEMD_UNIT_FAILED,
+        ContextType.SYSTEM,
+        reference="example.service",
+    )
+    assert len(coresys.resolution.suggestions) == 2
     capture_message.assert_not_called()
 
 

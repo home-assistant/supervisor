@@ -128,12 +128,15 @@ class CheckSystemdUnitFailure(CheckBase):
             if issue in self.sys_resolution.issues:
                 continue
 
-            capture_coroutines.append(
-                async_capture_message(
-                    f"Systemd unit failed: {unit_name}",
-                    level="error",
+            # Only report failed units to Sentry on Home Assistant OS, there
+            # is nothing we can do about units of a supervised installation
+            if self.sys_os.available:
+                capture_coroutines.append(
+                    async_capture_message(
+                        f"Systemd unit failed: {unit_name}",
+                        level="error",
+                    )
                 )
-            )
             self.sys_resolution.add_issue(
                 issue,
                 suggestions=[
