@@ -592,7 +592,18 @@ class App(AppModel):
     @property
     def ports(self) -> dict[str, int | None] | None:
         """Return ports of app."""
-        return self.persist.get(ATTR_NETWORK, super().ports)
+        config_ports = super().ports
+        if config_ports is None:
+            return self.persist.get(ATTR_NETWORK)
+
+        # Merge persisted overrides on top of the config-declared ports so
+        # ports the user hasn't remapped (e.g. optional ports left unpublished)
+        # stay visible and can still be enabled.
+        persisted = self.persist.get(ATTR_NETWORK, {})
+        return {
+            container_port: persisted.get(container_port, default_host_port)
+            for container_port, default_host_port in config_ports.items()
+        }
 
     @ports.setter
     def ports(self, value: dict[str, int | None] | None) -> None:
