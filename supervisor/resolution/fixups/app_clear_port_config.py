@@ -58,6 +58,7 @@ class FixupAppClearPortConfig(FixupBase):
             return
 
         ports[port_key] = None
+        app.ports = ports
         await app.save_persist()
 
         _LOGGER.info(
