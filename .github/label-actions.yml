@@ -1,0 +1,38 @@
+core-issue:
+  comment: >
+    :wave: @{issue-author}, thanks for reporting an issue!
+
+
+    It looks like this issue is related to Home Assistant Core. Please check
+    the [Home Assistant Core](https://github.com/home-assistant/core/issues)
+    repository, the issue might have been reported already. Open a new issue
+    in that repository if you can't find a matching issue.
+  close: true
+  close-reason: not planned
+
+docker-corruption:
+  comment: >
+    :wave: @{issue-author}, thanks for reporting an issue!
+
+
+    The symptoms described here (e.g. crashes with missing files or modules,
+    `ModuleNotFoundError`, or corrupt binaries inside a container) indicate
+    local corruption of the Docker image storage. This typically happens when
+    the system loses power or is reset while Docker writes an image to disk,
+    or due to failing storage. Docker verifies image checksums only while
+    pulling — once an image is written to disk, its integrity is not checked
+    again, so such corruption can stay dormant until the affected container
+    is recreated (e.g. on a host reboot).
+
+
+    Note that deleting and re-pulling the affected image does not necessarily
+    help: image layers are shared between images and reused across versions,
+    and `docker pull` skips layers it believes are already present locally.
+
+
+    To recover, make a full backup, download it, then reinstall Home
+    Assistant OS and restore the backup. A dedicated feature to reset the
+    Docker image storage is tracked in
+    [#6555](https://github.com/home-assistant/supervisor/issues/6555).
+  close: true
+  close-reason: not planned
