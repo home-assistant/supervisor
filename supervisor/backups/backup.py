@@ -612,7 +612,7 @@ class Backup(JobGroup):
             self.sys_jobs.current.capture_error(BackupError("Can't write backup"))
             _LOGGER.error("Can't write backup: %s", err)
 
-    @Job(name="backup_addon_save", cleanup=False)
+    @Job(name="backup_app_save", cleanup=False)
     async def _app_save(self, app: App) -> asyncio.Task | None:
         """Store an app into backup."""
         self.sys_jobs.current.reference = slug = app.slug
@@ -655,7 +655,7 @@ class Backup(JobGroup):
 
         return start_task
 
-    @Job(name="backup_store_addons", cleanup=False)
+    @Job(name="backup_store_apps", cleanup=False)
     async def store_apps(self, app_list: list[App]) -> list[asyncio.Task]:
         """Add a list of apps into backup.
 
@@ -675,7 +675,7 @@ class Backup(JobGroup):
 
         return start_tasks
 
-    @Job(name="backup_addon_restore", cleanup=False)
+    @Job(name="backup_app_restore", cleanup=False)
     async def _app_restore(self, app_slug: str) -> asyncio.Task | None:
         """Restore an app from backup."""
         self.sys_jobs.current.reference = app_slug
@@ -704,7 +704,7 @@ class Backup(JobGroup):
                 f"Can't restore backup {app_slug}", _LOGGER.error
             ) from err
 
-    @Job(name="backup_restore_addons", cleanup=False)
+    @Job(name="backup_restore_apps", cleanup=False)
     async def restore_apps(
         self, app_list: list[str]
     ) -> tuple[bool, list[asyncio.Task]]:
@@ -724,7 +724,7 @@ class Backup(JobGroup):
 
         return (success, start_tasks)
 
-    @Job(name="backup_remove_delta_addons", cleanup=False)
+    @Job(name="backup_remove_delta_apps", cleanup=False)
     async def remove_delta_apps(self) -> bool:
         """Remove apps which are not in this backup."""
         success = True

@@ -589,9 +589,10 @@ class DockerApp(DockerInterface):
         return mounts
 
     @Job(
-        name="docker_addon_run",
+        name="docker_app_run",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def run(self) -> None:
         """Run Docker image."""
@@ -654,9 +655,10 @@ class DockerApp(DockerInterface):
             )
 
     @Job(
-        name="docker_addon_update",
+        name="docker_app_update",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def update(
         self,
@@ -682,9 +684,10 @@ class DockerApp(DockerInterface):
         )
 
     @Job(
-        name="docker_addon_install",
+        name="docker_app_install",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def install(
         self,
@@ -822,9 +825,10 @@ class DockerApp(DockerInterface):
         await self.sys_docker.export_image(self.image, self.version, tar_file)
 
     @Job(
-        name="docker_addon_import_image",
+        name="docker_app_import_image",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def import_image(self, tar_file: Path) -> None:
         """Import a tar file as image."""
@@ -835,7 +839,11 @@ class DockerApp(DockerInterface):
             with suppress(DockerError):
                 await self.cleanup()
 
-    @Job(name="docker_addon_cleanup", concurrency=JobConcurrency.GROUP_QUEUE)
+    @Job(
+        name="docker_app_cleanup",
+        concurrency=JobConcurrency.GROUP_QUEUE,
+        internal=True,
+    )
     async def cleanup(
         self,
         old_image: str | None = None,
@@ -862,9 +870,10 @@ class DockerApp(DockerInterface):
         )
 
     @Job(
-        name="docker_addon_write_stdin",
+        name="docker_app_write_stdin",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def write_stdin(self, data: bytes) -> None:
         """Write to app stdin."""
@@ -892,9 +901,10 @@ class DockerApp(DockerInterface):
             ) from err
 
     @Job(
-        name="docker_addon_stop",
+        name="docker_app_stop",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
@@ -922,7 +932,7 @@ class DockerApp(DockerInterface):
             self.sys_resolution.dismiss_issue(issue)
 
     @Job(
-        name="docker_addon_hardware_events",
+        name="docker_app_hardware_events",
         conditions=[JobCondition.OS_AGENT],
         internal=True,
         concurrency=JobConcurrency.QUEUE,

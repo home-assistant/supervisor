@@ -105,8 +105,9 @@ class Tasks(CoreSysAttributes):
         _LOGGER.info("All core tasks are scheduled")
 
     @Job(
-        name="tasks_update_addons",
+        name="tasks_update_apps",
         conditions=APP_UPDATE_CONDITIONS + [JobCondition.RUNNING],
+        internal=True,
     )
     async def _update_apps(self):
         """Check if an update is available for an App and update it."""
@@ -235,7 +236,11 @@ class Tasks(CoreSysAttributes):
         finally:
             self._cache[HASS_WATCHDOG_API_FAILURES] = 0
 
-    @Job(name="tasks_update_cli", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_cli",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_cli(self):
         """Check and run update of cli."""
         if not self.sys_plugins.cli.need_update:
@@ -246,7 +251,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.cli.update()
 
-    @Job(name="tasks_update_dns", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_dns",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
         if not self.sys_plugins.dns.need_update:
@@ -258,7 +267,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.dns.update()
 
-    @Job(name="tasks_update_audio", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_audio",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
         if not self.sys_plugins.audio.need_update:
@@ -270,7 +283,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.audio.update()
 
-    @Job(name="tasks_update_observer", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_observer",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_observer(self):
         """Check and run update of Observer plugin."""
         if not self.sys_plugins.observer.need_update:
@@ -282,7 +299,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.observer.update()
 
-    @Job(name="tasks_update_multicast", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_multicast",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_multicast(self):
         """Check and run update of multicast."""
         if not self.sys_plugins.multicast.need_update:
@@ -348,12 +369,13 @@ class Tasks(CoreSysAttributes):
             JobCondition.OS_SUPPORTED,
             JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
         ],
+        internal=True,
     )
     async def _reload_store(self) -> None:
         """Reload store and check for app updates."""
         await self.sys_store.reload()
 
-    @Job(name="tasks_reload_updater")
+    @Job(name="tasks_reload_updater", internal=True)
     async def _reload_updater(self) -> None:
         """Check for new versions of Home Assistant, Supervisor, OS, etc."""
         await self.sys_updater.reload()
@@ -374,6 +396,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.ARCHITECTURE_SUPPORTED,
         ],
         concurrency=JobConcurrency.REJECT,
+        internal=True,
     )
     async def _auto_update_supervisor(self):
         """Auto update Supervisor if enabled."""
@@ -387,7 +410,11 @@ class Tasks(CoreSysAttributes):
         with suppress(SupervisorUpdateError):
             await self.sys_supervisor.update()
 
-    @Job(name="tasks_core_backup_cleanup", conditions=[JobCondition.HEALTHY])
+    @Job(
+        name="tasks_core_backup_cleanup",
+        conditions=[JobCondition.HEALTHY],
+        internal=True,
+    )
     async def _core_backup_cleanup(self) -> None:
         """Core backup is intended for transient use, remove any old backups that got left behind."""
         old_backups = [

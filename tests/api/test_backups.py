@@ -1584,7 +1584,7 @@ async def test_pre_post_backup_command_error(
     job_id = body["data"]["job_id"]
     job: SupervisorJob | None = None
     for j in coresys.jobs.jobs:
-        if j.name == "backup_store_addons" and j.parent_id == job_id:
+        if j.name == "backup_store_apps" and j.parent_id == job_id:
             job = j
             break
 

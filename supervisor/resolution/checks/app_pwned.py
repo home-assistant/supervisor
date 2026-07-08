@@ -29,10 +29,11 @@ class CheckAppPwned(CheckBase):
         return "addon_pwned"
 
     @Job(
-        name="check_addon_pwned_run",
+        name="check_app_pwned_run",
         conditions=[JobCondition.INTERNET_SYSTEM],
         throttle_period=timedelta(hours=24),
         throttle=JobThrottle.THROTTLE,
+        internal=True,
     )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
@@ -73,7 +74,11 @@ class CheckAppPwned(CheckBase):
                 except PwnedError:
                     pass
 
-    @Job(name="check_addon_pwned_approve", conditions=[JobCondition.INTERNET_SYSTEM])
+    @Job(
+        name="check_app_pwned_approve",
+        conditions=[JobCondition.INTERNET_SYSTEM],
+        internal=True,
+    )
     async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
         if not issue.reference:

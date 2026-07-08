@@ -1,7 +1,7 @@
 """Test Docker API."""
 
 import asyncio
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -422,3 +422,32 @@ async def test_job_with_error(
             ],
         },
     ]
+
+
+async def test_api_jobs_legacy_name_compatibility(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+):
+    """Test renamed job names are mapped back to legacy names in API outputs."""
+    api_client, prefix = api_client_with_prefix
+    job = coresys.jobs.new_job("app_manager_update", reference="local_example")
+    job.stage = "update"
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["name"] == "addon_manager_update"
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(job_event["name"] == "addon_manager_update" for job_event in job_events)
+    assert not any(
+        job_event["name"] == "app_manager_update" for job_event in job_events
+    )
