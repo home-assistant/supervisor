@@ -415,18 +415,13 @@ def _migrate_app_config(protocol=False):
                 )
 
         # 2026-07 addon-based map options replaced by app-based options.
+        volume_types = {volume[ATTR_TYPE] for volume in volumes}
         for app_mapping_type, legacy_mapping_type in (
             (MappingType.LOCAL_APPS, MappingType.ADDONS),
             (MappingType.ALL_APP_CONFIGS, MappingType.ALL_ADDON_CONFIGS),
             (MappingType.APP_CONFIG, MappingType.ADDON_CONFIG),
         ):
-            matching_volumes = [
-                volume
-                for volume in volumes
-                if volume
-                and volume[ATTR_TYPE] in {legacy_mapping_type, app_mapping_type}
-            ]
-            if len(matching_volumes) > 1:
+            if {app_mapping_type, legacy_mapping_type} <= volume_types:
                 _LOGGER.warning(
                     "App config using incompatible map options, '%s' and '%s'. Legacy option '%s' will be ignored. Please report this to the maintainer of %s",
                     app_mapping_type,
