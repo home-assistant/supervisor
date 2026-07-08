@@ -310,8 +310,8 @@ def test_warn_legacy_map_types(
     ],
 )
 def test_warn_incompatible_map_types_legacy_ignored(
-    app_mapping: str,
     legacy_mapping: str,
+    app_mapping: str,
     caplog: pytest.LogCaptureFixture,
 ):
     """Warn when both app and legacy map types are present; legacy is ignored."""
