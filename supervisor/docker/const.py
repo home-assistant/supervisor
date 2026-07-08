@@ -192,12 +192,15 @@ PATH_PRIVATE_DATA = PurePath("/data")
 PATH_HOMEASSISTANT_CONFIG_LEGACY = PurePath("/config")
 PATH_HOMEASSISTANT_CONFIG = PurePath("/homeassistant")
 PATH_PUBLIC_CONFIG = PurePath("/config")
-PATH_ALL_ADDON_CONFIGS = PurePath("/addon_configs")
+PATH_ALL_APP_CONFIGS = PurePath("/app_configs")
+PATH_LOCAL_APPS = PurePath("/local_apps")
 PATH_SSL = PurePath("/ssl")
-PATH_LOCAL_ADDONS = PurePath("/addons")
 PATH_BACKUP = PurePath("/backup")
 PATH_SHARE = PurePath("/share")
 PATH_MEDIA = PurePath("/media")
+# Legacy, deprecated as of 2026.07
+PATH_ALL_ADDON_CONFIGS = PurePath("/addon_configs")
+PATH_LOCAL_ADDONS = PurePath("/addons")
 
 # https://hub.docker.com/_/docker
 # Use short name as Docker stores it this way; the canonical docker.io/library/docker

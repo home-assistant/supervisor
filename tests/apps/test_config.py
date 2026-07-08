@@ -278,6 +278,54 @@ def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
     assert "uses deprecated 'advanced' field in config" in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("legacy_mapping", "app_mapping"),
+    [
+        ("addons", "local_apps"),
+        ("all_addon_configs", "all_app_configs"),
+        ("addon_config", "app_config"),
+    ],
+)
+def test_warn_legacy_map_types(
+    legacy_mapping: str,
+    app_mapping: str,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Warn when legacy map types are used."""
+    config = load_json_fixture("basic-app-config.json")
+    config["map"] = [legacy_mapping]
+
+    vd.SCHEMA_APP_CONFIG(config)
+
+    assert f"uses legacy map type '{legacy_mapping}'" in caplog.text
+    assert f"Please update to '{app_mapping}'" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("legacy_mapping", "app_mapping"),
+    [
+        ("addons", "local_apps"),
+        ("all_addon_configs", "all_app_configs"),
+        ("addon_config", "app_config"),
+    ],
+)
+def test_warn_incompatible_map_types_legacy_ignored(
+    legacy_mapping: str,
+    app_mapping: str,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Warn when both app and legacy map types are present; legacy is ignored."""
+    config = load_json_fixture("basic-app-config.json")
+    config["map"] = [legacy_mapping, app_mapping]
+
+    vd.SCHEMA_APP_CONFIG(config)
+
+    assert "using incompatible map options" in caplog.text
+    assert f"'{app_mapping}'" in caplog.text
+    assert f"'{legacy_mapping}'" in caplog.text
+    assert f"Legacy option '{legacy_mapping}' will be ignored" in caplog.text
+
+
 async def test_valid_manifest_build():
     """Validate build config with manifest build from."""
     config = load_json_fixture("build-config-manifest.json")

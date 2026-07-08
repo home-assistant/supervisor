@@ -19,11 +19,16 @@ class MappingType(StrEnum):
     DATA = "data"
     CONFIG = "config"
     SSL = "ssl"
-    ADDONS = "addons"
+    LOCAL_APPS = "local_apps"
     BACKUP = "backup"
     SHARE = "share"
     MEDIA = "media"
     HOMEASSISTANT_CONFIG = "homeassistant_config"
+    ALL_APP_CONFIGS = "all_app_configs"
+    APP_CONFIG = "app_config"
+
+    # Legacy, deprecated as of 2026.07; use app equivalents
+    ADDONS = "addons"
     ALL_ADDON_CONFIGS = "all_addon_configs"
     ADDON_CONFIG = "addon_config"
 
