@@ -35,26 +35,16 @@ _CURRENT_JOB: ContextVar[str | None] = ContextVar("current_job", default=None)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-_LEGACY_JOB_NAMES: dict[str, str] = {
-    "app_manager_install": "addon_manager_install",
-    "app_manager_uninstall": "addon_manager_uninstall",
-    "app_manager_update": "addon_manager_update",
-    "backup_app_save": "backup_addon_save",
-    "backup_store_apps": "backup_store_addons",
-    "backup_app_restore": "backup_addon_restore",
-    "backup_restore_apps": "backup_restore_addons",
-    "backup_remove_delta_apps": "backup_remove_delta_addons",
-}
-
 
 def process_job_dict_for_legacy_compatibility(
     job_data: dict[str, Any],
 ) -> dict[str, Any]:
     """Map new job names to legacy names for API compatibility."""
-    if isinstance(name := job_data.get("name"), str) and (
-        legacy_name := _LEGACY_JOB_NAMES.get(name)
-    ):
-        return job_data | {"name": legacy_name}
+    # Home Assistant Core's hassio integration listens for this specific job name
+    # via the Supervisor websocket API. Core v2026.8 supports both names, so this
+    # compatibility can be removed when Core v2026.7 is no longer supported.
+    if job_data.get("name") == "app_manager_update":
+        return job_data | {"name": "addon_manager_update"}
     return job_data
 
 

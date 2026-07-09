@@ -890,7 +890,7 @@ async def test_api_store_apps_app_availability_installed_app(
 @pytest.mark.parametrize(
     ("action", "job_name", "app_slug"),
     [
-        ("install", "addon_manager_install", "local_ssh"),
+        ("install", "app_manager_install", "local_ssh"),
         ("update", "addon_manager_update", "local_example"),
     ],
 )

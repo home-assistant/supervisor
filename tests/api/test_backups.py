@@ -391,7 +391,7 @@ async def test_api_backup_restore_background(
     assert job["child_jobs"][1]["reference"] == backup_slug
 
     if backup_type == "full":
-        assert job["child_jobs"][2]["name"] == "backup_remove_delta_addons"
+        assert job["child_jobs"][2]["name"] == "backup_remove_delta_apps"
         assert job["child_jobs"][2]["reference"] == backup_slug
 
 
@@ -443,9 +443,9 @@ async def test_api_backup_errors(
     assert job["errors"] == []
     assert job["child_jobs"][0]["name"] == "backup_store_homeassistant"
     assert job["child_jobs"][0]["reference"] == slug
-    assert job["child_jobs"][1]["name"] == "backup_store_addons"
+    assert job["child_jobs"][1]["name"] == "backup_store_apps"
     assert job["child_jobs"][1]["reference"] == slug
-    assert job["child_jobs"][1]["child_jobs"][0]["name"] == "backup_addon_save"
+    assert job["child_jobs"][1]["child_jobs"][0]["name"] == "backup_app_save"
     assert job["child_jobs"][1]["child_jobs"][0]["reference"] == "local_ssh"
     assert job["child_jobs"][1]["child_jobs"][0]["errors"] == [
         {
