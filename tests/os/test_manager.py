@@ -209,7 +209,7 @@ async def test_mark_healthy_keeps_pending_update(coresys: CoreSys) -> None:
 
 
 async def test_mark_healthy_marks_active_without_pending(coresys: CoreSys) -> None:
-    """Test mark_healthy marks booted slot active and good without pending update."""
+    """Test mark_healthy marks booted slot good and active without pending update."""
     coresys.os._available = True
 
     with patch.object(
@@ -220,8 +220,8 @@ async def test_mark_healthy_marks_active_without_pending(coresys: CoreSys) -> No
         await coresys.os.mark_healthy()
 
     assert mark.call_args_list == [
-        call(RaucState.ACTIVE, "booted"),
         call(RaucState.GOOD, "booted"),
+        call(RaucState.ACTIVE, "booted"),
     ]
 
 
@@ -350,15 +350,21 @@ async def test_load_slot_status_fresh_install(
     assert coresys.os.get_slot_name("B") == "kernel.1"
 
 
-async def test_load_detects_pending_update(
+async def test_mark_healthy_detects_pending_update(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> None:
-    """Test load recovers a pending update from rauc and raises a reboot issue."""
+    """Test mark_healthy recovers a pending update and raises a reboot issue."""
     rauc_service: RaucService = all_dbus_services["rauc"]
     rauc_service.response_get_primary = "kernel.0"
 
     await coresys.os.load()
+    with patch.object(
+        coresys.dbus.rauc,
+        "mark",
+        AsyncMock(return_value=["kernel.1", "marked slot kernel.1 as good"]),
+    ) as mark:
+        await coresys.os.mark_healthy()
 
     assert coresys.os.version_pending == AwesomeVersion("9.0.dev20220818")
     assert (
@@ -372,17 +378,63 @@ async def test_load_detects_pending_update(
         (suggestion.type, suggestion.context)
         for suggestion in coresys.resolution.suggestions
     }
+    # The pending update must not be cancelled by marking the booted slot active
+    mark.assert_called_once_with(RaucState.GOOD, "booted")
 
 
-async def test_load_no_pending_update(coresys: CoreSys) -> None:
-    """Test load finds no pending update when the primary slot is booted."""
+async def test_mark_healthy_no_pending_update(coresys: CoreSys) -> None:
+    """Test mark_healthy finds no pending update when the primary slot is booted."""
     await coresys.os.load()
+    with patch.object(
+        coresys.dbus.rauc,
+        "mark",
+        AsyncMock(return_value=["kernel.1", "marked slot kernel.1 as good"]),
+    ):
+        await coresys.os.mark_healthy()
 
     assert coresys.os.version_pending is None
     assert (
         IssueType.REBOOT_REQUIRED,
         ContextType.SYSTEM,
     ) not in {(issue.type, issue.context) for issue in coresys.resolution.issues}
+
+
+async def test_mark_healthy_stale_primary_before_mark_good(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> None:
+    """Test pending update detection runs after the booted slot is marked good.
+
+    rauc's GRUB backend does not treat a slot with boot attempts pending as
+    primary. The booted slot has a boot attempt recorded until it is marked
+    good, so on every boot GetPrimary reports the previous slot as primary
+    until then. Detecting the pending update from that stale response raised
+    a bogus reboot issue on every boot on GRUB systems.
+    """
+    rauc_service: RaucService = all_dbus_services["rauc"]
+    rauc_service.response_get_primary = "kernel.0"
+
+    async def mark(state: RaucState, slot_identifier: str) -> list[str]:
+        # Marking the booted slot good resets its boot attempt counter,
+        # making it eligible as primary again
+        rauc_service.response_get_primary = "kernel.1"
+        return ["kernel.1", f"marked slot kernel.1 as {state}"]
+
+    await coresys.os.load()
+    assert coresys.os.version_pending is None
+
+    with patch.object(coresys.dbus.rauc, "mark", side_effect=mark) as mark_mock:
+        await coresys.os.mark_healthy()
+
+    assert coresys.os.version_pending is None
+    assert (
+        IssueType.REBOOT_REQUIRED,
+        ContextType.SYSTEM,
+    ) not in {(issue.type, issue.context) for issue in coresys.resolution.issues}
+    assert mark_mock.call_args_list == [
+        call(RaucState.GOOD, "booted"),
+        call(RaucState.ACTIVE, "booted"),
+    ]
 
 
 @pytest.mark.parametrize(
