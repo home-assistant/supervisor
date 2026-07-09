@@ -55,6 +55,8 @@ _SCHEMA_LENGTH_PARTS = (
     "p_max",
 )
 
+_RE_MATCH_ALTERNATION = re.compile(r"^[A-Za-z0-9_ .,:/-]+(?:\|[A-Za-z0-9_ .,:/-]+)+$")
+
 
 class AppOptions(CoreSysAttributes):
     """Validate Apps Options."""
@@ -383,6 +385,8 @@ class UiOptions(CoreSysAttributes):
             ui_node["type"] = "integer"
         elif value.startswith(_MATCH):
             ui_node["type"] = "string"
+            if options := _extract_match_options(match.group("match")):
+                ui_node["options"] = options
         elif value.startswith(_LIST):
             ui_node["type"] = "select"
             ui_node["options"] = match.group("list").split("|")
@@ -440,6 +444,26 @@ class UiOptions(CoreSysAttributes):
 
         ui_node["schema"] = nested_schema
         ui_schema.append(ui_node)
+
+
+def _extract_match_options(pattern: str) -> list[str] | None:
+    """Extract literal options from a simple alternation match regex.
+
+    Returns None unless the pattern is an anchored alternation of plain
+    literals, e.g. ``^(?i:(a|b|c))$``.
+    """
+    inner = pattern.removeprefix("(?i)").removeprefix("^").removesuffix("$")
+    unwrapped = True
+    while unwrapped:
+        unwrapped = False
+        for prefix in ("(?i:", "(?:", "("):
+            if inner.startswith(prefix) and inner.endswith(")"):
+                inner = inner[len(prefix) : -1]
+                unwrapped = True
+                break
+    if _RE_MATCH_ALTERNATION.match(inner):
+        return list(dict.fromkeys(inner.split("|")))
+    return None
 
 
 def _create_device_filter(str_filter: str) -> dict[str, Any]:

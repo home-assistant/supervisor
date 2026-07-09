@@ -1,11 +1,12 @@
 """Test apps schema to UI schema conversion."""
 
 from pathlib import Path
+import re
 
 import pytest
 import voluptuous as vol
 
-from supervisor.apps.options import AppOptions, UiOptions
+from supervisor.apps.options import AppOptions, UiOptions, _extract_match_options
 from supervisor.hardware.data import Device
 
 MOCK_ADDON_NAME = "Mock Add-on"
@@ -631,6 +632,72 @@ def test_ui_simple_device_schema_no_filter(coresys):
         ["/dev/serial/by-id/xyx", "/dev/ttyACM0", "/dev/ttyS0", "/dev/video1"]
     )
     assert data[-1]["type"] == "select"
+
+
+def test_ui_schema_match_options(coresys):
+    """Test simple alternation match patterns expose options for the UI."""
+    data = UiOptions(coresys)(
+        {
+            "enabled_shares": [
+                "match(^(?i:(addons|addon_configs|backup|config|media|share|ssl))$)"
+            ],
+            "protocol": "match(rsa|dsa|ecdsa|ed25519|rsa)",
+            "port": "match(^(?:443|8443|10000)$)?",
+        }
+    )
+    assert data[0] == {
+        "name": "enabled_shares",
+        "type": "string",
+        "multiple": True,
+        "required": True,
+        "options": [
+            "addons",
+            "addon_configs",
+            "backup",
+            "config",
+            "media",
+            "share",
+            "ssl",
+        ],
+    }
+    # Duplicates are removed while preserving order
+    assert data[1]["type"] == "string"
+    assert data[1]["options"] == ["rsa", "dsa", "ecdsa", "ed25519"]
+    assert data[2]["type"] == "string"
+    assert data[2]["options"] == ["443", "8443", "10000"]
+    assert data[2]["optional"] is True
+
+
+def test_ui_schema_match_no_options(coresys):
+    """Test non-enumerable match patterns stay plain string nodes."""
+    data = UiOptions(coresys)(
+        {
+            "token": "match(^[a-f0-9]{32}$)",
+            "network_key": "match(|[0-9a-fA-F]{32,32})?",
+            "nested_groups": "match(^(a|b)|(c|d)$)",
+            "extra_literal": "match(^(a|b)-suffix$)",
+            "domain": "match(.+\\.duckdns\\.org)",
+            "escaped": "match(^(a\\|b|c)$)",
+        }
+    )
+    for node in data:
+        assert node["type"] == "string"
+        assert "options" not in node
+
+
+def test_extract_match_options_validate():
+    """Test every extracted option validates against its source pattern."""
+    patterns = [
+        "^(?i:(addons|addon_configs|backup|config|media|share|ssl))$",
+        "rsa|dsa|ecdsa|ed25519|rsa",
+        "^(?:443|8443|10000)$",
+        "(?i)^(auto|manual)$",
+    ]
+    for pattern in patterns:
+        options = _extract_match_options(pattern)
+        assert options
+        for option in options:
+            assert re.match(pattern, option)
 
 
 def test_log_entry(coresys, caplog):
