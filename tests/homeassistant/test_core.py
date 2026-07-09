@@ -667,6 +667,53 @@ async def test_restart(coresys: CoreSys, container: DockerContainer):
     container.stop.assert_not_called()
 
 
+@pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize("method", ["restart", "stop"])
+async def test_lifecycle_op_queues_behind_running_start(
+    coresys: CoreSys, container: DockerContainer, method: str
+) -> None:
+    """A restart/stop waits for an in-progress start instead of being rejected.
+
+    Core may ask Supervisor to restart while it is still starting Core (for
+    example to apply a reverted HTTP config). With GROUP_QUEUE the request must
+    queue behind the running start job rather than fail with a job-group
+    conflict.
+    """
+    coresys.docker.images.inspect.return_value = {"Id": "123"}
+    container.show.return_value["Image"] = "123"
+    container.show.return_value["State"]["Status"] = "exited"
+    container.show.return_value["State"]["Running"] = False
+
+    start_holds_group = asyncio.Event()
+    release_start = asyncio.Event()
+
+    async def _hold_group() -> None:
+        start_holds_group.set()
+        await release_start.wait()
+
+    with (
+        patch.object(
+            HomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2023.7.0")),
+        ),
+        patch.object(HomeAssistantCore, "_block_till_run", side_effect=_hold_group),
+    ):
+        start_task = asyncio.create_task(coresys.homeassistant.core.start())
+        await start_holds_group.wait()
+
+        op_task = asyncio.create_task(getattr(coresys.homeassistant.core, method)())
+        # Let the op run until it blocks on the job group lock.
+        for _ in range(3):
+            await asyncio.sleep(0)
+        assert not op_task.done()
+
+        release_start.set()
+        await start_task
+        # Completes without raising a job-group conflict.
+        await op_task
+
+
 @pytest.mark.parametrize(
     "get_error",
     [

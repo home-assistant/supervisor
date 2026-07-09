@@ -493,7 +493,7 @@ class HomeAssistantCore(JobGroup):
     @Job(
         name="home_assistant_core_stop",
         on_condition=HomeAssistantJobError,
-        concurrency=JobConcurrency.GROUP_REJECT,
+        concurrency=JobConcurrency.GROUP_QUEUE,
     )
     async def stop(self, *, remove_container: bool = False) -> None:
         """Stop Home Assistant Docker."""
@@ -505,7 +505,7 @@ class HomeAssistantCore(JobGroup):
     @Job(
         name="home_assistant_core_restart",
         on_condition=HomeAssistantJobError,
-        concurrency=JobConcurrency.GROUP_REJECT,
+        concurrency=JobConcurrency.GROUP_QUEUE,
     )
     async def restart(self, *, safe_mode: bool = False) -> None:
         """Restart Home Assistant Docker."""
