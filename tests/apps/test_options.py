@@ -635,14 +635,15 @@ def test_ui_simple_device_schema_no_filter(coresys):
 
 
 def test_ui_schema_match_options(coresys):
-    """Test simple alternation match patterns expose options for the UI."""
+    """Test anchored alternation match patterns expose options for the UI."""
     data = UiOptions(coresys)(
         {
             "enabled_shares": [
                 "match(^(?i:(addons|addon_configs|backup|config|media|share|ssl))$)"
             ],
-            "protocol": "match(rsa|dsa|ecdsa|ed25519|rsa)",
+            "protocol": "match(^(rsa|dsa|rsa)$)",
             "port": "match(^(?:443|8443|10000)$)?",
+            "mode": {"level": "match(^(read-only|read-write|a b,c:d/e)$)"},
         }
     )
     assert data[0] == {
@@ -662,14 +663,16 @@ def test_ui_schema_match_options(coresys):
     }
     # Duplicates are removed while preserving order
     assert data[1]["type"] == "string"
-    assert data[1]["options"] == ["rsa", "dsa", "ecdsa", "ed25519"]
+    assert data[1]["options"] == ["rsa", "dsa"]
     assert data[2]["type"] == "string"
     assert data[2]["options"] == ["443", "8443", "10000"]
     assert data[2]["optional"] is True
+    # Nested dict schemas reach the same extraction
+    assert data[3]["schema"][0]["options"] == ["read-only", "read-write", "a b,c:d/e"]
 
 
 def test_ui_schema_match_no_options(coresys):
-    """Test non-enumerable match patterns stay plain string nodes."""
+    """Test match patterns the extractor can't safely reduce to options."""
     data = UiOptions(coresys)(
         {
             "token": "match(^[a-f0-9]{32}$)",
@@ -678,6 +681,13 @@ def test_ui_schema_match_no_options(coresys):
             "extra_literal": "match(^(a|b)-suffix$)",
             "domain": "match(.+\\.duckdns\\.org)",
             "escaped": "match(^(a\\|b|c)$)",
+            "unanchored": "match(rsa|dsa|ecdsa)",
+            "start_anchor_only": "match(^(a|b))",
+            "end_anchor_only": "match((a|b)$)",
+            "unescaped_dot": "match(^(1.0|2.0)$)",
+            "single_literal": "match(^(auto)$)",
+            "optional_group": "match(^(auto|manual)?$)",
+            "inline_flag_after_anchor": "match(^(?i)(a|b)$)",
         }
     )
     for node in data:
@@ -686,18 +696,24 @@ def test_ui_schema_match_no_options(coresys):
 
 
 def test_extract_match_options_validate():
-    """Test every extracted option validates against its source pattern."""
+    """Test extracted options are exactly the values their pattern accepts."""
     patterns = [
         "^(?i:(addons|addon_configs|backup|config|media|share|ssl))$",
-        "rsa|dsa|ecdsa|ed25519|rsa",
         "^(?:443|8443|10000)$",
         "(?i)^(auto|manual)$",
+        "^(?:(?i:a|b))$",
     ]
     for pattern in patterns:
         options = _extract_match_options(pattern)
         assert options
         for option in options:
             assert re.match(pattern, option)
+            assert not re.match(pattern, f"{option}X")
+
+    # Malformed or empty patterns bail to None without raising
+    assert _extract_match_options("") is None
+    assert _extract_match_options("(a|b") is None
+    assert _extract_match_options("(a|b))") is None
 
 
 def test_log_entry(coresys, caplog):

@@ -55,7 +55,7 @@ _SCHEMA_LENGTH_PARTS = (
     "p_max",
 )
 
-_RE_MATCH_ALTERNATION = re.compile(r"^[A-Za-z0-9_ .,:/-]+(?:\|[A-Za-z0-9_ .,:/-]+)+$")
+_RE_MATCH_ALTERNATION = re.compile(r"^[A-Za-z0-9_ ,:/-]+(?:\|[A-Za-z0-9_ ,:/-]+)+$")
 
 
 class AppOptions(CoreSysAttributes):
@@ -449,10 +449,15 @@ class UiOptions(CoreSysAttributes):
 def _extract_match_options(pattern: str) -> list[str] | None:
     """Extract literal options from a simple alternation match regex.
 
-    Returns None unless the pattern is an anchored alternation of plain
-    literals, e.g. ``^(?i:(a|b|c))$``.
+    Returns None unless the pattern is a fully anchored alternation of
+    plain literals, e.g. ``^(?i:(a|b|c))$``. The extracted options are
+    exactly the values the pattern accepts (case-insensitively when the
+    pattern carries the ``(?i)`` flag).
     """
-    inner = pattern.removeprefix("(?i)").removeprefix("^").removesuffix("$")
+    inner = pattern.removeprefix("(?i)")
+    if not (inner.startswith("^") and inner.endswith("$")):
+        return None
+    inner = inner[1:-1]
     unwrapped = True
     while unwrapped:
         unwrapped = False
