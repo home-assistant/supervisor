@@ -75,7 +75,7 @@ async def test_fixup_stopped_core(
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
-    (await docker.containers.get("addon_local_ssh")).delete.assert_called_once_with(
+    (await docker.containers.get("app_local_ssh")).delete.assert_called_once_with(
         force=True, v=True
     )
     assert "App local_ssh is stopped" in caplog.text

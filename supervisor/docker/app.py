@@ -95,7 +95,7 @@ class DockerApp(DockerInterface):
     @staticmethod
     def slug_to_name(slug: str) -> str:
         """Convert slug to container name."""
-        return f"addon_{slug}"
+        return f"app_{slug}"
 
     @property
     def image(self) -> str | None:
@@ -719,7 +719,7 @@ class DockerApp(DockerInterface):
             f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
         )
 
-        builder_name = f"addon_builder_{self.app.slug}"
+        builder_name = f"app_builder_{self.app.slug}"
 
         # Remove dangling builder container if it exists by any chance
         # E.g. because of an abrupt host shutdown/reboot during a build

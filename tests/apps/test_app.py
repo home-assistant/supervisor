@@ -1363,15 +1363,15 @@ async def test_app_disable_boot_dismisses_boot_fail(
     ("docker_message", "port"),
     [
         (
-            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:2222:172.30.33.4:22/tcp: address already in use",
+            "failed to set up container networking: driver failed programming external connectivity on endpoint app_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:2222:172.30.33.4:22/tcp: address already in use",
             2222,
         ),
         (
-            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): Bind for 0.0.0.0:2222 failed: port is already allocated",
+            "failed to set up container networking: driver failed programming external connectivity on endpoint app_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): Bind for 0.0.0.0:2222 failed: port is already allocated",
             2222,
         ),
         (
-            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port 0.0.0.0:2222/tcp: address already in use",
+            "failed to set up container networking: driver failed programming external connectivity on endpoint app_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port 0.0.0.0:2222/tcp: address already in use",
             2222,
         ),
     ],
@@ -1405,7 +1405,7 @@ async def test_app_start_port_conflict_error(
         await install_app_ssh.start()
 
     assert (
-        f"Cannot start container addon_local_ssh because port {port} is already in use"
+        f"Cannot start container app_local_ssh because port {port} is already in use"
         in caplog.text
     )
 
@@ -1436,7 +1436,7 @@ async def test_app_restart_port_conflict_creates_issue(
     port = 2222
     docker_message = (
         "failed to set up container networking: driver failed programming external "
-        "connectivity on endpoint addon_local_ssh: failed to bind host port for "
+        "connectivity on endpoint app_local_ssh: failed to bind host port for "
         "0.0.0.0:2222:172.30.33.4:22/tcp: address already in use"
     )
     install_app_ssh.data["image"] = "test/amd64-addon-ssh"

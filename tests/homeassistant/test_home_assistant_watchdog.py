@@ -102,7 +102,7 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
             coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
-                name="addon_local_other",
+                name="app_local_other",
                 state=ContainerState.UNHEALTHY,
                 id="abc123",
                 time=1,

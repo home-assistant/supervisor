@@ -87,7 +87,7 @@ async def test_base(coresys: CoreSys):
 async def test_check(docker: DockerAPI, coresys: CoreSys, folder: str):
     """Test check reports issue when containers have incorrect config."""
     docker.containers.get = _make_mock_container_get(
-        ["homeassistant", "hassio_audio", "addon_local_ssh"], folder
+        ["homeassistant", "hassio_audio", "app_local_ssh"], folder
     )
     # Use state used in setup()
     await coresys.core.set_state(CoreState.SETUP)
@@ -174,7 +174,7 @@ async def test_app_volume_mount_not_flagged(
 
     # Mock container that has VOLUME mount to media/share with wrong propagation
     docker.containers.get = _make_mock_container_get_with_volume_mount(
-        ["addon_local_ssh"], folder
+        ["app_local_ssh"], folder
     )
 
     await coresys.core.set_state(CoreState.SETUP)
@@ -237,7 +237,7 @@ async def test_app_configured_mount_still_flagged(
             },
             "Mounts": [],
         }
-        if name == "addon_local_ssh":
+        if name == "app_local_ssh":
             out.show.return_value["Mounts"].append(mount)
         return out
 
@@ -296,7 +296,7 @@ async def test_app_custom_target_path_flagged(
             "Propagation": "rprivate",  # Wrong propagation
         }
 
-        if name == "addon_local_ssh":
+        if name == "app_local_ssh":
             out.show.return_value["Mounts"].append(mount)
         return out
 
