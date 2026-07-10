@@ -135,7 +135,7 @@ _OPTIONS_MERGER: Final = Merger(
 
 # Backups just need to know if an app was running or not
 # Map other app states to those two
-_MAP_ADDON_STATE = {
+_MAP_APP_STATE = {
     AppState.STARTUP: AppState.STARTED,
     AppState.ERROR: AppState.STOPPED,
     AppState.UNKNOWN: AppState.STOPPED,
@@ -1536,7 +1536,7 @@ class App(AppModel):
             ATTR_USER: self.persist,
             ATTR_SYSTEM: self.data,
             ATTR_VERSION: self.version,
-            ATTR_STATE: _MAP_ADDON_STATE.get(self.state, self.state),
+            ATTR_STATE: _MAP_APP_STATE.get(self.state, self.state),
         }
         apparmor_profile = (
             self.slug if self.sys_host.apparmor.exists(self.slug) else None
