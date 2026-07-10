@@ -458,10 +458,11 @@ class OSManager(CoreSysAttributes):
             # which the pending update detection below relies on: rauc's GRUB
             # backend only treats a slot as primary once it has no boot
             # attempts pending.
-            responses = [await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")]
+            response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")
         except DBusError:
             _LOGGER.exception("Can't mark booted partition as healthy!")
             return
+        _LOGGER.info("Rauc: slot %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
 
         await self.reload()
         await self._detect_pending_update()
@@ -471,19 +472,13 @@ class OSManager(CoreSysAttributes):
             # slot again, which would cancel an installed update that still
             # awaits a reboot to activate.
             if not self.version_pending:
-                responses.append(
-                    await self.sys_dbus.rauc.mark(RaucState.ACTIVE, "booted")
-                )
+                response = await self.sys_dbus.rauc.mark(RaucState.ACTIVE, "booted")
                 await self.reload()
+                _LOGGER.info(
+                    "Rauc: slot %s - %s", self.sys_dbus.rauc.boot_slot, response[1]
+                )
         except DBusError:
             _LOGGER.exception("Can't mark booted partition as active!")
-            return
-
-        _LOGGER.info(
-            "Rauc: slot %s - %s",
-            self.sys_dbus.rauc.boot_slot,
-            ", ".join(response[1] for response in responses),
-        )
 
     @Job(
         name="os_manager_set_boot_slot",
