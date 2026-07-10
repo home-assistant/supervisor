@@ -199,12 +199,12 @@ async def test_api_app_start_healthcheck(
         await asyncio.sleep(0)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
         )
         state_changes.append(install_app_ssh.state)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
         )
 
     async def container_events_task(*args, **kwargs):
@@ -238,12 +238,12 @@ async def test_api_app_restart_healthcheck(
         await asyncio.sleep(0)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
         )
         state_changes.append(install_app_ssh.state)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
         )
 
     async def container_events_task(*args, **kwargs):
@@ -282,18 +282,18 @@ async def test_api_app_rebuild_healthcheck(
         nonlocal state_changes
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
         )
         state_changes.append(install_app_ssh.state)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
         )
         state_changes.append(install_app_ssh.state)
         await asyncio.sleep(0)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
         )
 
     async def container_events_task(*args, **kwargs):
@@ -353,18 +353,18 @@ async def test_api_app_rebuild_force(
         nonlocal state_changes
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
         )
         state_changes.append(install_app_ssh.state)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
         )
         state_changes.append(install_app_ssh.state)
         await asyncio.sleep(0)
 
         await install_app_ssh.container_state_changed(
-            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
+            _create_test_event(f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
         )
 
     async def container_events_task(*args, **kwargs):
