@@ -259,7 +259,6 @@ class OSManager(CoreSysAttributes):
         self._os_name = cpe.get_product()[0]
 
         await self.reload()
-        await self._detect_pending_update()
 
         await self.datadisk.load()
 
@@ -275,6 +274,11 @@ class OSManager(CoreSysAttributes):
         A successful rauc install makes the target slot the primary boot slot
         while the old version keeps running until reboot. Supervisor may
         restart in that window, so recover the pending state from rauc.
+
+        Must run after the booted slot was marked good: rauc's GRUB backend
+        only treats a slot as primary once it has no boot attempts pending,
+        so until the boot attempt counter of the booted slot is reset,
+        GetPrimary reports the previous slot as primary on every boot.
         """
         try:
             primary = await self.sys_dbus.rauc.get_primary()
@@ -450,24 +454,31 @@ class OSManager(CoreSysAttributes):
     async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:
-            responses = []
+            # Marking the booted slot good resets its boot attempt counter,
+            # which the pending update detection below relies on: rauc's GRUB
+            # backend only treats a slot as primary once it has no boot
+            # attempts pending.
+            response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")
+        except DBusError:
+            _LOGGER.exception("Can't mark booted partition as healthy!")
+            return
+        _LOGGER.info("Rauc: slot %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
+
+        await self.reload()
+        await self._detect_pending_update()
+
+        try:
             # Marking the booted slot as active makes it the primary boot
             # slot again, which would cancel an installed update that still
             # awaits a reboot to activate.
             if not self.version_pending:
-                responses.append(
-                    await self.sys_dbus.rauc.mark(RaucState.ACTIVE, "booted")
+                response = await self.sys_dbus.rauc.mark(RaucState.ACTIVE, "booted")
+                await self.reload()
+                _LOGGER.info(
+                    "Rauc: slot %s - %s", self.sys_dbus.rauc.boot_slot, response[1]
                 )
-            responses.append(await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted"))
         except DBusError:
-            _LOGGER.exception("Can't mark booted partition as healthy!")
-        else:
-            _LOGGER.info(
-                "Rauc: slot %s - %s",
-                self.sys_dbus.rauc.boot_slot,
-                ", ".join(response[1] for response in responses),
-            )
-            await self.reload()
+            _LOGGER.exception("Can't mark booted partition as active!")
 
     @Job(
         name="os_manager_set_boot_slot",
