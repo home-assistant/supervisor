@@ -31,14 +31,14 @@ HASS_WATCHDOG_REANIMATE_FAILURES = "HASS_WATCHDOG_REANIMATE_FAILURES"
 HASS_WATCHDOG_MAX_API_ATTEMPTS = 2
 HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS = 5
 
-RUN_UPDATE_ADDONS = 57600
+RUN_UPDATE_APPS = 57600
 RUN_UPDATE_CLI = 43200  # 12h, staggered +2min per plugin
 RUN_UPDATE_DNS = 43320
 RUN_UPDATE_AUDIO = 43440
 RUN_UPDATE_MULTICAST = 43560
 RUN_UPDATE_OBSERVER = 43680
 
-RUN_RELOAD_ADDONS = 10800
+RUN_RELOAD_APPS = 10800
 RUN_RELOAD_BACKUPS = 72000
 RUN_RELOAD_HOST = 7600
 RUN_RELOAD_UPDATER = 86400  # 24h
@@ -47,7 +47,7 @@ RUN_RELOAD_MOUNTS = 900
 
 RUN_WATCHDOG_HOMEASSISTANT_API = 120
 
-RUN_WATCHDOG_ADDON_APPLICATON = 120
+RUN_WATCHDOG_APP_APPLICATION = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
 RUN_CORE_BACKUP_CLEANUP = 86200
@@ -71,7 +71,7 @@ class Tasks(CoreSysAttributes):
     async def load(self):
         """Add Tasks to scheduler."""
         # Update
-        self.sys_scheduler.register_task(self._update_apps, RUN_UPDATE_ADDONS)
+        self.sys_scheduler.register_task(self._update_apps, RUN_UPDATE_APPS)
         self.sys_scheduler.register_task(self._update_cli, RUN_UPDATE_CLI)
         self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
         self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
@@ -79,7 +79,7 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self._update_observer, RUN_UPDATE_OBSERVER)
 
         # Reload
-        self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_ADDONS)
+        self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_APPS)
         self.sys_scheduler.register_task(self._reload_updater, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
@@ -94,7 +94,7 @@ class Tasks(CoreSysAttributes):
             self._watchdog_observer_application, RUN_WATCHDOG_OBSERVER_APPLICATION
         )
         self.sys_scheduler.register_task(
-            self._watchdog_app_application, RUN_WATCHDOG_ADDON_APPLICATON
+            self._watchdog_app_application, RUN_WATCHDOG_APP_APPLICATION
         )
 
         # Cleanup

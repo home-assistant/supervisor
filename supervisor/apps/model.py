@@ -98,7 +98,7 @@ from ..exceptions import (
     AppNotSupportedMachineTypeError,
     HassioArchNotFound,
 )
-from ..jobs.const import JOB_GROUP_ADDON
+from ..jobs.const import JOB_GROUP_APP
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
 from ..utils.dt import utc_from_timestamp
@@ -125,7 +125,7 @@ class AppModel(JobGroup, ABC):
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
         super().__init__(
-            coresys, JOB_GROUP_ADDON.format_map(defaultdict(str, slug=slug)), slug
+            coresys, JOB_GROUP_APP.format_map(defaultdict(str, slug=slug)), slug
         )
         self.slug: str = slug
         self._path_icon_exists: bool = False
