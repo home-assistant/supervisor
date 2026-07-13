@@ -15,24 +15,31 @@ docker-corruption:
     :wave: @{issue-author}, thanks for reporting an issue!
 
 
+    Home Assistant uses Docker container images under the hood to run all
+    parts of the system (Home Assistant Core, add-ons and other components).
     The symptoms described here (e.g. 0-byte or empty files, missing files
-    or directories, or corrupt binaries inside a container) indicate local
-    corruption of the Docker image storage. This typically happens when the
-    system loses power or is reset while Docker writes an image to disk, or
-    due to failing storage. Docker verifies image checksums only while
-    pulling. Once an image is written to disk, its integrity is not checked
-    again, so such corruption can stay dormant until the affected container
-    is recreated (e.g. on a host reboot).
+    or directories, or corrupt binaries inside a container) indicate that
+    this Docker image storage got corrupted on your system. This is a local
+    problem, typically caused by a power loss or forced reset while the
+    system was writing to disk, or by failing storage. It is not a problem
+    in the published image or in Home Assistant itself.
 
 
-    Note that deleting and re-pulling the affected image does not necessarily
-    help: image layers are shared between images and reused across versions,
-    and `docker pull` skips layers it believes are already present locally.
+    **What to do:** Create a full backup and download it to another machine.
+    Then reinstall Home Assistant OS and restore the backup. This rewrites
+    all container images and reliably resolves the problem.
 
 
-    To recover, make a full backup, download it, then reinstall Home
-    Assistant OS and restore the backup. A dedicated feature to reset the
-    Docker image storage is tracked in
+    For those familiar with Docker, some background on why this is the only
+    reliable fix: Docker verifies image checksums only while pulling. Once
+    an image is written to disk, its integrity is never checked again, so
+    corruption can stay dormant until the affected container is recreated,
+    e.g. on a host reboot. Deleting and re-pulling the affected image does
+    not necessarily help either: image layers are shared between images and
+    reused across versions, and `docker pull` skips layers it believes are
+    already present locally, so the corrupted data survives a re-pull. A
+    dedicated feature to reset the Docker image storage completely is
+    tracked in
     [#6555](https://github.com/home-assistant/supervisor/issues/6555).
   close: true
   close-reason: not planned
