@@ -20,3 +20,17 @@ class System(DBusInterface):
     async def migrate_docker_storage_driver(self, backend: str) -> None:
         """Migrate Docker storage driver."""
         await self.connected_dbus.System.call("migrate_docker_storage_driver", backend)
+
+    @dbus_connected
+    async def add_ssh_auth_key(self, key: str) -> None:
+        """Append a public key to root's SSH authorized keys on the host.
+
+        OS Agent writes the string verbatim to the authorized_keys file, so
+        callers must validate it first.
+        """
+        await self.connected_dbus.System.call("add_ssh_auth_key", key)
+
+    @dbus_connected
+    async def clear_ssh_auth_keys(self) -> None:
+        """Remove all of root's SSH authorized keys on the host."""
+        await self.connected_dbus.System.call("clear_ssh_auth_keys")
