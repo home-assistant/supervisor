@@ -26,9 +26,18 @@ OS_FSCK_UNITS = {
 # Systemd fsck unit for data filesystem
 DATA_FSCK_UNIT = "systemd-fsck@dev-disk-by\\x2dlabel-hassos\\x2ddata.service"
 
-# Oneshot unit which ends up failed when the network is not up in time at
-# boot. Home Assistant works offline, so the failure is not actionable.
-NM_WAIT_ONLINE_SERVICE = "NetworkManager-wait-online.service"
+
+IGNORED_SERVICES = {
+    # Skip firewall service which handles its own health state
+    FIREWALL_SERVICE: "Ignoring failed firewall service '%s' which handles its own health state",
+    # Oneshot unit which ends up failed when the network is not up in time at
+    # boot. Home Assistant works offline, so the failure is not actionable.
+    "NetworkManager-wait-online.service": "Ignoring failed wait-online unit '%s'",
+    # Oneshot unit that tries to delay start of units until system time is synchronized
+    # with a remote reference time. Seems to fail quite frequently, perhaps due to network issues
+    # at startup or ISP blocking. Home Assistant works offline, so the failure is not actionable.
+    "systemd-time-wait-sync.service": "Ignoring failed time-wait-sync unit '%s'",
+}
 
 
 def setup(coresys: CoreSys) -> CheckBase:
@@ -88,21 +97,9 @@ class CheckSystemdUnitFailure(CheckBase):
                 )
                 continue
 
-            # Skip firewall service which handles its own health state
-            if unit_name == FIREWALL_SERVICE:
-                _LOGGER.debug(
-                    "Ignoring failed firewall service '%s' which handles its own health state",
-                    unit_name,
-                )
-                continue
-
-            # Skip NetworkManager-wait-online which fails when the network is
-            # slow to come up at boot, Home Assistant works offline
-            if unit_name == NM_WAIT_ONLINE_SERVICE:
-                _LOGGER.debug(
-                    "Ignoring failed wait-online unit '%s'",
-                    unit_name,
-                )
+            # Skip ignored services which are known to fail but are not actionable here
+            if unit_name in IGNORED_SERVICES:
+                _LOGGER.debug(IGNORED_SERVICES[unit_name], unit_name)
                 continue
 
             # Check for OS fsck failures
