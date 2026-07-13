@@ -13,7 +13,6 @@ from supervisor.jobs.decorator import Job
 from supervisor.resolution.checks.systemd_unit_failure import (
     DATA_FSCK_UNIT,
     FIREWALL_SERVICE,
-    NM_WAIT_ONLINE_SERVICE,
     OS_FSCK_UNITS,
     CheckSystemdUnitFailure,
 )
@@ -90,34 +89,25 @@ async def test_mount_unit_failures_ignored(coresys: CoreSys, capture_message: Mo
     capture_message.assert_not_called()
 
 
-async def test_firewall_service_failure_ignored(
-    coresys: CoreSys, capture_message: Mock
+@pytest.mark.parametrize(
+    "unit_name",
+    [
+        (FIREWALL_SERVICE),
+        ("NetworkManager-wait-online.service"),
+        ("systemd-time-wait-sync.service"),
+    ],
+)
+async def test_ignored_service_failure_ignored(
+    coresys: CoreSys, capture_message: Mock, unit_name: str
 ):
-    """Test firewall service failure is ignored."""
+    """Test failures from ignored services are ignored."""
     systemd_unit_failure = CheckSystemdUnitFailure(coresys)
 
     with patch.object(
         coresys.dbus.systemd,
         "list_units_filtered",
         new_callable=AsyncMock,
-        return_value=[(FIREWALL_SERVICE,)],
-    ):
-        await systemd_unit_failure.run_check()
-
-    assert not coresys.resolution.issues
-    assert not coresys.resolution.suggestions
-    capture_message.assert_not_called()
-
-
-async def test_nm_wait_online_failure_ignored(coresys: CoreSys, capture_message: Mock):
-    """Test NetworkManager-wait-online failure is ignored."""
-    systemd_unit_failure = CheckSystemdUnitFailure(coresys)
-
-    with patch.object(
-        coresys.dbus.systemd,
-        "list_units_filtered",
-        new_callable=AsyncMock,
-        return_value=[(NM_WAIT_ONLINE_SERVICE,)],
+        return_value=[(unit_name,)],
     ):
         await systemd_unit_failure.run_check()
 
