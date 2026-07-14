@@ -25,8 +25,8 @@ class System(DBusInterface):
     async def add_ssh_auth_key(self, key: str) -> None:
         """Append a public key to root's SSH authorized keys on the host.
 
-        OS Agent writes the string verbatim to the authorized_keys file, so
-        callers must validate it first.
+        OS Agent validates the key since 1.10.0; older releases write the
+        string verbatim to the authorized_keys file.
         """
         await self.connected_dbus.System.call("add_ssh_auth_key", key)
 

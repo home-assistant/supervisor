@@ -1,12 +1,10 @@
 """Init file for Supervisor HassOS RESTful API."""
 
 import asyncio
-import base64
-import binascii
 from collections.abc import Awaitable
 import logging
 import re
-from typing import Any, Final
+from typing import Any
 
 from aiohttp import web
 from awesomeversion import AwesomeVersion
@@ -93,33 +91,19 @@ SCHEMA_SWAP_OPTIONS = vol.Schema(
     }
 )
 
-# Plain OpenSSH public key types accepted for root's authorized_keys.
-# Certificates and authorized_keys options are deliberately not supported.
-SSH_AUTH_KEY_TYPES: Final = frozenset(
-    {
-        "ssh-ed25519",
-        "ssh-rsa",
-        "ecdsa-sha2-nistp256",
-        "ecdsa-sha2-nistp384",
-        "ecdsa-sha2-nistp521",
-        "sk-ssh-ed25519@openssh.com",
-        "sk-ecdsa-sha2-nistp256@openssh.com",
-    }
-)
-
 # dropbear, which consumes authorized_keys on Home Assistant OS, ignores
-# lines longer than 3000 bytes (and OS Agent rejects them)
-SSH_AUTH_KEY_MAX_LENGTH: Final = 3000
+# lines longer than 3000 bytes
+SSH_AUTH_KEY_MAX_LENGTH = 3000
 
 RE_SSH_KEY_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 
 
-def ssh_public_key(value: Any) -> str:
-    """Validate an OpenSSH public key in authorized_keys format.
+def ssh_auth_key(value: Any) -> str:
+    """Run a basic sanity check on an SSH authorized key entry.
 
-    OS Agent appends the string verbatim to root's authorized_keys, so only
-    a strictly well-formed plain public key (type, base64 blob, optional
-    comment) may pass — no options, no control characters.
+    Proper key validation is done by OS Agent; reject only what could write
+    more than one authorized_keys line per key (control characters) or
+    produce a line dropbear ignores (too long).
     """
     if not isinstance(value, str):
         raise vol.Invalid("SSH public key must be a string")
@@ -131,39 +115,15 @@ def ssh_public_key(value: Any) -> str:
     if RE_SSH_KEY_CONTROL_CHARS.search(key):
         raise vol.Invalid("SSH public key contains control characters")
 
-    parts = key.split(maxsplit=2)
-    if len(parts) < 2:
-        raise vol.Invalid(
-            "SSH public key must be in '<type> <base64-key> [comment]' format"
-        )
-    key_type, key_data = parts[0], parts[1]
-
-    if key_type not in SSH_AUTH_KEY_TYPES:
-        raise vol.Invalid(f"Unsupported SSH public key type: {key_type}")
-
-    try:
-        blob = base64.b64decode(key_data, validate=True)
-    except binascii.Error:
-        raise vol.Invalid("SSH public key data is not valid base64") from None
-
-    # The decoded blob embeds the algorithm name; require it to match the
-    # declared type so arbitrary data can't be smuggled into the file.
-    embedded_len = int.from_bytes(blob[:4], "big") if len(blob) >= 4 else -1
-    if (
-        embedded_len < 0
-        or 4 + embedded_len > len(blob)
-        or blob[4 : 4 + embedded_len] != key_type.encode()
-    ):
-        raise vol.Invalid("SSH public key data does not match its declared type")
-
-    canonical = f"{key_type} {key_data}"
-    if len(parts) == 3:
-        canonical += f" {parts[2]}"
-    return canonical
+    return key
 
 
-SCHEMA_SSH_AUTHORIZED_KEYS = vol.Schema({vol.Required(ATTR_KEYS): [ssh_public_key]})
+SCHEMA_SSH_AUTHORIZED_KEYS = vol.Schema({vol.Required(ATTR_KEYS): [ssh_auth_key]})
 # pylint: enable=no-value-for-parameter
+
+# OS Agent validates submitted keys and treats clearing an already absent
+# authorized_keys file as success since this release.
+SSH_AUTH_KEYS_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.10.0")
 
 
 class APIOS(CoreSysAttributes):
@@ -230,6 +190,16 @@ class APIOS(CoreSysAttributes):
     @api_process
     async def ssh_authorized_keys(self, request: web.Request) -> None:
         """Replace root's SSH authorized keys on the host."""
+        if (
+            not self.sys_dbus.agent.is_connected
+            or self.sys_dbus.agent.version < SSH_AUTH_KEYS_MIN_OS_AGENT_VERSION
+        ):
+            raise APINotFound(
+                f"OS Agent {SSH_AUTH_KEYS_MIN_OS_AGENT_VERSION} or newer required "
+                "for SSH authorized keys management",
+                _LOGGER.debug,
+            )
+
         body = await api_validate(SCHEMA_SSH_AUTHORIZED_KEYS, request)
         await asyncio.shield(self.sys_os.set_ssh_authorized_keys(body[ATTR_KEYS]))
 

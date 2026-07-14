@@ -517,22 +517,17 @@ class OSManager(CoreSysAttributes):
     async def set_ssh_authorized_keys(self, keys: list[str]) -> None:
         """Replace root's SSH authorized keys on the host and start dropbear.
 
-        OS Agent only offers clear and append operations, so the replacement
-        is not atomic: if an append fails, keys added before it remain in
-        place. Callers must validate the keys beforehand.
+        OS Agent validates each key and only offers clear and append
+        operations, so the replacement is not atomic: if an append is
+        rejected or fails, keys added before it remain in place.
         """
         _LOGGER.info("Replacing SSH authorized keys on host (%d keys)", len(keys))
         try:
             await self.sys_dbus.agent.system.clear_ssh_auth_keys()
         except DBusError as err:
-            # OS Agent up to 1.10.x returns the os.Remove error when the
-            # authorized_keys file is already absent (inverted error check,
-            # fixed since). That is the empty state clearing aims for, so
-            # treat it as success.
-            if "no such file or directory" not in str(err):
-                raise HassOSError(
-                    f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
-                ) from err
+            raise HassOSError(
+                f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
+            ) from err
 
         for key in keys:
             try:
