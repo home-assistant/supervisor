@@ -585,7 +585,7 @@ async def test_app_install_in_background(api_client: TestClient, coresys: CoreSy
     assert resp.status == 200
     body = await resp.json()
     assert (job := coresys.jobs.get_job(body["data"]["job_id"]))
-    assert job.name == "addon_manager_install"
+    assert job.name == "app_manager_install"
     event.set()
 
 
@@ -649,7 +649,7 @@ async def test_app_update_in_background(
     assert resp.status == 200
     body = await resp.json()
     assert (job := coresys.jobs.get_job(body["data"]["job_id"]))
-    assert job.name == "addon_manager_update"
+    assert job.name == "app_manager_update"
     event.set()
 
 
@@ -890,7 +890,7 @@ async def test_api_store_apps_app_availability_installed_app(
 @pytest.mark.parametrize(
     ("action", "job_name", "app_slug"),
     [
-        ("install", "addon_manager_install", "local_ssh"),
+        ("install", "app_manager_install", "local_ssh"),
         ("update", "addon_manager_update", "local_example"),
     ],
 )
