@@ -121,10 +121,6 @@ def ssh_auth_key(value: Any) -> str:
 SCHEMA_SSH_AUTHORIZED_KEYS = vol.Schema({vol.Required(ATTR_KEYS): [ssh_auth_key]})
 # pylint: enable=no-value-for-parameter
 
-# OS Agent validates submitted keys and treats clearing an already absent
-# authorized_keys file as success since this release.
-SSH_AUTH_KEYS_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.10.0")
-
 
 class APIOS(CoreSysAttributes):
     """Handle RESTful API for OS functions."""
@@ -190,16 +186,6 @@ class APIOS(CoreSysAttributes):
     @api_process
     async def ssh_authorized_keys(self, request: web.Request) -> None:
         """Replace root's SSH authorized keys on the host."""
-        if (
-            not self.sys_dbus.agent.is_connected
-            or self.sys_dbus.agent.version < SSH_AUTH_KEYS_MIN_OS_AGENT_VERSION
-        ):
-            raise APINotFound(
-                f"OS Agent {SSH_AUTH_KEYS_MIN_OS_AGENT_VERSION} or newer required "
-                "for SSH authorized keys management",
-                _LOGGER.debug,
-            )
-
         body = await api_validate(SCHEMA_SSH_AUTHORIZED_KEYS, request)
         await asyncio.shield(self.sys_os.set_ssh_authorized_keys(body[ATTR_KEYS]))
 

@@ -32,6 +32,13 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # SSH service on Home Assistant OS consuming /root/.ssh/authorized_keys
 DROPBEAR_SERVICE = "dropbear.service"
 
+# OS Agent releases before this return the os.Remove error when clearing an
+# already absent authorized_keys file (inverted error check)
+CLEAR_SSH_AUTH_KEYS_FIXED_VERSION = AwesomeVersion("1.10.0")
+CLEAR_SSH_AUTH_KEYS_MISSING_FILE_ERROR = (
+    "remove /root/.ssh/authorized_keys: no such file or directory"
+)
+
 
 @dataclass(slots=True, frozen=True)
 class SlotStatus:
@@ -517,17 +524,23 @@ class OSManager(CoreSysAttributes):
     async def set_ssh_authorized_keys(self, keys: list[str]) -> None:
         """Replace root's SSH authorized keys on the host and start dropbear.
 
-        OS Agent validates each key and only offers clear and append
-        operations, so the replacement is not atomic: if an append is
+        OS Agent validates each key since 1.10.0 and only offers clear and
+        append operations, so the replacement is not atomic: if an append is
         rejected or fails, keys added before it remain in place.
         """
         _LOGGER.info("Replacing SSH authorized keys on host (%d keys)", len(keys))
         try:
             await self.sys_dbus.agent.system.clear_ssh_auth_keys()
         except DBusError as err:
-            raise HassOSError(
-                f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
-            ) from err
+            # On affected OS Agent releases the missing-file error is the
+            # empty state clearing aims for, so treat it as success there.
+            if (
+                self.sys_dbus.agent.version >= CLEAR_SSH_AUTH_KEYS_FIXED_VERSION
+                or CLEAR_SSH_AUTH_KEYS_MISSING_FILE_ERROR not in str(err)
+            ):
+                raise HassOSError(
+                    f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
+                ) from err
 
         for key in keys:
             try:

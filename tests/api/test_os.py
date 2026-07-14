@@ -811,8 +811,7 @@ TEST_SSH_KEY_ED25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDXD8u9KB94/l1YukYfl
 TEST_SSH_KEY_ECDSA = "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBIGeXP8EbMxj8Ws5m7tdN5YR9BryZNyG+L9670o7eSZog4G03n16bs7Yz0oV1J4sWOkhZNUak6g3IM1jnMLFvgE= ecdsa@example"
 
 
-@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
-@pytest.mark.usefixtures("os_available", "os_agent_version")
+@pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
@@ -842,8 +841,7 @@ async def test_api_os_ssh_authorized_keys(
     start.assert_called_once_with("dropbear.service")
 
 
-@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
-@pytest.mark.usefixtures("os_available", "os_agent_version")
+@pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys_empty_list_clears(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
@@ -889,8 +887,7 @@ async def test_api_os_ssh_authorized_keys_empty_list_clears(
         "oversized key",
     ],
 )
-@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
-@pytest.mark.usefixtures("os_available", "os_agent_version")
+@pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys_invalid(
     api_client_with_prefix: tuple[TestClient, str],
     os_agent_services: dict[str, DBusServiceMock],
@@ -909,28 +906,47 @@ async def test_api_os_ssh_authorized_keys_invalid(
     assert system_service.AddSSHAuthKey.calls == []
 
 
-@pytest.mark.parametrize("os_agent_version", ["1.9.0"], indirect=True)
+@pytest.mark.parametrize(
+    ("os_agent_version", "expected_status"),
+    [("1.9.0", 200), ("1.10.0", 400)],
+    indirect=["os_agent_version"],
+)
 @pytest.mark.usefixtures("os_available", "os_agent_version")
-async def test_api_os_ssh_authorized_keys_requires_os_agent_version(
+async def test_api_os_ssh_authorized_keys_old_os_agent_clear_missing_file(
     api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
+    expected_status: int,
 ):
-    """Test 404 is returned on an OS Agent without key validation."""
+    """Test the missing-file clear error is only tolerated on affected OS Agents.
+
+    OS Agent before 1.10.0 returns an error when the file is already absent
+    (inverted error check); on 1.10.0 or newer the same error is genuine.
+    """
     api_client, prefix = api_client_with_prefix
     system_service: SystemService = os_agent_services["agent_system"]
-    system_service.ClearSSHAuthKeys.calls.clear()
-
-    resp = await api_client.post(
-        f"{prefix}/os/ssh/authorized_keys", json={"keys": [TEST_SSH_KEY_ED25519]}
+    system_service.AddSSHAuthKey.calls.clear()
+    system_service.response_clear_ssh_auth_keys = DBusError(
+        ErrorType.FAILED,
+        "remove /root/.ssh/authorized_keys: no such file or directory",
     )
-    assert resp.status == 404
-    result = await resp.json()
-    assert "OS Agent 1.10.0 or newer required" in result["message"]
-    assert system_service.ClearSSHAuthKeys.calls == []
+
+    with patch.object(coresys.host.services, "start", new=AsyncMock()) as start:
+        resp = await api_client.post(
+            f"{prefix}/os/ssh/authorized_keys", json={"keys": [TEST_SSH_KEY_ED25519]}
+        )
+    assert resp.status == expected_status
+
+    if expected_status == 200:
+        assert system_service.AddSSHAuthKey.calls == [(TEST_SSH_KEY_ED25519,)]
+        start.assert_called_once_with("dropbear.service")
+    else:
+        result = await resp.json()
+        assert "Can't clear SSH authorized keys" in result["message"]
+        assert system_service.AddSSHAuthKey.calls == []
+        start.assert_not_called()
 
 
-@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
-@pytest.mark.usefixtures("os_agent_version")
 async def test_api_os_ssh_authorized_keys_no_os(
     api_client_with_prefix: tuple[TestClient, str],
     os_agent_services: dict[str, DBusServiceMock],
@@ -945,8 +961,7 @@ async def test_api_os_ssh_authorized_keys_no_os(
     assert "no Home Assistant OS available" in result["message"]
 
 
-@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
-@pytest.mark.usefixtures("os_available", "os_agent_version")
+@pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys_rejected_key(
     api_client_with_prefix: tuple[TestClient, str],
     os_agent_services: dict[str, DBusServiceMock],
@@ -967,8 +982,7 @@ async def test_api_os_ssh_authorized_keys_rejected_key(
     assert "invalid SSH authorized key" in result["message"]
 
 
-@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
-@pytest.mark.usefixtures("os_available", "os_agent_version")
+@pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys_clear_error(
     api_client_with_prefix: tuple[TestClient, str],
     os_agent_services: dict[str, DBusServiceMock],
@@ -990,8 +1004,7 @@ async def test_api_os_ssh_authorized_keys_clear_error(
     assert system_service.AddSSHAuthKey.calls == []
 
 
-@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
-@pytest.mark.usefixtures("os_available", "os_agent_version")
+@pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys_dropbear_start_error(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
