@@ -29,6 +29,7 @@ class CheckDNSServerIPv6(CheckBase):
         conditions=[JobCondition.INTERNET_SYSTEM],
         throttle_period=timedelta(hours=24),
         throttle=JobThrottle.THROTTLE,
+        internal=True,
     )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
@@ -51,7 +52,9 @@ class CheckDNSServerIPv6(CheckBase):
                 await async_capture_exception(result)
 
     @Job(
-        name="check_dns_server_ipv6_approve", conditions=[JobCondition.INTERNET_SYSTEM]
+        name="check_dns_server_ipv6_approve",
+        conditions=[JobCondition.INTERNET_SYSTEM],
+        internal=True,
     )
     async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""

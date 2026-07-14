@@ -8,7 +8,7 @@ import voluptuous as vol
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, JobNotFound
-from ..jobs import SupervisorJob
+from ..jobs import SupervisorJob, process_job_dict_for_legacy_compatibility
 from ..jobs.const import ATTR_IGNORE_CONDITIONS, JobCondition
 from .const import ATTR_JOBS
 from .utils import api_process, api_validate
@@ -67,7 +67,7 @@ class APIJobs(CoreSysAttributes):
             # We remove parent_id and instead use that info to represent jobs as a tree
             job_dict = current_job.as_dict() | {"child_jobs": child_jobs}
             job_dict.pop("parent_id")
-            current_list.append(job_dict)
+            current_list.append(process_job_dict_for_legacy_compatibility(job_dict))
 
             if current_job.uuid in jobs_by_parent:
                 queue.extend(

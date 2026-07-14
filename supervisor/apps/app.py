@@ -863,7 +863,7 @@ class App(AppModel):
         _LOGGER.debug("App %s write options: %s", self.slug, options)
 
     @Job(
-        name="addon_unload",
+        name="app_unload",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -896,7 +896,7 @@ class App(AppModel):
             )
 
     @Job(
-        name="addon_install",
+        name="app_install",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -950,7 +950,7 @@ class App(AppModel):
             await self.sys_ingress.reload()
 
     @Job(
-        name="addon_uninstall",
+        name="app_uninstall",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1018,7 +1018,7 @@ class App(AppModel):
             await self.sys_ingress.reload()
 
     @Job(
-        name="addon_update",
+        name="app_update",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1078,7 +1078,7 @@ class App(AppModel):
         return out
 
     @Job(
-        name="addon_rebuild",
+        name="app_rebuild",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1259,7 +1259,7 @@ class App(AppModel):
         )
 
     @Job(
-        name="addon_start",
+        name="app_start",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1318,7 +1318,7 @@ class App(AppModel):
         return self._wait_for_startup_task
 
     @Job(
-        name="addon_stop",
+        name="app_stop",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1333,7 +1333,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="addon_restart",
+        name="app_restart",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1367,7 +1367,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="addon_write_stdin",
+        name="app_write_stdin",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1405,7 +1405,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="addon_begin_backup",
+        name="app_begin_backup",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1427,7 +1427,7 @@ class App(AppModel):
         return True
 
     @Job(
-        name="addon_end_backup",
+        name="app_end_backup",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1465,7 +1465,7 @@ class App(AppModel):
         return False
 
     @Job(
-        name="addon_backup",
+        name="app_backup",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1578,7 +1578,7 @@ class App(AppModel):
         return wait_for_start
 
     @Job(
-        name="addon_restore",
+        name="app_restore",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1727,11 +1727,12 @@ class App(AppModel):
         return wait_for_start
 
     @Job(
-        name="addon_restart_after_problem",
+        name="app_restart_after_problem",
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         on_condition=AppsJobError,
         throttle=JobThrottle.GROUP_RATE_LIMIT,
+        internal=True,
     )
     async def _restart_after_problem(
         self, state: ContainerState, exit_code: int | None = None
