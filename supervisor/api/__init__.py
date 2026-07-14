@@ -345,12 +345,20 @@ class RestAPI(CoreSysAttributes):
         api_jobs = APIJobs()
         api_jobs.coresys = self.coresys
 
+        # V1 keeps the legacy job names, V2 exposes the new ones.
+        if app is self.versions[AppVersion.V2]:
+            info_handler = api_jobs.info
+            job_info_handler = api_jobs.job_info
+        else:
+            info_handler = api_jobs.info_v1
+            job_info_handler = api_jobs.job_info_v1
+
         app.add_routes(
             [
-                web.get("/jobs/info", api_jobs.info),
+                web.get("/jobs/info", info_handler),
                 web.post("/jobs/options", api_jobs.options),
                 web.post("/jobs/reset", api_jobs.reset),
-                web.get("/jobs/{uuid}", api_jobs.job_info),
+                web.get("/jobs/{uuid}", job_info_handler),
                 web.delete("/jobs/{uuid}", api_jobs.remove_job),
             ]
         )

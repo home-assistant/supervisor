@@ -36,15 +36,45 @@ _CURRENT_JOB: ContextVar[str | None] = ContextVar("current_job", default=None)
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+# Externally visible jobs renamed in the addon->app migration keep their old
+# names on the V1 surfaces: the V1 REST API and the websocket events consumed
+# by Home Assistant Core and the frontend. The new names are exposed on the
+# V2 REST API only. Add an entry here whenever an externally visible job is
+# renamed; the table can be dropped once V1 compatibility is no longer needed.
+_LEGACY_JOB_NAMES: dict[str, str] = {
+    "app_backup": "addon_backup",
+    "app_begin_backup": "addon_begin_backup",
+    "app_end_backup": "addon_end_backup",
+    "app_install": "addon_install",
+    "app_manager_install": "addon_manager_install",
+    "app_manager_rebuild": "addon_manager_rebuild",
+    "app_manager_repair": "addon_manager_repair",
+    "app_manager_restore": "addon_manager_restore",
+    "app_manager_uninstall": "addon_manager_uninstall",
+    "app_manager_update": "addon_manager_update",
+    "app_rebuild": "addon_rebuild",
+    "app_restart": "addon_restart",
+    "app_restore": "addon_restore",
+    "app_start": "addon_start",
+    "app_stop": "addon_stop",
+    "app_uninstall": "addon_uninstall",
+    "app_unload": "addon_unload",
+    "app_update": "addon_update",
+    "app_write_stdin": "addon_write_stdin",
+    "backup_app_restore": "backup_addon_restore",
+    "backup_app_save": "backup_addon_save",
+    "backup_remove_delta_apps": "backup_remove_delta_addons",
+    "backup_restore_apps": "backup_restore_addons",
+    "backup_store_apps": "backup_store_addons",
+}
+
+
 def process_job_dict_for_legacy_compatibility(
     job_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """Map new job names to legacy names for API compatibility."""
-    # Home Assistant Core's hassio integration listens for this specific job name
-    # via the Supervisor websocket API. Core v2026.8 supports both names, so this
-    # compatibility can be removed when Core v2026.7 is no longer supported.
-    if job_data.get("name") == "app_manager_update":
-        return job_data | {"name": "addon_manager_update"}
+    """Map new job names to legacy names for V1 API and websocket compatibility."""
+    if legacy_name := _LEGACY_JOB_NAMES.get(job_data["name"]):
+        return job_data | {"name": legacy_name}
     return job_data
 
 
@@ -299,6 +329,9 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         # Job object will be before the change. Combine the change with current data
         if attribute.name == "errors":
             value = [err.as_dict() for err in value]
+        # Websocket events keep the legacy job names as Home Assistant Core and
+        # the frontend still match on them. Switch to the new names once the
+        # consumers can handle them (e.g. gated on the connected Core version).
         job_data = process_job_dict_for_legacy_compatibility(
             job.as_dict() | {attribute.name: value}
         )

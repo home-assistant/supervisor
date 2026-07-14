@@ -30,7 +30,9 @@ class APIJobs(CoreSysAttributes):
         except JobNotFound:
             raise APINotFound("Job does not exist") from None
 
-    def _list_jobs(self, start: SupervisorJob | None = None) -> list[dict[str, Any]]:
+    def _list_jobs(
+        self, start: SupervisorJob | None = None, *, legacy_names: bool = False
+    ) -> list[dict[str, Any]]:
         """Return current job tree.
 
         Jobs are added to cache as they are created so by default they are in oldest to newest.
@@ -67,7 +69,9 @@ class APIJobs(CoreSysAttributes):
             # We remove parent_id and instead use that info to represent jobs as a tree
             job_dict = current_job.as_dict() | {"child_jobs": child_jobs}
             job_dict.pop("parent_id")
-            current_list.append(process_job_dict_for_legacy_compatibility(job_dict))
+            if legacy_names:
+                job_dict = process_job_dict_for_legacy_compatibility(job_dict)
+            current_list.append(job_dict)
 
             if current_job.uuid in jobs_by_parent:
                 queue.extend(
@@ -85,6 +89,14 @@ class APIJobs(CoreSysAttributes):
         return {
             ATTR_IGNORE_CONDITIONS: self.sys_jobs.ignore_conditions,
             ATTR_JOBS: self._list_jobs(),
+        }
+
+    @api_process
+    async def info_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return JobManager information with legacy job names."""
+        return {
+            ATTR_IGNORE_CONDITIONS: self.sys_jobs.ignore_conditions,
+            ATTR_JOBS: self._list_jobs(legacy_names=True),
         }
 
     @api_process
@@ -109,6 +121,12 @@ class APIJobs(CoreSysAttributes):
         """Get details of a job by ID."""
         job = self._extract_job(request)
         return self._list_jobs(job)[0]
+
+    @api_process
+    async def job_info_v1(self, request: web.Request) -> dict[str, Any]:
+        """Get details of a job by ID with legacy job names."""
+        job = self._extract_job(request)
+        return self._list_jobs(job, legacy_names=True)[0]
 
     @api_process
     async def remove_job(self, request: web.Request) -> None:

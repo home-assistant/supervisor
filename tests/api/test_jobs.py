@@ -429,8 +429,9 @@ async def test_api_jobs_legacy_name_compatibility(
     coresys: CoreSys,
     ha_ws_client: AsyncMock,
 ):
-    """Test renamed job names are mapped back to legacy names in API outputs."""
+    """Test V1 API maps renamed jobs to legacy names while V2 uses new names."""
     api_client, prefix = api_client_with_prefix
+    expected_name = "app_manager_update" if prefix else "addon_manager_update"
     job = coresys.jobs.new_job("app_manager_update", reference="local_example")
     job.stage = "update"
     job.progress = 50
@@ -440,8 +441,14 @@ async def test_api_jobs_legacy_name_compatibility(
     resp = await api_client.get(f"{prefix}/jobs/info")
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["jobs"][0]["name"] == "addon_manager_update"
+    assert result["data"]["jobs"][0]["name"] == expected_name
 
+    resp = await api_client.get(f"{prefix}/jobs/{job.uuid}")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["name"] == expected_name
+
+    # Websocket events always use the legacy names Core and frontend expect
     job_events = [
         evt.args[0]["data"]["data"]
         for evt in ha_ws_client.async_send_command.call_args_list
