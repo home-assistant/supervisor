@@ -14,8 +14,10 @@ from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_DATA,
     ATTR_EVENT,
+    ATTR_SUPPORTED,
     ATTR_TYPE,
     ATTR_UPDATE_KEY,
+    ATTR_VERSION,
     STARTING_STATES,
     BusEvent,
     CoreState,
@@ -26,8 +28,16 @@ from ..exceptions import (
     HomeAssistantWSConnectionError,
     HomeAssistantWSError,
 )
+from ..jobs import process_job_dict_for_legacy_compatibility
 from ..utils.json import json_dumps
-from .const import CLOSING_STATES, WSEvent, WSType
+from .const import (
+    CLOSING_STATES,
+    DEFAULT_EVENT_VERSION,
+    EVENT_VERSION_APP_JOB_NAMES,
+    SUPPORTED_EVENT_VERSIONS,
+    WSEvent,
+    WSType,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -37,6 +47,26 @@ T = TypeVar("T")
 # by the ingress proxy; Supervisor's own control channel never gets close to
 # this but shares the setting for simplicity. See issue #4392.
 MAX_MESSAGE_SIZE_FROM_CORE = 64 * 1024 * 1024
+
+
+def _map_job_event_to_legacy_names(message: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of a job event message using the legacy job name.
+
+    Consumers of event version 1 expect the legacy job names. Messages other
+    than job events pass through unchanged.
+    """
+    if (
+        message.get(ATTR_TYPE) != WSType.SUPERVISOR_EVENT
+        or not isinstance(data := message.get(ATTR_DATA), dict)
+        or data.get(ATTR_EVENT) != WSEvent.JOB
+        or not isinstance(job_data := data.get(ATTR_DATA), dict)
+    ):
+        return message
+
+    return message | {
+        ATTR_DATA: data
+        | {ATTR_DATA: process_job_dict_for_legacy_compatibility(job_data)}
+    }
 
 
 class WSClient:
@@ -50,6 +80,7 @@ class WSClient:
         """Initialise the WS client."""
         self.ha_version = ha_version
         self.client = client
+        self.event_version: int = DEFAULT_EVENT_VERSION
         self._message_id: int = 0
         self._futures: dict[int, asyncio.Future[T]] = {}  # type: ignore
 
@@ -84,6 +115,41 @@ class WSClient:
             return await self._futures[message["id"]]
         finally:
             self._futures.pop(message["id"])
+
+    async def negotiate_event_version(self) -> None:
+        """Negotiate the supervisor event version with Core.
+
+        Offers the supported versions to Core, which replies with the one it
+        wants to receive. A Core without support for the command rejects it
+        and the default version stays in use.
+
+        Raises HomeAssistantWSConnectionError if the connection fails.
+        """
+        try:
+            result: dict[str, Any] = await self.async_send_command(
+                {
+                    ATTR_TYPE: WSType.SUPERVISOR_EVENT_VERSION,
+                    ATTR_SUPPORTED: sorted(SUPPORTED_EVENT_VERSIONS),
+                }
+            )
+        except HomeAssistantWSConnectionError:
+            raise
+        except HomeAssistantWSError:
+            _LOGGER.debug(
+                "Core does not support event version negotiation, using version %s",
+                self.event_version,
+            )
+            return
+
+        version = result.get(ATTR_VERSION) if isinstance(result, dict) else None
+        if version in SUPPORTED_EVENT_VERSIONS:
+            self.event_version = version
+        else:
+            _LOGGER.warning(
+                "Core requested unsupported event version %s, using version %s",
+                version,
+                self.event_version,
+            )
 
     async def start_listener(self) -> None:
         """Start listening to the websocket."""
@@ -267,6 +333,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             client = await self.sys_homeassistant.api.connect_websocket()
 
             self.sys_create_task(client.start_listener())
+            await client.negotiate_event_version()
             return client
 
     async def _ensure_connected(self) -> None:
@@ -315,6 +382,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
         # _ensure_connected guarantees self.client is set
         assert self.client
+
+        if self.client.event_version < EVENT_VERSION_APP_JOB_NAMES:
+            message = _map_job_event_to_legacy_names(message)
 
         try:
             await self.client.async_send_command(message)

@@ -563,7 +563,7 @@ async def coresys(
         return_value=APIState("RUNNING", False)
     )
     coresys_obj.homeassistant._websocket.client = AsyncMock(
-        ha_version=AwesomeVersion("2021.2.4")
+        ha_version=AwesomeVersion("2021.2.4"), event_version=1
     )
 
     if not request.node.get_closest_marker("no_mock_init_websession"):

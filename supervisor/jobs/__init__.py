@@ -37,10 +37,11 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 # Externally visible jobs renamed in the addon->app migration keep their old
-# names on the V1 surfaces: the V1 REST API and the websocket events consumed
-# by Home Assistant Core and the frontend. The new names are exposed on the
-# V2 REST API only. Add an entry here whenever an externally visible job is
-# renamed; the table can be dropped once V1 compatibility is no longer needed.
+# names on the V1 surfaces: the V1 REST API and websocket job events sent with
+# event version 1 (the default, see homeassistant/websocket.py). The new names
+# are exposed on the V2 REST API and with event version 2. Add an entry here
+# whenever an externally visible job is renamed; the table can be dropped once
+# V1 compatibility is no longer needed.
 _LEGACY_JOB_NAMES: dict[str, str] = {
     "app_backup": "addon_backup",
     "app_begin_backup": "addon_begin_backup",
@@ -329,12 +330,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         # Job object will be before the change. Combine the change with current data
         if attribute.name == "errors":
             value = [err.as_dict() for err in value]
-        # Websocket events keep the legacy job names as Home Assistant Core and
-        # the frontend still match on them. Switch to the new names once the
-        # consumers can handle them (e.g. gated on the connected Core version).
-        job_data = process_job_dict_for_legacy_compatibility(
-            job.as_dict() | {attribute.name: value}
-        )
+        job_data = job.as_dict() | {attribute.name: value}
 
         # Notify Home Assistant of change if its not internal
         if not job.internal:

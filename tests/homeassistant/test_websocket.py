@@ -5,11 +5,16 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HomeAssistantAPIError, HomeAssistantWSConnectionError
+from supervisor.exceptions import (
+    HomeAssistantAPIError,
+    HomeAssistantWSConnectionError,
+    HomeAssistantWSError,
+)
 from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.homeassistant.websocket import WSClient
 
@@ -74,6 +79,59 @@ async def test_fire_and_forget_during_startup(
         "test", {"lorem": "ipsum"}
     )
     ha_ws_client.async_send_command.assert_not_called()
+
+
+async def test_job_event_uses_legacy_names_with_event_version_1(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test job events map renamed jobs to legacy names with event version 1."""
+    assert ha_ws_client.event_version == 1
+    await coresys.homeassistant.websocket.async_supervisor_event_custom(
+        WSEvent.JOB, {"data": {"name": "app_manager_update", "progress": 50}}
+    )
+    ha_ws_client.async_send_command.assert_called_with(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": WSEvent.JOB,
+                "data": {"name": "addon_manager_update", "progress": 50},
+            },
+        }
+    )
+
+
+async def test_job_event_uses_new_names_with_event_version_2(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test job events keep the new job names with event version 2."""
+    ha_ws_client.event_version = 2
+    await coresys.homeassistant.websocket.async_supervisor_event_custom(
+        WSEvent.JOB, {"data": {"name": "app_manager_update", "progress": 50}}
+    )
+    ha_ws_client.async_send_command.assert_called_with(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": WSEvent.JOB,
+                "data": {"name": "app_manager_update", "progress": 50},
+            },
+        }
+    )
+
+
+async def test_connect_negotiates_event_version(coresys: CoreSys):
+    """Test the event version is negotiated when a connection is established."""
+    ws_client = AsyncMock(connected=True, event_version=1)
+    coresys.homeassistant.websocket.client = None
+    with (
+        patch.object(coresys.homeassistant.api, "check_api_state", return_value=True),
+        patch.object(
+            coresys.homeassistant.api, "connect_websocket", return_value=ws_client
+        ),
+    ):
+        await coresys.homeassistant.websocket.async_send_command({"type": "test"})
+
+    ws_client.negotiate_event_version.assert_awaited_once()
 
 
 async def test_send_command_core_not_reachable(
@@ -233,6 +291,58 @@ async def test_connect_with_auth_missing_key():
             session, "ws://localhost/api/websocket", "token"
         )
     ws.close.assert_called_once()
+
+
+async def test_negotiate_event_version_core_supported():
+    """Test negotiation uses the version Core replies with."""
+    client = WSClient(AwesomeVersion("2026.8.0"), _mock_ws_client([]))
+    with patch.object(
+        WSClient, "async_send_command", return_value={"version": 2}
+    ) as send_command:
+        await client.negotiate_event_version()
+
+    send_command.assert_called_once_with(
+        {"type": WSType.SUPERVISOR_EVENT_VERSION, "supported": [1, 2]}
+    )
+    assert client.event_version == 2
+
+
+async def test_negotiate_event_version_core_unsupported():
+    """Test negotiation keeps the default version when Core rejects the command."""
+    client = WSClient(AwesomeVersion("2026.7.0"), _mock_ws_client([]))
+    with patch.object(
+        WSClient,
+        "async_send_command",
+        side_effect=HomeAssistantWSError("Unknown command"),
+    ):
+        await client.negotiate_event_version()
+
+    assert client.event_version == 1
+
+
+async def test_negotiate_event_version_invalid_reply():
+    """Test negotiation keeps the default version on an invalid reply."""
+    client = WSClient(AwesomeVersion("2026.8.0"), _mock_ws_client([]))
+    with patch.object(WSClient, "async_send_command", return_value={"version": 99}):
+        await client.negotiate_event_version()
+
+    assert client.event_version == 1
+
+
+async def test_negotiate_event_version_connection_error():
+    """Test negotiation propagates connection errors."""
+    client = WSClient(AwesomeVersion("2026.8.0"), _mock_ws_client([]))
+    with (
+        patch.object(
+            WSClient,
+            "async_send_command",
+            side_effect=HomeAssistantWSConnectionError("Connection was closed"),
+        ),
+        pytest.raises(HomeAssistantWSConnectionError),
+    ):
+        await client.negotiate_event_version()
+
+    assert client.event_version == 1
 
 
 async def test_ws_client_close():
