@@ -20,6 +20,10 @@ from ..dbus.const import (
     WirelessMethodType,
 )
 from ..dbus.network.connection import NetworkConnection
+from ..dbus.network.setting import (
+    CONF_ATTR_802_WIRELESS_SECURITY,
+    CONF_ATTR_802_WIRELESS_SECURITY_PSK,
+)
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
@@ -271,25 +275,35 @@ class NetworkManager(CoreSysAttributes):
                 uuid=inet.settings.connection.uuid,
             )
 
+            # Secrets (Wi-Fi PSK) are excluded from GetSettings and ignored by
+            # NetworkManager's Reapply, so a change to them is neither detected
+            # nor applied in place. Always re-activate when the payload
+            # contains a PSK.
+            contains_secrets = CONF_ATTR_802_WIRELESS_SECURITY_PSK in settings.get(
+                CONF_ATTR_802_WIRELESS_SECURITY, {}
+            )
+
             try:
                 settings_changed = await inet.settings.update(settings)
-                # On startup (update_only) avoid a full re-activation cycle if
-                # possible since it briefly disrupts connectivity: skip it
-                # entirely if the profile is unchanged and the connection is
-                # already active, and try to reapply changed settings in place
-                # first.
+                # Avoid a full re-activation cycle if possible since it briefly
+                # disrupts connectivity: reapply changed settings in place, and
+                # on startup (update_only) skip activation entirely if the
+                # profile is unchanged. User-initiated updates with unchanged
+                # settings still re-activate, both as a way to force a
+                # reconnect and to cover secret-only changes.
                 activate = True
                 if (
-                    update_only
+                    not contains_secrets
                     and inet.connection
                     and inet.connection.state == ConnectionState.ACTIVATED
                 ):
                     if not settings_changed:
-                        _LOGGER.debug(
-                            "Settings for %s unchanged, skipping activation",
-                            interface.name,
-                        )
-                        activate = False
+                        if update_only:
+                            _LOGGER.debug(
+                                "Settings for %s unchanged, skipping activation",
+                                interface.name,
+                            )
+                            activate = False
                     else:
                         try:
                             await inet.reapply()

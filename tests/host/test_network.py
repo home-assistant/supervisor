@@ -10,6 +10,11 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import InterfaceMethod
+from supervisor.dbus.network.setting import (
+    CONF_ATTR_802_WIRELESS_SECURITY,
+    CONF_ATTR_802_WIRELESS_SECURITY_PSK,
+)
+from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.exceptions import HostNotSupportedError
 from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.host.const import WifiMode
@@ -190,6 +195,77 @@ async def test_load_reapply_fails_activates(
     )
 
     await coresys.host.network.load()
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+
+
+async def test_apply_changes_reapplies_in_place(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    device_eth0_service: DeviceService,
+):
+    """Test user-initiated apply of changed settings reapplies in place."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    interface = coresys.host.network.get("eth0")
+    interface.ipv4setting.nameservers = [IPv4Address("1.1.1.1")]
+    await coresys.host.network.apply_changes(interface)
+
+    assert device_eth0_service.Reapply.calls == [
+        ("/org/freedesktop/NetworkManager/Devices/1", {}, 0, 0)
+    ]
+    assert network_manager_service.ActivateConnection.calls == []
+
+
+async def test_apply_changes_unchanged_reactivates(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    device_eth0_service: DeviceService,
+):
+    """Test user-initiated apply of unchanged settings re-activates."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    await coresys.host.network.apply_changes(coresys.host.network.get("eth0"))
+
+    assert device_eth0_service.Reapply.calls == []
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+
+
+async def test_apply_changes_with_psk_reactivates(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    device_eth0_service: DeviceService,
+):
+    """Test apply with a Wi-Fi PSK in the payload re-activates."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    interface = coresys.host.network.get("eth0")
+    interface.ipv4setting.nameservers = [IPv4Address("1.1.1.1")]
+
+    def add_psk(*args, **kwargs):
+        conn = get_connection_from_interface(*args, **kwargs)
+        conn[CONF_ATTR_802_WIRELESS_SECURITY] = {
+            CONF_ATTR_802_WIRELESS_SECURITY_PSK: Variant("s", "supersecret")
+        }
+        return conn
+
+    with patch("supervisor.host.network.get_connection_from_interface", new=add_psk):
+        await coresys.host.network.apply_changes(interface)
+
+    assert device_eth0_service.Reapply.calls == []
     assert (
         "/org/freedesktop/NetworkManager/Settings/1",
         "/org/freedesktop/NetworkManager/Devices/1",
