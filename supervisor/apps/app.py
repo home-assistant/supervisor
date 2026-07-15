@@ -628,7 +628,7 @@ class App(AppModel):
         Unlike ``ports`` this excludes config defaults the user never touched,
         so callers persisting a change only write back real user overrides.
         """
-        return self.persist.get(ATTR_NETWORK, {})
+        return dict(self.persist.get(ATTR_NETWORK) or {})
 
     @property
     def ingress_url(self) -> str | None:
