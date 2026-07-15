@@ -591,14 +591,16 @@ class App(AppModel):
 
     @property
     def ports(self) -> dict[str, int | None] | None:
-        """Return ports of app."""
+        """Return effective ports, merging user overrides over config defaults.
+
+        This keeps every config-declared port visible even when the user only
+        remapped a subset, so optional ports left unpublished (and ports newly
+        added by an app update) stay visible and keep applying their defaults.
+        """
         config_ports = super().ports
         if config_ports is None:
             return self.persist.get(ATTR_NETWORK)
 
-        # Merge persisted overrides on top of the config-declared ports so
-        # ports the user hasn't remapped (e.g. optional ports left unpublished)
-        # stay visible and can still be enabled.
         persisted = self.persist.get(ATTR_NETWORK, {})
         return {
             container_port: persisted.get(container_port, default_host_port)
@@ -619,6 +621,14 @@ class App(AppModel):
                 new_ports[container_port] = host_port
 
         self.persist[ATTR_NETWORK] = new_ports
+
+    def user_ports(self) -> dict[str, int | None]:
+        """Return only the user's persisted port overrides.
+
+        Unlike ``ports`` this excludes config defaults the user never touched,
+        so callers persisting a change only write back real user overrides.
+        """
+        return self.persist.get(ATTR_NETWORK, {})
 
     @property
     def ingress_url(self) -> str | None:

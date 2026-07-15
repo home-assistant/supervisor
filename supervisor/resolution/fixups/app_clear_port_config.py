@@ -57,8 +57,10 @@ class FixupAppClearPortConfig(FixupBase):
             )
             return
 
-        ports[port_key] = None
-        app.ports = ports
+        # Persist only the cleared port as a user override on top of any
+        # existing ones, so clearing one conflicting port doesn't turn the
+        # current config defaults into user changes.
+        app.ports = {**app.user_ports(), port_key: None}
         await app.save_persist()
 
         _LOGGER.info(
