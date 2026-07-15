@@ -300,13 +300,16 @@ class NetworkManager(CoreSysAttributes):
                                 err,
                             )
                         else:
-                            _LOGGER.debug(
-                                "Reapplied changed settings for %s in place",
+                            _LOGGER.info(
+                                "Reapplied changed settings for interface %s in place",
                                 interface.name,
                             )
                             activate = False
 
                 if activate:
+                    _LOGGER.info(
+                        "Activating connection for interface %s", interface.name
+                    )
                     con = activated = await self.sys_dbus.network.activate_connection(
                         inet.settings.object_path, inet.object_path
                     )
@@ -328,7 +331,9 @@ class NetworkManager(CoreSysAttributes):
 
         # Create new configuration and activate interface
         elif interface.enabled:
-            _LOGGER.debug("Create new configuration for %s", interface.name)
+            _LOGGER.info(
+                "Creating and activating connection for interface %s", interface.name
+            )
             settings = get_connection_from_interface(interface, self.sys_dbus.network)
 
             try:
