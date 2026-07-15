@@ -150,7 +150,7 @@ class AppOptions(CoreSysAttributes):
         if typ.startswith(_STR) or typ.startswith(_PASSWORD):
             if typ.startswith(_PASSWORD) and value:
                 self.pwned.add(hashlib.sha1(str(value).encode()).hexdigest())
-            return vol.All(str(value), vol.Range(**range_args))(value)
+            return vol.All(str, vol.Length(**range_args))(value)
         if typ.startswith(_INT):
             return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
         if typ.startswith(_FLOAT):
