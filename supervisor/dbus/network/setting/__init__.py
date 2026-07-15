@@ -177,12 +177,12 @@ class NetworkSetting(DBusInterface):
         Secrets (e.g. Wi-Fi PSK) are not part of GetSettings, so a change to
         secrets only is not detected.
         """
-        new_settings: dict[
+        current_settings: dict[
             str, dict[str, Variant]
         ] = await self.connected_dbus.Settings.Connection.call(
             "get_settings", unpack_variants=False
         )
-        old_settings = deepcopy(new_settings)
+        new_settings = deepcopy(current_settings)
 
         _merge_settings_attribute(
             new_settings,
@@ -220,7 +220,7 @@ class NetworkSetting(DBusInterface):
         ] = await self.connected_dbus.Settings.Connection.call(
             "get_settings", unpack_variants=False
         )
-        return old_settings != updated_settings
+        return current_settings != updated_settings
 
     @dbus_connected
     async def delete(self) -> None:
