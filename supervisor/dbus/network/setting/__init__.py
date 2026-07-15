@@ -1,5 +1,6 @@
 """Connection object for Network Manager."""
 
+from copy import deepcopy
 import logging
 from typing import Any
 
@@ -169,13 +170,19 @@ class NetworkSetting(DBusInterface):
         return await self.connected_dbus.Settings.Connection.call("get_settings")
 
     @dbus_connected
-    async def update(self, settings: dict[str, dict[str, Variant]]) -> None:
-        """Update connection settings."""
+    async def update(self, settings: dict[str, dict[str, Variant]]) -> bool:
+        """Update connection settings.
+
+        Return True if the settings as normalized by NetworkManager changed.
+        Secrets (e.g. Wi-Fi PSK) are not part of GetSettings, so a change to
+        secrets only is not detected.
+        """
         new_settings: dict[
             str, dict[str, Variant]
         ] = await self.connected_dbus.Settings.Connection.call(
             "get_settings", unpack_variants=False
         )
+        old_settings = deepcopy(new_settings)
 
         _merge_settings_attribute(
             new_settings,
@@ -204,6 +211,16 @@ class NetworkSetting(DBusInterface):
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_MATCH)
 
         await self.connected_dbus.Settings.Connection.call("update", new_settings)
+
+        # NetworkManager normalizes the settings on update (e.g. drops
+        # properties at their default value). Comparing its normalized view
+        # before and after tells whether the update actually changed anything.
+        updated_settings: dict[
+            str, dict[str, Variant]
+        ] = await self.connected_dbus.Settings.Connection.call(
+            "get_settings", unpack_variants=False
+        )
+        return old_settings != updated_settings
 
     @dbus_connected
     async def delete(self) -> None:

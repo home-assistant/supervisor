@@ -109,6 +109,47 @@ async def test_load(
     assert network_manager_service.CheckConnectivity.calls == []
 
 
+async def test_load_unchanged_settings_skips_activation(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+):
+    """Test load does not re-activate connections when settings are unchanged."""
+    network_manager_service.ActivateConnection.calls.clear()
+
+    # First load updates the profiles to Supervisor defaults and re-activates
+    await coresys.host.network.load()
+    assert len(network_manager_service.ActivateConnection.calls) == 2
+
+    network_manager_service.ActivateConnection.calls.clear()
+
+    # Profiles now match what Supervisor generates, nothing to apply
+    await coresys.host.network.load()
+    assert network_manager_service.ActivateConnection.calls == []
+
+
+async def test_load_outdated_settings_activates(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+):
+    """Test load re-activates a connection when its profile is out of date."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+
+    # Simulate a profile predating a change of Supervisor defaults
+    connection_settings_service.settings["connection"]["id"] = Variant(
+        "s", "Wired connection 1"
+    )
+    await coresys.dbus.network.get("eth0").settings.reload()
+
+    await coresys.host.network.load()
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+
+
 async def test_load_with_disabled_methods(
     coresys: CoreSys,
     network_manager_service: NetworkManagerService,

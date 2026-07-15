@@ -272,14 +272,29 @@ class NetworkManager(CoreSysAttributes):
             )
 
             try:
-                await inet.settings.update(settings)
-                con = activated = await self.sys_dbus.network.activate_connection(
-                    inet.settings.object_path, inet.object_path
-                )
-                _LOGGER.debug(
-                    "activate_connection returns %s",
-                    activated.object_path,
-                )
+                settings_changed = await inet.settings.update(settings)
+                # On startup (update_only) skip re-activation if the profile is
+                # unchanged and the connection is already active. A full
+                # re-activation cycle briefly disrupts connectivity, so only do
+                # it when the updated settings need to be applied.
+                if (
+                    update_only
+                    and not settings_changed
+                    and inet.connection
+                    and inet.connection.state == ConnectionState.ACTIVATED
+                ):
+                    _LOGGER.debug(
+                        "Settings for %s unchanged, skipping activation",
+                        interface.name,
+                    )
+                else:
+                    con = activated = await self.sys_dbus.network.activate_connection(
+                        inet.settings.object_path, inet.object_path
+                    )
+                    _LOGGER.debug(
+                        "activate_connection returns %s",
+                        activated.object_path,
+                    )
             except DBusError as err:
                 raise HostNetworkError(
                     f"Can't update config on {interface.name}: {err}", _LOGGER.error
