@@ -273,21 +273,40 @@ class NetworkManager(CoreSysAttributes):
 
             try:
                 settings_changed = await inet.settings.update(settings)
-                # On startup (update_only) skip re-activation if the profile is
-                # unchanged and the connection is already active. A full
-                # re-activation cycle briefly disrupts connectivity, so only do
-                # it when the updated settings need to be applied.
+                # On startup (update_only) avoid a full re-activation cycle if
+                # possible since it briefly disrupts connectivity: skip it
+                # entirely if the profile is unchanged and the connection is
+                # already active, and try to reapply changed settings in place
+                # first.
+                activate = True
                 if (
                     update_only
-                    and not settings_changed
                     and inet.connection
                     and inet.connection.state == ConnectionState.ACTIVATED
                 ):
-                    _LOGGER.debug(
-                        "Settings for %s unchanged, skipping activation",
-                        interface.name,
-                    )
-                else:
+                    if not settings_changed:
+                        _LOGGER.debug(
+                            "Settings for %s unchanged, skipping activation",
+                            interface.name,
+                        )
+                        activate = False
+                    else:
+                        try:
+                            await inet.reapply()
+                        except DBusError as err:
+                            _LOGGER.debug(
+                                "Can't reapply settings for %s in place: %s",
+                                interface.name,
+                                err,
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "Reapplied changed settings for %s in place",
+                                interface.name,
+                            )
+                            activate = False
+
+                if activate:
                     con = activated = await self.sys_dbus.network.activate_connection(
                         inet.settings.object_path, inet.object_path
                     )
