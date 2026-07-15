@@ -18,7 +18,14 @@ from securetar import SecureTarArchive, SecureTarFile
 from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel
-from supervisor.const import ATTR_ADVANCED, ATTR_LOCATION, AppBoot, AppState, BusEvent
+from supervisor.const import (
+    ATTR_ADVANCED,
+    ATTR_LOCATION,
+    ATTR_PORTS,
+    AppBoot,
+    AppState,
+    BusEvent,
+)
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -977,6 +984,22 @@ async def test_local_example_ingress_port_set(install_app_example: App):
     await install_app_example.load()
 
     assert install_app_example.ingress_port != 0
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_ports_merge_config_defaults_with_user_overrides(install_app_ssh: App):
+    """Test custom ports don't hide config-declared ports left unpublished."""
+    app = install_app_ssh
+    # Simulate a multi-port add-on (e.g. NGINX proxy) with optional ports
+    app.data[ATTR_PORTS] = {"22/tcp": None, "443/tcp": 443, "443/udp": None}
+
+    # Without user customization the config ports are returned as-is
+    assert app.ports == {"22/tcp": None, "443/tcp": 443, "443/udp": None}
+
+    # Publishing a single port must not drop the other config-declared ports,
+    # otherwise they can no longer be enabled from the UI
+    app.ports = {"443/tcp": 8443}
+    assert app.ports == {"22/tcp": None, "443/tcp": 8443, "443/udp": None}
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
