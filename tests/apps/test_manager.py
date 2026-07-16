@@ -272,7 +272,7 @@ async def test_load(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     caplog.clear()
 
     with (
-        patch.object(DockerInterface, "attach") as attach,
+        patch.object(DockerApp, "attach") as attach,
         patch.object(PluginDns, "write_hosts") as write_hosts,
     ):
         await coresys.apps.load()

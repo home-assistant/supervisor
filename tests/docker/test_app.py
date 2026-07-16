@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
 import aiodocker
+from aiodocker.containers import DockerContainer
 import pytest
 
 from supervisor.apps import validate as vd
@@ -915,10 +916,10 @@ async def test_app_build_builder_cleanup_timeout(
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
-async def test_app_build_cleans_up_legacy_builder_container(
+async def test_app_build_cleans_up_builder_container(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
-    """Test _build also cleans up legacy addon_builder_* containers."""
+    """Test _build also cleans up existing builder containers."""
     docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
 
     mock_build_env = MagicMock()
@@ -926,29 +927,8 @@ async def test_app_build_cleans_up_legacy_builder_container(
     mock_build_env.get_docker_config_json.return_value = None
     mock_build_env.get_docker_args.return_value = {}
 
-    unrelated_container = MagicMock()
-    unrelated_container.__getitem__.side_effect = lambda key: {
-        "Names": ["/unrelated_container"]
-    }[key]
-
-    legacy_builder_container = MagicMock()
-    legacy_builder_container.delete = AsyncMock()
-    legacy_builder_container.__getitem__.side_effect = lambda key: {
-        "Names": [f"/addon_builder_{docker_app.app.slug}"]
-    }[key]
-
-    app_builder_container = MagicMock()
-    app_builder_container.delete = AsyncMock()
-    app_builder_container.__getitem__.side_effect = lambda key: {
-        "Names": [f"/app_builder_{docker_app.app.slug}"]
-    }[key]
-
-    coresys.docker.containers.list.reset_mock()
-    coresys.docker.containers.list.return_value = [
-        unrelated_container,
-        legacy_builder_container,
-        app_builder_container,
-    ]
+    builder_container = AsyncMock(spec=DockerContainer)
+    coresys.docker.containers.list.return_value = [builder_container]
     coresys.docker.run_command = AsyncMock(return_value=MagicMock(exit_code=0, log=[]))
 
     with patch(
@@ -957,9 +937,16 @@ async def test_app_build_cleans_up_legacy_builder_container(
     ):
         await docker_app.install(docker_app.version, need_build=True)
 
-    coresys.docker.containers.list.assert_called_once_with(all=True)
-    legacy_builder_container.delete.assert_called_once_with(force=True, v=True)
-    app_builder_container.delete.assert_called_once_with(force=True, v=True)
+    coresys.docker.containers.list.assert_called_once_with(
+        all=True,
+        filters={
+            "name": [
+                f"app_builder_{docker_app.app.slug}",
+                f"addon_builder_{docker_app.app.slug}",
+            ]
+        },
+    )
+    builder_container.delete.assert_called_once_with(force=True, v=True)
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")

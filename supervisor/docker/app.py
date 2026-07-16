@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from dataclasses import replace
 from http import HTTPStatus
@@ -113,16 +114,20 @@ class DockerApp(DockerInterface):
     ) -> None:
         """Attach to running Docker container with legacy name migration."""
         docker_container: DockerContainer | None | type[DEFAULT] = DEFAULT
-        if docker_container is DEFAULT:
-            try:
-                docker_container = await self.sys_docker.containers.get(self.name)
-            except TimeoutError:
-                # Keep DockerInterface.attach behavior for timeout while checking the
-                # primary name (it can still attach via image metadata fallback).
-                docker_container = DEFAULT
-            except aiodocker.DockerError as err:
-                if err.status == HTTPStatus.NOT_FOUND:
-                    docker_container = await self._migrate_legacy_container_name()
+        try:
+            docker_container = await self.sys_docker.containers.get(self.name)
+
+        # DockerInterface.attach behavior handles errors getting the container by fetching
+        # image metadata instead. Maintain that by not raising on errors here
+        except TimeoutError:
+            _LOGGER.error("Timeout while retrieving docker container %s", self.name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                docker_container = await self._migrate_legacy_container_name()
+            else:
+                _LOGGER.error(
+                    "Error while retrieving docker container %s: %s", self.name, err
+                )
 
         await self._attach(
             version=version,
@@ -130,25 +135,27 @@ class DockerApp(DockerInterface):
             docker_container=docker_container,
         )
 
-    async def _migrate_legacy_container_name(self) -> DockerContainer | None:
+    async def _migrate_legacy_container_name(
+        self,
+    ) -> DockerContainer | None | type[DEFAULT]:
         """Rename a legacy addon_* container to app_* if present."""
         legacy_name = f"addon_{self.app.slug}"
 
         try:
             legacy_container = await self.sys_docker.containers.get(legacy_name)
-        except TimeoutError as err:
-            raise DockerTimeoutError(
-                f"Timeout checking for legacy app container {legacy_name}",
-                _LOGGER.error,
-            ) from err
+        except TimeoutError:
+            _LOGGER.error("Timeout checking for legacy app container %s", legacy_name)
+            return DEFAULT
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 return None
-            raise DockerError(
-                f"Can't look up legacy app container {legacy_name}: {err!s}",
-                _LOGGER.error,
-            ) from err
+            _LOGGER.error(
+                "Error checking for legacy app container %s: %s", legacy_name, err
+            )
+            return DEFAULT
 
+        # Raise on a rename fail. This means we found the legacy container and could not rename it
+        # so follow-up actions like attach will not work properly regardless
         try:
             await legacy_container.rename(self.name)
         except TimeoutError as err:
@@ -788,26 +795,17 @@ class DockerApp(DockerInterface):
 
         builder_name = f"app_builder_{self.app.slug}"
         legacy_builder_name = f"addon_builder_{self.app.slug}"
-        builder_names = {builder_name, legacy_builder_name}
 
         # Remove dangling builder containers if they exist by any chance
         # E.g. because of an abrupt host shutdown/reboot during a build
         try:
-            containers = await self.sys_docker.containers.list(all=True)
-            for container in containers:
-                names = {
-                    name.removeprefix("/")
-                    for name in container["Names"]
-                    if isinstance(name, str)
-                }
-                if not names & builder_names:
-                    continue
-
-                try:
-                    await container.delete(force=True, v=True)
-                except aiodocker.DockerError as err:
-                    if err.status != HTTPStatus.NOT_FOUND:
-                        raise
+            containers = await self.sys_docker.containers.list(
+                all=True, filters={"name": [builder_name, legacy_builder_name]}
+            )
+            if containers:
+                await asyncio.gather(
+                    *(container.delete(force=True, v=True) for container in containers)
+                )
         except TimeoutError as err:
             raise DockerTimeoutError(
                 "Timeout cleaning up existing builder container",
