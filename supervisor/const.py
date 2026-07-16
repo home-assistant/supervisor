@@ -572,6 +572,7 @@ class FeatureFlag(StrEnum):
     """Development features that can be toggled."""
 
     SUPERVISOR_V2_API = "supervisor_v2_api"
+    SUPERVISOR_WEBSOCKET_V2_API = "supervisor_websocket_v2_api"
 
 
 @dataclass
