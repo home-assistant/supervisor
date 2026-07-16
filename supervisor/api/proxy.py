@@ -98,7 +98,7 @@ class APIProxy(CoreSysAttributes):
                     for name, value in request.headers.items()
                     if name in FORWARD_HEADERS
                 },
-                content_type=request.content_type,
+                content_type=request.headers.get(CONTENT_TYPE),
                 data=request.content,
                 timeout=timeout,
                 params=request.query,

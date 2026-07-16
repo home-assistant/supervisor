@@ -361,6 +361,49 @@ async def test_api_proxy_delete_request(
         assert response.content_type == "application/json"
 
 
+async def test_api_proxy_multipart_content_type_preserved(
+    api_client: TestClient,
+    install_app_example: App,
+):
+    """Test multipart Content-Type keeps its boundary parameter when proxied."""
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        # Mock the response from make_request
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "application/json"
+        mock_response.read.return_value = b'{"result": "ok"}'
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        boundary = "d1b1a3a3f0a94a5c9e3a"
+        body = (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="file"; filename="test.png"\r\n'
+            "Content-Type: image/png\r\n\r\n"
+            "fakepng\r\n"
+            f"--{boundary}--\r\n"
+        ).encode()
+
+        response = await api_client.post(
+            "/core/api/media_source/local_source/upload",
+            headers={
+                "Authorization": "Bearer abc123",
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+            },
+            data=body,
+        )
+
+        # The boundary parameter must survive the proxy — without it Core
+        # cannot parse the multipart body ("boundary missed for Content-Type").
+        assert (
+            make_request.call_args[1]["content_type"]
+            == f"multipart/form-data; boundary={boundary}"
+        )
+        assert response.status == 200
+
+
 async def test_api_proxy_mcp_headers_forwarded(
     api_client: TestClient,
     install_app_example: App,
