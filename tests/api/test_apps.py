@@ -665,12 +665,12 @@ async def test_app_set_options_error(api_client: TestClient):
     body = await resp.json()
     assert (
         body["message"]
-        == "App local_example has invalid options: not a valid value. Got {'message': True}"
+        == "App local_example has invalid options: expected str. Got {'message': True}"
     )
     assert body["error_key"] == "addon_configuration_invalid_error"
     assert body["extra_fields"] == {
         "addon": "local_example",
-        "validation_error": "not a valid value. Got {'message': True}",
+        "validation_error": "expected str. Got {'message': True}",
     }
 
 
