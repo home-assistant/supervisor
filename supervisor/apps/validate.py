@@ -1,5 +1,6 @@
 """Validate apps options schema."""
 
+from collections.abc import Callable
 import logging
 import re
 import secrets
@@ -187,107 +188,125 @@ RE_MACHINE = re.compile(
 RE_SLUG_FIELD = re.compile(r"^" + RE_SLUG + r"$")
 
 
-def _warn_app_config(config: dict[str, Any]):
-    """Warn about miss configs."""
-    name = config.get(ATTR_NAME)
-    if not name:
-        raise vol.Invalid("Invalid app config!")
+def _warn_app_config(log: Callable[..., None]):
+    """Build a validator that flags questionable app configs.
 
-    if ATTR_ADVANCED in config:
-        # Deprecated since Supervisor 2026.03.0; this field is ignored and the
-        # warning can be removed once that version is the minimum supported.
-        _LOGGER.warning(
-            "App '%s' uses deprecated 'advanced' field in config. "
-            "This field is ignored by the Supervisor. Please report this to the maintainer.",
-            name,
-        )
+    Deprecation and misconfiguration advisories are emitted through ``log`` so
+    the caller can pick the level appropriate for the audience (see
+    SCHEMA_APP_CONFIG vs. SCHEMA_APP_CONFIG_QUIET). The messages are addressed at
+    whoever can act on them (a local app's author or a developer on the dev
+    channel), so they intentionally do not ask the reader to contact a
+    maintainer.
+    """
 
-    if config.get(ATTR_FULL_ACCESS, False) and (
-        config.get(ATTR_DEVICES)
-        or config.get(ATTR_UART)
-        or config.get(ATTR_USB)
-        or config.get(ATTR_GPIO)
-    ):
-        _LOGGER.warning(
-            "App has full device access, and selective device access in the configuration. Please report this to the maintainer of %s",
-            name,
-        )
+    def _warn(config: dict[str, Any]):
+        name = config.get(ATTR_NAME)
+        if not name:
+            raise vol.Invalid("Invalid app config!")
 
-    if config.get(ATTR_BACKUP, AppBackupMode.HOT) == AppBackupMode.COLD and (
-        config.get(ATTR_BACKUP_POST) or config.get(ATTR_BACKUP_PRE)
-    ):
-        _LOGGER.warning(
-            "An app that only supports COLD backups is trying to use pre/post commands. Please report this to the maintainer of %s",
-            name,
-        )
-
-    if deprecated_arches := [
-        arch for arch in config.get(ATTR_ARCH, []) if arch in ARCH_DEPRECATED
-    ]:
-        _LOGGER.warning(
-            "App config 'arch' uses deprecated values %s. Please report this to the maintainer of %s",
-            deprecated_arches,
-            name,
-        )
-
-    if deprecated_machines := [
-        machine
-        for machine in config.get(ATTR_MACHINE, [])
-        if machine.lstrip("!") in MACHINE_DEPRECATED
-    ]:
-        _LOGGER.warning(
-            "App config 'machine' uses deprecated values %s. Please report this to the maintainer of %s",
-            deprecated_machines,
-            name,
-        )
-
-    if ATTR_CODENOTARY in config:
-        _LOGGER.warning(
-            "App '%s' uses deprecated 'codenotary' field in config. This field is no longer used and will be ignored. Please report this to the maintainer.",
-            name,
-        )
-
-    # Deprecated map types, deprecated as of 2026.07
-    _LEGACY_MAP_TYPES = {
-        MappingType.ADDONS: MappingType.LOCAL_APPS,
-        MappingType.ALL_ADDON_CONFIGS: MappingType.ALL_APP_CONFIGS,
-        MappingType.ADDON_CONFIG: MappingType.APP_CONFIG,
-    }
-    for volume in config[ATTR_MAP]:
-        if (volume_type := volume[ATTR_TYPE]) in _LEGACY_MAP_TYPES:
-            _LOGGER.warning(
-                "App '%s' uses legacy map type '%s'. Please update to '%s'. Please report this to the maintainer.",
+        if ATTR_ADVANCED in config:
+            # Deprecated since Supervisor 2026.03.0; this field is ignored and
+            # the advisory can be removed once that version is the minimum
+            # supported.
+            log(
+                "App '%s' uses the deprecated 'advanced' config field, which is ignored.",
                 name,
-                volume_type,
-                _LEGACY_MAP_TYPES[volume_type],
             )
 
-    # Dynamic ingress port selection (ingress_port: 0) picks a random port from
-    # the INGRESS_DYNAMIC_PORT_MIN-INGRESS_DYNAMIC_PORT_MAX range. An app must
-    # not map a port from that range to the host itself, as the dynamically
-    # chosen ingress port could then coincide with it, exposing the ingress
-    # endpoint on the host and bypassing ingress authentication.
-    if config.get(ATTR_INGRESS) and config.get(ATTR_INGRESS_PORT) == 0:
-        for container_port in config.get(ATTR_PORTS, {}):
-            port_number = str(container_port).partition("/")[0]
-            if (
-                port_number.isdigit()
-                and INGRESS_DYNAMIC_PORT_MIN
-                <= int(port_number)
-                <= INGRESS_DYNAMIC_PORT_MAX
-            ):
-                raise vol.Invalid(
-                    f"App '{name}' uses dynamic ingress port selection (ingress_port: 0) "
-                    f"but maps port {port_number} which is reserved for dynamic ingress "
-                    f"ports ({INGRESS_DYNAMIC_PORT_MIN}-{INGRESS_DYNAMIC_PORT_MAX}). "
-                    "Please report this to the maintainer of the app."
+        if config.get(ATTR_FULL_ACCESS, False) and (
+            config.get(ATTR_DEVICES)
+            or config.get(ATTR_UART)
+            or config.get(ATTR_USB)
+            or config.get(ATTR_GPIO)
+        ):
+            log(
+                "App '%s' has full device access; its selective device access configuration is redundant and ignored.",
+                name,
+            )
+
+        if config.get(ATTR_BACKUP, AppBackupMode.HOT) == AppBackupMode.COLD and (
+            config.get(ATTR_BACKUP_POST) or config.get(ATTR_BACKUP_PRE)
+        ):
+            log(
+                "App '%s' only supports COLD backups but configures pre/post backup commands, which are ignored.",
+                name,
+            )
+
+        if deprecated_arches := [
+            arch for arch in config.get(ATTR_ARCH, []) if arch in ARCH_DEPRECATED
+        ]:
+            log(
+                "App '%s' uses deprecated 'arch' values: %s",
+                name,
+                deprecated_arches,
+            )
+
+        if deprecated_machines := [
+            machine
+            for machine in config.get(ATTR_MACHINE, [])
+            if machine.lstrip("!") in MACHINE_DEPRECATED
+        ]:
+            log(
+                "App '%s' uses deprecated 'machine' values: %s",
+                name,
+                deprecated_machines,
+            )
+
+        if ATTR_CODENOTARY in config:
+            log(
+                "App '%s' uses the deprecated 'codenotary' config field, which is no longer used and ignored.",
+                name,
+            )
+
+        # Deprecated map types, deprecated as of 2026.07
+        _LEGACY_MAP_TYPES = {
+            MappingType.ADDONS: MappingType.LOCAL_APPS,
+            MappingType.ALL_ADDON_CONFIGS: MappingType.ALL_APP_CONFIGS,
+            MappingType.ADDON_CONFIG: MappingType.APP_CONFIG,
+        }
+        for volume in config[ATTR_MAP]:
+            if (volume_type := volume[ATTR_TYPE]) in _LEGACY_MAP_TYPES:
+                log(
+                    "App '%s' uses legacy map type '%s'; use '%s' instead.",
+                    name,
+                    volume_type,
+                    _LEGACY_MAP_TYPES[volume_type],
                 )
 
-    return config
+        # Dynamic ingress port selection (ingress_port: 0) picks a random port
+        # from the INGRESS_DYNAMIC_PORT_MIN-INGRESS_DYNAMIC_PORT_MAX range. An
+        # app must not map a port from that range to the host itself, as the
+        # dynamically chosen ingress port could then coincide with it, exposing
+        # the ingress endpoint on the host and bypassing ingress authentication.
+        if config.get(ATTR_INGRESS) and config.get(ATTR_INGRESS_PORT) == 0:
+            for container_port in config.get(ATTR_PORTS, {}):
+                port_number = str(container_port).partition("/")[0]
+                if (
+                    port_number.isdigit()
+                    and INGRESS_DYNAMIC_PORT_MIN
+                    <= int(port_number)
+                    <= INGRESS_DYNAMIC_PORT_MAX
+                ):
+                    raise vol.Invalid(
+                        f"App '{name}' uses dynamic ingress port selection (ingress_port: 0) "
+                        f"but maps port {port_number} which is reserved for dynamic ingress "
+                        f"ports ({INGRESS_DYNAMIC_PORT_MIN}-{INGRESS_DYNAMIC_PORT_MAX}). "
+                        "Please report this to the maintainer of the app."
+                    )
+
+        return config
+
+    return _warn
 
 
-def _migrate_app_config(protocol=False):
-    """Migrate app config."""
+def _migrate_app_config(log: Callable[..., None]):
+    """Migrate app config.
+
+    Deprecated-format advisories are emitted through ``log`` so the caller can
+    pick the level appropriate for the audience (see SCHEMA_APP_CONFIG vs.
+    SCHEMA_APP_CONFIG_QUIET). The migration itself always happens regardless of
+    the level.
+    """
 
     def _migrate(config: dict[str, Any]):
         if not isinstance(config, dict):
@@ -299,12 +318,11 @@ def _migrate_app_config(protocol=False):
         # Startup 2018-03-30
         if config.get(ATTR_STARTUP) in ("before", "after"):
             value = config[ATTR_STARTUP]
-            if protocol:
-                _LOGGER.warning(
-                    "App config 'startup' with '%s' is deprecated. Please report this to the maintainer of %s",
-                    value,
-                    name,
-                )
+            log(
+                "App '%s' uses deprecated 'startup' value '%s'.",
+                name,
+                value,
+            )
             if value == "before":
                 config[ATTR_STARTUP] = AppStartup.SERVICES
             elif value == "after":
@@ -312,29 +330,26 @@ def _migrate_app_config(protocol=False):
 
         # UART 2021-01-20
         if "auto_uart" in config:
-            if protocol:
-                _LOGGER.warning(
-                    "App config 'auto_uart' is deprecated, use 'uart'. Please report this to the maintainer of %s",
-                    name,
-                )
+            log(
+                "App '%s' uses deprecated 'auto_uart'; use 'uart' instead.",
+                name,
+            )
             config[ATTR_UART] = config.pop("auto_uart")
 
         # Device 2021-01-20
         if ATTR_DEVICES in config and any(":" in line for line in config[ATTR_DEVICES]):
-            if protocol:
-                _LOGGER.warning(
-                    "App config 'devices' uses a deprecated format instead of a list of paths only. Please report this to the maintainer of %s",
-                    name,
-                )
+            log(
+                "App '%s' uses a deprecated 'devices' format; use a list of paths only.",
+                name,
+            )
             config[ATTR_DEVICES] = [line.split(":")[0] for line in config[ATTR_DEVICES]]
 
         # TMPFS 2021-02-01
         if ATTR_TMPFS in config and not isinstance(config[ATTR_TMPFS], bool):
-            if protocol:
-                _LOGGER.warning(
-                    "App config 'tmpfs' uses a deprecated format instead of just a boolean. Please report this to the maintainer of %s",
-                    name,
-                )
+            log(
+                "App '%s' uses a deprecated 'tmpfs' format; use a boolean instead.",
+                name,
+            )
             config[ATTR_TMPFS] = True
 
         # 2021-06 "snapshot" renamed to "backup"
@@ -347,11 +362,11 @@ def _migrate_app_config(protocol=False):
             if entry in config:
                 new_entry = entry.replace("snapshot", "backup")
                 config[new_entry] = config.pop(entry)
-                _LOGGER.warning(
-                    "App config '%s' is deprecated, '%s' should be used instead. Please report this to the maintainer of %s",
+                log(
+                    "App '%s' uses deprecated config '%s'; use '%s' instead.",
+                    name,
                     entry,
                     new_entry,
-                    name,
                 )
 
         # 2023-11 "map" entries can also be dict to allow path configuration
@@ -360,20 +375,20 @@ def _migrate_app_config(protocol=False):
             if isinstance(entry, dict):
                 # Validate that dict entries have required 'type' field
                 if ATTR_TYPE not in entry:
-                    _LOGGER.warning(
-                        "App config has invalid map entry missing 'type' field: %s. Skipping invalid entry for %s",
-                        entry,
+                    log(
+                        "App '%s' has an invalid map entry missing the 'type' field, skipping: %s",
                         name,
+                        entry,
                     )
                     continue
                 volumes.append(entry)
             if isinstance(entry, str):
                 result = RE_VOLUME.match(entry)
                 if not result:
-                    _LOGGER.warning(
-                        "App config has invalid map entry: %s. Skipping invalid entry for %s",
-                        entry,
+                    log(
+                        "App '%s' has an invalid map entry, skipping: %s",
                         name,
+                        entry,
                     )
                     continue
                 volumes.append(
@@ -398,20 +413,20 @@ def _migrate_app_config(protocol=False):
                 }
                 for volume in volumes
             ):
-                _LOGGER.warning(
-                    "App config using incompatible map options, '%s', '%s', and '%s' are ignored if '%s' is included. Please report this to the maintainer of %s",
+                log(
+                    "App '%s' uses incompatible map options; '%s', '%s', and '%s' are ignored when '%s' is included.",
+                    name,
                     MappingType.APP_CONFIG,
                     MappingType.ADDON_CONFIG,
                     MappingType.HOMEASSISTANT_CONFIG,
                     MappingType.CONFIG,
-                    name,
                 )
             else:
-                _LOGGER.debug(
-                    "App config using deprecated map option '%s' instead of '%s'. Please report this to the maintainer of %s",
+                log(
+                    "App '%s' uses deprecated map option '%s'; use '%s' instead.",
+                    name,
                     MappingType.CONFIG,
                     MappingType.HOMEASSISTANT_CONFIG,
-                    name,
                 )
 
         # 2026-07 addon-based map options replaced by app-based options.
@@ -422,12 +437,12 @@ def _migrate_app_config(protocol=False):
             (MappingType.APP_CONFIG, MappingType.ADDON_CONFIG),
         ):
             if {app_mapping_type, legacy_mapping_type} <= volume_types:
-                _LOGGER.warning(
-                    "App config using incompatible map options, '%s' and '%s'. Legacy option '%s' will be ignored. Please report this to the maintainer of %s",
+                log(
+                    "App '%s' uses incompatible map options '%s' and '%s'; legacy option '%s' will be ignored.",
+                    name,
                     app_mapping_type,
                     legacy_mapping_type,
                     legacy_mapping_type,
-                    name,
                 )
 
         return config
@@ -541,9 +556,20 @@ _SCHEMA_APP_CONFIG = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
-SCHEMA_APP_CONFIG = vol.All(
-    _migrate_app_config(True), _warn_app_config, _SCHEMA_APP_CONFIG
-)
+
+def _build_app_config_schema(log: Callable[..., None]):
+    """Build the store app config schema, routing advisories through log."""
+    return vol.All(_migrate_app_config(log), _warn_app_config(log), _SCHEMA_APP_CONFIG)
+
+
+# Store app configs are validated on every store reload for every app in every
+# repository, including ones the user has not installed. The advisories they
+# raise are only actionable for a local app's author or a developer testing on
+# the dev channel, so the store data layer validates with the verbose schema
+# only in those cases and uses the quiet (debug-level) schema otherwise, to keep
+# them out of regular users' logs.
+SCHEMA_APP_CONFIG = _build_app_config_schema(_LOGGER.warning)
+SCHEMA_APP_CONFIG_QUIET = _build_app_config_schema(_LOGGER.debug)
 
 
 # pylint: disable=no-value-for-parameter
@@ -603,7 +629,10 @@ SCHEMA_APP_USER = vol.Schema(
 )
 
 SCHEMA_APP_SYSTEM = vol.All(
-    _migrate_app_config(),
+    # Installed app config is re-validated from apps.json on every startup. It
+    # was already migrated (and any advisory logged) when read from the store,
+    # so keep these at debug level to avoid repeating them on each boot.
+    _migrate_app_config(_LOGGER.debug),
     _SCHEMA_APP_CONFIG.extend(
         {
             # The source location is owned by the store and resolved at runtime

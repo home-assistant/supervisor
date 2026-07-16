@@ -9,7 +9,11 @@ from typing import Any
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..apps.validate import SCHEMA_APP_CONFIG, SCHEMA_APP_TRANSLATIONS
+from ..apps.validate import (
+    SCHEMA_APP_CONFIG,
+    SCHEMA_APP_CONFIG_QUIET,
+    SCHEMA_APP_TRANSLATIONS,
+)
 from ..const import (
     ATTR_LOCATION,
     ATTR_REPOSITORY,
@@ -19,6 +23,7 @@ from ..const import (
     FILE_SUFFIX_CONFIGURATION,
     REPOSITORY_CORE,
     REPOSITORY_LOCAL,
+    UpdateChannel,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError
@@ -184,6 +189,17 @@ class StoreData(CoreSysAttributes):
         if not (app_config_list := await self._find_app_configs(path, repository)):
             return {}
 
+        # Deprecation/misconfiguration advisories are only actionable for a
+        # local app's author or a developer testing on the dev channel. Log them
+        # as warnings in those cases and keep them at debug level otherwise, so
+        # regular users don't see warnings for apps they cannot fix (including
+        # apps they haven't installed).
+        verbose = (
+            repository == REPOSITORY_LOCAL
+            or self.sys_updater.channel == UpdateChannel.DEV
+        )
+        schema = SCHEMA_APP_CONFIG if verbose else SCHEMA_APP_CONFIG_QUIET
+
         def _process_apps_config() -> dict[str, dict[str, Any]]:
             apps: dict[str, dict[str, Any]] = {}
             for app_config in app_config_list:
@@ -197,7 +213,7 @@ class StoreData(CoreSysAttributes):
 
                 # validate
                 try:
-                    app = SCHEMA_APP_CONFIG(app)
+                    app = schema(app)
                 except vol.Invalid as ex:
                     _LOGGER.warning(
                         "Can't read %s: %s", app_config, humanize_error(app, ex)
