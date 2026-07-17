@@ -245,7 +245,7 @@ class BackupManager(FileConfiguration, JobGroup):
         # Add backup ID to job
         self.sys_jobs.current.reference = backup.slug
 
-        self._change_stage(BackupJobStage.ADDON_REPOSITORIES, backup)
+        self._change_stage(BackupJobStage.APP_REPOSITORIES, backup)
         backup.store_repositories()
 
         return backup
@@ -544,7 +544,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 # Backup apps
                 if app_list:
-                    self._change_stage(BackupJobStage.ADDONS, backup)
+                    self._change_stage(BackupJobStage.APPS, backup)
                     app_start_tasks = await backup.store_apps(app_list)
 
                 # Backup folders
@@ -579,7 +579,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 await self._copy_to_additional_locations(backup, additional_locations)
 
             if app_start_tasks:
-                self._change_stage(BackupJobStage.AWAIT_ADDON_RESTARTS, backup)
+                self._change_stage(BackupJobStage.AWAIT_APP_RESTARTS, backup)
                 # Ignore exceptions from waiting for app startup, app errors handled elsewhere
                 await asyncio.gather(*app_start_tasks, return_exceptions=True)
 
@@ -744,14 +744,14 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 # Delete delta apps
                 if replace:
-                    self._change_stage(RestoreJobStage.REMOVE_DELTA_ADDONS, backup)
+                    self._change_stage(RestoreJobStage.REMOVE_DELTA_APPS, backup)
                     success = success and await backup.remove_delta_apps()
 
                 if app_list:
-                    self._change_stage(RestoreJobStage.ADDON_REPOSITORIES, backup)
+                    self._change_stage(RestoreJobStage.APP_REPOSITORIES, backup)
                     await backup.restore_repositories(replace)
 
-                    self._change_stage(RestoreJobStage.ADDONS, backup)
+                    self._change_stage(RestoreJobStage.APPS, backup)
                     restore_success, app_start_tasks = await backup.restore_apps(
                         app_list
                     )
@@ -778,7 +778,7 @@ class BackupManager(FileConfiguration, JobGroup):
             ) from err
         else:
             if app_start_tasks:
-                self._change_stage(RestoreJobStage.AWAIT_ADDON_RESTARTS, backup)
+                self._change_stage(RestoreJobStage.AWAIT_APP_RESTARTS, backup)
                 # Failure to resume apps post restore is still a restore failure
                 if any(await asyncio.gather(*app_start_tasks, return_exceptions=True)):
                     return False
@@ -999,7 +999,7 @@ class BackupManager(FileConfiguration, JobGroup):
         await self.sys_homeassistant.begin_backup()
 
         # Run all pre-backup tasks for apps
-        self._change_stage(BackupJobStage.ADDONS)
+        self._change_stage(BackupJobStage.APPS)
         await asyncio.gather(*[app.begin_backup() for app in running_apps])
 
     @Job(
@@ -1022,7 +1022,7 @@ class BackupManager(FileConfiguration, JobGroup):
             self._change_stage(BackupJobStage.HOME_ASSISTANT)
             await self.sys_homeassistant.end_backup()
 
-            self._change_stage(BackupJobStage.ADDONS)
+            self._change_stage(BackupJobStage.APPS)
             app_start_tasks: list[asyncio.Task] = [
                 task
                 for task in await asyncio.gather(
@@ -1036,7 +1036,7 @@ class BackupManager(FileConfiguration, JobGroup):
             self._thaw_task = None
 
         if app_start_tasks:
-            self._change_stage(BackupJobStage.AWAIT_ADDON_RESTARTS)
+            self._change_stage(BackupJobStage.AWAIT_APP_RESTARTS)
             await asyncio.gather(*app_start_tasks, return_exceptions=True)
 
     @Job(
