@@ -395,7 +395,7 @@ class AppsError(HassioError):
 class AppAPIError(AppsError, APIError):
     """Base class for App-related API errors that have an app for context.
 
-    Owns the shape of extra_fields so subclasses uniformly expose addon
+    Owns the shape of extra_fields so subclasses uniformly expose app
     (display name) and slug. Pass an app-like object (anything with .name
     and .slug attributes — App, AppModel, AppStore). Errors raised without
     an app object available (e.g., unknown or not-installed app lookups)
@@ -411,7 +411,7 @@ class AppAPIError(AppsError, APIError):
     ) -> None:
         """Initialize exception."""
         self.extra_fields = {
-            "addon": app.name,
+            "app": app.name,
             "slug": app.slug,
             **extra_fields,
         }
@@ -421,8 +421,8 @@ class AppAPIError(AppsError, APIError):
 class AppAlreadyInstalledError(AppAPIError):
     """Raise when attempting to install an app that is already installed."""
 
-    error_key = "addon_already_installed_error"
-    message_template = "App {addon} is already installed"
+    error_key = "app_already_installed_error"
+    message_template = "App {app} is already installed"
 
 
 class AppNotFoundError(AppsError, APIError):
@@ -431,7 +431,7 @@ class AppNotFoundError(AppsError, APIError):
     No app object exists at this point, so this is not an AppAPIError.
     """
 
-    error_key = "addon_not_found_error"
+    error_key = "app_not_found_error"
     message_template = "App {slug} does not exist"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, slug: str) -> None:
@@ -446,7 +446,7 @@ class AppNotInstalledError(AppsError, APIError):
     No app object exists at this point, so this is not an AppAPIError.
     """
 
-    error_key = "addon_not_installed_error"
+    error_key = "app_not_installed_error"
     message_template = "App {slug} is not installed"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, slug: str) -> None:
@@ -458,23 +458,23 @@ class AppNotInstalledError(AppsError, APIError):
 class AppNotInStoreError(AppAPIError):
     """Raise when an installed app is no longer available in its store."""
 
-    error_key = "addon_not_in_store_error"
-    message_template = "App {addon} is not available inside store"
+    error_key = "app_not_in_store_error"
+    message_template = "App {app} is not available inside store"
 
 
 class AppNoUpdateAvailableError(AppAPIError):
     """Raise when an update is requested but local matches store version."""
 
-    error_key = "addon_no_update_available_error"
-    message_template = "No update available for app {addon}"
+    error_key = "app_no_update_available_error"
+    message_template = "No update available for app {app}"
 
 
 class AppRebuildVersionChangedError(AppAPIError):
     """Raise when rebuild is requested but local and store versions differ."""
 
-    error_key = "addon_rebuild_version_changed_error"
+    error_key = "app_rebuild_version_changed_error"
     message_template = (
-        "Local and store versions of app {addon} differ, use Update instead of Rebuild"
+        "Local and store versions of app {app} differ, use Update instead of Rebuild"
     )
 
 
@@ -485,8 +485,8 @@ class AppConfigurationError(AppsError):
 class AppConfigurationInvalidError(AppConfigurationError, APIError):
     """Raise if invalid configuration provided for app."""
 
-    error_key = "addon_configuration_invalid_error"
-    message_template = "App {addon} has invalid options: {validation_error}"
+    error_key = "app_configuration_invalid_error"
+    message_template = "App {app} has invalid options: {validation_error}"
 
     def __init__(
         self,
@@ -496,42 +496,42 @@ class AppConfigurationInvalidError(AppConfigurationError, APIError):
         validation_error: str,
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app, "validation_error": validation_error}
+        self.extra_fields = {"app": app, "validation_error": validation_error}
         super().__init__(None, logger)
 
 
 class AppBootConfigCannotChangeError(AppsError, APIError):
     """Raise if user attempts to change app boot config when it can't be changed."""
 
-    error_key = "addon_boot_config_cannot_change_error"
+    error_key = "app_boot_config_cannot_change_error"
     message_template = (
-        "App {addon} boot option is set to {boot_config} so it cannot be changed"
+        "App {app} boot option is set to {boot_config} so it cannot be changed"
     )
 
     def __init__(
         self, logger: Callable[..., None] | None = None, *, app: str, boot_config: str
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app, "boot_config": boot_config}
+        self.extra_fields = {"app": app, "boot_config": boot_config}
         super().__init__(None, logger)
 
 
 class AppNotRunningError(AppsError, APIError):
     """Raise when an app is not running."""
 
-    error_key = "addon_not_running_error"
-    message_template = "App {addon} is not running"
+    error_key = "app_not_running_error"
+    message_template = "App {app} is not running"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app}
+        self.extra_fields = {"app": app}
         super().__init__(None, logger)
 
 
 class AppPortConflict(AppsError, APIError):
     """Raise if app cannot start due to a port conflict."""
 
-    error_key = "addon_port_conflict"
+    error_key = "app_port_conflict"
     message_template = "Cannot start app {name} because port {port} is already in use"
 
     def __init__(
@@ -549,8 +549,8 @@ class AppNotSupportedError(HassioNotSupportedError):
 class AppNotSupportedArchitectureError(AppNotSupportedError, AppAPIError):
     """App does not support system due to architecture."""
 
-    error_key = "addon_not_supported_architecture_error"
-    message_template = "App {addon} not supported on this platform, supported architectures: {architectures}"
+    error_key = "app_not_supported_architecture_error"
+    message_template = "App {app} not supported on this platform, supported architectures: {architectures}"
 
     def __init__(  # pylint: disable=useless-parent-delegation
         self,
@@ -566,8 +566,8 @@ class AppNotSupportedArchitectureError(AppNotSupportedError, AppAPIError):
 class AppNotSupportedMachineTypeError(AppNotSupportedError, AppAPIError):
     """App does not support system due to machine type."""
 
-    error_key = "addon_not_supported_machine_type_error"
-    message_template = "App {addon} not supported on this machine, supported machine types: {machine_types}"
+    error_key = "app_not_supported_machine_type_error"
+    message_template = "App {app} not supported on this machine, supported machine types: {machine_types}"
 
     def __init__(  # pylint: disable=useless-parent-delegation
         self,
@@ -583,8 +583,8 @@ class AppNotSupportedMachineTypeError(AppNotSupportedError, AppAPIError):
 class AppNotSupportedHomeAssistantVersionError(AppNotSupportedError, AppAPIError):
     """App does not support system due to Home Assistant version."""
 
-    error_key = "addon_not_supported_home_assistant_version_error"
-    message_template = "App {addon} not supported on this system, requires Home Assistant version {version} or greater"
+    error_key = "app_not_supported_home_assistant_version_error"
+    message_template = "App {app} not supported on this system, requires Home Assistant version {version} or greater"
 
     def __init__(  # pylint: disable=useless-parent-delegation
         self,
@@ -600,45 +600,45 @@ class AppNotSupportedHomeAssistantVersionError(AppNotSupportedError, AppAPIError
 class AppRebuildImageBasedError(AppNotSupportedError, AppAPIError):
     """Raise when rebuild is requested for an image-based app."""
 
-    error_key = "addon_rebuild_image_based_error"
-    message_template = "Cannot rebuild app {addon}, it is image-based"
+    error_key = "app_rebuild_image_based_error"
+    message_template = "Cannot rebuild app {app}, it is image-based"
 
 
 class AppNotSupportedWriteStdinError(AppNotSupportedError, APIError):
     """App does not support writing to stdin."""
 
-    error_key = "addon_not_supported_write_stdin_error"
-    message_template = "App {addon} does not support writing to stdin"
+    error_key = "app_not_supported_write_stdin_error"
+    message_template = "App {app} does not support writing to stdin"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app}
+        self.extra_fields = {"app": app}
         super().__init__(None, logger)
 
 
 class AppBuildDockerfileMissingError(AppNotSupportedError, APIError):
     """Raise when app build invalid because dockerfile is missing."""
 
-    error_key = "addon_build_dockerfile_missing_error"
+    error_key = "app_build_dockerfile_missing_error"
     message_template = (
-        "Cannot build app '{addon}' because dockerfile is missing. A repair "
+        "Cannot build app '{app}' because dockerfile is missing. A repair "
         "using '{repair_command}' will fix this if the cause is data "
         "corruption. Otherwise please report this to the app developer."
     )
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app, "repair_command": "ha supervisor repair"}
+        self.extra_fields = {"app": app, "repair_command": "ha supervisor repair"}
         super().__init__(None, logger)
 
 
 class AppBuildArchitectureNotSupportedError(AppNotSupportedError, APIError):
     """Raise when app cannot be built on system because it doesn't support its architecture."""
 
-    error_key = "addon_build_architecture_not_supported_error"
+    error_key = "app_build_architecture_not_supported_error"
     message_template = (
-        "Cannot build app '{addon}' because its supported architectures "
-        "({addon_arches}) do not match the system supported architectures ({system_arches})"
+        "Cannot build app '{app}' because its supported architectures "
+        "({app_arches}) do not match the system supported architectures ({system_arches})"
     )
 
     def __init__(
@@ -651,8 +651,8 @@ class AppBuildArchitectureNotSupportedError(AppNotSupportedError, APIError):
     ) -> None:
         """Initialize exception."""
         self.extra_fields = {
-            "addon": app,
-            "addon_arches": ", ".join(app_arch_list),
+            "app": app,
+            "app_arches": ", ".join(app_arch_list),
             "system_arches": ", ".join(system_arch_list),
         }
         super().__init__(None, logger)
@@ -661,35 +661,35 @@ class AppBuildArchitectureNotSupportedError(AppNotSupportedError, APIError):
 class AppUnknownError(AppsError, APIUnknownSupervisorError):
     """Raise when unknown error occurs taking an action for an app."""
 
-    error_key = "addon_unknown_error"
-    message_template = "An unknown error occurred with app {addon}"
+    error_key = "app_unknown_error"
+    message_template = "An unknown error occurred with app {app}"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app}
+        self.extra_fields = {"app": app}
         super().__init__(logger)
 
 
 class AppBuildFailedUnknownError(AppsError, APIUnknownSupervisorError):
     """Raise when the build failed for an app due to an unknown error."""
 
-    error_key = "addon_build_failed_unknown_error"
+    error_key = "app_build_failed_unknown_error"
     message_template = (
-        "An unknown error occurred while trying to build the image for app {addon}"
+        "An unknown error occurred while trying to build the image for app {app}"
     )
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app}
+        self.extra_fields = {"app": app}
         super().__init__(logger)
 
 
 class AppFileReadError(AppsError, APIError):
     """Raise when an app metadata file cannot be read due to a filesystem error."""
 
-    error_key = "addon_file_read_error"
+    error_key = "app_file_read_error"
     message_template = (
-        "Could not read metadata for app {addon} due to a filesystem error: {error}"
+        "Could not read metadata for app {app} due to a filesystem error: {error}"
     )
 
     def __init__(
@@ -700,7 +700,7 @@ class AppFileReadError(AppsError, APIError):
         error: str,
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app, "error": error}
+        self.extra_fields = {"app": app, "error": error}
         super().__init__(None, logger)
 
 
@@ -1276,12 +1276,12 @@ class StoreNotFound(StoreError):
 class StoreAppNotFoundError(StoreError, APINotFound):
     """Raise if a requested app is not in the store."""
 
-    error_key = "store_addon_not_found_error"
-    message_template = "App {addon} does not exist in the store"
+    error_key = "store_app_not_found_error"
+    message_template = "App {app} does not exist in the store"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app}
+        self.extra_fields = {"app": app}
         super().__init__(None, logger)
 
 
@@ -1376,9 +1376,9 @@ class BackupFatalIOError(BackupError):
 class AppBackupMetadataInvalidError(BackupError, APIError):
     """Raise if invalid metadata file provided for app in backup."""
 
-    error_key = "addon_backup_metadata_invalid_error"
+    error_key = "app_backup_metadata_invalid_error"
     message_template = (
-        "Metadata file for app {addon} in backup is invalid: {validation_error}"
+        "Metadata file for app {app} in backup is invalid: {validation_error}"
     )
 
     def __init__(
@@ -1389,16 +1389,16 @@ class AppBackupMetadataInvalidError(BackupError, APIError):
         validation_error: str,
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"addon": app, "validation_error": validation_error}
+        self.extra_fields = {"app": app, "validation_error": validation_error}
         super().__init__(None, logger)
 
 
 class AppPrePostBackupCommandReturnedError(BackupError, APIError):
     """Raise when app's pre/post backup command returns an error."""
 
-    error_key = "addon_pre_post_backup_command_returned_error"
+    error_key = "app_pre_post_backup_command_returned_error"
     message_template = (
-        "Pre-/Post backup command for app {addon} returned error code: "
+        "Pre-/Post backup command for app {app} returned error code: "
         "{exit_code}. Please report this to the app developer. Enable debug "
         "logging to capture complete command output using {debug_logging_command}"
     )
@@ -1408,7 +1408,7 @@ class AppPrePostBackupCommandReturnedError(BackupError, APIError):
     ) -> None:
         """Initialize exception."""
         self.extra_fields = {
-            "addon": app,
+            "app": app,
             "exit_code": exit_code,
             "debug_logging_command": "ha supervisor options --logging debug",
         }
