@@ -44,5 +44,6 @@ class WSEvent(StrEnum):
     ISSUE_CHANGED = "issue_changed"
     ISSUE_REMOVED = "issue_removed"
     JOB = "job"
+    STORE_RELOADED = "store_reloaded"
     SUPERVISOR_UPDATE = "supervisor_update"
     SUPPORTED_CHANGED = "supported_changed"

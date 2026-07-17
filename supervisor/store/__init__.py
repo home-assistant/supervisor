@@ -14,6 +14,7 @@ from ..exceptions import (
     StoreJobError,
     StoreNotFound,
 )
+from ..homeassistant.const import WSEvent
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import FileConfiguration
@@ -114,6 +115,13 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             # read data from repositories
             await self.data.update()
             await self._read_apps()
+
+            # Notify Home Assistant so add-on update entities pick up the newly
+            # loaded store data instead of waiting for the next scheduled poll.
+            self.sys_homeassistant.websocket.supervisor_event(
+                WSEvent.STORE_RELOADED,
+                {ATTR_REPOSITORIES: sorted(updated_repos)},
+            )
 
     @Job(
         name="store_manager_add_repository",
