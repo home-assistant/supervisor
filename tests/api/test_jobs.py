@@ -6,6 +6,7 @@ from unittest.mock import ANY, AsyncMock
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.const import FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import SupervisorError
 from supervisor.jobs.const import ATTR_IGNORE_CONDITIONS, JobCondition
@@ -450,4 +451,35 @@ async def test_api_jobs_legacy_name_compatibility(
     assert any(job_event["name"] == "addon_manager_update" for job_event in job_events)
     assert not any(
         job_event["name"] == "app_manager_update" for job_event in job_events
+    )
+
+
+async def test_api_jobs_no_legacy_name_compatibility_when_websocket_v2_enabled(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+):
+    """Test legacy job name mapping is skipped when websocket v2 feature is enabled."""
+    api_client, prefix = api_client_with_prefix
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+
+    job = coresys.jobs.new_job("app_manager_update", reference="local_example")
+    job.stage = "update"
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["name"] == "app_manager_update"
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(job_event["name"] == "app_manager_update" for job_event in job_events)
+    assert not any(
+        job_event["name"] == "addon_manager_update" for job_event in job_events
     )

@@ -17,7 +17,7 @@ from attrs import Attribute, define, field
 from attrs.setters import convert as attr_convert, frozen, validate as attr_validate
 from attrs.validators import ge, le
 
-from ..const import BusEvent
+from ..const import BusEvent, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
@@ -299,9 +299,11 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         # Job object will be before the change. Combine the change with current data
         if attribute.name == "errors":
             value = [err.as_dict() for err in value]
-        job_data = process_job_dict_for_legacy_compatibility(
-            job.as_dict() | {attribute.name: value}
-        )
+        job_data = job.as_dict() | {attribute.name: value}
+        if not self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            job_data = process_job_dict_for_legacy_compatibility(job_data)
 
         # Notify Home Assistant of change if its not internal
         if not job.internal:
