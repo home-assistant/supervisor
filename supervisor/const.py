@@ -398,6 +398,7 @@ ATTR_VOLUME = "volume"
 ATTR_VPN = "vpn"
 ATTR_WAIT_BOOT = "wait_boot"
 ATTR_WATCHDOG = "watchdog"
+ATTR_WATCHDOG_RESTART_POLICY = "watchdog_restart_policy"
 ATTR_WEBUI = "webui"
 ATTR_WIFI = "wifi"
 
@@ -493,6 +494,13 @@ class AppStage(StrEnum):
     STABLE = "stable"
     EXPERIMENTAL = "experimental"
     DEPRECATED = "deprecated"
+
+
+class WatchdogRestartPolicy(StrEnum):
+    """How the watchdog restarts an app after it fails."""
+
+    RATE_LIMITED = "rate_limited"
+    UNLIMITED = "unlimited"
 
 
 class AppState(StrEnum):
