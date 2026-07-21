@@ -189,16 +189,23 @@ class StoreData(CoreSysAttributes):
         if not (app_config_list := await self._find_app_configs(path, repository)):
             return {}
 
-        # Deprecation/misconfiguration advisories are only actionable for a
-        # local app's author or a developer testing on the dev channel. Log them
-        # as warnings in those cases and keep them at debug level otherwise, so
-        # regular users don't see warnings for apps they cannot fix (including
-        # apps they haven't installed).
-        verbose = (
+        # App config deprecation/misconfiguration advisories are only actionable
+        # for someone who can fix the app, so only those cases log at warning
+        # level; everything else stays at debug so regular users don't see
+        # warnings for apps they cannot fix. Warn for the local repository
+        # (authored by the user), on the dev channel (a developer testing store
+        # apps), and for installed apps from custom repositories - the latter
+        # are often thin wrappers whose maintainer may have moved on, where the
+        # warning is the user's only heads-up before it breaks. Uninstalled apps
+        # and apps from the curated built-in stores (which get fixed via PRs)
+        # stay quiet.
+        repository_obj = self.sys_store.repositories.get(repository)
+        repository_is_builtin = bool(repository_obj and repository_obj.is_builtin)
+        always_verbose = (
             repository == REPOSITORY_LOCAL
             or self.sys_updater.channel == UpdateChannel.DEV
         )
-        schema = SCHEMA_APP_CONFIG if verbose else SCHEMA_APP_CONFIG_QUIET
+        installed_slugs = {app.slug for app in self.sys_apps.installed}
 
         def _process_apps_config() -> dict[str, dict[str, Any]]:
             apps: dict[str, dict[str, Any]] = {}
@@ -210,6 +217,15 @@ class StoreData(CoreSysAttributes):
                         "Can't read %s from repository %s", app_config, repository
                     )
                     continue
+
+                # Pick the advisory log level based on who can act on it (see
+                # above). The slug is available in the raw config before
+                # validation.
+                verbose = always_verbose or (
+                    not repository_is_builtin
+                    and f"{repository}_{app.get(ATTR_SLUG)}" in installed_slugs
+                )
+                schema = SCHEMA_APP_CONFIG if verbose else SCHEMA_APP_CONFIG_QUIET
 
                 # validate
                 try:

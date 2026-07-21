@@ -4,7 +4,8 @@ import errno
 import json
 import logging
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 
@@ -61,14 +62,20 @@ async def test_reading_app_files_error(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    ("repository", "channel", "expect_warning"),
+    ("repository", "channel", "installed", "builtin", "expect_warning"),
     [
         # A local app's author can act on the advisory.
-        (REPOSITORY_LOCAL, UpdateChannel.STABLE, True),
-        # A regular user browsing the store cannot; keep it out of their logs.
-        ("094b3f00", UpdateChannel.STABLE, False),
+        (REPOSITORY_LOCAL, UpdateChannel.STABLE, False, True, True),
         # A developer on the dev channel is testing store apps, so surface it.
-        ("094b3f00", UpdateChannel.DEV, True),
+        ("094b3f00", UpdateChannel.DEV, False, False, True),
+        # An uninstalled store app cannot be acted on by the user; stay quiet.
+        ("094b3f00", UpdateChannel.STABLE, False, False, False),
+        # An installed app from a custom repo may be unmaintained; warn so the
+        # user gets a heads-up.
+        ("094b3f00", UpdateChannel.STABLE, True, False, True),
+        # An installed app from a curated built-in store gets fixed via PRs;
+        # keep it out of the user's logs even though it is installed.
+        ("094b3f00", UpdateChannel.STABLE, True, True, False),
     ],
 )
 async def test_deprecation_advisory_log_level(
@@ -77,9 +84,11 @@ async def test_deprecation_advisory_log_level(
     caplog: pytest.LogCaptureFixture,
     repository: str,
     channel: UpdateChannel,
+    installed: bool,
+    builtin: bool,
     expect_warning: bool,
 ):
-    """Deprecation advisories only warn for local apps or on the dev channel."""
+    """Advisories only warn where the message is actionable for the reader."""
     config = load_json_fixture("basic-app-config.json")
     config["advanced"] = True  # Deprecated field, triggers an advisory.
     config_file = tmp_path / "config.json"
@@ -87,11 +96,24 @@ async def test_deprecation_advisory_log_level(
 
     coresys.updater.channel = channel
 
+    app_slug = f"{repository}_{config['slug']}"
+    installed_apps = [SimpleNamespace(slug=app_slug)] if installed else []
+
     with (
         patch.object(
             coresys.store.data,
             "_find_app_configs",
             AsyncMock(return_value=[config_file]),
+        ),
+        patch.object(
+            type(coresys.apps),
+            "installed",
+            new_callable=PropertyMock,
+            return_value=installed_apps,
+        ),
+        patch.dict(
+            coresys.store.repositories,
+            {repository: SimpleNamespace(is_builtin=builtin)},
         ),
         caplog.at_level(logging.DEBUG, logger="supervisor.apps.validate"),
     ):
