@@ -262,7 +262,12 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         _LOGGER.info("Reloading mount: %s", name)
         await self._mounts[name].reload()
 
-        if (bound_mount := self._bound_mounts.get(name)) and bound_mount.emergency:
+        # Always re-create the bind mount into media/share. systemd adds an
+        # implicit Requires= dependency from the bind unit to the data mount
+        # unit (via RequiresMountsFor= on its What= path), so stopping or
+        # restarting a failed data mount tears down the bind mount as well —
+        # our BoundMount bookkeeping cannot know whether that happened.
+        if bound_mount := self._bound_mounts.get(name):
             await self._bind_mount(bound_mount.mount, bound_mount.bind_mount.where)
 
     async def _bind_media(self, mount: Mount) -> None:

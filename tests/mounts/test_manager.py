@@ -430,13 +430,58 @@ async def test_reload_mount_healthy_skips_systemd(
     all_dbus_services: dict[str, DBusServiceMock],
     mount: Mount,
 ):
-    """A healthy mount (active + probe passes) skips the systemd reload."""
+    """A healthy mount (active + probe passes) skips the systemd reload but rebinds."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    systemd_service.response_get_unit = [
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
 
     await coresys.mounts.reload_mount(mount.name)
 
     assert systemd_service.ReloadOrRestartUnit.calls == []
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-media-media_test.mount"
+    ]
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-media-media_test.mount"
+    ]
+
+
+async def test_reload_mount_recreates_bind_mount_removed_by_systemd(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Reload re-creates a bind mount that systemd tore down with the data mount.
+
+    systemd's implicit Requires= dependency from the bind unit to the data
+    mount unit means a stop/restart of a failed data mount unmounts the bind
+    mount as well, while the BoundMount bookkeeping still says it is bound.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    # Bind mount unit is gone: unmount is skipped, load mounts it again
+    systemd_service.response_get_unit = [
+        ERROR_NO_UNIT,
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+
+    assert not coresys.mounts.bound_mounts[0].emergency
+    await coresys.mounts.reload_mount(mount.name)
+
+    assert systemd_service.StopUnit.calls == []
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-media-media_test.mount"
+    ]
 
 
 async def test_reload_mount_probe_failure_triggers_systemd_reload(
@@ -659,7 +704,6 @@ async def test_reload_mounts_attempts_initial_mount(
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     systemd_service.response_reload_or_restart_unit = ERROR_NO_UNIT
-    coresys.mounts.bound_mounts[0].emergency = True
 
     await coresys.mounts.reload()
 
