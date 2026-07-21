@@ -11,7 +11,12 @@ from typing import Self
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import UnitActiveState
-from ..exceptions import MountError, MountInvalidError, MountJobError, MountNotFound
+from ..exceptions import (
+    MountError,
+    MountJobError,
+    MountNotFound,
+    MountTargetNotEmptyError,
+)
 from ..host.const import HostFeature
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
@@ -257,10 +262,8 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             return None
 
         if conflict := await self.sys_run_in_executor(find_conflict):
-            raise MountInvalidError(
-                f"Cannot add mount {mount.name}: there is existing data at "
-                f"{conflict.as_posix()}. Move it away first, then retry",
-                _LOGGER.error,
+            raise MountTargetNotEmptyError(
+                _LOGGER.error, name=mount.name, path=conflict.as_posix()
             )
 
     @Job(
