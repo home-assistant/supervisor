@@ -16,11 +16,12 @@ from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import (
     MountActivationError,
     MountError,
+    MountInvalidError,
     MountJobError,
     MountNotFound,
 )
 from supervisor.mounts.manager import MountManager
-from supervisor.mounts.mount import Mount
+from supervisor.mounts.mount import BindMount, Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
@@ -592,6 +593,99 @@ async def test_save_data(
                 "read_only": False,
             }
         ]
+
+
+async def test_create_mount_blocked_by_existing_local_data(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test creating a media mount fails fast if the media directory has local data."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    await coresys.mounts.load()
+
+    media_dir = coresys.config.path_media / "media_test"
+    media_dir.mkdir()
+    (media_dir / "recording.mp4").touch()
+
+    with pytest.raises(MountInvalidError):
+        await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
+
+    assert "media_test" not in coresys.mounts
+    assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_update_mount_blocked_by_existing_local_data(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test updating a mount fails fast on local data without touching the mount.
+
+    Simulates the state after systemd tore down the bind mount and an add-on
+    wrote into the bare media directory: the update must not unmount the data
+    mount just to fail on the non-empty bind target afterwards.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StopUnit.calls.clear()
+
+    media_dir = coresys.config.path_media / "media_test"
+    media_dir.mkdir(exist_ok=True)
+    (media_dir / "recording.mp4").touch()
+
+    with pytest.raises(MountInvalidError):
+        await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
+
+    assert mount == coresys.mounts.get("media_test")
+    assert mount.state == UnitActiveState.ACTIVE
+    assert systemd_service.StopUnit.calls == []
+
+
+async def test_create_mount_bind_failure_rolls_back(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test a bind mount failure during create unmounts the new data mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    await coresys.mounts.load()
+
+    systemd_service.response_get_unit = {
+        "mnt-data-supervisor-mounts-media_test.mount": [
+            ERROR_NO_UNIT,
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ],
+        "mnt-data-supervisor-media-media_test.mount": [ERROR_NO_UNIT],
+    }
+
+    with (
+        patch.object(
+            BindMount, "load", side_effect=MountError("Test bind mount failure")
+        ),
+        pytest.raises(MountError),
+    ):
+        await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
+
+    assert "media_test" not in coresys.mounts
+    assert coresys.mounts.bound_mounts == []
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-mounts-media_test.mount"
+    ]
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-mounts-media_test.mount"
+    ]
 
 
 async def test_create_mount_start_unit_failure(
