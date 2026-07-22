@@ -9,6 +9,7 @@ from http import HTTPStatus
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
+import re
 import tempfile
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -164,6 +165,9 @@ class DockerApp(DockerInterface):
                 _LOGGER.error,
             ) from err
         except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                # Legacy container removed between lookup and rename, nothing to migrate
+                return None
             raise DockerError(
                 f"Can't rename legacy app container {legacy_name} to {self.name}: {err!s}",
                 _LOGGER.error,
@@ -793,14 +797,17 @@ class DockerApp(DockerInterface):
             f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
         )
 
+        # app_builder is the new name used for the builder container but existing containers
+        # created by older versions of Supervisor might still use addon_builder
         builder_name = f"app_builder_{self.app.slug}"
-        legacy_builder_name = f"addon_builder_{self.app.slug}"
+        builder_name_pattern = rf"^(?:app|addon)_builder_{re.escape(self.app.slug)}$"
 
         # Remove dangling builder containers if they exist by any chance
         # E.g. because of an abrupt host shutdown/reboot during a build
         try:
             containers = await self.sys_docker.containers.list(
-                all=True, filters={"name": [builder_name, legacy_builder_name]}
+                all=True,
+                filters={"name": [builder_name_pattern]},
             )
             if containers:
                 await asyncio.gather(
