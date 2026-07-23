@@ -575,7 +575,7 @@ class BackupManager(FileConfiguration, JobGroup):
             self._backups[backup.slug] = backup
 
             if additional_locations:
-                self._change_stage(BackupJobStage.COPY_ADDITONAL_LOCATIONS, backup)
+                self._change_stage(BackupJobStage.COPY_ADDITIONAL_LOCATIONS, backup)
                 await self._copy_to_additional_locations(backup, additional_locations)
 
             if app_start_tasks:

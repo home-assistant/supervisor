@@ -33,7 +33,7 @@ class BackupJobStage(StrEnum):
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
     SUPERVISOR_CONFIG = "supervisor_config"
-    COPY_ADDITONAL_LOCATIONS = "copy_additional_locations"
+    COPY_ADDITIONAL_LOCATIONS = "copy_additional_locations"
     AWAIT_APP_RESTARTS = "await_app_restarts"
 
 

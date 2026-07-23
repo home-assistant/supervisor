@@ -1169,12 +1169,12 @@ async def test_backup_progress(
         _make_backup_message_for_assert(reference=None, stage=None),
         _make_backup_message_for_assert(reference=full_backup.slug, stage=None),
         _make_backup_message_for_assert(
-            reference=full_backup.slug, stage="app_repositories"
+            reference=full_backup.slug, stage="addon_repositories"
         ),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="home_assistant"
         ),
-        _make_backup_message_for_assert(reference=full_backup.slug, stage="apps"),
+        _make_backup_message_for_assert(reference=full_backup.slug, stage="addons"),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="folders"),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="supervisor_config"
@@ -1183,11 +1183,11 @@ async def test_backup_progress(
             reference=full_backup.slug, stage="finishing_file"
         ),
         _make_backup_message_for_assert(
-            reference=full_backup.slug, stage="await_app_restarts"
+            reference=full_backup.slug, stage="await_addon_restarts"
         ),
         _make_backup_message_for_assert(
             reference=full_backup.slug,
-            stage="await_app_restarts",
+            stage="await_addon_restarts",
             done=True,
             progress=100,
         ),
@@ -1216,10 +1216,10 @@ async def test_backup_progress(
         _make_backup_message_for_assert(
             action="partial_backup",
             reference=partial_backup.slug,
-            stage="app_repositories",
+            stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
-            action="partial_backup", reference=partial_backup.slug, stage="apps"
+            action="partial_backup", reference=partial_backup.slug, stage="addons"
         ),
         _make_backup_message_for_assert(
             action="partial_backup", reference=partial_backup.slug, stage="folders"
@@ -1307,15 +1307,15 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="remove_delta_apps",
+            stage="remove_delta_addons",
         ),
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="app_repositories",
+            stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
-            action="full_restore", reference=full_backup.slug, stage="apps"
+            action="full_restore", reference=full_backup.slug, stage="addons"
         ),
         _make_backup_message_for_assert(
             action="full_restore",
@@ -1325,7 +1325,7 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="await_app_restarts",
+            stage="await_addon_restarts",
         ),
         _make_backup_message_for_assert(
             action="full_restore",
@@ -1417,12 +1417,12 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="partial_restore",
             reference=app_backup.slug,
-            stage="app_repositories",
+            stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
             action="partial_restore",
             reference=app_backup.slug,
-            stage="apps",
+            stage="addons",
         ),
         _make_backup_message_for_assert(
             action="partial_restore",
