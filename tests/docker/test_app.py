@@ -939,12 +939,7 @@ async def test_app_build_cleans_up_builder_container(
 
     coresys.docker.containers.list.assert_called_once_with(
         all=True,
-        filters={
-            "name": [
-                f"app_builder_{docker_app.app.slug}",
-                f"addon_builder_{docker_app.app.slug}",
-            ]
-        },
+        filters={"name": ["^(?:app|addon)_builder_test_addon$"]},
     )
     builder_container.delete.assert_called_once_with(force=True, v=True)
 
