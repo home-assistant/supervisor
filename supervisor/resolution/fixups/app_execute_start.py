@@ -57,7 +57,7 @@ class FixupAppExecuteStart(FixupBase):
     @property
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.BOOT_FAIL]
+        return [IssueType.BOOT_FAIL, IssueType.APP_PORT_CONFLICT]
 
     @property
     def auto(self) -> bool:
