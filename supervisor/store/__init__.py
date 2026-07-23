@@ -199,7 +199,13 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
                         IssueType.CORRUPT_REPOSITORY,
                         ContextType.STORE,
                         reference=repository.slug,
-                        suggestions=[SuggestionType.EXECUTE_REMOVE],
+                        # A repository that validated before and now doesn't is
+                        # most likely a corrupt local copy. Offer a reset to
+                        # re-clone and self-heal, keeping removal as a fallback.
+                        suggestions=[
+                            SuggestionType.EXECUTE_RESET,
+                            SuggestionType.EXECUTE_REMOVE,
+                        ],
                     )
                 else:
                     await repository.remove()

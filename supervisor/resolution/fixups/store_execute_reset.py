@@ -7,6 +7,7 @@ from ...exceptions import (
     ResolutionFixupError,
     ResolutionFixupJobError,
     StoreError,
+    StoreInvalidAppRepo,
     StoreNotFound,
 )
 from ...jobs.const import JobCondition
@@ -45,6 +46,13 @@ class FixupStoreExecuteReset(FixupBase):
 
         try:
             await repository.reset()
+        except StoreInvalidAppRepo:
+            # The repository re-cloned fine but still isn't valid, so the
+            # problem is upstream and retrying won't help. Drop the reset
+            # suggestion to stop the hourly auto-retry, while leaving the
+            # issue (and its remove suggestion) so the user stays informed.
+            self.sys_resolution.dismiss_suggestion(suggestion)
+            raise ResolutionFixupError from None
         except StoreError:
             raise ResolutionFixupError from None
 
