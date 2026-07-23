@@ -36,6 +36,42 @@ from . import const
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# V1 compatibility shim for three AppNotSupported* errors whose legacy
+# addon_* keys are still consumed by the Supervisor client library.
+_V1_LEGACY_ERROR_KEY_MAP: dict[str, str] = {
+    "app_not_supported_architecture_error": "addon_not_supported_architecture_error",
+    "app_not_supported_machine_type_error": "addon_not_supported_machine_type_error",
+    "app_not_supported_home_assistant_version_error": "addon_not_supported_home_assistant_version_error",
+}
+
+
+def _request_from_handler_args(args: tuple[Any, ...]) -> Request | None:
+    """Extract aiohttp Request from handler args.
+
+    aiohttp invokes route handlers as handler(request). For bound methods,
+    Python binds self first, so args are (self, request).
+    """
+    if args and isinstance(args[0], Request):
+        return args[0]
+
+    if len(args) > 1:
+        return cast(Request, args[1])
+
+    return None
+
+
+def _is_v2_request(request: Request | None) -> bool:
+    """Return True when request targets the v2 sub-app."""
+    return bool(request and request.path.startswith("/v2/"))
+
+
+def _response_error_key(error_key: str, request: Request | None) -> str:
+    """Return mapped error key for the request API version."""
+    if _is_v2_request(request):
+        return error_key
+
+    return _V1_LEGACY_ERROR_KEY_MAP.get(error_key, error_key)
+
 
 def extract_supervisor_token(request: web.Request) -> str | None:
     """Extract Supervisor token from request."""
@@ -71,13 +107,19 @@ def api_process(method):
         try:
             answer = await method(*args, **kwargs)
         except APIError as err:
+            request = _request_from_handler_args(args)
             return api_return_error(
-                err, status=err.status, job_id=err.job_id, headers=err.headers
+                err,
+                status=err.status,
+                job_id=err.job_id,
+                headers=err.headers,
+                request=request,
             )
         except HassioError as err:
             _LOGGER.exception("Unexpected error during API call: %s", err)
             await async_capture_exception(err)
-            return api_return_error(err)
+            request = _request_from_handler_args(args)
+            return api_return_error(err, request=request)
 
         if isinstance(answer, (dict, list)):
             return api_return_ok(data=answer)
@@ -117,17 +159,22 @@ def api_process_raw(content, *, error_type=None):
             try:
                 msg_data = await method(*args, **kwargs)
             except APIError as err:
+                request = _request_from_handler_args(args)
                 return api_return_error(
                     err,
                     error_type=error_type or const.CONTENT_TYPE_BINARY,
                     status=err.status,
                     job_id=err.job_id,
+                    request=request,
                 )
             except HassioError as err:
                 _LOGGER.exception("Unexpected error during API call: %s", err)
                 await async_capture_exception(err)
+                request = _request_from_handler_args(args)
                 return api_return_error(
-                    err, error_type=error_type or const.CONTENT_TYPE_BINARY
+                    err,
+                    error_type=error_type or const.CONTENT_TYPE_BINARY,
+                    request=request,
                 )
 
             if isinstance(msg_data, (web.Response, web.StreamResponse)):
@@ -148,6 +195,7 @@ def api_return_error(
     *,
     headers: Mapping[str, str] | None = None,
     job_id: str | None = None,
+    request: Request | None = None,
 ) -> web.Response:
     """Return an API error message."""
     if error and not message:
@@ -175,7 +223,7 @@ def api_return_error(
             if job_id:
                 result[JSON_JOB_ID] = job_id
             if error and error.error_key:
-                result[JSON_ERROR_KEY] = error.error_key
+                result[JSON_ERROR_KEY] = _response_error_key(error.error_key, request)
             if error and error.extra_fields:
                 result[JSON_EXTRA_FIELDS] = error.extra_fields
 

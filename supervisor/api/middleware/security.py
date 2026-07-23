@@ -294,7 +294,7 @@ class SecurityMiddleware(CoreSysAttributes):
         """Check if core is ready to response."""
         if self.sys_core.state not in VALID_API_STATES:
             return api_return_error(
-                message=f"System is not ready with state: {self.sys_core.state}"
+                message=f"System is not ready with state: {self.sys_core.state}",
             )
 
         return await handler(request)
