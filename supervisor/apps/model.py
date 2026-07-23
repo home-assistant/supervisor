@@ -77,6 +77,7 @@ from ..const import (
     ATTR_VERSION_TIMESTAMP,
     ATTR_VIDEO,
     ATTR_WATCHDOG,
+    ATTR_WATCHDOG_RESTART_POLICY,
     ATTR_WEBUI,
     MACHINE_DEPRECATED,
     SECURITY_DEFAULT,
@@ -87,6 +88,7 @@ from ..const import (
     AppStage,
     AppStartup,
     CpuArch,
+    WatchdogRestartPolicy,
 )
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
@@ -307,6 +309,11 @@ class AppModel(JobGroup, ABC):
     def watchdog_url(self) -> str | None:
         """Return URL to for watchdog or None."""
         return self.data.get(ATTR_WATCHDOG)
+
+    @property
+    def watchdog_restart_policy(self) -> WatchdogRestartPolicy:
+        """Return how the watchdog should restart the app after a failure."""
+        return WatchdogRestartPolicy(self.data[ATTR_WATCHDOG_RESTART_POLICY])
 
     @property
     def ingress_port(self) -> int | None:

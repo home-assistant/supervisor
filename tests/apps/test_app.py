@@ -16,15 +16,21 @@ import pytest
 from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode
+from supervisor.apps.const import (
+    WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    AppBackupMode,
+)
 from supervisor.apps.model import AppModel
 from supervisor.const import (
     ATTR_ADVANCED,
     ATTR_LOCATION,
     ATTR_PORTS,
+    ATTR_WATCHDOG_RESTART_POLICY,
     AppBoot,
     AppState,
     BusEvent,
+    WatchdogRestartPolicy,
 )
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
@@ -35,6 +41,7 @@ from supervisor.exceptions import (
     AppFileReadError,
     AppPortConflict,
     AppPrePostBackupCommandReturnedError,
+    AppsError,
     AppsJobError,
     AppUnknownError,
     AudioUpdateError,
@@ -416,6 +423,121 @@ async def test_watchdog_during_attach(
         )
 
         assert restart.call_count == restart_count
+
+
+async def test_watchdog_restart_policy_config(install_app_ssh: App) -> None:
+    """Test watchdog restart policy defaults to rate limited and reads config."""
+    assert (
+        install_app_ssh.watchdog_restart_policy == WatchdogRestartPolicy.RATE_LIMITED
+    )
+
+    install_app_ssh.data[ATTR_WATCHDOG_RESTART_POLICY] = WatchdogRestartPolicy.UNLIMITED
+    assert install_app_ssh.watchdog_restart_policy == WatchdogRestartPolicy.UNLIMITED
+
+
+async def test_watchdog_restart_unlimited_ignores_rate_limit(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test unlimited restart policy keeps restarting past the crash-loop rate limit."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+    install_app_ssh.data[ATTR_WATCHDOG_RESTART_POLICY] = WatchdogRestartPolicy.UNLIMITED
+
+    # Fire more failures than the rate limit would ever allow
+    events = WATCHDOG_THROTTLE_MAX_CALLS + 5
+
+    # Watchdog does ``await (await self.start())`` because App.start returns
+    # an asyncio.Task. The mock must mirror that shape.
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    with (
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+    ):
+        for _ in range(events):
+            await _fire_test_event(
+                coresys,
+                f"addon_{TEST_ADDON_SLUG}",
+                ContainerState.FAILED,
+                exit_code=1,
+            )
+
+    # Every failure was reanimated; the rate limit never kicked in
+    assert start.call_count == events
+
+
+async def test_watchdog_rate_limited_gives_up(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test the default rate-limited policy stops restarting once the crash loop trips."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+    assert (
+        install_app_ssh.watchdog_restart_policy == WatchdogRestartPolicy.RATE_LIMITED
+    )
+
+    events = WATCHDOG_THROTTLE_MAX_CALLS + 5
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    with (
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+    ):
+        for _ in range(events):
+            await _fire_test_event(
+                coresys,
+                f"addon_{TEST_ADDON_SLUG}",
+                ContainerState.FAILED,
+                exit_code=1,
+            )
+
+    # The watchdog gave up: it restarted at most up to the rate limit, not once per failure
+    assert start.call_count <= WATCHDOG_THROTTLE_MAX_CALLS
+    assert start.call_count < events
+
+
+async def test_watchdog_restart_unlimited_ignores_attempt_limit(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test unlimited policy keeps retrying a failing start past the attempt cap."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+    install_app_ssh.data[ATTR_WATCHDOG_RESTART_POLICY] = WatchdogRestartPolicy.UNLIMITED
+
+    # Fail more times than the capped attempt count allows, then finally succeed
+    fail_count = WATCHDOG_MAX_ATTEMPTS + 3
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    start_results = [AppsError() for _ in range(fail_count)] + [done_task]
+    with (
+        patch.object(App, "start", AsyncMock(side_effect=start_results)) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.WATCHDOG_RETRY_SECONDS", 0),
+        patch("supervisor.apps.app.async_capture_exception"),
+    ):
+        await _fire_test_event(
+            coresys,
+            f"addon_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    # It retried well past WATCHDOG_MAX_ATTEMPTS and only stopped once start succeeded
+    assert start.call_count == fail_count + 1
 
 
 @pytest.mark.usefixtures("install_app_ssh")

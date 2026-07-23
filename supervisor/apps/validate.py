@@ -97,6 +97,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_VIDEO,
     ATTR_WATCHDOG,
+    ATTR_WATCHDOG_RESTART_POLICY,
     ATTR_WEBUI,
     INGRESS_DYNAMIC_PORT_MAX,
     INGRESS_DYNAMIC_PORT_MIN,
@@ -108,6 +109,7 @@ from ..const import (
     AppStage,
     AppStartup,
     AppState,
+    WatchdogRestartPolicy,
 )
 from ..docker.const import Capabilities
 from ..validate import (
@@ -472,6 +474,9 @@ _SCHEMA_APP_CONFIG = vol.Schema(
         vol.Optional(ATTR_WATCHDOG): vol.Match(
             r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:(\[PORT:\d+\]|\d+).*$"
         ),
+        vol.Optional(
+            ATTR_WATCHDOG_RESTART_POLICY, default=WatchdogRestartPolicy.RATE_LIMITED
+        ): vol.Coerce(WatchdogRestartPolicy),
         vol.Optional(ATTR_WEBUI): vol.Match(
             r"^(?:https?|\[PROTO:\w+\]):\/\/\[HOST\]:\[PORT:\d+\].*$"
         ),
