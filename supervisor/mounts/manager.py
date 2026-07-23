@@ -5,7 +5,7 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from dataclasses import dataclass, replace
 import logging
-from pathlib import Path, PurePath
+from pathlib import PurePath
 from typing import Self
 
 from ..const import ATTR_NAME
@@ -15,6 +15,7 @@ from ..exceptions import (
     MountError,
     MountJobError,
     MountNotFound,
+    MountTargetNotDirectoryError,
     MountTargetNotEmptyError,
 )
 from ..host.const import HostFeature
@@ -248,23 +249,25 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         elif mount.usage == MountUsage.SHARE:
             paths.append(self.sys_config.path_share / mount.name)
 
-        def find_conflict() -> Path | None:
+        def check_conflict() -> None:
             for path in paths:
                 try:
                     if path.is_mount() or not path.exists():
                         continue
-                    if not path.is_dir() or any(path.iterdir()):
-                        return path
+                    if not path.is_dir():
+                        raise MountTargetNotDirectoryError(
+                            _LOGGER.error, name=mount.name, path=path.as_posix()
+                        )
+                    if any(path.iterdir()):
+                        raise MountTargetNotEmptyError(
+                            _LOGGER.error, name=mount.name, path=path.as_posix()
+                        )
                 except OSError:
                     # Not inspectable (e.g. an unreachable network mount) —
                     # leave it to the mount-time check
                     continue
-            return None
 
-        if conflict := await self.sys_run_in_executor(find_conflict):
-            raise MountTargetNotEmptyError(
-                _LOGGER.error, name=mount.name, path=conflict.as_posix()
-            )
+        await self.sys_run_in_executor(check_conflict)
 
     @Job(
         name="mount_manager_remove_mount",

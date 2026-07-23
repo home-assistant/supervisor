@@ -16,9 +16,10 @@ from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import (
     MountActivationError,
     MountError,
-    MountInvalidError,
     MountJobError,
     MountNotFound,
+    MountTargetNotDirectoryError,
+    MountTargetNotEmptyError,
 )
 from supervisor.mounts.manager import MountManager
 from supervisor.mounts.mount import BindMount, Mount
@@ -613,7 +614,30 @@ async def test_create_mount_blocked_by_existing_local_data(
     media_dir.mkdir()
     (media_dir / "recording.mp4").touch()
 
-    with pytest.raises(MountInvalidError):
+    with pytest.raises(MountTargetNotEmptyError):
+        await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
+
+    assert "media_test" not in coresys.mounts
+    assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_create_mount_blocked_by_non_directory_target(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test creating a media mount fails fast if the media target is not a directory."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    await coresys.mounts.load()
+
+    (coresys.config.path_media / "media_test").touch()
+
+    with pytest.raises(MountTargetNotDirectoryError):
         await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
 
     assert "media_test" not in coresys.mounts
@@ -638,7 +662,7 @@ async def test_update_mount_blocked_by_existing_local_data(
     media_dir.mkdir(exist_ok=True)
     (media_dir / "recording.mp4").touch()
 
-    with pytest.raises(MountInvalidError):
+    with pytest.raises(MountTargetNotEmptyError):
         await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
 
     assert mount == coresys.mounts.get("media_test")
