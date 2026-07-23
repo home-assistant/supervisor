@@ -1,7 +1,7 @@
 """Helper to check if docker config for container needs an update."""
 
 from ...apps.const import MappingType
-from ...const import CoreState
+from ...const import DNS_SUFFIX, CoreState
 from ...coresys import CoreSys
 from ...docker.const import PATH_MEDIA, PATH_SHARE, PropagationMode
 from ...docker.interface import DockerInterface
@@ -10,12 +10,23 @@ from ..data import Issue
 from .base import CheckBase
 
 
-def _check_container(container: DockerInterface, app=None) -> bool:
+def _check_container(
+    container: DockerInterface, app=None, dns_search: set[str] | None = None
+) -> bool:
     """Check if container has mount propagation issues requiring recreate.
 
     For apps, only validates mounts explicitly configured (not Docker VOLUMEs).
     For Core/plugins, validates all /media and /share mounts.
     """
+    # Check DnsSearch reflects current configured search domains.
+    # Only applies to containers started with DNS enabled (Dns key present).
+    if (
+        dns_search is not None
+        and container.meta_host.get("Dns")
+        and set(container.meta_host.get("DnsSearch") or []) != dns_search
+    ):
+        return True
+
     # For apps, check mounts against their actual configured targets
     if app is not None:
         app_mapping = app.map_volumes
@@ -78,12 +89,13 @@ class CheckDockerConfig(CheckBase):
     def _check_docker_config(self) -> None:
         """Check docker config and make issues."""
         new_issues: set[Issue] = set()
+        dns_search = set(self.sys_plugins.dns.search_domains) | {DNS_SUFFIX}
 
-        if _check_container(self.sys_homeassistant.core.instance):
+        if _check_container(self.sys_homeassistant.core.instance, dns_search=dns_search):
             new_issues.add(Issue(IssueType.DOCKER_CONFIG, ContextType.CORE))
 
         for app in self.sys_apps.installed:
-            if _check_container(app.instance, app):
+            if _check_container(app.instance, app, dns_search=dns_search):
                 new_issues.add(
                     Issue(
                         IssueType.DOCKER_CONFIG, ContextType.ADDON, reference=app.slug
@@ -91,7 +103,7 @@ class CheckDockerConfig(CheckBase):
                 )
 
         for plugin in self.sys_plugins.all_plugins:
-            if _check_container(plugin.instance):
+            if _check_container(plugin.instance, dns_search=dns_search):
                 new_issues.add(
                     Issue(
                         IssueType.DOCKER_CONFIG,

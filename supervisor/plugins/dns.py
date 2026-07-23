@@ -15,7 +15,7 @@ import jinja2
 import voluptuous as vol
 
 from ..bus import EventListener
-from ..const import ATTR_SERVERS, DNS_SUFFIX, BusEvent, LogLevel
+from ..const import ATTR_SEARCH_DOMAINS, ATTR_SERVERS, DNS_SUFFIX, BusEvent, LogLevel
 from ..coresys import CoreSys
 from ..dbus.const import MulticastProtocolEnabled
 from ..docker.const import ContainerState
@@ -213,6 +213,16 @@ class PluginDns(PluginBase):
         self._data[ATTR_FALLBACK] = value
 
     @property
+    def search_domains(self) -> list[str]:
+        """Return list of DNS search domains written to container resolv.conf."""
+        return self._data[ATTR_SEARCH_DOMAINS]
+
+    @search_domains.setter
+    def search_domains(self, value: list[str]) -> None:
+        """Set DNS search domains written to container resolv.conf."""
+        self._data[ATTR_SEARCH_DOMAINS] = value
+
+    @property
     def hosts_template(self) -> jinja2.Template:
         """Get hosts jinja template."""
         if not self._hosts_template:
@@ -328,8 +338,11 @@ class PluginDns(PluginBase):
         """Reset DNS and hosts."""
         # Reset manually defined DNS
         self.servers.clear()
+        self.search_domains.clear()
         self.fallback = True
         await self.save_data()
+        if self._resolv_template:
+            await self._write_resolv(HOST_RESOLV)
 
         # Resets hosts
         try:
@@ -523,9 +536,14 @@ class PluginDns(PluginBase):
     async def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
         nameservers = [str(self.sys_docker.network.dns), "127.0.0.11"]
+        search_domains = [d for d in self.search_domains if d != DNS_SUFFIX] + [
+            DNS_SUFFIX
+        ]
 
         # Read resolv config
-        data = self.resolv_template.render(servers=nameservers)
+        data = self.resolv_template.render(
+            servers=nameservers, search_domains=search_domains
+        )
 
         # Write config back to resolv
         try:
