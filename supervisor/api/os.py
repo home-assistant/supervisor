@@ -47,6 +47,7 @@ from .const import (
     ATTR_DEV_PATH,
     ATTR_DEVICE,
     ATTR_DISKS,
+    ATTR_KEYS,
     ATTR_MODEL,
     ATTR_STATUS,
     ATTR_SYSTEM_HEALTH_LED,
@@ -89,6 +90,35 @@ SCHEMA_SWAP_OPTIONS = vol.Schema(
         vol.Optional(ATTR_SWAPPINESS): vol.All(int, vol.Range(min=0, max=200)),
     }
 )
+
+# dropbear, which consumes authorized_keys on Home Assistant OS, ignores
+# lines longer than 3000 bytes
+SSH_AUTH_KEY_MAX_LENGTH = 3000
+
+RE_SSH_KEY_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def ssh_auth_key(value: Any) -> str:
+    """Run a basic sanity check on an SSH authorized key entry.
+
+    Proper key validation is done by OS Agent; reject only what could write
+    more than one authorized_keys line per key (control characters) or
+    produce a line dropbear ignores (too long).
+    """
+    if not isinstance(value, str):
+        raise vol.Invalid("SSH public key must be a string")
+
+    key = value.strip()
+    # dropbear and OS Agent limit the line length in bytes, not characters
+    if not key or len(key.encode()) > SSH_AUTH_KEY_MAX_LENGTH:
+        raise vol.Invalid("SSH public key is empty or too long")
+    if RE_SSH_KEY_CONTROL_CHARS.search(key):
+        raise vol.Invalid("SSH public key contains control characters")
+
+    return key
+
+
+SCHEMA_SSH_AUTHORIZED_KEYS = vol.Schema({vol.Required(ATTR_KEYS): [ssh_auth_key]})
 # pylint: enable=no-value-for-parameter
 
 
@@ -152,6 +182,12 @@ class APIOS(CoreSysAttributes):
         """Change the active boot slot and reboot into it."""
         body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
         await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_SLOT]))
+
+    @api_process
+    async def ssh_authorized_keys(self, request: web.Request) -> None:
+        """Replace root's SSH authorized keys on the host."""
+        body = await api_validate(SCHEMA_SSH_AUTHORIZED_KEYS, request)
+        await asyncio.shield(self.sys_os.set_ssh_authorized_keys(body[ATTR_KEYS]))
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:

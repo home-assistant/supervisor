@@ -215,6 +215,7 @@ def _versioned_path(prefix: str, path: str) -> str:
         ("post", "/addons/abc123/restart", {"admin", "manager"}),
         ("post", "/addons/abc123/security", {"admin"}),
         ("post", "/os/datadisk/wipe", {"admin"}),
+        ("post", "/os/ssh/authorized_keys", {"admin"}),
         ("post", "/addons/self/sys_options", set()),
         ("post", "/addons/abc123/sys_options", set()),
     ],

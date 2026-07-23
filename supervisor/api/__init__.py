@@ -305,6 +305,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/os/datadisk/list", api_os.list_data),
                 web.post("/os/datadisk/wipe", api_os.wipe_data),
                 web.post("/os/boot-slot", api_os.set_boot_slot),
+                web.post("/os/ssh/authorized_keys", api_os.ssh_authorized_keys),
             ]
         )
 
