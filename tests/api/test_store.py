@@ -229,7 +229,7 @@ async def test_api_store_update_healthcheck(
 
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.STOPPED,
                 id="abc123",
                 time=1,
@@ -239,7 +239,7 @@ async def test_api_store_update_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.RUNNING,
                 id="abc123",
                 time=1,
@@ -249,7 +249,7 @@ async def test_api_store_update_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.HEALTHY,
                 id="abc123",
                 time=1,

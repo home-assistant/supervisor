@@ -218,7 +218,7 @@ async def test_container_state_changed_ignores_other_containers(
     caplog.clear()
     await api.container_state_changed(
         DockerContainerStateEvent(
-            name="addon_local_ssh",
+            name="app_local_ssh",
             state=ContainerState.STOPPED,
             id="abc123",
             time=1234567890,

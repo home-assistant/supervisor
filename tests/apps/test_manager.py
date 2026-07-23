@@ -272,7 +272,7 @@ async def test_load(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     caplog.clear()
 
     with (
-        patch.object(DockerInterface, "attach") as attach,
+        patch.object(DockerApp, "attach") as attach,
         patch.object(PluginDns, "write_hosts") as write_hosts,
     ):
         await coresys.apps.load()
@@ -300,7 +300,7 @@ async def test_boot_waits_for_apps(coresys: CoreSys, install_app_ssh: App):
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.RUNNING,
                 id="abc123",
                 time=1,
@@ -388,7 +388,7 @@ async def test_start_wait_resolved_on_uninstall_in_startup(
         coresys,
         BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
         DockerContainerStateEvent(
-            name=f"addon_{TEST_ADDON_SLUG}",
+            name=f"app_{TEST_ADDON_SLUG}",
             state=ContainerState.RUNNING,
             id="abc123",
             time=1,
@@ -506,7 +506,7 @@ async def test_watchdog_runs_during_update(
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.STOPPED,
                 id="abc123",
                 time=1,

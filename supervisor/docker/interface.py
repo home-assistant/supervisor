@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 import aiodocker
+from aiodocker.containers import DockerContainer
 import aiohttp
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
@@ -42,6 +43,7 @@ from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
 from .const import (
     DOCKER_HUB,
@@ -437,28 +439,37 @@ class DockerInterface(JobGroup, ABC):
             return state
         return ContainerState.UNKNOWN
 
-    @Job(name="docker_interface_attach", concurrency=JobConcurrency.GROUP_QUEUE)
-    async def attach(
-        self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
+    async def _attach(
+        self,
+        version: AwesomeVersion,
+        *,
+        skip_state_event_if_down: bool = False,
+        docker_container: DockerContainer | None | type[DEFAULT] = DEFAULT,
     ) -> None:
         """Attach to running Docker container."""
         with suppress(aiodocker.DockerError, TimeoutError):
-            docker_container = await self.sys_docker.containers.get(self.name)
-            self._meta = await docker_container.show()
-            self.sys_docker.monitor.watch_container(self._meta)
+            if docker_container is DEFAULT:
+                docker_container = await self.sys_docker.containers.get(self.name)
+            if isinstance(docker_container, DockerContainer):
+                self._meta = await docker_container.show()
+                self.sys_docker.monitor.watch_container(self._meta)
 
-            state, exit_code = _container_state_from_model(self._meta)
-            if not (
-                skip_state_event_if_down
-                and state in [ContainerState.STOPPED, ContainerState.FAILED]
-            ):
-                # Fire event with current state of container
-                self.sys_bus.fire_event(
-                    BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-                    DockerContainerStateEvent(
-                        self.name, state, docker_container.id, int(time()), exit_code
-                    ),
-                )
+                state, exit_code = _container_state_from_model(self._meta)
+                if not (
+                    skip_state_event_if_down
+                    and state in [ContainerState.STOPPED, ContainerState.FAILED]
+                ):
+                    # Fire event with current state of container
+                    self.sys_bus.fire_event(
+                        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                        DockerContainerStateEvent(
+                            self.name,
+                            state,
+                            docker_container.id,
+                            int(time()),
+                            exit_code,
+                        ),
+                    )
 
         if not self._meta and self.image:
             try:
@@ -481,6 +492,19 @@ class DockerInterface(JobGroup, ABC):
                 f"Could not get metadata on container or image for {self.name}"
             )
         _LOGGER.info("Attaching to %s with version %s", self.image, self.version)
+
+    @Job(name="docker_interface_attach", concurrency=JobConcurrency.GROUP_QUEUE)
+    async def attach(
+        self,
+        version: AwesomeVersion,
+        *,
+        skip_state_event_if_down: bool = False,
+    ) -> None:
+        """Attach to running Docker container."""
+        await self._attach(
+            version=version,
+            skip_state_event_if_down=skip_state_event_if_down,
+        )
 
     @Job(
         name="docker_interface_run",
