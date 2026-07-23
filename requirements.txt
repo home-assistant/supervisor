@@ -1,6 +1,6 @@
 aiodns==4.0.4
 aiodocker==0.27.0
-aiohttp==3.14.2
+aiohttp==3.14.3
 atomicwrites-homeassistant==1.4.1
 attrs==26.1.0
 awesomeversion==25.8.0
