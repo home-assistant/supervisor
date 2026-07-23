@@ -51,9 +51,7 @@ class FixupStoreExecuteReset(FixupBase):
             # problem is upstream and retrying won't help. Drop the reset
             # suggestion to stop the hourly auto-retry, while leaving the
             # issue (and its remove suggestion) so the user stays informed.
-            for suggestion in self.all_suggestions:
-                if suggestion.reference == reference:
-                    self.sys_resolution.dismiss_suggestion(suggestion)
+            self.sys_resolution.dismiss_suggestion(suggestion)
             raise ResolutionFixupError from None
         except StoreError:
             raise ResolutionFixupError from None
