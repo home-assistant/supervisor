@@ -419,7 +419,7 @@ jobs:
 
       - name: Restart supervisor
         run: |
-          started_at=$(docker inspect --format='{{.State.StartedAt}}' hassio_supervisor)
+          pid_before=$(docker exec hassio_supervisor pgrep -f "python3 -m supervisor")
 
           test=$(docker exec hassio_cli ha supervisor restart --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
@@ -427,21 +427,27 @@ jobs:
           fi
 
           # The restart API call returns before the Supervisor actually shuts
-          # down. Wait for the container to restart so the API check below
-          # doesn't accidentally probe the old, still-running instance.
-          echo "Waiting for the Supervisor container to restart..."
+          # down. On restart s6 starts a new Supervisor process inside the
+          # running container (the container itself does not restart), so wait
+          # for a new process before probing the API again - otherwise the
+          # check below may hit the old, still-running instance.
+          echo "Waiting for the Supervisor process to restart..."
           timeout=120
           elapsed=0
-          while [ "$(docker inspect --format='{{.State.StartedAt}}' hassio_supervisor)" == "$started_at" ]; do
+          while true; do
+            pid_now=$(docker exec hassio_supervisor pgrep -f "python3 -m supervisor" || true)
+            if [ -n "$pid_now" ] && [ "$pid_now" != "$pid_before" ]; then
+              break
+            fi
             if [ $elapsed -ge $timeout ]; then
-              echo "ERROR: Supervisor container did not restart within ${timeout}s"
+              echo "ERROR: Supervisor process did not restart within ${timeout}s"
               docker logs --tail 50 hassio_supervisor
               exit 1
             fi
             sleep 1
             elapsed=$((elapsed + 1))
           done
-          echo "Supervisor container restarted (took ${elapsed}s)"
+          echo "Supervisor process restarted (took ${elapsed}s, PID ${pid_before} -> ${pid_now})"
 
       - *wait_for_supervisor
 
