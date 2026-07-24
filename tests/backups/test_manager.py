@@ -1484,7 +1484,7 @@ async def test_freeze_thaw(
                 action="freeze_all", reference=None, stage="home_assistant"
             ),
             _make_backup_message_for_assert(
-                action="freeze_all", reference=None, stage="addons"
+                action="freeze_all", reference=None, stage="apps"
             ),
             _make_backup_message_for_assert(
                 action="thaw_all", reference=None, stage=None
@@ -1492,7 +1492,7 @@ async def test_freeze_thaw(
             _make_backup_message_for_assert(
                 action="freeze_all",
                 reference=None,
-                stage="addons",
+                stage="apps",
                 done=True,
                 progress=100,
             ),
@@ -1519,12 +1519,12 @@ async def test_freeze_thaw(
                 action="thaw_all", reference=None, stage="home_assistant"
             ),
             _make_backup_message_for_assert(
-                action="thaw_all", reference=None, stage="addons"
+                action="thaw_all", reference=None, stage="apps"
             ),
             _make_backup_message_for_assert(
                 action="thaw_all",
                 reference=None,
-                stage="addons",
+                stage="apps",
                 done=True,
                 progress=100,
             ),

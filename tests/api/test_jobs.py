@@ -483,3 +483,119 @@ async def test_api_jobs_no_legacy_name_compatibility_when_websocket_v2_enabled(
     assert not any(
         job_event["name"] == "addon_manager_update" for job_event in job_events
     )
+
+
+@pytest.mark.parametrize(
+    ("job_name", "new_stage", "legacy_stage"),
+    [
+        ("backup_manager_full_backup", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_backup", "apps", "addons"),
+        ("backup_manager_full_backup", "await_app_restarts", "await_addon_restarts"),
+        ("backup_manager_full_restore", "remove_delta_apps", "remove_delta_addons"),
+        ("backup_manager_full_restore", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_restore", "apps", "addons"),
+        (
+            "backup_manager_full_restore",
+            "await_app_restarts",
+            "await_addon_restarts",
+        ),
+    ],
+)
+async def test_api_jobs_legacy_stage_compatibility(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    job_name: str,
+    new_stage: str,
+    legacy_stage: str,
+):
+    """Test backup/restore stage names are mapped in REST+websocket v1 outputs."""
+    api_client, prefix = api_client_with_prefix
+    job = coresys.jobs.new_job(job_name, reference="test")
+    job.stage = new_stage
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["stage"] == legacy_stage
+
+    resp = await api_client.get(f"{prefix}/jobs/{job.uuid}")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["stage"] == legacy_stage
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == legacy_stage
+        for job_event in job_events
+    )
+    assert not any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == new_stage
+        for job_event in job_events
+    )
+
+
+@pytest.mark.parametrize(
+    ("job_name", "new_stage", "legacy_stage"),
+    [
+        ("backup_manager_full_backup", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_backup", "apps", "addons"),
+        ("backup_manager_full_backup", "await_app_restarts", "await_addon_restarts"),
+        ("backup_manager_full_restore", "remove_delta_apps", "remove_delta_addons"),
+        ("backup_manager_full_restore", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_restore", "apps", "addons"),
+        (
+            "backup_manager_full_restore",
+            "await_app_restarts",
+            "await_addon_restarts",
+        ),
+    ],
+)
+async def test_api_jobs_no_legacy_stage_compatibility_when_websocket_v2_enabled(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    job_name: str,
+    new_stage: str,
+    legacy_stage: str,
+):
+    """Test backup/restore stage names are not mapped in REST+websocket v2 outputs."""
+    api_client, prefix = api_client_with_prefix
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+
+    job = coresys.jobs.new_job(job_name, reference="test")
+    job.stage = new_stage
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["stage"] == new_stage
+
+    resp = await api_client.get(f"{prefix}/jobs/{job.uuid}")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["stage"] == new_stage
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == new_stage
+        for job_event in job_events
+    )
+    assert not any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == legacy_stage
+        for job_event in job_events
+    )
