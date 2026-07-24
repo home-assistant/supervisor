@@ -419,10 +419,29 @@ jobs:
 
       - name: Restart supervisor
         run: |
+          started_at=$(docker inspect --format='{{.State.StartedAt}}' hassio_supervisor)
+
           test=$(docker exec hassio_cli ha supervisor restart --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
+
+          # The restart API call returns before the Supervisor actually shuts
+          # down. Wait for the container to restart so the API check below
+          # doesn't accidentally probe the old, still-running instance.
+          echo "Waiting for the Supervisor container to restart..."
+          timeout=120
+          elapsed=0
+          while [ "$(docker inspect --format='{{.State.StartedAt}}' hassio_supervisor)" == "$started_at" ]; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "ERROR: Supervisor container did not restart within ${timeout}s"
+              docker logs --tail 50 hassio_supervisor
+              exit 1
+            fi
+            sleep 1
+            elapsed=$((elapsed + 1))
+          done
+          echo "Supervisor container restarted (took ${elapsed}s)"
 
       - *wait_for_supervisor
 
