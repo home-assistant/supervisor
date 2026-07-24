@@ -44,6 +44,7 @@ class Core(CoreSysAttributes):
         self._state: CoreState = CoreState.INITIALIZE
         self.exit_code: int = 0
         self._shutdown_event: asyncio.Event = asyncio.Event()
+        self._stop_initiated: bool = False
 
     @property
     def state(self) -> CoreState:
@@ -315,16 +316,40 @@ class Core(CoreSysAttributes):
             )
             _LOGGER.info("Supervisor is up and running")
 
-    async def stop(self) -> None:
-        """Stop a running orchestration."""
-        # store new last boot / prevent time adjustments
-        if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN):
-            await self._update_last_boot()
+    async def begin_stop(self) -> None:
+        """Transition into the STOPPING state ahead of stop().
+
+        In STOPPING state the system validation middleware rejects new API
+        requests. API handlers that trigger a Supervisor stop (e.g. restart)
+        await this before responding, so a request sent after the response
+        gets a clear error instead of being accepted and then killed
+        mid-request when stop() tears down the API server.
+        """
         if self.state in (CoreState.STOPPING, CoreState.CLOSE):
             return
 
+        # store new last boot / prevent time adjustments
+        if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN):
+            await self._update_last_boot()
+
         # don't process scheduler anymore
         await self.set_state(CoreState.STOPPING)
+
+    async def stop(self) -> None:
+        """Stop a running orchestration."""
+        # The state alone cannot guard against re-entry here because callers
+        # may have entered STOPPING via begin_stop() already
+        if self._stop_initiated:
+            return
+        self._stop_initiated = True
+
+        try:
+            await self.begin_stop()
+        except BaseException:
+            # Nothing has been torn down yet at this point, so let a later
+            # stop() retry if the transition failed or was cancelled
+            self._stop_initiated = False
+            raise
 
         # Stage 1
         try:
