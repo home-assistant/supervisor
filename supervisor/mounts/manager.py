@@ -5,7 +5,7 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from dataclasses import dataclass, replace
 import logging
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import Self
 
 from ..const import ATTR_NAME
@@ -21,7 +21,8 @@ from ..exceptions import (
 from ..host.const import HostFeature
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
-from ..resolution.const import SuggestionType
+from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.data import Issue
 from ..utils.common import FileConfiguration
 from ..utils.sentry import async_capture_exception
 from .const import (
@@ -135,22 +136,21 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             self.mounts.copy(), [mount.load() for mount in self.mounts]
         )
 
-        # Bind all media mounts to directories in media
+        # Bind all media mounts to directories in media. Bind failures used
+        # to be silently swallowed as fire-and-forget tasks — route them into
+        # resolution issues so the user learns about e.g. local data blocking
+        # the bind mount target.
         if self.media_mounts:
-            await asyncio.wait(
-                [
-                    self.sys_create_task(self._bind_media(mount))
-                    for mount in self.media_mounts
-                ]
+            await self._mount_errors_to_issues(
+                self.media_mounts,
+                [self._bind_media(mount) for mount in self.media_mounts],
             )
 
         # Bind all share mounts to directories in share
         if self.share_mounts:
-            await asyncio.wait(
-                [
-                    self.sys_create_task(self._bind_share(mount))
-                    for mount in self.share_mounts
-                ]
+            await self._mount_errors_to_issues(
+                self.share_mounts,
+                [self._bind_share(mount) for mount in self.share_mounts],
             )
 
     @Job(name="mount_manager_reload", conditions=[JobCondition.MOUNT_AVAILABLE])
@@ -175,11 +175,14 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def _mount_errors_to_issues(
         self, mounts: list[Mount], mount_tasks: list[Awaitable[None]]
     ) -> None:
-        """Await a list of tasks on mounts and turn each error into a failed mount issue."""
+        """Await a list of tasks on mounts and turn each error into a resolution issue."""
         errors = await asyncio.gather(*mount_tasks, return_exceptions=True)
 
         for i in range(len(errors)):  # pylint: disable=consider-using-enumerate
             if not (err := errors[i]):
+                continue
+            if isinstance(err, MountTargetNotEmptyError | MountTargetNotDirectoryError):
+                self._add_local_data_issue(mounts[i].name)
                 continue
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
@@ -190,6 +193,25 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 replace(mounts[i].failed_issue),
                 suggestions=[
                     SuggestionType.EXECUTE_RELOAD,
+                    SuggestionType.EXECUTE_REMOVE,
+                ],
+            )
+
+    def _local_data_issue(self, name: str) -> Issue:
+        """Return the issue used when local data blocks a mount target."""
+        return Issue(
+            IssueType.MOUNT_TARGET_NOT_EMPTY, ContextType.MOUNT, reference=name
+        )
+
+    def _add_local_data_issue(self, name: str) -> None:
+        """Add an issue for local data blocking a mount target."""
+        if not self.sys_resolution.get_issue_if_present(
+            issue := self._local_data_issue(name)
+        ):
+            self.sys_resolution.add_issue(
+                issue,
+                suggestions=[
+                    SuggestionType.MOVE_LOCAL_DATA,
                     SuggestionType.EXECUTE_REMOVE,
                 ],
             )
@@ -323,7 +345,91 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         # restarting a failed data mount tears down the bind mount as well —
         # our BoundMount bookkeeping cannot know whether that happened.
         if bound_mount := self._bound_mounts.get(name):
-            await self._bind_mount(bound_mount.mount, bound_mount.bind_mount.where)
+            try:
+                await self._bind_mount(bound_mount.mount, bound_mount.bind_mount.where)
+            except MountTargetNotEmptyError, MountTargetNotDirectoryError:
+                self._add_local_data_issue(name)
+                raise
+
+        # Everything is mounted again, local data can no longer be in the way
+        if issue := self.sys_resolution.get_issue_if_present(
+            self._local_data_issue(name)
+        ):
+            self.sys_resolution.dismiss_issue(issue)
+
+    @Job(
+        name="mount_manager_relocate_local_data",
+        conditions=[JobCondition.MOUNT_AVAILABLE],
+        on_condition=MountJobError,
+    )
+    async def relocate_local_data(self, name: str) -> None:
+        """Move local data out of a mount's target directories, then remount.
+
+        Local data ends up in a mount's target directory when something
+        wrote into it while the mount was not in place (e.g. an add-on
+        recording to its media directory before network storage was set up
+        or after the bind mount was torn down). The data is moved to a
+        `<name>_local_recovery` folder in a user-accessible location
+        (media, share or local backup storage) instead of being deleted.
+        """
+        # Add mount name to job
+        self.sys_jobs.current.reference = name
+
+        if name not in self._mounts:
+            raise MountNotFound(
+                f"Cannot relocate local data for '{name}', no mount exists with that name"
+            )
+        mount = self._mounts[name]
+
+        paths = [mount.local_where]
+        if mount.usage == MountUsage.MEDIA:
+            recovery_base = self.sys_config.path_media
+            paths.append(self.sys_config.path_media / name)
+        elif mount.usage == MountUsage.SHARE:
+            recovery_base = self.sys_config.path_share
+            paths.append(self.sys_config.path_share / name)
+        else:
+            # Backup mounts have no bind mount and their data mount directory
+            # is not user-accessible — move the data to local backup storage,
+            # which is reachable via the backup share and add-ons.
+            recovery_base = self.sys_config.path_backup
+
+        def move_aside() -> list[tuple[Path, Path]]:
+            moved: list[tuple[Path, Path]] = []
+            for path in paths:
+                try:
+                    if path.is_mount() or not path.exists():
+                        continue
+                    if path.is_dir() and not any(path.iterdir()):
+                        continue
+                except OSError:
+                    continue
+
+                target = recovery_base / f"{name}_local_recovery"
+                counter = 1
+                while target.exists():
+                    counter += 1
+                    target = recovery_base / f"{name}_local_recovery_{counter}"
+                path.rename(target)
+                moved.append((path, target))
+            return moved
+
+        try:
+            moved = await self.sys_run_in_executor(move_aside)
+        except OSError as err:
+            raise MountError(
+                f"Could not move local data for mount {name}: {err!s}", _LOGGER.error
+            ) from err
+
+        for path, target in moved:
+            _LOGGER.info(
+                "Moved local data blocking mount %s from %s to %s",
+                name,
+                path.as_posix(),
+                target.as_posix(),
+            )
+
+        await self.reload_mount(name)
 
     async def _bind_media(self, mount: Mount) -> None:
         """Bind a media mount to media directory."""
