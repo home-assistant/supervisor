@@ -175,6 +175,50 @@ async def test_defaults(coresys):
     assert filtered["user"]["id"] == coresys.machine_id
 
 
+async def test_sanitize_url_credentials(coresys):
+    """Test that URL credentials are removed from event strings."""
+    coresys.config.diagnostics = True
+
+    event = {
+        "exception": {
+            "values": [
+                {
+                    "type": "StoreGitCloneError",
+                    "value": "Can't clone https://x-access-token:github_pat_secret@github.com/example/repo repository",
+                }
+            ]
+        },
+        "logentry": {
+            "message": "Can't add repository %s due to %s",
+            "params": ["https://user:pass@example.com/repo", "error"],
+        },
+        "breadcrumbs": {
+            "values": [
+                {
+                    "message": "Cloning app repository from https://user:pass@example.com/repo"
+                }
+            ]
+        },
+    }
+
+    await coresys.core.set_state(CoreState.RUNNING)
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
+        filtered = filter_data(coresys, event, {})
+
+    assert (
+        filtered["exception"]["values"][0]["value"]
+        == "Can't clone https://github.com/example/repo repository"
+    )
+    assert filtered["logentry"]["params"] == [
+        "https://example.com/repo",
+        "error",
+    ]
+    assert (
+        filtered["breadcrumbs"]["values"][0]["message"]
+        == "Cloning app repository from https://example.com/repo"
+    )
+
+
 async def test_sanitize_user_hostname(coresys):
     """Test user hostname event sanitation."""
     event = SAMPLE_EVENT_AIOHTTP_EXTERNAL
