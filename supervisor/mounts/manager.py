@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable
+from contextlib import suppress
 from dataclasses import dataclass, replace
 import logging
 from pathlib import PurePath
@@ -10,7 +11,13 @@ from typing import Self
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import UnitActiveState
-from ..exceptions import MountActivationError, MountError, MountJobError, MountNotFound
+from ..exceptions import (
+    MountError,
+    MountJobError,
+    MountNotFound,
+    MountTargetNotDirectoryError,
+    MountTargetNotEmptyError,
+)
 from ..host.const import HostFeature
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
@@ -197,22 +204,70 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         # Add mount name to job
         self.sys_jobs.current.reference = mount.name
 
+        await self._check_local_data_conflict(mount)
+
         if mount.name in self._mounts:
-            _LOGGER.debug("Mount '%s' exists, unmounting then mounting from new config")
+            _LOGGER.debug(
+                "Mount '%s' exists, unmounting then mounting from new config",
+                mount.name,
+            )
             await self.remove_mount(mount.name, retain_entry=True)
 
         _LOGGER.info("Creating or updating mount: %s", mount.name)
         try:
             await mount.load()
-        except MountActivationError as err:
-            await mount.unmount()
-            raise err
+            if mount.usage == MountUsage.MEDIA:
+                await self._bind_media(mount)
+            elif mount.usage == MountUsage.SHARE:
+                await self._bind_share(mount)
+        except MountError:
+            # Roll back so a failed add/update does not leave a half-created
+            # mount behind: data mount active and listed, but without bind
+            # mount and never persisted to the configuration.
+            if bound_mount := self._bound_mounts.pop(mount.name, None):
+                with suppress(MountError):
+                    await bound_mount.bind_mount.unmount()
+            with suppress(MountError):
+                await mount.unmount()
+            raise
 
         self._mounts[mount.name] = mount
+
+    async def _check_local_data_conflict(self, mount: Mount) -> None:
+        """Fail fast if a target directory of the mount contains local data.
+
+        The authoritative check happens when each unit is mounted, but by
+        then the data mount is already active. Checking upfront lets an
+        add/update whose target directory holds local data (e.g. written by
+        an add-on while no mount was in place) fail cleanly before anything
+        is touched. Paths that are already mount points are skipped — they
+        get unmounted before reuse.
+        """
+        paths = [mount.local_where]
         if mount.usage == MountUsage.MEDIA:
-            await self._bind_media(mount)
+            paths.append(self.sys_config.path_media / mount.name)
         elif mount.usage == MountUsage.SHARE:
-            await self._bind_share(mount)
+            paths.append(self.sys_config.path_share / mount.name)
+
+        def check_conflict() -> None:
+            for path in paths:
+                try:
+                    if path.is_mount() or not path.exists():
+                        continue
+                    if not path.is_dir():
+                        raise MountTargetNotDirectoryError(
+                            _LOGGER.error, name=mount.name, path=path.as_posix()
+                        )
+                    if any(path.iterdir()):
+                        raise MountTargetNotEmptyError(
+                            _LOGGER.error, name=mount.name, path=path.as_posix()
+                        )
+                except OSError:
+                    # Not inspectable (e.g. an unreachable network mount) —
+                    # leave it to the mount-time check
+                    continue
+
+        await self.sys_run_in_executor(check_conflict)
 
     @Job(
         name="mount_manager_remove_mount",

@@ -1454,6 +1454,37 @@ class MountInvalidError(MountError):
     """Raise on invalid mount attempt."""
 
 
+class MountTargetNotDirectoryError(MountInvalidError):
+    """Raise when a mount target exists but is not a directory."""
+
+    error_key = "mount_target_not_directory_error"
+    message_template = "Cannot mount {name} at {path} as it is not a directory"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, name: str, path: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name, "path": path}
+        super().__init__(None, logger)
+
+
+class MountTargetNotEmptyError(MountInvalidError):
+    """Raise when a mount target directory contains existing data."""
+
+    error_key = "mount_target_not_empty_error"
+    message_template = (
+        "Cannot mount {name} because there is existing data at {path}. "
+        "Move it away first, then retry"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, name: str, path: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name, "path": path}
+        super().__init__(None, logger)
+
+
 class MountNotFound(MountError, APINotFound):
     """Raise on mount not found."""
 
