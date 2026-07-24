@@ -13,6 +13,7 @@ from ..exceptions import (
     StoreInvalidAppRepo,
     StoreJobError,
     StoreNotFound,
+    StoreRepositoryAlreadyAddedError,
 )
 from ..homeassistant.const import WSEvent
 from ..jobs.decorator import Job, JobCondition
@@ -147,7 +148,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         repository = Repository.create(self.coresys, url)
 
         if repository.slug in self.repositories:
-            raise StoreError(f"Can't add {url}, already in the store", _LOGGER.error)
+            raise StoreRepositoryAlreadyAddedError(_LOGGER.error, url=url)
 
         # Load the repository
         try:
