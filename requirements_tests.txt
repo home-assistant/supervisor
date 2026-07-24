@@ -11,5 +11,5 @@ pytest-xdist==3.8.0
 pytest==9.1.1
 ruff==0.16.0
 time-machine==3.2.0
-types-pyyaml==6.0.12.20260518
+types-pyyaml==6.0.12.20260724
 urllib3==2.7.0
