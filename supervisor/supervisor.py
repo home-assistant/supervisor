@@ -250,6 +250,11 @@ class Supervisor(CoreSysAttributes):
     async def restart(self) -> None:
         """Restart Supervisor soft."""
         self.sys_core.exit_code = 100
+        # Enter STOPPING before the API response is sent, so a request that
+        # arrives after it is rejected by the system validation middleware
+        # instead of being accepted and then killed when stop() tears down
+        # the API server
+        await self.sys_core.begin_stop()
         self.sys_create_task(self.sys_core.stop())
 
     @property

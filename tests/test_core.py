@@ -365,3 +365,33 @@ async def test_shutdown_skipped_during_startup(
     assert (
         "Ignoring shutdown request, Supervisor has not finished starting" in caplog.text
     )
+
+
+async def test_stop_runs_teardown_after_begin_stop(coresys: CoreSys):
+    """Test stop() still runs the teardown when begin_stop() pre-set STOPPING."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    await coresys.core.begin_stop()
+    assert coresys.core.state == CoreState.STOPPING
+
+    coresys._websession = AsyncMock()
+    with (
+        patch.object(coresys.api, "stop", new=(api_stop := AsyncMock())),
+        patch.object(coresys.scheduler, "shutdown", new=AsyncMock()),
+        patch.object(coresys.docker, "unload", new=AsyncMock()),
+        patch.object(coresys.homeassistant.api, "close", new=AsyncMock()),
+        patch.object(coresys.ingress, "unload", new=AsyncMock()),
+        patch.object(coresys.hardware, "unload", new=AsyncMock()),
+        patch.object(coresys.dbus, "unload", new=AsyncMock()),
+        patch.object(coresys.loop, "stop") as loop_stop,
+    ):
+        await coresys.core.stop()
+
+        assert coresys.core.state == CoreState.CLOSE
+        api_stop.assert_called_once()
+        loop_stop.assert_called_once()
+
+        # A second stop() must not run the teardown again
+        await coresys.core.stop()
+        api_stop.assert_called_once()
+        loop_stop.assert_called_once()

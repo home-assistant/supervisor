@@ -9,7 +9,8 @@ from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import BusEvent, UpdateChannel
+from supervisor.const import BusEvent, CoreState, UpdateChannel
+from supervisor.core import Core
 from supervisor.coresys import CoreSys
 from supervisor.docker.supervisor import DockerSupervisor
 from supervisor.exceptions import (
@@ -266,3 +267,24 @@ async def test_update_apparmor_error(
         with pytest.raises(SupervisorAppArmorError):
             await coresys.supervisor.update_apparmor()
         assert coresys.core.healthy is False
+
+
+async def test_restart_enters_stopping_before_scheduling_stop(coresys: CoreSys):
+    """Test restart transitions to STOPPING before the stop task runs.
+
+    The API responds to /supervisor/restart once restart() returns. The state
+    must already be STOPPING at that point so the system validation middleware
+    rejects requests sent after the response instead of accepting work that
+    stop() would kill mid-request.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(Core, "stop") as core_stop:
+        await coresys.supervisor.restart()
+
+        assert coresys.core.state == CoreState.STOPPING
+        assert coresys.core.exit_code == 100
+
+        # The stop sequence itself runs as a separate task
+        await asyncio.sleep(0)
+        core_stop.assert_called_once()
