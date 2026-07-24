@@ -37,8 +37,10 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, BoardInvalidError
+from ..homeassistant.const import LANDINGPAGE
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..resolution.data import Issue
+from ..utils import version_is_new_enough
 from ..validate import version_tag
 from .const import (
     ATTR_BOOT_SLOT,
@@ -60,6 +62,12 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Raspberry Pi firmware management requires the io.hass.os.Boards.RaspberryPi
 # .Firmware D-Bus interface first shipped in this OS Agent release.
 RPI_FIRMWARE_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.9.0")
+
+# First Core nightly whose update entity consumes version_pending to finalize
+# the OS update state (home-assistant/core#177155).
+CORE_VERSION_PENDING_MIN_VERSION: AwesomeVersion = AwesomeVersion(
+    "2026.8.0.dev202607250000"
+)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
@@ -95,16 +103,28 @@ SCHEMA_SWAP_OPTIONS = vol.Schema(
 class APIOS(CoreSysAttributes):
     """Handle RESTful API for OS functions."""
 
+    @property
+    def _core_handles_version_pending(self) -> bool:
+        """Return True if the installed Core consumes version_pending."""
+        return (
+            self.sys_homeassistant.version is not None
+            and self.sys_homeassistant.version != LANDINGPAGE
+            and version_is_new_enough(
+                self.sys_homeassistant.version, CORE_VERSION_PENDING_MIN_VERSION
+            )
+        )
+
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return OS information."""
         return {
-            # Report an installed update pending activation as the current
-            # version: the Core update entity compares version with
-            # version_latest, so it would offer the update again otherwise.
-            # Once Core consumes version_pending, this can be limited to Core
-            # versions predating that support.
-            ATTR_VERSION: self.sys_os.version_pending or self.sys_os.version,
+            # For Core versions unaware of version_pending, report an installed
+            # update pending activation as the current version: the Core update
+            # entity compares version with version_latest, so it would offer
+            # the update again otherwise.
+            ATTR_VERSION: self.sys_os.version
+            if self._core_handles_version_pending
+            else self.sys_os.version_pending or self.sys_os.version,
             ATTR_VERSION_LATEST: self.sys_os.latest_version,
             ATTR_VERSION_PENDING: self.sys_os.version_pending,
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
