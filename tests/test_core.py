@@ -395,3 +395,33 @@ async def test_stop_runs_teardown_after_begin_stop(coresys: CoreSys):
         await coresys.core.stop()
         api_stop.assert_called_once()
         loop_stop.assert_called_once()
+
+
+async def test_stop_can_retry_after_begin_stop_failure(coresys: CoreSys):
+    """Test a failed begin_stop() does not permanently block stop()."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(
+        coresys.core, "begin_stop", side_effect=HassioError
+    ) as begin_stop:
+        with pytest.raises(HassioError):
+            await coresys.core.stop()
+        begin_stop.assert_called_once()
+
+    # The failed attempt tore nothing down, a retry must run the sequence
+    coresys._websession = AsyncMock()
+    with (
+        patch.object(coresys.api, "stop", new=(api_stop := AsyncMock())),
+        patch.object(coresys.scheduler, "shutdown", new=AsyncMock()),
+        patch.object(coresys.docker, "unload", new=AsyncMock()),
+        patch.object(coresys.homeassistant.api, "close", new=AsyncMock()),
+        patch.object(coresys.ingress, "unload", new=AsyncMock()),
+        patch.object(coresys.hardware, "unload", new=AsyncMock()),
+        patch.object(coresys.dbus, "unload", new=AsyncMock()),
+        patch.object(coresys.loop, "stop") as loop_stop,
+    ):
+        await coresys.core.stop()
+
+    assert coresys.core.state == CoreState.CLOSE
+    api_stop.assert_called_once()
+    loop_stop.assert_called_once()

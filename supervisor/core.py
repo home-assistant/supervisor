@@ -343,7 +343,13 @@ class Core(CoreSysAttributes):
             return
         self._stop_initiated = True
 
-        await self.begin_stop()
+        try:
+            await self.begin_stop()
+        except BaseException:
+            # Nothing has been torn down yet at this point, so let a later
+            # stop() retry if the transition failed or was cancelled
+            self._stop_initiated = False
+            raise
 
         # Stage 1
         try:
