@@ -113,6 +113,22 @@ async def test_api_store_add_repository(
     assert REPO_URL in coresys.store.repository_urls
 
 
+@pytest.mark.usefixtures("test_repository")
+async def test_api_store_add_repository_duplicate(
+    api_client: TestClient, supervisor_internet: AsyncMock
+) -> None:
+    """Test POST /store/repositories REST API with an already added repository."""
+    response = await api_client.post(
+        "/store/repositories", json={"repository": REPO_URL}
+    )
+
+    assert response.status == 409
+    result = await response.json()
+    assert result["error_key"] == "store_repository_already_added_error"
+    assert result["extra_fields"] == {"url": REPO_URL}
+    assert result["message"] == f"Can't add {REPO_URL}, already in the store"
+
+
 async def test_api_store_remove_repository(
     api_client: TestClient, coresys: CoreSys, test_repository: Repository
 ):
