@@ -1262,13 +1262,13 @@ class App(AppModel):
         """Create a port conflict issue for the given port.
 
         Source can only be "core" or None currently, may be extended in future.
-        If problematic port is explicitly mapped by user, suggest clearing the
-        mapping and then starting the app again. Otherwise suggest starting the
-        app again.
+        If problematic port is mapped for this app (by user override or config
+        default), suggest clearing the mapping and then starting the app again.
+        Otherwise suggest starting the app again.
         """
-        user_ports = self.user_ports()
+        ports = self.ports or {}
         suggestions = [SuggestionType.EXECUTE_START]
-        if any(public_port == port for public_port in user_ports.values()):
+        if any(public_port == port for public_port in ports.values()):
             suggestions.insert(0, SuggestionType.CLEAR_PORT_CONFIG)
 
         self.sys_resolution.create_issue(

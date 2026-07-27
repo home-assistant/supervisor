@@ -1485,7 +1485,7 @@ async def test_app_restart_port_conflict_creates_issue(
 async def test_create_port_conflict_issue_non_user_port_suggestion(
     coresys: CoreSys, install_app_ssh: App
 ):
-    """Test port conflict on non-user-mapped port only suggests start."""
+    """Test port conflict on non-user-mapped default port suggests clear+start."""
     install_app_ssh.data[ATTR_PORTS] = {"80/tcp": 80, "22/tcp": None}
     install_app_ssh.persist.pop("network", None)
 
@@ -1505,7 +1505,7 @@ async def test_create_port_conflict_issue_non_user_port_suggestion(
         and suggestion.reference_extra == {"port": 80}
         for suggestion in coresys.resolution.suggestions
     )
-    assert not any(
+    assert any(
         suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
         and suggestion.context == ContextType.ADDON
         and suggestion.reference == install_app_ssh.slug
