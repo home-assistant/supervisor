@@ -156,7 +156,7 @@ class HomeAssistantCore(JobGroup):
 
         _LOGGER.info("Setting up Home Assistant landingpage")
         while True:
-            if not self.sys_updater.image_homeassistant:
+            if not (install_image := self.sys_homeassistant.install_image):
                 _LOGGER.warning(
                     "Updater has no Home Assistant image information yet. Retrying in %ssec",
                     INSTALL_RETRY_WAIT_SECS,
@@ -166,9 +166,7 @@ class HomeAssistantCore(JobGroup):
                 continue
 
             try:
-                await self.instance.install(
-                    LANDINGPAGE, image=self.sys_updater.image_homeassistant
-                )
+                await self.instance.install(LANDINGPAGE, image=install_image)
                 break
             except DockerError, JobException:
                 pass
@@ -182,7 +180,7 @@ class HomeAssistantCore(JobGroup):
             await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
 
         self.sys_homeassistant.version = LANDINGPAGE
-        self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
+        self.sys_homeassistant.set_image(install_image)
         await self.sys_homeassistant.save_data()
 
     @Job(
@@ -266,7 +264,7 @@ class HomeAssistantCore(JobGroup):
                 try:
                     await self.instance.update(
                         to_version,
-                        image=self.sys_updater.image_homeassistant,
+                        image=self.sys_homeassistant.install_image,
                     )
                     self.sys_homeassistant.version = self.instance.version or to_version
                     break
@@ -285,7 +283,7 @@ class HomeAssistantCore(JobGroup):
             await progress_task
 
         _LOGGER.info("Home Assistant docker now installed")
-        self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
+        self.sys_homeassistant.set_image(self.sys_homeassistant.install_image)
         await self.sys_homeassistant.save_data()
 
         # finishing
@@ -365,7 +363,7 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
                 await self.instance.update(
-                    to_version, image=self.sys_updater.image_homeassistant
+                    to_version, image=self.sys_homeassistant.install_image
                 )
             except DockerError as err:
                 raise HomeAssistantUpdateImageError(
@@ -375,7 +373,7 @@ class HomeAssistantCore(JobGroup):
         async def _start_update(to_version: AwesomeVersion) -> None:
             """Record the new version, (re)start Core and persist the change."""
             self.sys_homeassistant.version = self.instance.version or to_version
-            self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
+            self.sys_homeassistant.set_image(self.sys_homeassistant.install_image)
 
             if running:
                 await self.start()
