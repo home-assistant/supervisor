@@ -90,6 +90,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self._websocket: HomeAssistantWebSocket = HomeAssistantWebSocket(coresys)
         self._core: HomeAssistantCore = HomeAssistantCore(coresys)
         self._secrets: HomeAssistantSecrets = HomeAssistantSecrets(coresys)
+        self._http_server_host: list[str] | None = None
 
     @property
     def api(self) -> HomeAssistantAPI:
@@ -150,6 +151,20 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def api_ssl(self, value: bool):
         """Set SSL for Home Assistant instance."""
         self._data[ATTR_SSL] = value
+
+    @property
+    def http_server_host(self) -> list[str] | None:
+        """Return the hosts Core's HTTP server binds to, if known.
+
+        Pulled from Core's HTTP config over the Unix socket; None when unknown
+        (older Core). Not persisted, refreshed whenever Supervisor connects.
+        """
+        return self._http_server_host
+
+    @http_server_host.setter
+    def http_server_host(self, value: list[str] | None) -> None:
+        """Set the hosts Core's HTTP server binds to."""
+        self._http_server_host = value
 
     @property
     def api_url(self) -> str:

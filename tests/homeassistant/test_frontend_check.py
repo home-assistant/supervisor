@@ -222,3 +222,53 @@ async def test_verify_frontend_ssl_no_response_uses_tcp_check(
     ):
         assert await verify_frontend(coresys) is reachable
     check.assert_awaited_once_with(coresys)
+
+
+# --- bind reachability ---
+
+
+@pytest.mark.parametrize(
+    ("server_host", "reachable"),
+    [
+        # Unknown (older Core without the HTTP config endpoint): assume reachable.
+        (None, True),
+        # Default all-interfaces bind.
+        (["0.0.0.0", "::"], True),
+        (["0.0.0.0"], True),
+        # v6-only sockets (IPV6_V6ONLY) do not accept Supervisor's IPv4 connection.
+        (["::"], False),
+        # Bound specifically to the container IP Supervisor connects to.
+        (["172.30.32.1"], True),
+        # Bound to an address unreachable from outside the Core container.
+        (["127.0.0.1"], False),
+    ],
+)
+async def test_verify_frontend_bind_reachability(
+    coresys: CoreSys,
+    server_host: list[str] | None,
+    reachable: bool,
+    caplog: pytest.LogCaptureFixture,
+):
+    """verify_frontend skips the probes when Core's bind is unreachable."""
+    coresys.homeassistant.http_server_host = server_host
+    with (
+        patch(
+            "supervisor.homeassistant.frontend_check.check_frontend",
+            AsyncMock(return_value=ProbeResult.BAD_RESPONSE),
+        ) as frontend,
+        patch(
+            "supervisor.homeassistant.frontend_check.check_websocket",
+            AsyncMock(return_value=ProbeResult.BAD_RESPONSE),
+        ),
+    ):
+        result = await verify_frontend(coresys)
+
+    if reachable:
+        # Probes ran; the bad responses fail the verification as usual.
+        assert result is False
+        frontend.assert_awaited_once()
+    else:
+        # Probes skipped; the frontend cannot be verified, so it is trusted.
+        assert result is True
+        frontend.assert_not_awaited()
+        assert "skipping frontend verification" in caplog.text
