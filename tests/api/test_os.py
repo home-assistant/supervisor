@@ -297,7 +297,7 @@ async def test_api_os_update_no_auto_reboot_creates_issue(
     assert result["data"]["version"] == "13.0"
 
     # Core versions consuming version_pending get the real current version
-    coresys.homeassistant.version = AwesomeVersion("2026.8.0.dev202607250200")
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0.dev202607250310")
     resp = await api_client.get(f"{prefix}/os/info")
     result = await resp.json()
     assert result["data"]["version_pending"] == "13.0"

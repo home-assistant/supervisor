@@ -66,7 +66,7 @@ RPI_FIRMWARE_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.9.0")
 # First Core nightly whose update entity consumes version_pending to finalize
 # the OS update state (home-assistant/core#177155).
 CORE_VERSION_PENDING_MIN_VERSION: AwesomeVersion = AwesomeVersion(
-    "2026.8.0.dev202607250000"
+    "2026.8.0.dev202607250310"
 )
 
 # pylint: disable=no-value-for-parameter
