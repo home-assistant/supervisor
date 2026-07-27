@@ -384,11 +384,14 @@ class HomeAssistantAPI(CoreSysAttributes):
         Replaces relying on Core pushing port/SSL via the Supervisor options
         API, which races with Supervisor's own startup checks.
         """
-        if not (config := await self.get_http_config()):
+        config = await self.get_http_config()
+        homeassistant = self.sys_homeassistant
+        # Reset to unknown when the config cannot be fetched (older Core, TCP
+        # fallback), so reachability decisions never use another Core's binds.
+        homeassistant.http_server_host = config.server_host if config else None
+        if not config:
             return
 
-        homeassistant = self.sys_homeassistant
-        homeassistant.http_server_host = config.server_host
         if (config.port, config.ssl) == (
             homeassistant.api_port,
             homeassistant.api_ssl,

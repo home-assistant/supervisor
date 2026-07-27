@@ -416,6 +416,27 @@ async def test_http_config_unchanged_not_saved(
     assert coresys.homeassistant.http_server_host == ["172.30.32.1"]
 
 
+async def test_http_config_reset_when_unavailable(
+    coresys: CoreSys, real_get_api_state: HomeAssistantAPI
+):
+    """Test bind hosts reset when the HTTP config cannot be fetched.
+
+    After a downgrade to a Core without the endpoint, reachability decisions
+    must not use the previous Core's binds.
+    """
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0")
+    api.get_core_state = AsyncMock(
+        return_value={"state": "RUNNING", "recorder_state": {}}
+    )
+    coresys.homeassistant.http_server_host = ["172.30.32.1"]
+
+    with patch.object(type(api), "use_unix_socket", False):
+        await api.get_api_state()
+
+    assert coresys.homeassistant.http_server_host is None
+
+
 # --- make_request ---
 
 
