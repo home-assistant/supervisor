@@ -1285,6 +1285,18 @@ class StoreAppNotFoundError(StoreError, APINotFound):
         super().__init__(None, logger)
 
 
+class StoreRepositoryAlreadyAddedError(StoreError, APIConflict):
+    """Raise when a repository is already added to the store."""
+
+    error_key = "store_repository_already_added_error"
+    message_template = "Can't add {url}, already in the store"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, url: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"url": url}
+        super().__init__(None, logger)
+
+
 class StoreRepositoryLocalCannotReset(StoreError, APIError):
     """Raise if user requests a reset on the local app repository."""
 
