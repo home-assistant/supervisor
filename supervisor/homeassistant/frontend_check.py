@@ -149,6 +149,23 @@ async def check_api_reachable(coresys: CoreSys) -> bool:
     return True
 
 
+def bind_reachable(coresys: CoreSys) -> bool:
+    """Return True if Supervisor can reach the address Core's HTTP server binds to.
+
+    Core reports its `server_host` binds via its HTTP config endpoint; when
+    that is unknown (older Core), assume reachable, matching previous
+    behavior. Supervisor connects over IPv4 to the container IP, so the bind
+    is reachable when it includes the IPv4 all-interfaces address or the
+    container IP itself. An IPv6 all-interfaces bind ("::") does not count:
+    Core's HTTP server sockets are v6-only (asyncio sets IPV6_V6ONLY), so
+    they do not accept IPv4 connections.
+    """
+    hosts = coresys.homeassistant.http_server_host
+    if hosts is None:
+        return True
+    return "0.0.0.0" in hosts or str(coresys.homeassistant.ip_address) in hosts
+
+
 async def verify_frontend(coresys: CoreSys) -> bool:
     """Verify the frontend is available after an update.
 
@@ -159,6 +176,14 @@ async def verify_frontend(coresys: CoreSys) -> bool:
     connection, so we fall back to a plain TCP reachability check instead of
     forcing a rollback, relying on the component check done by the caller.
     """
+    if not bind_reachable(coresys):
+        _LOGGER.info(
+            "Core binds its HTTP server to %s which Supervisor cannot reach, "
+            "skipping frontend verification",
+            coresys.homeassistant.http_server_host,
+        )
+        return True
+
     frontend = await check_frontend(coresys)
     websocket = await check_websocket(coresys)
 
