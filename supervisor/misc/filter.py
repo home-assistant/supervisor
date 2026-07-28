@@ -18,6 +18,7 @@ from ..utils import check_exception_chain
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_URL: re.Pattern = re.compile(r"(\w+:\/\/)(.*\.\w+)(.*)")
+RE_URL_CREDENTIALS: re.Pattern = re.compile(r"(?<=://)[^/@\s]+@")
 
 
 def sanitize_host(host: str) -> str:
@@ -45,6 +46,11 @@ def sanitize_url(url: str) -> str:
     return f"{match.group(1)}{host}{match.group(3)}"
 
 
+def sanitize_url_credentials(text: str) -> str:
+    """Return text with userinfo credentials removed from any URLs."""
+    return RE_URL_CREDENTIALS.sub("", text)
+
+
 def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
     """Filter event data before sending to sentry."""
     # Ignore some exceptions. check_exception_chain walks __cause__ so
@@ -61,6 +67,27 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
     # Ignore issue if system is not supported or diagnostics is disabled
     if not coresys.config.diagnostics or not coresys.core.supported or coresys.dev:
         return None
+
+    # Repository URLs can contain user-supplied credentials for private
+    # repositories. Remove credentials from event strings which can contain
+    # such URLs: exception messages (including git stderr in GitPython
+    # exceptions), log messages and breadcrumbs.
+    for exc_entry in cast(dict, event.get("exception", {})).get("values", []):
+        if exc_entry.get("value"):
+            exc_entry["value"] = sanitize_url_credentials(exc_entry["value"])
+
+    if logentry := cast(dict, event.get("logentry", {})):
+        if logentry.get("message"):
+            logentry["message"] = sanitize_url_credentials(logentry["message"])
+        if params := logentry.get("params"):
+            logentry["params"] = [
+                sanitize_url_credentials(param) if isinstance(param, str) else param
+                for param in params
+            ]
+
+    for crumb in cast(dict, event.get("breadcrumbs", {})).get("values", []):
+        if crumb.get("message"):
+            crumb["message"] = sanitize_url_credentials(crumb["message"])
 
     event.setdefault("extra", {}).update({"os.environ": dict(os.environ)})
     event.setdefault("user", {}).update({"id": coresys.machine_id})
@@ -134,7 +161,10 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                 "unhealthy": sorted(coresys.resolution.unhealthy),
             },
             "store": {
-                "repositories": coresys.store.repository_urls,
+                "repositories": [
+                    sanitize_url_credentials(url)
+                    for url in coresys.store.repository_urls
+                ],
             },
             "misc": {
                 "fallback_dns": coresys.plugins.dns.fallback,
