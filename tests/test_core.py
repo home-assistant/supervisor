@@ -365,3 +365,51 @@ async def test_shutdown_skipped_during_startup(
     assert (
         "Ignoring shutdown request, Supervisor has not finished starting" in caplog.text
     )
+
+
+async def test_stop_signals_stopping_complete(coresys: CoreSys):
+    """Test stop() sets stopping_complete before starting the teardown."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    stopping = asyncio.Event()
+    seen_at_api_stop: list[tuple[CoreState, bool]] = []
+
+    async def api_stop():
+        seen_at_api_stop.append((coresys.core.state, stopping.is_set()))
+
+    coresys._websession = AsyncMock()
+    with (
+        patch.object(coresys.api, "stop", new=api_stop),
+        patch.object(coresys.scheduler, "shutdown", new=AsyncMock()),
+        patch.object(coresys.docker, "unload", new=AsyncMock()),
+        patch.object(coresys.homeassistant.api, "close", new=AsyncMock()),
+        patch.object(coresys.ingress, "unload", new=AsyncMock()),
+        patch.object(coresys.hardware, "unload", new=AsyncMock()),
+        patch.object(coresys.dbus, "unload", new=AsyncMock()),
+        patch.object(coresys.loop, "stop") as loop_stop,
+    ):
+        await coresys.core.stop(stopping_complete=stopping)
+
+    assert stopping.is_set()
+    assert coresys.core.state == CoreState.CLOSE
+    # The event was set while STOPPING, before the API teardown began
+    assert seen_at_api_stop == [(CoreState.STOPPING, True)]
+    loop_stop.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "state", [CoreState.STOPPING, CoreState.CLOSE], ids=["stopping", "close"]
+)
+async def test_stop_reentry_signals_event_without_teardown(
+    coresys: CoreSys, state: CoreState
+):
+    """Test stop() while already stopping sets the event and does nothing else."""
+    await coresys.core.set_state(state)
+
+    stopping = asyncio.Event()
+    with patch.object(coresys.api, "stop", new=(api_stop := AsyncMock())):
+        await coresys.core.stop(stopping_complete=stopping)
+
+    assert stopping.is_set()
+    api_stop.assert_not_called()
+    assert coresys.core.state == state

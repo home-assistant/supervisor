@@ -299,3 +299,13 @@ async def test_blacklist_legacy_alias(
         "/homeassistant/api/hassio/app", headers={"Authorization": "Bearer abc123"}
     )
     assert resp.status == 403
+
+
+async def test_api_security_system_stopping(api_system: TestClient, coresys: CoreSys):
+    """Test API requests are rejected while the Supervisor is stopping."""
+    await coresys.core.set_state(CoreState.STOPPING)
+
+    resp = await api_system.get("/supervisor/ping")
+    result = await resp.json()
+    assert resp.status == 400
+    assert result["result"] == "error"
