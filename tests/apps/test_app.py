@@ -1319,7 +1319,7 @@ async def test_app_manual_only_boot(install_app_example: App):
                 reference=TEST_ADDON_SLUG,
                 reference_extra={"port": 2222},
             ),
-            [SuggestionType.CLEAR_PORT_CONFIG],
+            [SuggestionType.CLEAR_PORT_CONFIG, SuggestionType.EXECUTE_START],
         ),
     ],
 )
@@ -1419,6 +1419,13 @@ async def test_app_start_port_conflict_error(
         and suggestion.reference_extra == {"port": port}
         for suggestion in coresys.resolution.suggestions
     )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
 
 
 @pytest.mark.usefixtures(
@@ -1464,6 +1471,99 @@ async def test_app_restart_port_conflict_creates_issue(
         and suggestion.context == ContextType.ADDON
         and suggestion.reference == install_app_ssh.slug
         and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+
+
+@pytest.mark.usefixtures(
+    "container", "mock_amd64_arch_supported", "path_extern", "tmp_supervisor_data"
+)
+async def test_app_start_port_conflict_without_configured_ports(
+    coresys: CoreSys,
+    install_app_ssh: App,
+):
+    """Test port conflict during start with no configured ports suggests start only."""
+    port = 1234
+    docker_message = (
+        "failed to set up container networking: driver failed programming external "
+        "connectivity on endpoint app_local_ssh: failed to bind host port for "
+        "0.0.0.0:1234:172.30.33.4:1234/tcp: address already in use"
+    )
+    install_app_ssh.data["image"] = "test/amd64-addon-ssh"
+    install_app_ssh.data.pop(ATTR_PORTS, None)
+    install_app_ssh.persist.pop("network", None)
+    coresys.docker.containers.create.return_value.start.side_effect = (
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, docker_message)
+    )
+    await install_app_ssh.load()
+
+    with (
+        patch.object(App, "write_options"),
+        pytest.raises(
+            AppPortConflict,
+            check=lambda exc: exc.extra_fields == {"name": "local_ssh", "port": port},
+        ),
+    ):
+        await install_app_ssh.start()
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": port}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+    assert not any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+
+
+async def test_create_port_conflict_issue_non_user_port_suggestion(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test port conflict on non-user-mapped default port suggests clear+start."""
+    install_app_ssh.data[ATTR_PORTS] = {"80/tcp": 80, "22/tcp": None}
+    install_app_ssh.persist.pop("network", None)
+
+    install_app_ssh.create_port_conflict_issue(80)
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": 80}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": 80}
+        for suggestion in coresys.resolution.suggestions
+    )
+    assert any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": 80}
         for suggestion in coresys.resolution.suggestions
     )
 
