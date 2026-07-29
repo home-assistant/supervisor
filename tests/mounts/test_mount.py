@@ -9,7 +9,7 @@ import stat
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from dbus_fast import DBusError, ErrorType, Variant
+from dbus_fast import DBusError, ErrorType
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -19,6 +19,7 @@ from supervisor.mounts.const import MountCifsVersion, MountType, MountUsage
 from supervisor.mounts.mount import CIFSMount, Mount, NFSMount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 
+from tests.common import mount_start_transient_unit_call
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
@@ -106,47 +107,18 @@ async def test_cifs_mount(
     assert mount.local_where.is_dir()
 
     assert systemd_service.StartTransientUnit.calls == [
-        (
-            "mnt-data-supervisor-mounts-test.mount",
-            "fail",
-            [
-                (
-                    "Options",
-                    Variant(
-                        "s",
-                        ",".join(
-                            [
-                                "noserverino",
-                                "soft",
-                                "echo_interval=10",
-                                "retrans=0",
-                            ]
-                            + expected_options
-                            + [
-                                "credentials=/mnt/data/supervisor/.mounts_credentials/test"
-                            ]
-                        ),
-                    ),
-                ),
-                ("Type", Variant("s", "cifs")),
-                ("Description", Variant("s", "Supervisor cifs mount: test")),
-                ("What", Variant("s", "//test.local/camera")),
-                ("TimeoutUSec", Variant("t", 35000000)),
-                ("LazyUnmount", Variant("b", True)),
-            ],
-            [
-                (
-                    "mnt-data-supervisor-mounts-test.automount",
-                    [
-                        (
-                            "Description",
-                            Variant("s", "Supervisor cifs mount: test (automount)"),
-                        ),
-                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
-                        ("TimeoutIdleUSec", Variant("t", 300000000)),
-                    ],
-                ),
-            ],
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-mounts-test.automount",
+            mount_unit="mnt-data-supervisor-mounts-test.mount",
+            where="/mnt/data/supervisor/mounts/test",
+            description="Supervisor cifs mount: test",
+            what="//test.local/camera",
+            fstype="cifs",
+            options=",".join(
+                ["noserverino", "soft", "echo_interval=10", "retrans=0"]
+                + expected_options
+                + ["credentials=/mnt/data/supervisor/.mounts_credentials/test"]
+            ),
         )
     ]
     assert mount.path_credentials.exists()
@@ -197,35 +169,14 @@ async def test_cifs_mount_read_only(
     assert mount.local_where.is_dir()
 
     assert systemd_service.StartTransientUnit.calls == [
-        (
-            "mnt-data-supervisor-mounts-test.mount",
-            "fail",
-            [
-                (
-                    "Options",
-                    Variant(
-                        "s", "ro,noserverino,soft,echo_interval=10,retrans=0,guest"
-                    ),
-                ),
-                ("Type", Variant("s", "cifs")),
-                ("Description", Variant("s", "Supervisor cifs mount: test")),
-                ("What", Variant("s", "//test.local/camera")),
-                ("TimeoutUSec", Variant("t", 35000000)),
-                ("LazyUnmount", Variant("b", True)),
-            ],
-            [
-                (
-                    "mnt-data-supervisor-mounts-test.automount",
-                    [
-                        (
-                            "Description",
-                            Variant("s", "Supervisor cifs mount: test (automount)"),
-                        ),
-                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
-                        ("TimeoutIdleUSec", Variant("t", 300000000)),
-                    ],
-                ),
-            ],
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-mounts-test.automount",
+            mount_unit="mnt-data-supervisor-mounts-test.mount",
+            where="/mnt/data/supervisor/mounts/test",
+            description="Supervisor cifs mount: test",
+            what="//test.local/camera",
+            fstype="cifs",
+            options="ro,noserverino,soft,echo_interval=10,retrans=0,guest",
         )
     ]
 
@@ -276,30 +227,14 @@ async def test_nfs_mount(
     assert mount.local_where.is_dir()
 
     assert systemd_service.StartTransientUnit.calls == [
-        (
-            "mnt-data-supervisor-mounts-test.mount",
-            "fail",
-            [
-                ("Options", Variant("s", "port=1234,softerr,timeo=100,retrans=2")),
-                ("Type", Variant("s", "nfs")),
-                ("Description", Variant("s", "Supervisor nfs mount: test")),
-                ("What", Variant("s", "test.local:/media/camera")),
-                ("TimeoutUSec", Variant("t", 35000000)),
-                ("LazyUnmount", Variant("b", True)),
-            ],
-            [
-                (
-                    "mnt-data-supervisor-mounts-test.automount",
-                    [
-                        (
-                            "Description",
-                            Variant("s", "Supervisor nfs mount: test (automount)"),
-                        ),
-                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
-                        ("TimeoutIdleUSec", Variant("t", 300000000)),
-                    ],
-                ),
-            ],
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-mounts-test.automount",
+            mount_unit="mnt-data-supervisor-mounts-test.mount",
+            where="/mnt/data/supervisor/mounts/test",
+            description="Supervisor nfs mount: test",
+            what="test.local:/media/camera",
+            fstype="nfs",
+            options="port=1234,softerr,timeo=100,retrans=2",
         )
     ]
 
@@ -336,30 +271,14 @@ async def test_nfs_mount_read_only(
     assert mount.local_where.is_dir()
 
     assert systemd_service.StartTransientUnit.calls == [
-        (
-            "mnt-data-supervisor-mounts-test.mount",
-            "fail",
-            [
-                ("Options", Variant("s", "ro,port=1234,softerr,timeo=100,retrans=2")),
-                ("Type", Variant("s", "nfs")),
-                ("Description", Variant("s", "Supervisor nfs mount: test")),
-                ("What", Variant("s", "test.local:/media/camera")),
-                ("TimeoutUSec", Variant("t", 35000000)),
-                ("LazyUnmount", Variant("b", True)),
-            ],
-            [
-                (
-                    "mnt-data-supervisor-mounts-test.automount",
-                    [
-                        (
-                            "Description",
-                            Variant("s", "Supervisor nfs mount: test (automount)"),
-                        ),
-                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
-                        ("TimeoutIdleUSec", Variant("t", 300000000)),
-                    ],
-                ),
-            ],
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-mounts-test.automount",
+            mount_unit="mnt-data-supervisor-mounts-test.mount",
+            where="/mnt/data/supervisor/mounts/test",
+            description="Supervisor nfs mount: test",
+            what="test.local:/media/camera",
+            fstype="nfs",
+            options="ro,port=1234,softerr,timeo=100,retrans=2",
         )
     ]
 
@@ -385,8 +304,11 @@ async def test_load(
         "share": "share",
     }
 
-    # Load mounts it if the unit does not exist
+    # Load mounts it if the unit does not exist. Sequence: .mount lookup,
+    # .automount lookup, legacy-unit check, then the post-mount refresh.
     systemd_service.response_get_unit = [
+        ERROR_NO_UNIT,
+        ERROR_NO_UNIT,
         ERROR_NO_UNIT,
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
@@ -398,33 +320,14 @@ async def test_load(
     )
     assert mount.state == UnitActiveState.ACTIVE
     assert systemd_service.StartTransientUnit.calls == [
-        (
-            "mnt-data-supervisor-mounts-test.mount",
-            "fail",
-            [
-                (
-                    "Options",
-                    Variant("s", "noserverino,soft,echo_interval=10,retrans=0,guest"),
-                ),
-                ("Type", Variant("s", "cifs")),
-                ("Description", Variant("s", "Supervisor cifs mount: test")),
-                ("What", Variant("s", "//test.local/share")),
-                ("TimeoutUSec", Variant("t", 35000000)),
-                ("LazyUnmount", Variant("b", True)),
-            ],
-            [
-                (
-                    "mnt-data-supervisor-mounts-test.automount",
-                    [
-                        (
-                            "Description",
-                            Variant("s", "Supervisor cifs mount: test (automount)"),
-                        ),
-                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
-                        ("TimeoutIdleUSec", Variant("t", 300000000)),
-                    ],
-                ),
-            ],
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-mounts-test.automount",
+            mount_unit="mnt-data-supervisor-mounts-test.mount",
+            where="/mnt/data/supervisor/mounts/test",
+            description="Supervisor cifs mount: test",
+            what="//test.local/share",
+            fstype="cifs",
+            options="noserverino,soft,echo_interval=10,retrans=0,guest",
         )
     ]
     assert systemd_service.ReloadOrRestartUnit.calls == []
@@ -579,11 +482,15 @@ async def test_unmount_failure(
     # subsequent .mount stop raises and surfaces as MountError.
     assert len(systemd_service.StopUnit.calls) == 2
 
-    # If unit is missing we skip unmounting, its already gone
+    # If the .mount unit is missing only the .automount stop is attempted —
+    # it disarms the trigger and detaches anything left at the path.
     systemd_service.StopUnit.calls.clear()
+    systemd_service.response_stop_unit = "/org/freedesktop/systemd1/job/7623"
     systemd_service.response_get_unit = ERROR_NO_UNIT
     await mount.unmount()
-    assert systemd_service.StopUnit.calls == []
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-mounts-test.automount", "fail")
+    ]
 
 
 async def test_mount_local_where_invalid(
@@ -737,29 +644,13 @@ async def test_mount_fails_if_down(
     assert mount.local_where.is_dir()
 
     assert systemd_service.StartTransientUnit.calls == [
-        (
-            "mnt-data-supervisor-mounts-test.mount",
-            "fail",
-            [
-                ("Options", Variant("s", "port=1234,softerr,timeo=100,retrans=2")),
-                ("Type", Variant("s", "nfs")),
-                ("Description", Variant("s", "Supervisor nfs mount: test")),
-                ("What", Variant("s", "test.local:/media/camera")),
-                ("TimeoutUSec", Variant("t", 35000000)),
-                ("LazyUnmount", Variant("b", True)),
-            ],
-            [
-                (
-                    "mnt-data-supervisor-mounts-test.automount",
-                    [
-                        (
-                            "Description",
-                            Variant("s", "Supervisor nfs mount: test (automount)"),
-                        ),
-                        ("Where", Variant("s", "/mnt/data/supervisor/mounts/test")),
-                        ("TimeoutIdleUSec", Variant("t", 300000000)),
-                    ],
-                ),
-            ],
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-mounts-test.automount",
+            mount_unit="mnt-data-supervisor-mounts-test.mount",
+            where="/mnt/data/supervisor/mounts/test",
+            description="Supervisor nfs mount: test",
+            what="test.local:/media/camera",
+            fstype="nfs",
+            options="port=1234,softerr,timeo=100,retrans=2",
         )
     ]

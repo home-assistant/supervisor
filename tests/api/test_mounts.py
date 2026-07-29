@@ -152,11 +152,13 @@ async def test_api_create_dbus_error_mount_not_added(
 
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
-    systemd_unit_service.active_state = ["failed", "failed", "inactive"]
+    systemd_unit_service.active_state = ["failed", "failed"]
 
     with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
         resp = await api_client.post(
@@ -293,8 +295,12 @@ async def test_api_update_dbus_error_mount_remains(
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_unit_service.active_state = ["failed", "inactive"]
+    # Sequence: old-mount unmount lookup, then .mount/.automount/legacy
+    # lookups of the fresh setup (all gone after the unmount).
     systemd_service.response_get_unit = [
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
     ]
     systemd_service.response_start_transient_unit = DBusError(ErrorType.FAILED, "fail")
@@ -332,16 +338,16 @@ async def test_api_update_dbus_error_mount_remains(
     systemd_service.response_get_unit = [
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
     systemd_unit_service.active_state = [
         "failed",
-        "inactive",
-        "inactive",
         "failed",
-        "inactive",
+        "failed",
     ]
 
     resp = await api_client.put(

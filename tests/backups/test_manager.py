@@ -485,7 +485,8 @@ async def test_backup_media_with_mounts(
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
@@ -550,7 +551,8 @@ async def test_backup_media_with_mounts_retains_files(
     systemd_unit_service.active_state = ["active", "active", "active", "inactive"]
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
@@ -590,7 +592,7 @@ async def test_backup_media_with_mounts_retains_files(
         ("mnt-data-supervisor-media-media_test.mount", "fail"),
     ]
     assert systemd_service.StartTransientUnit.calls == [
-        ("mnt-data-supervisor-media-media_test.mount", "fail", ANY, ANY)
+        ("mnt-data-supervisor-media-media_test.automount", "fail", ANY, ANY)
     ]
 
 
@@ -617,7 +619,8 @@ async def test_backup_share_with_mounts(
     ]
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
@@ -1728,7 +1731,8 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",

@@ -269,10 +269,11 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         """Probe a mount's health and surface the result.
 
         With autofs handling re-activation transparently, a user-driven
-        "reload" reduces to: poke the mount via the probe so the kernel
-        triggers any pending activation, then update the resolution
-        issue accordingly. No systemd reload/restart calls — those
-        would only repeat work the kernel will do on its own when
+        "reload" reduces to: re-arm the automount trigger if it died
+        (out-of-band unmount, failure), then poke the mount via the
+        probe so the kernel triggers any pending activation, and update
+        the resolution issue accordingly. No reload/restart of a
+        healthy setup — the kernel repeats that work on its own when
         something actually accesses the path.
         """
         # Add mount name to job
@@ -283,13 +284,28 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 f"Cannot reload '{name}', no mount exists with that name"
             )
 
-        _LOGGER.info("Probing mount: %s", name)
         mount = self._mounts[name]
+        try:
+            await mount.repair_trigger()
+        except MountError:
+            self._add_failed_issue(mount)
+            raise
+
+        _LOGGER.info("Probing mount: %s", name)
         if await mount.is_mounted():
             mount.dismiss_failed_issue()
             return
 
-        # Probe failed — surface as resolution issue if not already there.
+        self._add_failed_issue(mount)
+        raise MountActivationError(
+            f"Mount {name} is not reachable. "
+            f"Check host logs for errors from mount or systemd unit "
+            f"{mount.unit_name} for details.",
+            _LOGGER.error,
+        )
+
+    def _add_failed_issue(self, mount: Mount) -> None:
+        """Surface a failed mount as resolution issue if not already there."""
         if mount.failed_issue not in self.sys_resolution.issues:
             self.sys_resolution.add_issue(
                 replace(mount.failed_issue),
@@ -298,12 +314,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                     SuggestionType.EXECUTE_REMOVE,
                 ],
             )
-        raise MountActivationError(
-            f"Mount {name} is not reachable. "
-            f"Check host logs for errors from mount or systemd unit "
-            f"{mount.unit_name} for details.",
-            _LOGGER.error,
-        )
 
     @Job(
         name="mount_manager_relocate_local_data",
