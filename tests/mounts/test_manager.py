@@ -21,7 +21,7 @@ from supervisor.exceptions import (
     MountTargetNotEmptyError,
 )
 from supervisor.mounts.manager import MountManager
-from supervisor.mounts.mount import BindMount, Mount
+from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
@@ -431,58 +431,17 @@ async def test_reload_mount_healthy_skips_systemd(
     all_dbus_services: dict[str, DBusServiceMock],
     mount: Mount,
 ):
-    """A healthy mount (active + probe passes) skips the systemd reload but rebinds."""
+    """A healthy mount (probe passes) triggers no systemd operations at all."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
     systemd_service.StartTransientUnit.calls.clear()
     systemd_service.StopUnit.calls.clear()
 
-    systemd_service.response_get_unit = [
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
-        ERROR_NO_UNIT,
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
-    ]
-
     await coresys.mounts.reload_mount(mount.name)
 
     assert systemd_service.ReloadOrRestartUnit.calls == []
-    assert [call[0] for call in systemd_service.StopUnit.calls] == [
-        "mnt-data-supervisor-media-media_test.mount"
-    ]
-    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
-        "mnt-data-supervisor-media-media_test.mount"
-    ]
-
-
-async def test_reload_mount_recreates_bind_mount_removed_by_systemd(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock],
-    mount: Mount,
-):
-    """Reload re-creates a bind mount that systemd tore down with the data mount.
-
-    systemd's implicit Requires= dependency from the bind unit to the data
-    mount unit means a stop/restart of a failed data mount unmounts the bind
-    mount as well, while the BoundMount bookkeeping still says it is bound.
-    """
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_service.StartTransientUnit.calls.clear()
-    systemd_service.StopUnit.calls.clear()
-
-    # Bind mount unit is gone: unmount is skipped, load mounts it again
-    systemd_service.response_get_unit = [
-        ERROR_NO_UNIT,
-        ERROR_NO_UNIT,
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
-    ]
-
-    assert not coresys.mounts.bound_mounts[0].emergency
-    await coresys.mounts.reload_mount(mount.name)
-
     assert systemd_service.StopUnit.calls == []
-    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
-        "mnt-data-supervisor-media-media_test.mount"
-    ]
+    assert systemd_service.StartTransientUnit.calls == []
 
 
 async def test_reload_mount_probe_failure_surfaces_resolution_issue(
@@ -782,48 +741,6 @@ async def test_update_mount_blocked_by_existing_local_data(
     assert mount == coresys.mounts.get("media_test")
     assert mount.state == UnitActiveState.ACTIVE
     assert systemd_service.StopUnit.calls == []
-
-
-async def test_create_mount_bind_failure_rolls_back(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock],
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
-):
-    """Test a bind mount failure during create unmounts the new data mount."""
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_service.StartTransientUnit.calls.clear()
-    systemd_service.StopUnit.calls.clear()
-
-    await coresys.mounts.load()
-
-    systemd_service.response_get_unit = {
-        "mnt-data-supervisor-mounts-media_test.mount": [
-            ERROR_NO_UNIT,
-            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
-            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
-        ],
-        "mnt-data-supervisor-media-media_test.mount": [ERROR_NO_UNIT],
-    }
-
-    with (
-        patch.object(
-            BindMount, "load", side_effect=MountError("Test bind mount failure")
-        ),
-        pytest.raises(MountError),
-    ):
-        await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
-
-    assert "media_test" not in coresys.mounts
-    assert coresys.mounts.bound_mounts == []
-    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
-        "mnt-data-supervisor-mounts-media_test.mount"
-    ]
-    assert [call[0] for call in systemd_service.StopUnit.calls] == [
-        "mnt-data-supervisor-mounts-media_test.mount"
-    ]
 
 
 async def test_create_mount_start_unit_failure(
