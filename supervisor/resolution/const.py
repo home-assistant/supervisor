@@ -149,7 +149,7 @@ LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
     "detached_addon_removed": "detached_app_removed",
 }
 
-# Reverse map for translating legacy check slugs in incoming V1 API requests.
+# Reverse map for translating current check slugs to legacy slugs for backward compatibility.
 INCOMING_LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
     v: k for k, v in LEGACY_CHECK_SLUG_MAP.items()
 }

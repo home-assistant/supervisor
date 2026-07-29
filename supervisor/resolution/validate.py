@@ -32,6 +32,8 @@ def _get_check_slug(module_name: str) -> str:
 
 def _migrate_checks_config(data: dict) -> dict:
     """Migrate legacy check slug keys to current slug keys."""
+    if not isinstance(data, dict):
+        raise vol.Invalid("Expected a dictionary for checks configuration")
     return {LEGACY_CHECK_SLUG_MAP.get(key, key): value for key, value in data.items()}
 
 

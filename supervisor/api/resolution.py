@@ -150,7 +150,6 @@ class APIResolution(CoreSysAttributes):
         await self.sys_resolution.save_data()
 
     @api_process
-    @api_process
     async def options_check_v1(self, request: web.Request) -> None:
         """Set options for check (v1: accepts legacy check slug in URL)."""
         body = await api_validate(SCHEMA_CHECK_OPTIONS, request)
