@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from ..bus import EventListener
+from ..const import FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     ResolutionError,
@@ -17,6 +18,8 @@ from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
 from .const import (
     FILE_CONFIG_RESOLUTION,
+    INCOMING_LEGACY_CHECK_SLUG_MAP,
+    LEGACY_ISSUE_TYPE_MAP,
     SCHEDULED_HEALTHCHECK,
     ContextType,
     IssueType,
@@ -30,6 +33,24 @@ from .fixup import ResolutionFixup
 from .validate import SCHEMA_RESOLUTION_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def process_issue_dict_for_legacy_compatibility(
+    issue_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Map new issue type values to legacy values for API compatibility."""
+    if (issue_type := issue_data.get("type")) in LEGACY_ISSUE_TYPE_MAP:
+        return issue_data | {"type": LEGACY_ISSUE_TYPE_MAP[issue_type]}
+    return issue_data
+
+
+def process_check_dict_for_legacy_compatibility(
+    check_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Map new check slug values to legacy values for API compatibility."""
+    if (slug := check_data.get("slug")) in INCOMING_LEGACY_CHECK_SLUG_MAP:
+        return check_data | {"slug": INCOMING_LEGACY_CHECK_SLUG_MAP[slug]}
+    return check_data
 
 
 class ResolutionManager(FileConfiguration, CoreSysAttributes):
@@ -169,12 +190,22 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             self.add_unhealthy_reason(self._OSERROR_UNHEALTHY_REASONS[err.errno])
 
     def _make_issue_message(self, issue: Issue) -> dict[str, Any]:
-        """Make issue into message for core."""
-        return asdict(issue) | {
+        """Make issue into message for core.
+
+        Applies legacy compatibility shim when SUPERVISOR_WEBSOCKET_V2_API is
+        disabled (backward compatible with Home Assistant Core v2026.7 and
+        earlier).
+        """
+        data = asdict(issue) | {
             "suggestions": [
                 asdict(suggestion) for suggestion in self.suggestions_for_issue(issue)
             ]
         }
+        if not self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            data = process_issue_dict_for_legacy_compatibility(data)
+        return data
 
     def get_suggestion_by_id(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid."""
@@ -290,8 +321,13 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._issues.remove(issue)
 
         # Event on issue removal
+        issue_data = asdict(issue)
+        if not self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            issue_data = process_issue_dict_for_legacy_compatibility(issue_data)
         self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.ISSUE_REMOVED, asdict(issue)
+            WSEvent.ISSUE_REMOVED, issue_data
         )
 
         # Clean up any orphaned suggestions

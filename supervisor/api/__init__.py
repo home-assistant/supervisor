@@ -438,13 +438,33 @@ class RestAPI(CoreSysAttributes):
         api_resolution = APIResolution()
         api_resolution.coresys = self.coresys
 
+        if app is self.versions[AppVersion.V1]:
+            app.add_routes(
+                [
+                    web.get("/resolution/info", api_resolution.info_v1),
+                    web.post(
+                        "/resolution/check/{check}/options",
+                        api_resolution.options_check_v1,
+                    ),
+                    web.post(
+                        "/resolution/check/{check}/run", api_resolution.run_check_v1
+                    ),
+                ]
+            )
+        else:
+            app.add_routes(
+                [
+                    web.get("/resolution/info", api_resolution.info),
+                    web.post(
+                        "/resolution/check/{check}/options",
+                        api_resolution.options_check,
+                    ),
+                    web.post("/resolution/check/{check}/run", api_resolution.run_check),
+                ]
+            )
+
         app.add_routes(
             [
-                web.get("/resolution/info", api_resolution.info),
-                web.post(
-                    "/resolution/check/{check}/options", api_resolution.options_check
-                ),
-                web.post("/resolution/check/{check}/run", api_resolution.run_check),
                 web.post(
                     "/resolution/suggestion/{suggestion}",
                     api_resolution.apply_suggestion,
