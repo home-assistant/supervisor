@@ -86,6 +86,7 @@ async def test_adjust_system_datetime_if_time_behind(
     systemd_service.StopUnit.calls.clear()
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_unit_service.active_state = "active"
+    systemd_unit_service.active_state_read.clear()
 
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC) + datetime.timedelta(
         hours=1, minutes=1
@@ -108,7 +109,10 @@ async def test_adjust_system_datetime_if_time_behind(
     ):
         # Start the time adjustment which will wait for timesyncd to stop
         task = asyncio.create_task(coresys.core._adjust_system_datetime())
-        await asyncio.sleep(0.1)
+        # wait_for_active_state installs the PropertiesChanged subscription and
+        # then reads ActiveState. Waiting for that read guarantees the client is
+        # subscribed before we emit, so the signal cannot be lost to a race.
+        await systemd_unit_service.active_state_read.wait()
         # Simulate timesyncd stopping via D-Bus signal
         systemd_unit_service.emit_properties_changed({"ActiveState": "inactive"})
         await task
