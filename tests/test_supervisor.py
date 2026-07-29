@@ -279,9 +279,13 @@ async def test_restart_returns_once_requests_rejected(coresys: CoreSys):
     await coresys.core.set_state(CoreState.RUNNING)
 
     teardown_release = asyncio.Event()
+    loop_stop_called = asyncio.Event()
 
     async def blocked_api_stop():
         await teardown_release.wait()
+
+    def blocked_loop_stop() -> None:
+        loop_stop_called.set()
 
     coresys._websession = AsyncMock()  # pylint: disable=protected-access
     with (
@@ -292,7 +296,7 @@ async def test_restart_returns_once_requests_rejected(coresys: CoreSys):
         patch.object(coresys.ingress, "unload", new=AsyncMock()),
         patch.object(coresys.hardware, "unload", new=AsyncMock()),
         patch.object(coresys.dbus, "unload", new=AsyncMock()),
-        patch.object(coresys.loop, "stop"),
+        patch.object(coresys.loop, "stop", side_effect=blocked_loop_stop),
     ):
         await coresys.supervisor.restart()
 
@@ -305,3 +309,8 @@ async def test_restart_returns_once_requests_rejected(coresys: CoreSys):
         async with asyncio.timeout(1):
             while coresys.core.state != CoreState.CLOSE:
                 await asyncio.sleep(0)
+
+        # Ensure the stop task reaches loop.stop while it is still patched,
+        # otherwise the real loop.stop can run after this context exits.
+        async with asyncio.timeout(1):
+            await loop_stop_called.wait()
