@@ -145,7 +145,7 @@ class Tasks(CoreSysAttributes):
             # Ultimately auto updates should be handled by Home Assistant Core itself
             # through a update entity feature.
             message = {
-                ATTR_TYPE: WSType.HASSIO_UPDATE_ADDON,
+                ATTR_TYPE: WSType.HASSIO_UPDATE_APP,
                 "addon": app.slug,
                 "backup": True,
             }

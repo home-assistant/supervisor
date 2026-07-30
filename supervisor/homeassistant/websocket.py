@@ -19,6 +19,7 @@ from ..const import (
     STARTING_STATES,
     BusEvent,
     CoreState,
+    FeatureFlag,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -250,6 +251,27 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         self._lock: asyncio.Lock = asyncio.Lock()
         self._queue: list[dict[str, Any]] = []
 
+    def _apply_legacy_v1_websocket_compatibility(
+        self, message: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Map new WS metadata back to legacy names for v1 compatibility."""
+        if self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            return message
+
+        if message.get(ATTR_TYPE) == WSType.HASSIO_UPDATE_APP:
+            return message.copy() | {ATTR_TYPE: "hassio/update/addon"}
+
+        if (
+            message.get(ATTR_TYPE) == WSType.SUPERVISOR_EVENT
+            and (data := message.get(ATTR_DATA))
+            and data.get(ATTR_EVENT) == WSEvent.APP
+        ):
+            return message.copy() | {ATTR_DATA: data.copy() | {ATTR_EVENT: "addon"}}
+
+        return message
+
     async def _process_queue(self, reference: CoreState) -> None:
         """Process queue once supervisor is running."""
         if reference == CoreState.RUNNING:
@@ -317,7 +339,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         assert self.client
 
         try:
-            await self.client.async_send_command(message)
+            await self.client.async_send_command(
+                self._apply_legacy_v1_websocket_compatibility(message)
+            )
         except HomeAssistantWSConnectionError as err:
             _LOGGER.debug("Fire-and-forget WebSocket command failed: %s", err)
             if self.client:
@@ -333,7 +357,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         # _ensure_connected guarantees self.client is set
         assert self.client
         try:
-            return await self.client.async_send_command(message)
+            return await self.client.async_send_command(
+                self._apply_legacy_v1_websocket_compatibility(message)
+            )
         except HomeAssistantWSConnectionError:
             if self.client:
                 await self.client.close()

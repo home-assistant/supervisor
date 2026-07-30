@@ -10,7 +10,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.apps.app import App
-from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState
+from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState, FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -300,14 +300,22 @@ async def test_scheduled_reload_updater_triggers_one_supervisor_update(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
+@pytest.mark.parametrize(
+    ("websocket_v2_enabled", "expected_message_type"),
+    [(False, "hassio/update/addon"), (True, "hassio/update/app")],
+)
 async def test_update_apps_auto_update_success(
     tasks: Tasks,
-    coresys: CoreSys,
     ha_ws_client: AsyncMock,
     install_app_example: App,
+    websocket_v2_enabled: bool,
+    expected_message_type: str,
 ):
     """Test that an eligible app is auto-updated via websocket command."""
-    await coresys.core.set_state(CoreState.RUNNING)
+    await tasks.sys_core.set_state(CoreState.RUNNING)
+    tasks.sys_config.set_feature_flag(
+        FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, websocket_v2_enabled
+    )
 
     # Set up the app as eligible for auto-update
     install_app_example.auto_update = True
@@ -326,7 +334,7 @@ async def test_update_apps_auto_update_success(
 
         ha_ws_client.async_send_command.assert_any_call(
             {
-                "type": "hassio/update/addon",
+                "type": expected_message_type,
                 "addon": install_app_example.slug,
                 "backup": True,
             }
