@@ -221,6 +221,7 @@ class HomeAssistantCore(JobGroup):
                         _LOGGER.info("Home Assistant Core installation in progress")
 
         progress_task = self.sys_create_task(_periodic_progress_log())
+        install_image: str | None = None
         try:
             while True:
                 # read homeassistant tag and install it
@@ -262,10 +263,8 @@ class HomeAssistantCore(JobGroup):
                         )
 
                 try:
-                    await self.instance.update(
-                        to_version,
-                        image=self.sys_homeassistant.install_image,
-                    )
+                    install_image = self.sys_homeassistant.install_image
+                    await self.instance.update(to_version, image=install_image)
                     self.sys_homeassistant.version = self.instance.version or to_version
                     break
                 except DockerError, JobException:
@@ -283,7 +282,7 @@ class HomeAssistantCore(JobGroup):
             await progress_task
 
         _LOGGER.info("Home Assistant docker now installed")
-        self.sys_homeassistant.set_image(self.sys_homeassistant.install_image)
+        self.sys_homeassistant.set_image(install_image)
         await self.sys_homeassistant.save_data()
 
         # finishing
@@ -335,6 +334,7 @@ class HomeAssistantCore(JobGroup):
             )
 
         old_image = self.sys_homeassistant.image
+        install_image = self.sys_homeassistant.install_image
         rollback_version = (
             self.sys_homeassistant.version if not self.error_state else None
         )
@@ -362,9 +362,7 @@ class HomeAssistantCore(JobGroup):
             """Pull the Home Assistant image for the given version."""
             _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
-                await self.instance.update(
-                    to_version, image=self.sys_homeassistant.install_image
-                )
+                await self.instance.update(to_version, image=install_image)
             except DockerError as err:
                 raise HomeAssistantUpdateImageError(
                     _LOGGER.warning, version=str(to_version)
@@ -373,7 +371,7 @@ class HomeAssistantCore(JobGroup):
         async def _start_update(to_version: AwesomeVersion) -> None:
             """Record the new version, (re)start Core and persist the change."""
             self.sys_homeassistant.version = self.instance.version or to_version
-            self.sys_homeassistant.set_image(self.sys_homeassistant.install_image)
+            self.sys_homeassistant.set_image(install_image)
 
             if running:
                 await self.start()
