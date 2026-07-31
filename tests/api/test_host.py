@@ -457,7 +457,7 @@ async def test_disk_usage_api(
         # Mock the directory structure sizes for each path
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 100000000,
                 "children": [
@@ -465,7 +465,7 @@ async def test_disk_usage_api(
                 ],
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 200000000,
                 "children": [
@@ -537,8 +537,10 @@ async def test_disk_usage_api(
         assert children[0]["label"] == "System"
 
         # Verify all expected directories are present in the remaining children
-        assert children[1]["id"] == "addons_data"
-        assert children[2]["id"] == "addons_config"
+        expected_data_id = "addons_data" if prefix == "" else "apps_data"
+        expected_config_id = "addons_config" if prefix == "" else "apps_config"
+        assert children[1]["id"] == expected_data_id
+        assert children[2]["id"] == expected_config_id
         assert children[3]["id"] == "media"
         assert children[4]["id"] == "share"
         assert children[5]["id"] == "backup"
@@ -575,8 +577,8 @@ async def test_disk_usage_api(
         call_args = mock_dir_sizes.call_args
         assert call_args[0][1] == 1  # max_depth parameter
         paths_dict = call_args[0][0]  # paths dictionary
-        assert paths_dict["addons_data"] == coresys.config.path_apps_data
-        assert paths_dict["addons_config"] == coresys.config.path_app_configs
+        assert paths_dict["apps_data"] == coresys.config.path_apps_data
+        assert paths_dict["apps_config"] == coresys.config.path_app_configs
         assert paths_dict["media"] == coresys.config.path_media
         assert paths_dict["share"] == coresys.config.path_share
         assert paths_dict["backup"] == coresys.config.path_backup
@@ -598,7 +600,7 @@ async def test_disk_usage_api_with_custom_depth(
         # Mock deeper directory structure
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 100000000,
                 "children": [
@@ -617,7 +619,7 @@ async def test_disk_usage_api_with_custom_depth(
                 ],
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 100000000,
                 "children": [
@@ -757,12 +759,12 @@ async def test_disk_usage_api_invalid_depth(
         mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 100000000,
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 100000000,
             },
@@ -822,12 +824,12 @@ async def test_disk_usage_api_empty_directories(
         # Mock empty directory structures (no children)
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 0,
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 0,
             },
@@ -872,6 +874,44 @@ async def test_disk_usage_api_empty_directories(
         # All other directories should have size 0
         for i in range(1, len(children)):
             assert children[i]["used_bytes"] == 0
+
+
+async def test_disk_usage_api_v1_uses_legacy_addon_ids(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test v1 disk usage response uses legacy addon IDs."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(coresys.hardware.disk, "get_dir_sizes") as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+        mock_dir_sizes.return_value = [
+            {"id": "apps_data", "label": "Apps Data", "used_bytes": 100000000},
+            {
+                "id": "apps_config",
+                "label": "Apps Config",
+                "used_bytes": 200000000,
+            },
+            {"id": "media", "label": "Media", "used_bytes": 50000000},
+            {"id": "share", "label": "Share", "used_bytes": 300000000},
+            {"id": "backup", "label": "Backup", "used_bytes": 10000000},
+            {"id": "ssl", "label": "SSL", "used_bytes": 40000000},
+            {
+                "id": "homeassistant",
+                "label": "Home Assistant",
+                "used_bytes": 40000000,
+            },
+        ]
+
+        resp = await api_client.get("/host/disks/default/usage")
+        assert resp.status == 200
+        result = await resp.json()
+
+        child_ids = [child["id"] for child in result["data"]["children"]]
+        assert "addons_data" in child_ids
+        assert "addons_config" in child_ids
+        assert "apps_data" not in child_ids
+        assert "apps_config" not in child_ids
 
 
 @pytest.mark.parametrize("action", ["reboot", "shutdown"])
