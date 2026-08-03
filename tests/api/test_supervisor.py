@@ -16,8 +16,8 @@ from supervisor.core import Core
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     HassioError,
+    HostJournalGatewaydConnectionError,
     HostNotSupportedError,
-    HostServiceError,
     StoreGitError,
 )
 from supervisor.homeassistant.const import WSEvent
@@ -257,7 +257,7 @@ async def test_api_supervisor_fallback_log_capture(
 
     journald_logs.reset_mock()
 
-    journald_logs.side_effect = HostServiceError(
+    journald_logs.side_effect = HostJournalGatewaydConnectionError(
         "Unable to connect to systemd-journal-gatewayd"
     )
 

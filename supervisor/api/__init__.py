@@ -11,7 +11,11 @@ from aiohttp import hdrs, web
 from ..apps.app import App
 from ..const import SUPERVISOR_DOCKER_NAME, AppState, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIAppNotInstalled, HostNotSupportedError, HostServiceError
+from ..exceptions import (
+    APIAppNotInstalled,
+    HostJournalGatewaydConnectionError,
+    HostNotSupportedError,
+)
 from ..utils.sentry import async_capture_exception
 from .apps import APIApps
 from .audio import APIAudio
@@ -506,7 +510,9 @@ class RestAPI(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-exception-caught
                 # Supervisor logs are critical, so catch everything, log the exception
                 # and try to return Docker container logs as the fallback
-                if isinstance(err, (HostNotSupportedError, HostServiceError)):
+                if isinstance(
+                    err, (HostNotSupportedError, HostJournalGatewaydConnectionError)
+                ):
                     # No need for a traceback or capturing to Sentry, the cause
                     # is known and already logged at the source (e.g. missing or
                     # unreachable systemd-journal-gatewayd).

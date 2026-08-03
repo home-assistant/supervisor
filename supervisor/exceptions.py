@@ -791,8 +791,12 @@ class HostNotSupportedError(HassioNotSupportedError):
     """Host function is not supported."""
 
 
-class HostServiceError(HostError, APIError):
+class HostServiceError(HostError):
     """Host service functions failed."""
+
+
+class HostJournalGatewaydConnectionError(HostServiceError, APIError):
+    """Connection to systemd-journal-gatewayd failed."""
 
 
 class HostAppArmorError(HostError):

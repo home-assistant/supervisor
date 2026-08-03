@@ -12,7 +12,7 @@ import time_machine
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
-from supervisor.exceptions import HostServiceError
+from supervisor.exceptions import HostJournalGatewaydConnectionError
 from supervisor.homeassistant.api import APIState
 from supervisor.host.const import LogFormat, LogFormatter
 from supervisor.host.control import SystemControl
@@ -487,7 +487,7 @@ async def test_advanced_logs_gateway_unavailable(
     """Test connection failure to journal gateway returns a plain API error."""
     api_client, prefix = api_client_with_prefix
 
-    journald_logs.side_effect = HostServiceError(
+    journald_logs.side_effect = HostJournalGatewaydConnectionError(
         "Unable to connect to systemd-journal-gatewayd"
     )
 
