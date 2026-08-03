@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import ANY, MagicMock, patch
 
+from aiohttp import ClientPayloadError
 from aiohttp.test_utils import TestClient
 from dbus_fast import DBusError, ErrorType
 import pytest
@@ -434,6 +435,46 @@ async def test_advanced_logs_errors(
     assert (
         content
         == "Invalid content type requested. Only text/plain and text/x-log supported for now."
+    )
+
+
+async def test_advanced_logs_gateway_closed_mid_stream(
+    journald_gateway: MagicMock,
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test connection to journal gateway closed mid-stream ends the stream gracefully."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_gateway.content.feed_data(b"__CURSOR=cursor1\nMESSAGE=Hello, world!\n\n")
+
+    resp = await api_client.get(f"{prefix}/host/logs/identifiers/test")
+    assert resp.status == 200
+
+    # Simulate connection to systemd-journal-gatewayd being closed mid-stream,
+    # e.g. because it was stopped on host shutdown.
+    journald_gateway.content.set_exception(
+        ClientPayloadError("Response payload is not completed")
+    )
+
+    assert await resp.text() == "Hello, world!\n"
+
+
+async def test_advanced_logs_gateway_reset_before_stream(
+    journald_gateway: MagicMock,
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test connection reset before the log stream started returns an API error."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_gateway.content.set_exception(
+        ClientPayloadError("Response payload is not completed")
+    )
+
+    resp = await api_client.get(f"{prefix}/host/logs/identifiers/test")
+    assert resp.status == 400
+    assert (
+        await resp.text()
+        == "Connection reset when trying to fetch data from systemd-journald."
     )
 
 
