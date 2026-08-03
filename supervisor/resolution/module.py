@@ -18,8 +18,8 @@ from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
 from .const import (
     FILE_CONFIG_RESOLUTION,
-    INCOMING_LEGACY_CHECK_SLUG_MAP,
     LEGACY_ISSUE_TYPE_MAP,
+    OUTGOING_LEGACY_CHECK_SLUG_MAP,
     SCHEDULED_HEALTHCHECK,
     ContextType,
     IssueType,
@@ -48,8 +48,8 @@ def process_check_dict_for_legacy_compatibility(
     check_data: dict[str, Any],
 ) -> dict[str, Any]:
     """Map new check slug values to legacy values for API compatibility."""
-    if (slug := check_data.get("slug")) in INCOMING_LEGACY_CHECK_SLUG_MAP:
-        return check_data | {"slug": INCOMING_LEGACY_CHECK_SLUG_MAP[slug]}
+    if (slug := check_data.get("slug")) in OUTGOING_LEGACY_CHECK_SLUG_MAP:
+        return check_data | {"slug": OUTGOING_LEGACY_CHECK_SLUG_MAP[slug]}
     return check_data
 
 
@@ -196,11 +196,24 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         disabled (backward compatible with Home Assistant Core v2026.7 and
         earlier).
         """
-        data = asdict(issue) | {
-            "suggestions": [
-                asdict(suggestion) for suggestion in self.suggestions_for_issue(issue)
-            ]
-        }
+        return self._issue_event_data(issue, with_suggestions=True)
+
+    def _issue_event_data(
+        self, issue: Issue, *, with_suggestions: bool = False
+    ) -> dict[str, Any]:
+        """Build issue payload and apply legacy compatibility if needed."""
+        data = (
+            asdict(issue)
+            | {
+                "suggestions": [
+                    asdict(suggestion)
+                    for suggestion in self.suggestions_for_issue(issue)
+                ]
+            }
+            if with_suggestions
+            else asdict(issue)
+        )
+
         if not self.sys_config.feature_flags.get(
             FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
         ):
@@ -321,13 +334,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._issues.remove(issue)
 
         # Event on issue removal
-        issue_data = asdict(issue)
-        if not self.sys_config.feature_flags.get(
-            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
-        ):
-            issue_data = process_issue_dict_for_legacy_compatibility(issue_data)
         self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.ISSUE_REMOVED, issue_data
+            WSEvent.ISSUE_REMOVED, self._issue_event_data(issue)
         )
 
         # Clean up any orphaned suggestions

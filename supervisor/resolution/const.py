@@ -149,13 +149,15 @@ LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
     "detached_addon_removed": "detached_app_removed",
 }
 
-# Reverse map for translating current check slugs to legacy slugs for backward compatibility.
-INCOMING_LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
+# Reverse map for translating current check slugs to legacy slugs for outgoing
+# v1-compatible responses.
+OUTGOING_LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
     v: k for k, v in LEGACY_CHECK_SLUG_MAP.items()
 }
 
 # Maps new issue type values to legacy values for backward compatibility.
-# Used for WS API (when SUPERVISOR_WEBSOCKET_V2_API is disabled) and V1 REST API.
+# Used for outgoing WS API compatibility (when SUPERVISOR_WEBSOCKET_V2_API is
+# disabled) and V1 REST API responses.
 # Can be removed when Core v2026.7 is no longer supported.
 LEGACY_ISSUE_TYPE_MAP: dict[str, str] = {
     "deprecated_app": "deprecated_addon",
