@@ -12,6 +12,8 @@ from awesomeversion import AwesomeVersion
 
 from ..const import (
     ATTR_ACCESS_TOKEN,
+    ATTR_APP,
+    ATTR_BACKUP,
     ATTR_DATA,
     ATTR_EVENT,
     ATTR_TYPE,
@@ -261,14 +263,20 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             return message
 
         if message.get(ATTR_TYPE) == WSType.HASSIO_UPDATE_APP:
-            return message.copy() | {ATTR_TYPE: "hassio/update/addon"}
+            # Although this will omit any fields added in future they won't be understood
+            # by legacy versions of core anyway
+            return {
+                ATTR_TYPE: "hassio/update/addon",
+                "addon": message[ATTR_APP],
+                ATTR_BACKUP: message[ATTR_BACKUP],
+            }
 
         if (
             message.get(ATTR_TYPE) == WSType.SUPERVISOR_EVENT
-            and (data := message.get(ATTR_DATA))
+            and (data := message[ATTR_DATA])
             and data.get(ATTR_EVENT) == WSEvent.APP
         ):
-            return message.copy() | {ATTR_DATA: data.copy() | {ATTR_EVENT: "addon"}}
+            return message | {ATTR_DATA: data | {ATTR_EVENT: "addon"}}
 
         return message
 

@@ -301,8 +301,8 @@ async def test_scheduled_reload_updater_triggers_one_supervisor_update(
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
 @pytest.mark.parametrize(
-    ("websocket_v2_enabled", "expected_message_type"),
-    [(False, "hassio/update/addon"), (True, "hassio/update/app")],
+    ("websocket_v2_enabled", "expected_message_type", "expected_slug_key"),
+    [(False, "hassio/update/addon", "addon"), (True, "hassio/update/app", "app")],
 )
 async def test_update_apps_auto_update_success(
     tasks: Tasks,
@@ -310,6 +310,7 @@ async def test_update_apps_auto_update_success(
     install_app_example: App,
     websocket_v2_enabled: bool,
     expected_message_type: str,
+    expected_slug_key: str,
 ):
     """Test that an eligible app is auto-updated via websocket command."""
     await tasks.sys_core.set_state(CoreState.RUNNING)
@@ -335,7 +336,7 @@ async def test_update_apps_auto_update_success(
         ha_ws_client.async_send_command.assert_any_call(
             {
                 "type": expected_message_type,
-                "addon": install_app_example.slug,
+                expected_slug_key: install_app_example.slug,
                 "backup": True,
             }
         )

@@ -7,7 +7,7 @@ from typing import cast
 
 from ..apps.const import APP_UPDATE_CONDITIONS
 from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
-from ..const import ATTR_TYPE, AppState
+from ..const import ATTR_APP, ATTR_BACKUP, ATTR_TYPE, AppState
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
     AppsError,
@@ -146,8 +146,8 @@ class Tasks(CoreSysAttributes):
             # through a update entity feature.
             message = {
                 ATTR_TYPE: WSType.HASSIO_UPDATE_APP,
-                "addon": app.slug,
-                "backup": True,
+                ATTR_APP: app.slug,
+                ATTR_BACKUP: True,
             }
             _LOGGER.debug(
                 "Sending update app WebSocket command to Home Assistant Core: %s",
