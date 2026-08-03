@@ -12,6 +12,7 @@ import time_machine
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
+from supervisor.exceptions import HostServiceError
 from supervisor.homeassistant.api import APIState
 from supervisor.host.const import LogFormat, LogFormatter
 from supervisor.host.control import SystemControl
@@ -476,6 +477,27 @@ async def test_advanced_logs_gateway_reset_before_stream(
         await resp.text()
         == "Connection reset when trying to fetch data from systemd-journald."
     )
+
+
+async def test_advanced_logs_gateway_unavailable(
+    api_client_with_prefix: tuple[TestClient, str],
+    journald_logs: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test connection failure to journal gateway returns a plain API error."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_logs.side_effect = HostServiceError(
+        "Unable to connect to systemd-journal-gatewayd"
+    )
+
+    with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
+        resp = await api_client.get(f"{prefix}/host/logs")
+
+    assert resp.status == 400
+    assert await resp.text() == "Unable to connect to systemd-journal-gatewayd"
+    capture_exception.assert_not_called()
+    assert "Unexpected error during API call" not in caplog.text
 
 
 async def test_disk_usage_api(

@@ -11,7 +11,7 @@ from aiohttp import hdrs, web
 from ..apps.app import App
 from ..const import SUPERVISOR_DOCKER_NAME, AppState, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIAppNotInstalled, HostNotSupportedError
+from ..exceptions import APIAppNotInstalled, HostNotSupportedError, HostServiceError
 from ..utils.sentry import async_capture_exception
 from .apps import APIApps
 from .audio import APIAudio
@@ -506,12 +506,17 @@ class RestAPI(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-exception-caught
                 # Supervisor logs are critical, so catch everything, log the exception
                 # and try to return Docker container logs as the fallback
-                _LOGGER.exception(
-                    "Failed to get supervisor logs using advanced_logs API"
-                )
-                if not isinstance(err, HostNotSupportedError):
-                    # No need to capture HostNotSupportedError to Sentry, the cause
-                    # is known and reported to the user using the resolution center.
+                if isinstance(err, (HostNotSupportedError, HostServiceError)):
+                    # No need for a traceback or capturing to Sentry, the cause
+                    # is known and already logged at the source (e.g. missing or
+                    # unreachable systemd-journal-gatewayd).
+                    _LOGGER.warning(
+                        "Failed to get supervisor logs using advanced_logs API"
+                    )
+                else:
+                    _LOGGER.exception(
+                        "Failed to get supervisor logs using advanced_logs API"
+                    )
                     await async_capture_exception(err)
                 kwargs.pop("follow", None)  # Follow is not supported for Docker logs
                 kwargs.pop("latest", None)  # Latest is not supported for Docker logs

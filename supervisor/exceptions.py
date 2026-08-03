@@ -791,7 +791,7 @@ class HostNotSupportedError(HassioNotSupportedError):
     """Host function is not supported."""
 
 
-class HostServiceError(HostError):
+class HostServiceError(HostError, APIError):
     """Host service functions failed."""
 
 
