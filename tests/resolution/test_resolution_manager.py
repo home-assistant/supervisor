@@ -16,6 +16,7 @@ from supervisor.resolution.const import (
     UnsupportedReason,
 )
 from supervisor.resolution.data import Issue, Suggestion
+from supervisor.resolution.validate import _migrate_checks_config
 
 
 def test_properies_unsupported(coresys: CoreSys):
@@ -454,3 +455,27 @@ async def test_dismiss_issue_removes_orphaned_suggestions(coresys: CoreSys):
                 },
             )
         )
+
+
+@pytest.mark.parametrize(
+    ("legacy_slug", "new_slug"),
+    [
+        ("addon_pwned", "app_pwned"),
+        ("deprecated_addon", "deprecated_app"),
+        ("deprecated_arch_addon", "deprecated_arch_app"),
+        ("detached_addon_missing", "detached_app_missing"),
+        ("detached_addon_removed", "detached_app_removed"),
+    ],
+)
+def test_resolution_file_migration_legacy_check_slugs(legacy_slug: str, new_slug: str):
+    """Test that resolution.json with legacy check slugs is migrated to new names."""
+    # Create a checks config with legacy slug
+    legacy_config = {legacy_slug: {"enabled": False}}
+
+    # Migrate it using the same function used in schema validation
+    migrated_config = _migrate_checks_config(legacy_config)
+
+    # Verify the legacy slug was migrated to the new slug
+    assert new_slug in migrated_config
+    assert legacy_slug not in migrated_config
+    assert migrated_config[new_slug]["enabled"] is False

@@ -15,7 +15,7 @@ from supervisor.resolution.data import Issue
 async def test_base(coresys: CoreSys):
     """Test check basics."""
     detached_app_removed = CheckDetachedAppRemoved(coresys)
-    assert detached_app_removed.slug == "detached_addon_removed"
+    assert detached_app_removed.slug == "detached_app_removed"
     assert detached_app_removed.enabled
 
 
@@ -37,7 +37,7 @@ async def test_check(coresys: CoreSys, install_app_ssh: App, tmp_supervisor_data
     await detached_app_removed()
 
     assert len(coresys.resolution.issues) == 1
-    assert coresys.resolution.issues[0].type is IssueType.DETACHED_ADDON_REMOVED
+    assert coresys.resolution.issues[0].type is IssueType.DETACHED_APP_REMOVED
     assert coresys.resolution.issues[0].context is ContextType.ADDON
     assert coresys.resolution.issues[0].reference == install_app_ssh.slug
 
@@ -57,7 +57,7 @@ async def test_approve(
     assert (
         await detached_app_removed.approve_check(
             Issue(
-                IssueType.DETACHED_ADDON_REMOVED,
+                IssueType.DETACHED_APP_REMOVED,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
@@ -74,7 +74,7 @@ async def test_approve(
     assert (
         await detached_app_removed.approve_check(
             Issue(
-                IssueType.DETACHED_ADDON_REMOVED,
+                IssueType.DETACHED_APP_REMOVED,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )

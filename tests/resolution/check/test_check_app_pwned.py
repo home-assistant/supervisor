@@ -23,7 +23,7 @@ class FakeApp:
 async def test_base(coresys: CoreSys):
     """Test check basics."""
     app_pwned = CheckAppPwned(coresys)
-    assert app_pwned.slug == "addon_pwned"
+    assert app_pwned.slug == "app_pwned"
     assert app_pwned.enabled
 
 
@@ -92,7 +92,7 @@ async def test_with_global_disable(coresys: CoreSys, caplog):
     coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
     await app_pwned.run_check.__wrapped__(app_pwned)
     assert not coresys.security.verify_secret.called
-    assert "Skipping addon_pwned, pwned is globally disabled" in caplog.text
+    assert "Skipping app_pwned, pwned is globally disabled" in caplog.text
 
 
 async def test_did_run(coresys: CoreSys):

@@ -13,7 +13,7 @@ from supervisor.resolution.data import Issue
 async def test_base(coresys: CoreSys):
     """Test check basics."""
     deprecated_app = CheckDeprecatedApp(coresys)
-    assert deprecated_app.slug == "deprecated_addon"
+    assert deprecated_app.slug == "deprecated_app"
     assert deprecated_app.enabled
 
 
@@ -31,7 +31,7 @@ async def test_check(coresys: CoreSys, install_app_ssh: App):
     await deprecated_app()
 
     assert len(coresys.resolution.issues) == 1
-    assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_ADDON
+    assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_APP
     assert coresys.resolution.issues[0].context is ContextType.ADDON
     assert coresys.resolution.issues[0].reference == install_app_ssh.slug
     assert len(coresys.resolution.suggestions) == 1
@@ -45,7 +45,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ADDON,
+                IssueType.DEPRECATED_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
@@ -59,7 +59,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ADDON,
+                IssueType.DEPRECATED_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
