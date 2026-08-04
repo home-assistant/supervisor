@@ -15,10 +15,12 @@ from ..dbus.rauc import RaucState, SlotStatusDataType
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
+    HassOSError,
     HassOSJobError,
     HassOSSlotNotFound,
     HassOSSlotUpdateError,
     HassOSUpdateError,
+    HostError,
 )
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
@@ -26,6 +28,16 @@ from ..resolution.const import ContextType, IssueType, SuggestionType
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# SSH service on Home Assistant OS consuming /root/.ssh/authorized_keys
+DROPBEAR_SERVICE = "dropbear.service"
+
+# OS Agent releases before this return the os.Remove error when clearing an
+# already absent authorized_keys file (inverted error check)
+CLEAR_SSH_AUTH_KEYS_FIXED_VERSION = AwesomeVersion("1.10.0")
+CLEAR_SSH_AUTH_KEYS_MISSING_FILE_ERROR = (
+    "remove /root/.ssh/authorized_keys: no such file or directory"
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -501,3 +513,58 @@ class OSManager(CoreSysAttributes):
 
         _LOGGER.info("Rebooting into new boot slot now")
         await self.sys_host.control.reboot()
+
+    @Job(
+        name="os_manager_add_ssh_authorized_key",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        internal=True,
+    )
+    async def add_ssh_authorized_key(self, key: str) -> None:
+        """Add an SSH authorized key for root on the host and start dropbear.
+
+        OS Agent validates the key since 1.10.0; older releases append it to
+        the authorized_keys file as submitted.
+        """
+        _LOGGER.info("Adding SSH authorized key on host")
+        try:
+            await self.sys_dbus.agent.system.add_ssh_auth_key(key)
+        except DBusError as err:
+            raise HassOSError(
+                f"Can't add SSH authorized key: {err!s}", _LOGGER.error
+            ) from err
+
+        # dropbear on Home Assistant OS is gated by
+        # ConditionFileNotEmpty=/root/.ssh/authorized_keys, which systemd only
+        # evaluates when the unit starts. A running dropbear re-reads the file
+        # on every authentication attempt and starting an active unit is a
+        # no-op, so only the stopped service needs this.
+        try:
+            await self.sys_host.services.start(DROPBEAR_SERVICE)
+        except (HostError, DBusError) as err:
+            raise HassOSError(
+                f"SSH authorized key written, but can't start dropbear: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+    @Job(
+        name="os_manager_clear_ssh_authorized_keys",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        internal=True,
+    )
+    async def clear_ssh_authorized_keys(self) -> None:
+        """Remove all SSH authorized keys of root on the host."""
+        _LOGGER.info("Clearing SSH authorized keys on host")
+        try:
+            await self.sys_dbus.agent.system.clear_ssh_auth_keys()
+        except DBusError as err:
+            # On affected OS Agent releases the missing-file error is the
+            # empty state clearing aims for, so treat it as success there.
+            if (
+                self.sys_dbus.agent.version >= CLEAR_SSH_AUTH_KEYS_FIXED_VERSION
+                or CLEAR_SSH_AUTH_KEYS_MISSING_FILE_ERROR not in str(err)
+            ):
+                raise HassOSError(
+                    f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
+                ) from err
