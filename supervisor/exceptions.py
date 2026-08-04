@@ -795,6 +795,10 @@ class HostServiceError(HostError):
     """Host service functions failed."""
 
 
+class HostJournalGatewaydConnectionError(HostServiceError, APIError):
+    """Connection to systemd-journal-gatewayd failed."""
+
+
 class HostAppArmorError(HostError):
     """Host apparmor functions failed."""
 

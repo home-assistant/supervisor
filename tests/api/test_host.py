@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import ANY, MagicMock, patch
 
+from aiohttp import ClientPayloadError
 from aiohttp.test_utils import TestClient
 from dbus_fast import DBusError, ErrorType
 import pytest
@@ -11,6 +12,7 @@ import time_machine
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
+from supervisor.exceptions import HostJournalGatewaydConnectionError
 from supervisor.homeassistant.api import APIState
 from supervisor.host.const import LogFormat, LogFormatter
 from supervisor.host.control import SystemControl
@@ -435,6 +437,67 @@ async def test_advanced_logs_errors(
         content
         == "Invalid content type requested. Only text/plain and text/x-log supported for now."
     )
+
+
+async def test_advanced_logs_gateway_closed_mid_stream(
+    journald_gateway: MagicMock,
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test connection to journal gateway closed mid-stream ends the stream gracefully."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_gateway.content.feed_data(b"__CURSOR=cursor1\nMESSAGE=Hello, world!\n\n")
+
+    resp = await api_client.get(f"{prefix}/host/logs/identifiers/test")
+    assert resp.status == 200
+
+    # Simulate connection to systemd-journal-gatewayd being closed mid-stream,
+    # e.g. because it was stopped on host shutdown.
+    journald_gateway.content.set_exception(
+        ClientPayloadError("Response payload is not completed")
+    )
+
+    assert await resp.text() == "Hello, world!\n"
+
+
+async def test_advanced_logs_gateway_reset_before_stream(
+    journald_gateway: MagicMock,
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test connection reset before the log stream started returns an API error."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_gateway.content.set_exception(
+        ClientPayloadError("Response payload is not completed")
+    )
+
+    resp = await api_client.get(f"{prefix}/host/logs/identifiers/test")
+    assert resp.status == 400
+    assert (
+        await resp.text()
+        == "Connection reset when trying to fetch data from systemd-journald."
+    )
+
+
+async def test_advanced_logs_gateway_unavailable(
+    api_client_with_prefix: tuple[TestClient, str],
+    journald_logs: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test connection failure to journal gateway returns a plain API error."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_logs.side_effect = HostJournalGatewaydConnectionError(
+        "Unable to connect to systemd-journal-gatewayd"
+    )
+
+    with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
+        resp = await api_client.get(f"{prefix}/host/logs")
+
+    assert resp.status == 400
+    assert await resp.text() == "Unable to connect to systemd-journal-gatewayd"
+    capture_exception.assert_not_called()
+    assert "Unexpected error during API call" not in caplog.text
 
 
 async def test_disk_usage_api(

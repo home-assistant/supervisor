@@ -297,10 +297,10 @@ class APIHost(CoreSysAttributes):
         async with self.sys_host.logs.journald_logs(
             params=params, range_header=range_header, accept=LogFormat.JOURNAL
         ) as resp:
+            response = web.StreamResponse()
+            response.content_type = CONTENT_TYPE_TEXT
+            headers_returned = False
             try:
-                response = web.StreamResponse()
-                response.content_type = CONTENT_TYPE_TEXT
-                headers_returned = False
                 async for cursor, line in journal_logs_reader(
                     resp, log_formatter, no_colors
                 ):
@@ -328,10 +328,19 @@ class APIHost(CoreSysAttributes):
                         )
                         break
             except (ConnectionResetError, ClientPayloadError) as ex:
-                # ClientPayloadError is most likely caused by the closing the connection
-                raise APIError(
-                    "Connection reset when trying to fetch data from systemd-journald."
-                ) from ex
+                # If the stream to the client already started, an error response
+                # can no longer be sent, so just end the stream. This happens
+                # e.g. when systemd-journal-gatewayd is stopped on host shutdown
+                # while a client is following the logs.
+                if not headers_returned:
+                    raise APIError(
+                        "Connection reset when trying to fetch data from systemd-journald."
+                    ) from ex
+                _LOGGER.debug(
+                    "%s raised when reading journal logs: %s",
+                    type(ex).__name__,
+                    ex,
+                )
             return response
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)

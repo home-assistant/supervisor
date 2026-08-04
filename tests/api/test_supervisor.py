@@ -14,7 +14,12 @@ import pytest
 from supervisor.const import CoreState, FeatureFlag
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HassioError, HostNotSupportedError, StoreGitError
+from supervisor.exceptions import (
+    HassioError,
+    HostJournalGatewaydConnectionError,
+    HostNotSupportedError,
+    StoreGitError,
+)
 from supervisor.homeassistant.const import WSEvent
 from supervisor.store.repository import Repository
 from supervisor.supervisor import Supervisor
@@ -244,6 +249,16 @@ async def test_api_supervisor_fallback_log_capture(
     api_client, prefix = api_client_with_prefix
     journald_logs.side_effect = HostNotSupportedError(
         "No systemd-journal-gatewayd Unix socket available!"
+    )
+
+    with patch("supervisor.api.async_capture_exception") as capture_exception:
+        await api_client.get(f"{prefix}/supervisor/logs")
+        capture_exception.assert_not_called()
+
+    journald_logs.reset_mock()
+
+    journald_logs.side_effect = HostJournalGatewaydConnectionError(
+        "Unable to connect to systemd-journal-gatewayd"
     )
 
     with patch("supervisor.api.async_capture_exception") as capture_exception:
