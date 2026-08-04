@@ -158,7 +158,6 @@ OUTGOING_LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
 # Maps new issue type values to legacy values for backward compatibility.
 # Used for outgoing WS API compatibility (when SUPERVISOR_WEBSOCKET_V2_API is
 # disabled) and V1 REST API responses.
-# Can be removed when Core v2026.7 is no longer supported.
 LEGACY_ISSUE_TYPE_MAP: dict[str, str] = {
     "deprecated_app": "deprecated_addon",
     "deprecated_arch_app": "deprecated_arch_addon",
