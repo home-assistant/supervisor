@@ -515,20 +515,47 @@ class OSManager(CoreSysAttributes):
         await self.sys_host.control.reboot()
 
     @Job(
-        name="os_manager_set_ssh_authorized_keys",
+        name="os_manager_add_ssh_authorized_key",
         conditions=[JobCondition.HAOS],
         on_condition=HassOSJobError,
-        concurrency=JobConcurrency.REJECT,
         internal=True,
     )
-    async def set_ssh_authorized_keys(self, keys: list[str]) -> None:
-        """Replace root's SSH authorized keys on the host and start dropbear.
+    async def add_ssh_authorized_key(self, key: str) -> None:
+        """Add an SSH authorized key for root on the host and start dropbear.
 
-        OS Agent validates each key since 1.10.0 and only offers clear and
-        append operations, so the replacement is not atomic: if an append is
-        rejected or fails, keys added before it remain in place.
+        OS Agent validates the key since 1.10.0; older releases append it to
+        the authorized_keys file as submitted.
         """
-        _LOGGER.info("Replacing SSH authorized keys on host (%d keys)", len(keys))
+        _LOGGER.info("Adding SSH authorized key on host")
+        try:
+            await self.sys_dbus.agent.system.add_ssh_auth_key(key)
+        except DBusError as err:
+            raise HassOSError(
+                f"Can't add SSH authorized key: {err!s}", _LOGGER.error
+            ) from err
+
+        # dropbear on Home Assistant OS is gated by
+        # ConditionFileNotEmpty=/root/.ssh/authorized_keys, which systemd only
+        # evaluates when the unit starts. A running dropbear re-reads the file
+        # on every authentication attempt and starting an active unit is a
+        # no-op, so only the stopped service needs this.
+        try:
+            await self.sys_host.services.start(DROPBEAR_SERVICE)
+        except (HostError, DBusError) as err:
+            raise HassOSError(
+                f"SSH authorized key written, but can't start dropbear: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+    @Job(
+        name="os_manager_clear_ssh_authorized_keys",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        internal=True,
+    )
+    async def clear_ssh_authorized_keys(self) -> None:
+        """Remove all SSH authorized keys of root on the host."""
+        _LOGGER.info("Clearing SSH authorized keys on host")
         try:
             await self.sys_dbus.agent.system.clear_ssh_auth_keys()
         except DBusError as err:
@@ -541,27 +568,3 @@ class OSManager(CoreSysAttributes):
                 raise HassOSError(
                     f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
                 ) from err
-
-        for key in keys:
-            try:
-                await self.sys_dbus.agent.system.add_ssh_auth_key(key)
-            except DBusError as err:
-                raise HassOSError(
-                    f"Can't add SSH authorized key: {err!s}", _LOGGER.error
-                ) from err
-
-        if not keys:
-            return
-
-        # dropbear on Home Assistant OS is gated by
-        # ConditionFileNotEmpty=/root/.ssh/authorized_keys, which systemd only
-        # evaluates when the unit starts. A running dropbear re-reads the file
-        # on every authentication attempt and starting an active unit is a
-        # no-op, so only the stopped service needs this.
-        try:
-            await self.sys_host.services.start(DROPBEAR_SERVICE)
-        except (HostError, DBusError) as err:
-            raise HassOSError(
-                f"SSH authorized keys written, but can't start dropbear: {err!s}",
-                _LOGGER.error,
-            ) from err

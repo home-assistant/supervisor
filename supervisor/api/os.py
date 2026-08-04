@@ -47,7 +47,7 @@ from .const import (
     ATTR_DEV_PATH,
     ATTR_DEVICE,
     ATTR_DISKS,
-    ATTR_KEYS,
+    ATTR_KEY,
     ATTR_MODEL,
     ATTR_STATUS,
     ATTR_SYSTEM_HEALTH_LED,
@@ -118,7 +118,7 @@ def ssh_auth_key(value: Any) -> str:
     return key
 
 
-SCHEMA_SSH_AUTHORIZED_KEYS = vol.Schema({vol.Required(ATTR_KEYS): [ssh_auth_key]})
+SCHEMA_SSH_AUTHORIZED_KEY = vol.Schema({vol.Required(ATTR_KEY): ssh_auth_key})
 # pylint: enable=no-value-for-parameter
 
 
@@ -184,10 +184,15 @@ class APIOS(CoreSysAttributes):
         await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_SLOT]))
 
     @api_process
-    async def ssh_authorized_keys(self, request: web.Request) -> None:
-        """Replace root's SSH authorized keys on the host."""
-        body = await api_validate(SCHEMA_SSH_AUTHORIZED_KEYS, request)
-        await asyncio.shield(self.sys_os.set_ssh_authorized_keys(body[ATTR_KEYS]))
+    async def ssh_authorized_keys_add(self, request: web.Request) -> None:
+        """Add an SSH authorized key for root on the host."""
+        body = await api_validate(SCHEMA_SSH_AUTHORIZED_KEY, request)
+        await asyncio.shield(self.sys_os.add_ssh_authorized_key(body[ATTR_KEY]))
+
+    @api_process
+    def ssh_authorized_keys_clear(self, request: web.Request) -> Awaitable[None]:
+        """Remove all SSH authorized keys of root on the host."""
+        return asyncio.shield(self.sys_os.clear_ssh_authorized_keys())
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:
