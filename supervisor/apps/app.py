@@ -258,7 +258,7 @@ class App(AppModel):
             self.sys_resolution.dismiss_issue(access_issue)
 
         self.sys_homeassistant.websocket.supervisor_event_custom(
-            WSEvent.ADDON,
+            WSEvent.APP,
             {
                 ATTR_SLUG: self.slug,
                 ATTR_STATE: new_state,

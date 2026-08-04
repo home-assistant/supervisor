@@ -25,6 +25,7 @@ from supervisor.const import (
     AppBoot,
     AppState,
     BusEvent,
+    FeatureFlag,
 )
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
@@ -42,6 +43,7 @@ from supervisor.exceptions import (
     HassioError,
 )
 from supervisor.hardware.helper import HwHelper
+from supervisor.homeassistant.const import WSType
 from supervisor.ingress import Ingress
 from supervisor.resolution.const import (
     ContextType,
@@ -165,6 +167,46 @@ async def test_app_state_listener(coresys: CoreSys, install_app_ssh: App) -> Non
             coresys, "app_local_non_installed", ContainerState.RUNNING
         )
         assert install_app_ssh.state == AppState.ERROR
+
+
+@pytest.mark.parametrize(
+    ("websocket_v2_enabled", "expected_event"),
+    [(False, "addon"), (True, "app")],
+)
+async def test_app_state_event_name_compatibility(
+    install_app_ssh: App,
+    ha_ws_client: AsyncMock,
+    websocket_v2_enabled: bool,
+    expected_event: str,
+) -> None:
+    """Test app state event uses legacy/new metadata based on WS v2 feature flag."""
+    install_app_ssh.sys_config.set_feature_flag(
+        FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, websocket_v2_enabled
+    )
+
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(DockerApp, "current_state", return_value=ContainerState.UNKNOWN),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.load()
+        ha_ws_client.async_send_command.reset_mock()
+
+        await _fire_test_event(
+            install_app_ssh.coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
+        await asyncio.sleep(0)
+
+    ha_ws_client.async_send_command.assert_any_call(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": expected_event,
+                "slug": TEST_ADDON_SLUG,
+                "state": AppState.STARTED,
+            },
+        }
+    )
 
 
 async def test_app_failed_logs_exit_code(

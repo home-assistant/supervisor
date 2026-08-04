@@ -12,6 +12,8 @@ from awesomeversion import AwesomeVersion
 
 from ..const import (
     ATTR_ACCESS_TOKEN,
+    ATTR_APP,
+    ATTR_BACKUP,
     ATTR_DATA,
     ATTR_EVENT,
     ATTR_TYPE,
@@ -19,6 +21,7 @@ from ..const import (
     STARTING_STATES,
     BusEvent,
     CoreState,
+    FeatureFlag,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -250,6 +253,33 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         self._lock: asyncio.Lock = asyncio.Lock()
         self._queue: list[dict[str, Any]] = []
 
+    def _apply_legacy_v1_websocket_compatibility(
+        self, message: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Map new WS metadata back to legacy names for v1 compatibility."""
+        if self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            return message
+
+        if message.get(ATTR_TYPE) == WSType.HASSIO_UPDATE_APP:
+            # Although this will omit any fields added in future they won't be understood
+            # by legacy versions of core anyway
+            return {
+                ATTR_TYPE: "hassio/update/addon",
+                "addon": message[ATTR_APP],
+                ATTR_BACKUP: message[ATTR_BACKUP],
+            }
+
+        if (
+            message.get(ATTR_TYPE) == WSType.SUPERVISOR_EVENT
+            and (data := message[ATTR_DATA])
+            and data.get(ATTR_EVENT) == WSEvent.APP
+        ):
+            return message | {ATTR_DATA: data | {ATTR_EVENT: "addon"}}
+
+        return message
+
     async def _process_queue(self, reference: CoreState) -> None:
         """Process queue once supervisor is running."""
         if reference == CoreState.RUNNING:
@@ -317,7 +347,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         assert self.client
 
         try:
-            await self.client.async_send_command(message)
+            await self.client.async_send_command(
+                self._apply_legacy_v1_websocket_compatibility(message)
+            )
         except HomeAssistantWSConnectionError as err:
             _LOGGER.debug("Fire-and-forget WebSocket command failed: %s", err)
             if self.client:
@@ -333,7 +365,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         # _ensure_connected guarantees self.client is set
         assert self.client
         try:
-            return await self.client.async_send_command(message)
+            return await self.client.async_send_command(
+                self._apply_legacy_v1_websocket_compatibility(message)
+            )
         except HomeAssistantWSConnectionError:
             if self.client:
                 await self.client.close()
