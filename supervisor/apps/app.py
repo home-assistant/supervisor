@@ -57,6 +57,7 @@ from ..const import (
     AppStartup,
     AppState,
     BusEvent,
+    WatchdogRestartPolicy,
 )
 from ..coresys import CoreSys
 from ..docker.app import DockerApp
@@ -101,6 +102,7 @@ from ..utils.json import read_json_file, write_json_file
 from ..utils.sentry import async_capture_exception
 from .const import (
     WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_MAX_RETRY_SECONDS,
     WATCHDOG_RETRY_SECONDS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
@@ -1758,7 +1760,21 @@ class App(AppModel):
     async def _restart_after_problem(
         self, state: ContainerState, exit_code: int | None = None
     ):
-        """Restart unhealthy or failed app."""
+        """Restart unhealthy or failed app, rate-limited to break crash loops."""
+        await self._do_restart_after_problem(state, exit_code)
+
+    async def _do_restart_after_problem(
+        self,
+        state: ContainerState,
+        exit_code: int | None = None,
+        *,
+        unlimited: bool = False,
+    ) -> None:
+        """Restart an unhealthy or failed app.
+
+        When unlimited is True the per-invocation attempt cap is lifted so the
+        watchdog keeps retrying forever (WatchdogRestartPolicy.UNLIMITED).
+        """
         attempts = 0
         while await self.instance.current_state() == state:
             if not self.in_progress:
@@ -1796,7 +1812,7 @@ class App(AppModel):
                 else:
                     break
 
-            if attempts >= WATCHDOG_MAX_ATTEMPTS:
+            if not unlimited and attempts >= WATCHDOG_MAX_ATTEMPTS:
                 _LOGGER.critical(
                     "Watchdog cannot restart app %s, failed all %s attempts",
                     self.name,
@@ -1804,8 +1820,13 @@ class App(AppModel):
                 )
                 break
 
-            # Exponential backoff to spread retries over the throttle window
-            delay = WATCHDOG_RETRY_SECONDS * (1 << max(attempts - 1, 0))
+            # Exponential backoff, capped so unlimited retries settle at a steady
+            # interval instead of growing without bound. The shift bound only keeps
+            # the intermediate value small; WATCHDOG_MAX_RETRY_SECONDS is the real cap.
+            delay = min(
+                WATCHDOG_RETRY_SECONDS * (1 << min(max(attempts - 1, 0), 8)),
+                WATCHDOG_MAX_RETRY_SECONDS,
+            )
             _LOGGER.debug(
                 "Watchdog will retry app %s in %s seconds (attempt %s)",
                 self.name,
@@ -1855,7 +1876,13 @@ class App(AppModel):
             ContainerState.STOPPED,
             ContainerState.UNHEALTHY,
         ]:
-            await self._restart_after_problem(event.state, event.exit_code)
+            if self.watchdog_restart_policy == WatchdogRestartPolicy.UNLIMITED:
+                # Opted out of crash-loop protection: keep restarting forever.
+                await self._do_restart_after_problem(
+                    event.state, event.exit_code, unlimited=True
+                )
+            else:
+                await self._restart_after_problem(event.state, event.exit_code)
 
     async def refresh_path_cache(self) -> None:
         """Refresh cache of existing paths."""
