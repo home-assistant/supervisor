@@ -24,6 +24,7 @@ class System(DBusServiceMock):
     response_migrate_docker_storage_driver: None | DBusError = None
     response_add_ssh_auth_key: None | DBusError = None
     response_clear_ssh_auth_keys: None | DBusError = None
+    response_list_ssh_auth_keys: list[str] | DBusError = []
 
     @dbus_method()
     def ScheduleWipeDevice(self) -> "b":
@@ -54,3 +55,10 @@ class System(DBusServiceMock):
         """Clear SSH authorized keys."""
         if isinstance(self.response_clear_ssh_auth_keys, DBusError):
             raise self.response_clear_ssh_auth_keys  # pylint: disable=raising-bad-type
+
+    @dbus_method()
+    def ListSSHAuthKeys(self) -> "as":
+        """List SSH authorized keys."""
+        if isinstance(self.response_list_ssh_auth_keys, DBusError):
+            raise self.response_list_ssh_auth_keys  # pylint: disable=raising-bad-type
+        return self.response_list_ssh_auth_keys

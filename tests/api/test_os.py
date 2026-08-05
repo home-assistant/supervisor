@@ -810,6 +810,44 @@ async def test_api_board_raspberrypi_firmware_unavailable_on_board(
 TEST_SSH_KEY_ED25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDXD8u9KB94/l1YukYflKOsO7KzoSEQD4dNNlWY9zaQP test@example.com"
 
 
+@pytest.mark.parametrize("os_agent_version", ["1.11.0"], indirect=True)
+@pytest.mark.usefixtures("os_available", "os_agent_version")
+async def test_api_os_ssh_authorized_keys_list(
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+):
+    """Test listing the SSH authorized keys."""
+    api_client, prefix = api_client_with_prefix
+    system_service: SystemService = os_agent_services["agent_system"]
+    system_service.response_list_ssh_auth_keys = [
+        TEST_SSH_KEY_ED25519,
+        "ssh-rsa AAAA imported@usb",
+    ]
+
+    resp = await api_client.get(f"{prefix}/os/ssh/authorized_keys")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["keys"] == [
+        TEST_SSH_KEY_ED25519,
+        "ssh-rsa AAAA imported@usb",
+    ]
+
+
+@pytest.mark.parametrize("os_agent_version", ["1.10.0"], indirect=True)
+@pytest.mark.usefixtures("os_available", "os_agent_version")
+async def test_api_os_ssh_authorized_keys_list_requires_os_agent_version(
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+):
+    """Test 404 is returned on an OS Agent without ListSSHAuthKeys."""
+    api_client, prefix = api_client_with_prefix
+
+    resp = await api_client.get(f"{prefix}/os/ssh/authorized_keys")
+    assert resp.status == 404
+    result = await resp.json()
+    assert "OS Agent 1.11.0 or newer required" in result["message"]
+
+
 @pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys_add(
     api_client_with_prefix: tuple[TestClient, str],

@@ -56,3 +56,20 @@ async def test_dbus_osagent_system_ssh_auth_keys(
 
     assert system_service.ClearSSHAuthKeys.calls == [()]
     assert system_service.AddSSHAuthKey.calls == [(key,)]
+
+
+async def test_dbus_osagent_system_list_ssh_auth_keys(
+    system_service: SystemService, dbus_session_bus: MessageBus
+):
+    """Test listing SSH authorized keys on host."""
+    system_service.response_list_ssh_auth_keys = ["ssh-ed25519 AAAA test@example.com"]
+    os_agent = OSAgent()
+
+    with pytest.raises(DBusNotConnectedError):
+        await os_agent.system.list_ssh_auth_keys()
+
+    await os_agent.connect(dbus_session_bus)
+
+    assert await os_agent.system.list_ssh_auth_keys() == [
+        "ssh-ed25519 AAAA test@example.com"
+    ]

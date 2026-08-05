@@ -34,3 +34,11 @@ class System(DBusInterface):
     async def clear_ssh_auth_keys(self) -> None:
         """Remove all of root's SSH authorized keys on the host."""
         await self.connected_dbus.System.call("clear_ssh_auth_keys")
+
+    @dbus_connected
+    async def list_ssh_auth_keys(self) -> list[str]:
+        """Return root's SSH authorized keys on the host.
+
+        Requires OS Agent 1.11.0 or newer.
+        """
+        return await self.connected_dbus.System.call("list_ssh_auth_keys")

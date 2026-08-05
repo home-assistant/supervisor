@@ -48,6 +48,7 @@ from .const import (
     ATTR_DEVICE,
     ATTR_DISKS,
     ATTR_KEY,
+    ATTR_KEYS,
     ATTR_MODEL,
     ATTR_STATUS,
     ATTR_SYSTEM_HEALTH_LED,
@@ -61,6 +62,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Raspberry Pi firmware management requires the io.hass.os.Boards.RaspberryPi
 # .Firmware D-Bus interface first shipped in this OS Agent release.
 RPI_FIRMWARE_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.9.0")
+
+# Listing SSH authorized keys requires the ListSSHAuthKeys D-Bus method
+# first shipped in this OS Agent release.
+SSH_KEYS_LIST_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.11.0")
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
@@ -182,6 +187,21 @@ class APIOS(CoreSysAttributes):
         """Change the active boot slot and reboot into it."""
         body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
         await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_SLOT]))
+
+    @api_process
+    async def ssh_authorized_keys_list(self, request: web.Request) -> dict[str, Any]:
+        """Return root's SSH authorized keys on the host."""
+        if (
+            not self.sys_dbus.agent.is_connected
+            or self.sys_dbus.agent.version < SSH_KEYS_LIST_MIN_OS_AGENT_VERSION
+        ):
+            raise APINotFound(
+                f"OS Agent {SSH_KEYS_LIST_MIN_OS_AGENT_VERSION} or newer required "
+                "to list SSH authorized keys",
+                _LOGGER.debug,
+            )
+
+        return {ATTR_KEYS: await self.sys_dbus.agent.system.list_ssh_auth_keys()}
 
     @api_process
     async def ssh_authorized_keys_add(self, request: web.Request) -> None:
