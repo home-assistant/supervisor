@@ -19,6 +19,7 @@ from ..const import (
     ATTR_MEMORY_USAGE,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
+    ATTR_SEARCH_DOMAINS,
     ATTR_SERVERS,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
@@ -26,6 +27,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from ..plugins.dns import HOST_RESOLV
 from ..validate import dns_server_list, version_tag
 from .const import ATTR_FALLBACK, ATTR_LLMNR, ATTR_MDNS
 from .utils import api_process, api_validate
@@ -37,6 +39,7 @@ SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_SERVERS): dns_server_list,
         vol.Optional(ATTR_FALLBACK): vol.Boolean(),
+        vol.Optional(ATTR_SEARCH_DOMAINS): [vol.All(str, vol.Length(min=1))],
     }
 )
 
@@ -56,6 +59,7 @@ class APICoreDNS(CoreSysAttributes):
             ATTR_HOST: str(self.sys_docker.network.dns),
             ATTR_SERVERS: self.sys_plugins.dns.servers,
             ATTR_LOCALS: self.sys_plugins.dns.locals,
+            ATTR_SEARCH_DOMAINS: self.sys_plugins.dns.search_domains,
             ATTR_MDNS: self.sys_plugins.dns.mdns,
             ATTR_LLMNR: self.sys_plugins.dns.llmnr,
             ATTR_FALLBACK: self.sys_plugins.dns.fallback,
@@ -74,6 +78,10 @@ class APICoreDNS(CoreSysAttributes):
         if ATTR_FALLBACK in body:
             self.sys_plugins.dns.fallback = body[ATTR_FALLBACK]
             restart_required = True
+
+        if ATTR_SEARCH_DOMAINS in body:
+            self.sys_plugins.dns.search_domains = body[ATTR_SEARCH_DOMAINS]
+            await self.sys_plugins.dns._write_resolv(HOST_RESOLV)
 
         if restart_required:
             self.sys_create_task(self.sys_plugins.dns.restart())
