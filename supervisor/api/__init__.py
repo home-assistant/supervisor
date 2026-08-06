@@ -509,15 +509,26 @@ class RestAPI(CoreSysAttributes):
         api_supervisor = APISupervisor()
         api_supervisor.coresys = self.coresys
 
+        info_handler = (
+            api_supervisor.info_v1
+            if app is self.versions[AppVersion.V1]
+            else api_supervisor.info
+        )
+        options_handler = (
+            api_supervisor.options_v1
+            if app is self.versions[AppVersion.V1]
+            else api_supervisor.options
+        )
+
         app.add_routes(
             [
                 web.get("/supervisor/ping", api_supervisor.ping),
-                web.get("/supervisor/info", api_supervisor.info),
+                web.get("/supervisor/info", info_handler),
                 web.get("/supervisor/stats", api_supervisor.stats),
                 web.post("/supervisor/update", api_supervisor.update),
                 web.post("/supervisor/reload", api_supervisor.reload),
                 web.post("/supervisor/restart", api_supervisor.restart),
-                web.post("/supervisor/options", api_supervisor.options),
+                web.post("/supervisor/options", options_handler),
                 web.post("/supervisor/repair", api_supervisor.repair),
             ]
         )
@@ -664,7 +675,7 @@ class RestAPI(CoreSysAttributes):
                 """Route to store if info requested for not installed app."""
                 try:
                     addon: App = api_apps.get_app_for_request(request)
-                    return await api_apps.info_data(addon, request)
+                    return await api_apps.info_data_v1(addon, request)
                 except APIAppNotInstalled:
                     # Route to store/{app}/info but add missing fields
                     return dict(
