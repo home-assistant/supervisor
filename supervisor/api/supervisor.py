@@ -165,10 +165,11 @@ class APISupervisor(CoreSysAttributes):
     async def options_v1(self, request: web.Request) -> None:
         """Set Supervisor options."""
         body = await api_validate(SCHEMA_OPTIONS_V1, request)
+        await self._options(body)
+
         if ATTR_WAIT_BOOT in body:
             # Deprecated
             self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
-        await self._options(body)
 
         # Save changes before processing apps in case of errors
         await self.sys_updater.save_data()
