@@ -189,7 +189,6 @@ class APIApps(CoreSysAttributes):
                 ATTR_NAME: app.name,
                 ATTR_SLUG: app.slug,
                 ATTR_DESCRIPTON: app.description,
-                ATTR_ADVANCED: app.advanced,  # Deprecated 2026.03
                 ATTR_STAGE: app.stage,
                 ATTR_VERSION: app.version,
                 ATTR_VERSION_LATEST: app.latest_version,
@@ -216,7 +215,10 @@ class APIApps(CoreSysAttributes):
     @api_process
     async def list_apps_v1(self, request: web.Request) -> dict[str, Any]:
         """Return all installed apps (v1: uses "addons" key)."""
-        return {ATTR_ADDONS: self._list_apps_data()}
+        data = self._list_apps_data()
+        for idx, app in enumerate(self.sys_apps.installed):
+            data[idx][ATTR_ADVANCED] = app.advanced  # Deprecated 2026.03
+        return {ATTR_ADDONS: data}
 
     @api_process
     async def reload(self, request: web.Request) -> None:
@@ -243,7 +245,6 @@ class APIApps(CoreSysAttributes):
             ATTR_DNS: app.dns,
             ATTR_DESCRIPTON: app.description,
             ATTR_LONG_DESCRIPTION: await app.long_description(),
-            ATTR_ADVANCED: app.advanced,  # Deprecated 2026.03
             ATTR_STAGE: app.stage,
             ATTR_REPOSITORY: app.repository,
             ATTR_VERSION_LATEST: app.latest_version,
@@ -311,6 +312,12 @@ class APIApps(CoreSysAttributes):
             ATTR_SYSTEM_MANAGED: app.system_managed,
             ATTR_SYSTEM_MANAGED_CONFIG_ENTRY: app.system_managed_config_entry,
         }
+
+    async def info_data_v1(self, app: App, request: web.Request) -> dict[str, Any]:
+        """Build and return v1 app information dict."""
+        data = await self.info_data(app, request)
+        data[ATTR_ADVANCED] = app.advanced  # Deprecated 2026.03
+        return data
 
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
