@@ -29,3 +29,17 @@ class BuiltinRepository(StrEnum):
         if self == BuiltinRepository.CORE:
             return URL_HASSIO_APPS
         return self.value  # For URL-based repos, value is the URL
+
+    @property
+    def slug(self) -> str:
+        """Return fixed slug for this built-in repository."""
+        if self in (BuiltinRepository.LOCAL, BuiltinRepository.CORE):
+            return self.value
+        if self == BuiltinRepository.COMMUNITY_APPS:
+            return "a0d7b954"
+        if self == BuiltinRepository.ESPHOME:
+            return "5c53de3b"
+        if self == BuiltinRepository.MUSIC_ASSISTANT:
+            return "d5369777"
+
+        raise RuntimeError(f"Unknown built-in repository: {self}")
