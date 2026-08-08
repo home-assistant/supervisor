@@ -278,6 +278,18 @@ async def test_blacklist(
     )
     assert resp.status == 403
 
+    # The Core auth endpoints run as the Supervisor user; an add-on must not
+    # reach them through the proxy (they would allow resetting any password)
+    resp = await client.get(
+        f"{prefix}/core/api/hassio_auth", headers={"Authorization": "Bearer abc123"}
+    )
+    assert resp.status == 403
+    resp = await client.post(
+        f"{prefix}/core/api/hassio_auth/password_reset",
+        headers={"Authorization": "Bearer abc123"},
+    )
+    assert resp.status == 403
+
     # A normal (non-hassio) Core API call through the same proxy is allowed
     resp = await client.get(
         f"{prefix}/core/api/states", headers={"Authorization": "Bearer abc123"}
