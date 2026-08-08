@@ -290,6 +290,36 @@ async def test_api_proxy_get_request(
 
 
 @pytest.mark.parametrize(
+    "path", ["hassio_auth", "hassio_auth/password_reset", "hassio/app"]
+)
+async def test_api_proxy_blocks_core_hassio_endpoints(
+    api_client: TestClient,
+    install_app_example: App,
+    request: pytest.FixtureRequest,
+    path: str,
+):
+    """Test the proxy refuses to forward Core's Supervisor-only hassio endpoints.
+
+    These run as the Supervisor user on Core; an add-on must not reach them
+    through the proxy even if the security middleware blacklist is bypassed.
+    """
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+
+    request.param = "local_example"
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        response = await api_client.post(
+            f"/core/api/{path}",
+            headers={"Authorization": "Bearer abc123"},
+            json={"username": "owner", "password": "attacker"},
+        )
+
+        assert response.status == 403
+        make_request.assert_not_called()
+
+
+@pytest.mark.parametrize(
     "path", ["config/automation/config/test_id", "services/light/turn_on"]
 )
 async def test_api_proxy_post_request(

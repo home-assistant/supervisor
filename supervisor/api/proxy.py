@@ -4,13 +4,15 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import logging
+import re
+from typing import Final
 
 import aiohttp
 from aiohttp import WSCloseCode, WSMessageTypeError, web
 from aiohttp.client_ws import ClientWebSocketResponse
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
 from aiohttp.http_websocket import WSMsgType
-from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
+from aiohttp.web_exceptions import HTTPBadGateway, HTTPForbidden, HTTPUnauthorized
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
@@ -28,6 +30,12 @@ FORWARD_HEADERS = (
     "MCP-Protocol-Version",
 )
 HEADER_HA_ACCESS = "X-Ha-Access"
+
+# Core's "hassio" API endpoints (loopback, hassio_auth, ...) run as the
+# Supervisor user and must never be reachable by an add-on through this proxy.
+# The security middleware blacklist already blocks them; this is a redundant
+# guard so the proxy can't become a confused deputy if that ever regresses.
+CORE_API_DENY: Final = re.compile(r"^hassio(?:/|_)")
 
 
 class APIProxy(CoreSysAttributes):
@@ -136,12 +144,15 @@ class APIProxy(CoreSysAttributes):
 
     async def api(self, request: web.Request):
         """Proxy Home Assistant API Requests."""
+        path = request.match_info.get("path", "")
+        if CORE_API_DENY.match(path):
+            _LOGGER.warning("Blocked proxied add-on access to Core API path %s", path)
+            raise HTTPForbidden
+
         self._check_access(request)
         if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway
 
-        # Normal request
-        path = request.match_info.get("path", "")
         async with self._api_client(request, path) as client:
             # Check if this is a streaming response (e.g., MCP SSE endpoints)
             if client.content_type == "text/event-stream":
