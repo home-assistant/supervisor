@@ -10,6 +10,7 @@ from ..exceptions import (
     StoreError,
     StoreGitCloneError,
     StoreGitError,
+    StoreGitRemoteURLUpdateError,
     StoreInvalidAppRepo,
     StoreJobError,
     StoreNotFound,
@@ -161,6 +162,15 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
                     ContextType.STORE,
                     reference=repository.slug,
                     suggestions=[SuggestionType.EXECUTE_REMOVE],
+                )
+            else:
+                await repository.remove()
+                raise err
+
+        except StoreGitRemoteURLUpdateError as err:
+            if issue_on_error:
+                _LOGGER.warning(
+                    "Can't update origin URL for repository %s: %s", url, err
                 )
             else:
                 await repository.remove()

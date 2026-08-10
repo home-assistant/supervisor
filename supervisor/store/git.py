@@ -1,6 +1,7 @@
 """Init file for Supervisor app Git."""
 
 import asyncio
+from contextlib import suppress
 import functools as ft
 import logging
 from pathlib import Path
@@ -10,7 +11,12 @@ import git
 
 from ..const import ATTR_BRANCH, ATTR_URL
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
+from ..exceptions import (
+    StoreGitCloneError,
+    StoreGitError,
+    StoreGitRemoteURLUpdateError,
+    StoreJobError,
+)
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import directory_missing_or_empty, remove_folder
@@ -57,7 +63,10 @@ class GitRepo(CoreSysAttributes):
         async with self.lock:
             try:
                 _LOGGER.info("Loading app %s repository", self.path)
-                self.repo = await self.sys_run_in_executor(git.Repo, str(self.path))
+                repo: git.Repo = await self.sys_run_in_executor(
+                    git.Repo, str(self.path)
+                )
+                self.repo = repo
 
             except (
                 git.InvalidGitRepositoryError,
@@ -70,12 +79,51 @@ class GitRepo(CoreSysAttributes):
 
         # Fix possible corruption
         async with self.lock:
+            _LOGGER.debug("Integrity check app %s repository", self.path)
+            await self.sys_run_in_executor(self._sync_origin_remote_url_and_fsck, repo)
+
+    def _sync_origin_remote_url_and_fsck(self, repo: git.Repo) -> None:
+        """Sync origin URL and run fsck in a single executor invocation."""
+        self._sync_origin_remote_url(repo)
+        try:
+            repo.git.execute(["git", "fsck"])
+        except (
+            git.InvalidGitRepositoryError,
+            git.NoSuchPathError,
+            git.CommandError,
+            UnicodeDecodeError,
+        ) as err:
+            _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
+            raise StoreGitError from err
+
+    def _sync_origin_remote_url(self, repo: git.Repo) -> None:
+        """Ensure the clone's origin URL matches the configured repository URL."""
+        remotes = {remote.name for remote in repo.remotes}
+        if "origin" not in remotes:
+            return
+
+        origin = repo.remotes.origin
+        if origin.url != self.url:
             try:
-                _LOGGER.debug("Integrity check app %s repository", self.path)
-                await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
-            except git.CommandError as err:
-                _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
-                raise StoreGitError from err
+                _LOGGER.info(
+                    "Updating app %s repository origin URL from %s to %s",
+                    self.path,
+                    origin.url,
+                    self.url,
+                )
+                origin.set_url(self.url)
+            except (
+                git.InvalidGitRepositoryError,
+                git.NoSuchPathError,
+                git.CommandError,
+                UnicodeDecodeError,
+            ) as err:
+                _LOGGER.warning(
+                    "Failed to update app %s repository origin URL: %s",
+                    self.path,
+                    err,
+                )
+                raise StoreGitRemoteURLUpdateError from err
 
     @Job(
         name="git_repo_clone",
@@ -168,8 +216,12 @@ class GitRepo(CoreSysAttributes):
             _LOGGER.warning("No valid repository for %s", self.url)
             return False
 
+        repo: git.Repo = self.repo
+
         async with self.lock:
             _LOGGER.info("Update app %s repository from %s", self.path, self.url)
+            with suppress(StoreGitRemoteURLUpdateError):
+                await self.sys_run_in_executor(self._sync_origin_remote_url, repo)
 
             try:
                 git_cmd = git.Git()
@@ -179,7 +231,6 @@ class GitRepo(CoreSysAttributes):
                 raise StoreGitError from err
 
             try:
-                repo = self.repo
 
                 def _fetch_and_check() -> tuple[str, bool]:
                     """Fetch from origin and check if changed."""
@@ -197,13 +248,13 @@ class GitRepo(CoreSysAttributes):
                 if changed:
                     # Jump on top of that
                     await self.sys_run_in_executor(
-                        ft.partial(self.repo.git.reset, f"origin/{branch}", hard=True)
+                        ft.partial(repo.git.reset, f"origin/{branch}", hard=True)
                     )
 
                 # Update submodules
                 await self.sys_run_in_executor(
                     ft.partial(
-                        self.repo.git.submodule,
+                        repo.git.submodule,
                         "update",
                         "--init",
                         "--recursive",
@@ -213,7 +264,7 @@ class GitRepo(CoreSysAttributes):
                 )
 
                 # Cleanup old data
-                await self.sys_run_in_executor(ft.partial(self.repo.git.clean, "-xdf"))
+                await self.sys_run_in_executor(ft.partial(repo.git.clean, "-xdf"))
 
                 return changed
 

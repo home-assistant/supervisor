@@ -94,6 +94,35 @@ async def test_git_load(coresys: CoreSys, tmp_path: Path):
         assert mock_repo.call_count == 1
 
 
+async def test_git_load_updates_origin_remote_url(coresys: CoreSys, tmp_path: Path):
+    """Test git load updates an existing origin remote URL."""
+
+    class MockRemotes(list):
+        """Minimal remote container with GitPython-style origin attribute."""
+
+        @property
+        def origin(self):
+            """Return origin remote."""
+            return self[0]
+
+    repo = GitRepo(coresys, tmp_path, REPO_URL)
+
+    # Pretend we have a repo
+    (tmp_path / ".git").mkdir()
+
+    origin = MagicMock()
+    origin.name = "origin"
+    origin.url = "https://github.com/awesome-developer/old-repo"
+
+    mock_repo = MagicMock()
+    mock_repo.remotes = MockRemotes([origin])
+
+    with patch("git.Repo", return_value=mock_repo):
+        await repo.load()
+
+    origin.set_url.assert_called_once_with(REPO_URL)
+
+
 @pytest.mark.parametrize(
     "git_errors",
     [
