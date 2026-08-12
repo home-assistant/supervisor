@@ -144,12 +144,15 @@ class APIProxy(CoreSysAttributes):
 
     async def api(self, request: web.Request):
         """Proxy Home Assistant API Requests."""
+        self._check_access(request)
+
         path = request.match_info.get("path", "")
         if CORE_API_DENY.match(path):
-            _LOGGER.warning("Blocked proxied add-on access to Core API path %s", path)
+            _LOGGER.warning(
+                "Blocked proxied add-on access to Core API path %s", path
+            )
             raise HTTPForbidden
 
-        self._check_access(request)
         if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway
 
