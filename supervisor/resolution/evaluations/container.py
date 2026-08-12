@@ -96,7 +96,7 @@ class EvaluateContainer(EvaluateBase):
         for image in images:
             self.sys_resolution.evaluate.cached_images.add(image)
 
-            image_name = image.partition(":")[0]
+            image_name = image.rpartition(":")[0]
             if image_name not in IGNORE_IMAGES and image_name not in self.known_images:
                 self._images.add(image_name)
                 if any(
