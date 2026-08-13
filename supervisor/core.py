@@ -5,7 +5,10 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
 import logging
-from typing import Self
+from typing import Final, Self
+
+import aiodocker
+from aiodocker.containers import DockerContainer
 
 from .const import (
     ATTR_STARTUP,
@@ -33,6 +36,9 @@ from .utils.sentry import async_capture_exception
 from .utils.whoami import retrieve_whoami
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Name of the short-lived container used to hold Core's host port during boot.
+_PORT_RESERVE_CONTAINER: Final = "hassio_port_reserve"
 
 
 class Core(CoreSysAttributes):
@@ -246,7 +252,19 @@ class Core(CoreSysAttributes):
                     await self.sys_supervisor.update()
                     return
 
+        # Start a temporary host-network container to hold Core's TCP port before
+        # booting any apps. Core runs with --network=host, so it competes in the
+        # host network namespace. Supervisor itself is on the hassio bridge and
+        # cannot bind there directly, so we use a container that can.
+        # Released just before Core starts so Core can claim the port.
+        core_port_container: DockerContainer | None = None
         try:
+            if not await self.sys_homeassistant.core.is_running():
+                hosts = self.sys_homeassistant.http_server_host
+                host = hosts[0] if hosts else "0.0.0.0"
+                port = self.sys_homeassistant.api_port
+                core_port_container = await self._reserve_core_port(host, port)
+
             # Start app mark as initialize
             await self.sys_apps.boot(AppStartup.INITIALIZE)
 
@@ -263,6 +281,11 @@ class Core(CoreSysAttributes):
 
             # start app mark as services
             await self.sys_apps.boot(AppStartup.SERVICES)
+
+            # Release the port reservation so Core can bind it
+            if core_port_container is not None:
+                await self._release_core_port(core_port_container)
+                core_port_container = None
 
             # run HomeAssistant
             if (
@@ -298,6 +321,10 @@ class Core(CoreSysAttributes):
             await self._update_last_boot()
 
         finally:
+            # Ensure the port reservation container is always removed
+            if core_port_container is not None:
+                await self._release_core_port(core_port_container)
+
             # Add core tasks into scheduler
             await self.sys_tasks.load()
 
@@ -443,6 +470,90 @@ class Core(CoreSysAttributes):
             return
         self.sys_config.last_boot = last_boot
         await self.sys_config.save_data()
+
+    async def _reserve_core_port(self, host: str, port: int) -> DockerContainer | None:
+        """Start a temporary host-network container that holds Core's TCP port.
+
+        Core runs with --network=host, meaning it binds directly in the host
+        network namespace. Supervisor lives on the hassio bridge and cannot
+        bind in the host namespace itself. We therefore start a minimal
+        container (using the Supervisor's own image, which is always present)
+        on --network=host so that Docker's host-network plumbing is used. The
+        container runs a Python one-liner that binds the socket and then blocks
+        on signal.pause(); killing the container releases the port.
+
+        Returns the running container, or None if reservation failed (non-fatal
+        — boot continues without the protection).
+
+        Known limitations
+        -----------------
+        * There is a small race window between ``container.start()`` returning
+          and the Python process inside actually calling ``s.bind()``. In
+          practice the SYSTEM/SERVICES boot sequence takes long enough that
+          this has never been observed to matter, but it is not zero.
+        * Starting a full Supervisor-image container adds a few hundred
+          milliseconds of latency to the boot sequence.
+        """
+        image = self.sys_supervisor.image
+        tag = str(self.sys_supervisor.version) if self.sys_supervisor.version else None
+        if not image or not tag:
+            _LOGGER.warning(
+                "Cannot reserve Core port %s:%d: Supervisor image/version unknown",
+                host,
+                port,
+            )
+            return None
+
+        # Remove any stale reservation container from a previous crashed boot
+        with suppress(Exception):
+            stale = await self.sys_docker.docker.containers.get(_PORT_RESERVE_CONTAINER)
+            await stale.delete(force=True)
+
+        bind_cmd = (
+            "import socket, signal; "
+            "s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); "
+            "s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); "
+            f"s.bind(('{host}', {port})); "
+            "signal.pause()"
+        )
+        try:
+            container = await self.sys_docker.docker.containers.create(
+                {
+                    "Image": f"{image}:{tag}",
+                    "Cmd": ["python3", "-c", bind_cmd],
+                    "HostConfig": {"NetworkMode": "host"},
+                },
+                name=_PORT_RESERVE_CONTAINER,
+            )
+            await container.start()
+            _LOGGER.debug(
+                "Reserved Home Assistant Core port %s:%d during app startup",
+                host,
+                port,
+            )
+            return container
+        except (aiodocker.DockerError, TimeoutError) as err:
+            _LOGGER.warning(
+                "Could not reserve Home Assistant Core port %s:%d: %s",
+                host,
+                port,
+                err,
+            )
+            # Clean up any partially-created container
+            with suppress(Exception):
+                stale = await self.sys_docker.docker.containers.get(
+                    _PORT_RESERVE_CONTAINER
+                )
+                await stale.delete(force=True)
+            return None
+
+    async def _release_core_port(self, container: DockerContainer) -> None:
+        """Stop and remove the Core port reservation container."""
+        with suppress(Exception):
+            await container.kill()
+        with suppress(Exception):
+            await container.delete(force=True)
+        _LOGGER.debug("Released Home Assistant Core port reservation")
 
     async def _adjust_system_datetime(self) -> None:
         """Adjust system time/date on startup."""
