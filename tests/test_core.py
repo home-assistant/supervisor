@@ -7,15 +7,20 @@ import datetime
 import errno
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import aiodocker
+from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import CoreState
+from supervisor.const import AppStartup, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AppFileReadError, HassioError, WhoamiSSLError
+from supervisor.hardware.helper import HwHelper
+from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.host.control import SystemControl
 from supervisor.host.info import InfoCenter
 from supervisor.resolution.const import IssueType, SuggestionType, UnhealthyReason
 from supervisor.supervisor import Supervisor
+from supervisor.utils.dt import utcnow
 from supervisor.utils.whoami import WhoamiData
 
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -417,3 +422,182 @@ async def test_stop_reentry_signals_event_without_teardown(
     assert stopping.is_set()
     api_stop.assert_not_called()
     assert coresys.core.state == state
+
+
+@pytest.fixture
+def core_start_base_mocks(coresys: CoreSys):
+    """Set up boilerplate mocks for Core.start() that are not under test."""
+    # Default config.last_boot is epoch (1970); HwHelper.last_boot returns now →
+    # the two differ, so the supervisor-restart early-return is not triggered.
+    with (
+        patch.object(coresys.os, "mark_healthy", new=AsyncMock()),
+        patch.object(coresys.updater, "reload", new=AsyncMock()),
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=False)),
+        patch.object(
+            Supervisor,
+            "image",
+            new=PropertyMock(
+                return_value="ghcr.io/home-assistant/amd64-hassio-supervisor"
+            ),
+        ),
+        patch.object(HwHelper, "last_boot", return_value=utcnow()),
+        patch.object(coresys.services, "reset", new=AsyncMock()),
+        patch.object(coresys.tasks, "load", new=AsyncMock()),
+        patch.object(coresys.host, "reload", new=AsyncMock()),
+        patch.object(coresys.resolution, "healthcheck", new=AsyncMock()),
+        patch.object(
+            HomeAssistantCore,
+            "error_state",
+            new=PropertyMock(return_value=False),
+        ),
+        patch.object(coresys.core, "_update_last_boot", new=AsyncMock()),
+        patch.object(coresys.homeassistant.websocket, "supervisor_update_event"),
+        patch.object(coresys.apps, "boot", new=AsyncMock()),
+        patch.object(
+            coresys.homeassistant.core, "is_running", new=AsyncMock(return_value=False)
+        ),
+        patch.object(coresys.homeassistant.core, "start", new=AsyncMock()),
+    ):
+        coresys.homeassistant.version = AwesomeVersion("2023.8.1")
+        yield
+
+
+def _make_docker_containers_mock(mock_container: MagicMock) -> MagicMock:
+    """Return a mock for sys_docker.docker.containers.
+
+    get() raises DockerError(404) to indicate no stale container;
+    create() returns mock_container.
+    """
+    mock_containers = MagicMock()
+    mock_containers.get = AsyncMock(
+        side_effect=aiodocker.DockerError(404, {"message": "no such container"})
+    )
+    mock_containers.create = AsyncMock(return_value=mock_container)
+    return mock_containers
+
+
+def _make_reservation_container() -> MagicMock:
+    """Return a mock Docker container used as the port reservation container."""
+    mock_container = MagicMock()
+    mock_container.start = AsyncMock()
+    mock_container.kill = AsyncMock()
+    mock_container.delete = AsyncMock()
+    return mock_container
+
+
+@pytest.mark.usefixtures("core_start_base_mocks")
+@pytest.mark.parametrize(
+    ("http_server_host", "expected_bind_host"),
+    [
+        (None, "0.0.0.0"),
+        (["192.0.2.1", "0.0.0.0"], "192.0.2.1"),
+    ],
+    ids=["no_server_host", "with_server_host"],
+)
+async def test_start_reserves_core_port(
+    coresys: CoreSys,
+    http_server_host: list[str] | None,
+    expected_bind_host: str,
+):
+    """On fresh boot, Core's port is reserved using the correct bind address.
+
+    When http_server_host is None the reservation falls back to 0.0.0.0;
+    when it is set the first listed host is used.
+    """
+    coresys.homeassistant.http_server_host = http_server_host
+    assert coresys.homeassistant.api_port == 8123
+
+    mock_container = _make_reservation_container()
+    coresys.docker.docker = MagicMock()
+    coresys.docker.docker.containers = _make_docker_containers_mock(mock_container)
+
+    await coresys.core.start()
+
+    # Container must be created with host networking and the right bind address
+    coresys.docker.docker.containers.create.assert_awaited_once()
+    create_config = coresys.docker.docker.containers.create.call_args[0][0]
+    assert create_config["HostConfig"]["NetworkMode"] == "host"
+    assert expected_bind_host in create_config["Cmd"][-1]
+    assert "8123" in create_config["Cmd"][-1]
+
+    # Container must be started then cleaned up before Core starts
+    mock_container.start.assert_awaited_once()
+    mock_container.kill.assert_awaited_once()
+    mock_container.delete.assert_awaited_once()
+
+    # Core must have started
+    coresys.homeassistant.core.start.assert_awaited_once()
+
+    mock_container.kill.assert_awaited_once()
+    mock_container.delete.assert_awaited_once()
+    coresys.homeassistant.core.start.assert_awaited_once()
+
+
+@pytest.mark.usefixtures("core_start_base_mocks")
+async def test_start_port_held_during_app_boot_released_before_core_start(
+    coresys: CoreSys,
+):
+    """Port reservation container exists during SYSTEM/SERVICES boot and is removed before Core starts.
+
+    This verifies that an app attempting to bind Core's port during SYSTEM or
+    SERVICES boot would be blocked by the reservation container, and that the
+    container is removed in time for Core to bind its own port.
+    """
+    coresys.homeassistant.http_server_host = None
+
+    call_sequence: list[str] = []
+
+    mock_container = _make_reservation_container()
+    mock_container.start.side_effect = lambda: call_sequence.append("container_start")
+    mock_container.kill.side_effect = lambda: call_sequence.append("container_kill")
+
+    coresys.docker.docker = MagicMock()
+    coresys.docker.docker.containers = _make_docker_containers_mock(mock_container)
+
+    async def tracking_boot(stage: AppStartup) -> None:
+        call_sequence.append(f"boot:{stage}")
+
+    async def tracking_core_start() -> None:
+        call_sequence.append("core_start")
+
+    with (
+        patch.object(coresys.apps, "boot", side_effect=tracking_boot),
+        patch.object(
+            coresys.homeassistant.core, "start", side_effect=tracking_core_start
+        ),
+    ):
+        await coresys.core.start()
+
+    assert "container_start" in call_sequence
+    assert f"boot:{AppStartup.SYSTEM}" in call_sequence
+    assert f"boot:{AppStartup.SERVICES}" in call_sequence
+    assert "container_kill" in call_sequence
+    assert "core_start" in call_sequence
+
+    container_start_idx = call_sequence.index("container_start")
+    system_boot_idx = call_sequence.index(f"boot:{AppStartup.SYSTEM}")
+    services_boot_idx = call_sequence.index(f"boot:{AppStartup.SERVICES}")
+    container_kill_idx = call_sequence.index("container_kill")
+    core_start_idx = call_sequence.index("core_start")
+
+    # Reservation container must be running before any pre-Core app stage boots
+    assert container_start_idx < system_boot_idx
+    assert container_start_idx < services_boot_idx
+    # Container must be stopped before Core starts
+    assert container_kill_idx < core_start_idx
+
+
+@pytest.mark.usefixtures("core_start_base_mocks")
+async def test_start_skips_port_reservation_when_core_already_running(coresys: CoreSys):
+    """When Core is already running (Supervisor restart), no reservation container is created."""
+    coresys.docker.docker = MagicMock()
+    coresys.docker.docker.containers = MagicMock()
+
+    with patch.object(
+        coresys.homeassistant.core,
+        "is_running",
+        new=AsyncMock(return_value=True),
+    ):
+        await coresys.core.start()
+
+    coresys.docker.docker.containers.create.assert_not_called()
