@@ -131,3 +131,74 @@ async def test_deprecation_advisory_log_level(
         any(record.levelno >= logging.WARNING for record in advisories)
         is expect_warning
     )
+
+
+@pytest.mark.parametrize(
+    ("repository", "channel", "installed", "builtin", "expect_warning"),
+    [
+        (REPOSITORY_LOCAL, UpdateChannel.STABLE, False, True, True),
+        ("094b3f00", UpdateChannel.DEV, False, False, True),
+        # An uninstalled store app (e.g. a community add-on the user does not
+        # have) must not warn about a malformed translation - see issue #7136.
+        ("094b3f00", UpdateChannel.STABLE, False, False, False),
+        ("094b3f00", UpdateChannel.STABLE, True, False, True),
+        ("094b3f00", UpdateChannel.STABLE, True, True, False),
+    ],
+)
+async def test_translation_warning_log_level(
+    coresys: CoreSys,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    repository: str,
+    channel: UpdateChannel,
+    installed: bool,
+    builtin: bool,
+    expect_warning: bool,
+):
+    """Malformed translations warn only where actionable, like config advisories."""
+    config = load_json_fixture("basic-app-config.json")
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+
+    # A malformed translation, mirroring the nested network format from #7136.
+    translations_dir = tmp_path / "translations"
+    translations_dir.mkdir()
+    (translations_dir / "en.json").write_text(
+        json.dumps({"network": {"53/udp": {"description": "DNS"}}}), encoding="utf-8"
+    )
+
+    coresys.updater.channel = channel
+
+    app_slug = f"{repository}_{config['slug']}"
+    installed_apps = [SimpleNamespace(slug=app_slug)] if installed else []
+
+    with (
+        patch.object(
+            coresys.store.data,
+            "_find_app_configs",
+            AsyncMock(return_value=[config_file]),
+        ),
+        patch.object(
+            type(coresys.apps),
+            "installed",
+            new_callable=PropertyMock,
+            return_value=installed_apps,
+        ),
+        patch.dict(
+            coresys.store.repositories,
+            {repository: SimpleNamespace(is_builtin=builtin)},
+        ),
+        caplog.at_level(logging.DEBUG, logger="supervisor.store.data"),
+    ):
+        await coresys.store.data._read_apps_folder(tmp_path, repository)
+
+    failures = [
+        record
+        for record in caplog.records
+        if record.name == "supervisor.store.data"
+        and "Can't read translations" in record.getMessage()
+    ]
+    assert failures  # The failure is always reported at some level.
+    assert (
+        any(record.levelno >= logging.WARNING for record in failures) is expect_warning
+    )

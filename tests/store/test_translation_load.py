@@ -1,6 +1,7 @@
 """Test loading add-translation."""
 
 # pylint: disable=import-error,protected-access
+import logging
 from pathlib import Path
 
 import pytest
@@ -81,3 +82,25 @@ def test_translation_file_failure(
 
     assert translations["en"]["configuration"]["test"]["name"] == "test"
     assert f"Can't read translations from {fail_path.as_posix()}" in caplog.text
+
+
+def test_translation_failure_log_level(
+    coresys: CoreSys, tmp_path: Path, caplog: pytest.LogCaptureFixture
+):
+    """Test the parse-failure log level is controlled by the log callable."""
+    (tmp_path / "translations").mkdir(parents=True)
+    fail_path = tmp_path / "translations" / "de.json"
+    with fail_path.open("w") as de_file:
+        de_file.write("not json")
+
+    logger = logging.getLogger("supervisor.store.data")
+    with caplog.at_level(logging.DEBUG, logger="supervisor.store.data"):
+        _read_app_translations(tmp_path, logger.debug)
+
+    records = [
+        record
+        for record in caplog.records
+        if "Can't read translations" in record.getMessage()
+    ]
+    assert records
+    assert all(record.levelno == logging.DEBUG for record in records)

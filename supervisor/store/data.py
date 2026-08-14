@@ -1,5 +1,6 @@
 """Init file for Supervisor app data."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 import errno
 import logging
@@ -45,10 +46,15 @@ class ProcessedRepository:
     config: dict[str, Any]
 
 
-def _read_app_translations(app_path: Path) -> dict:
+def _read_app_translations(
+    app_path: Path, log: Callable[..., None] = _LOGGER.warning
+) -> dict:
     """Read translations from apps folder.
 
-    Should be run in the executor.
+    Should be run in the executor. Parse failures are reported through ``log``
+    so the caller can pick a level that matches the audience (see the app config
+    advisory handling in ``_read_apps_folder``); a malformed translation is only
+    actionable for someone who can fix the app.
     """
     translations_dir = app_path / "translations"
     translations: dict[str, Any] = {}
@@ -69,7 +75,7 @@ def _read_app_translations(app_path: Path) -> dict:
             )
 
         except (ConfigurationFileError, vol.Invalid) as err:
-            _LOGGER.warning("Can't read translations from %s - %s", translation, err)
+            log("Can't read translations from %s - %s", translation, err)
             continue
 
     return translations
@@ -226,6 +232,7 @@ class StoreData(CoreSysAttributes):
                     and f"{repository}_{app.get(ATTR_SLUG)}" in installed_slugs
                 )
                 schema = SCHEMA_APP_CONFIG if verbose else SCHEMA_APP_CONFIG_QUIET
+                log = _LOGGER.warning if verbose else _LOGGER.debug
 
                 # validate
                 try:
@@ -242,7 +249,7 @@ class StoreData(CoreSysAttributes):
                 # store
                 app[ATTR_REPOSITORY] = repository
                 app[ATTR_LOCATION] = str(app_config.parent)
-                app[ATTR_TRANSLATIONS] = _read_app_translations(app_config.parent)
+                app[ATTR_TRANSLATIONS] = _read_app_translations(app_config.parent, log)
                 app[ATTR_VERSION_TIMESTAMP] = app_config.stat().st_mtime
                 apps[app_slug] = app
 
