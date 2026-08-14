@@ -1,5 +1,7 @@
 """Test docker login."""
 
+import pytest
+
 # pylint: disable=protected-access
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY
@@ -78,21 +80,35 @@ def test_legacy_docker_hub_credentials(
     assert image == f"{DOCKER_HUB}/homeassistant/amd64-supervisor"
 
 
-def test_explicit_docker_hub_domain_not_doubled(
-    coresys: CoreSys, test_docker_interface: DockerInterface
-):
-    """Test an image already carrying a Docker Hub domain is not prefixed twice."""
-    coresys.docker.config._data["registries"] = {
-        DOCKER_HUB: {"username": "Spongebob Squarepants", "password": "Password1!"},
-    }
-
-    for image in (
+@pytest.mark.parametrize("registry_key", [DOCKER_HUB, DOCKER_HUB_LEGACY])
+@pytest.mark.parametrize(
+    "image",
+    [
+        "homeassistant/amd64-supervisor",
         f"{DOCKER_HUB}/homeassistant/amd64-supervisor",
         "index.docker.io/homeassistant/amd64-supervisor",
-    ):
-        credentials, qualified_image = test_docker_interface._get_credentials(image)
-        assert credentials["registry"] == DOCKER_HUB
-        assert qualified_image == f"{DOCKER_HUB}/homeassistant/amd64-supervisor"
+    ],
+)
+def test_docker_hub_image_qualified_once(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    registry_key: str,
+    image: str,
+):
+    """Test a Docker Hub image gets exactly one docker.io prefix to pull with.
+
+    Applies to references without a domain and to both Docker Hub domains, with
+    credentials stored under either the official or the legacy registry key.
+    """
+    coresys.docker.config._data["registries"] = {
+        registry_key: {"username": "Spongebob Squarepants", "password": "Password1!"},
+    }
+
+    credentials, qualified_image = test_docker_interface._get_credentials(image)
+
+    assert credentials["username"] == "Spongebob Squarepants"
+    assert credentials["registry"] == registry_key
+    assert qualified_image == f"{DOCKER_HUB}/homeassistant/amd64-supervisor"
 
 
 def test_docker_hub_preferred_over_legacy(
