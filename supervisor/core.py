@@ -7,8 +7,7 @@ from datetime import timedelta
 import logging
 from typing import Final, Self
 
-import aiodocker
-from aiodocker.containers import DockerContainer
+from dbus_fast import Variant
 
 from .const import (
     ATTR_STARTUP,
@@ -19,9 +18,10 @@ from .const import (
     CoreState,
 )
 from .coresys import CoreSys, CoreSysAttributes
-from .dbus.const import StopUnitMode, UnitActiveState
+from .dbus.const import StartUnitMode, StopUnitMode, UnitActiveState
 from .exceptions import (
     AppFileReadError,
+    DBusError,
     HassioError,
     HomeAssistantCrashError,
     HomeAssistantError,
@@ -37,8 +37,10 @@ from .utils.whoami import retrieve_whoami
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-# Name of the short-lived container used to hold Core's host port during boot.
-_PORT_RESERVE_CONTAINER: Final = "hassio_port_reserve"
+# Name of the transient systemd unit used to hold Core's host port during boot.
+_PORT_RESERVE_UNIT: Final = "hassio-port-reserve.socket"
+_PORT_RESERVE_TIMEOUT: Final = 10
+_TERMINAL_STATES: Final = {UnitActiveState.INACTIVE, UnitActiveState.FAILED}
 
 
 class Core(CoreSysAttributes):
@@ -252,18 +254,19 @@ class Core(CoreSysAttributes):
                     await self.sys_supervisor.update()
                     return
 
-        # Start a temporary host-network container to hold Core's TCP port before
-        # booting any apps. Core runs with --network=host, so it competes in the
-        # host network namespace. Supervisor itself is on the hassio bridge and
-        # cannot bind there directly, so we use a container that can.
+        # Reserve Core's TCP port before booting any apps. Core runs with
+        # --network=host, so it competes with apps in the host network
+        # namespace. Supervisor itself is on the hassio bridge and cannot bind
+        # there directly, so a transient systemd socket unit is used instead
+        # (systemd performs the bind itself as part of activating the unit).
         # Released just before Core starts so Core can claim the port.
-        core_port_container: DockerContainer | None = None
+        core_port_reserved = False
         try:
             if not await self.sys_homeassistant.core.is_running():
                 hosts = self.sys_homeassistant.http_server_host
                 host = hosts[0] if hosts else "0.0.0.0"
                 port = self.sys_homeassistant.api_port
-                core_port_container = await self._reserve_core_port(host, port)
+                core_port_reserved = await self._reserve_core_port(host, port)
 
             # Start app mark as initialize
             await self.sys_apps.boot(AppStartup.INITIALIZE)
@@ -283,9 +286,9 @@ class Core(CoreSysAttributes):
             await self.sys_apps.boot(AppStartup.SERVICES)
 
             # Release the port reservation so Core can bind it
-            if core_port_container is not None:
-                await self._release_core_port(core_port_container)
-                core_port_container = None
+            if core_port_reserved:
+                await self._release_core_port()
+                core_port_reserved = False
 
             # run HomeAssistant
             if (
@@ -321,9 +324,9 @@ class Core(CoreSysAttributes):
             await self._update_last_boot()
 
         finally:
-            # Ensure the port reservation container is always removed
-            if core_port_container is not None:
-                await self._release_core_port(core_port_container)
+            # Ensure the port reservation is always released
+            if core_port_reserved:
+                await self._release_core_port()
 
             # Add core tasks into scheduler
             await self.sys_tasks.load()
@@ -471,89 +474,112 @@ class Core(CoreSysAttributes):
         self.sys_config.last_boot = last_boot
         await self.sys_config.save_data()
 
-    async def _reserve_core_port(self, host: str, port: int) -> DockerContainer | None:
-        """Start a temporary host-network container that holds Core's TCP port.
+    async def _reserve_core_port(self, host: str, port: int) -> bool:
+        """Reserve Core's host TCP port using a transient systemd socket unit.
 
         Core runs with --network=host, meaning it binds directly in the host
         network namespace. Supervisor lives on the hassio bridge and cannot
-        bind in the host namespace itself. We therefore start a minimal
-        container (using the Supervisor's own image, which is always present)
-        on --network=host so that Docker's host-network plumbing is used. The
-        container runs a Python one-liner that binds the socket and then blocks
-        on signal.pause(); killing the container releases the port.
+        bind there itself. Instead of starting a process, we ask the host's
+        systemd (over D-Bus, already a hard Supervisor dependency) to create
+        a transient ``.socket`` unit listening on Core's port. Systemd binds
+        the socket itself as part of activating the unit — no executable or
+        container is involved, and waiting for the unit to become active
+        guarantees the bind has already happened, closing the race window a
+        subprocess/container based approach would have.
 
-        Returns the running container, or None if reservation failed (non-fatal
-        — boot continues without the protection).
-
-        Known limitations
-        -----------------
-        * There is a small race window between ``container.start()`` returning
-          and the Python process inside actually calling ``s.bind()``. In
-          practice the SYSTEM/SERVICES boot sequence takes long enough that
-          this has never been observed to matter, but it is not zero.
-        * Starting a full Supervisor-image container adds a few hundred
-          milliseconds of latency to the boot sequence.
+        Returns True if the port was reserved (the caller must then call
+        ``_release_core_port`` before Core starts), or False if the
+        reservation could not be made (non-fatal — boot continues without
+        the protection).
         """
-        image = self.sys_supervisor.image
-        tag = str(self.sys_supervisor.version) if self.sys_supervisor.version else None
-        if not image or not tag:
+        if not self.sys_dbus.systemd.is_connected:
             _LOGGER.warning(
-                "Cannot reserve Core port %s:%d: Supervisor image/version unknown",
+                "Cannot reserve Core port %s:%d: systemd D-Bus not connected",
                 host,
                 port,
             )
-            return None
+            return False
 
-        # Remove any stale reservation container from a previous crashed boot
-        with suppress(Exception):
-            stale = await self.sys_docker.docker.containers.get(_PORT_RESERVE_CONTAINER)
-            await stale.delete(force=True)
+        # Clean up a unit left behind by a previous crashed Supervisor boot.
+        # Unlike a oneshot unit, our socket unit never exits on its own, so a
+        # unit left active by a crash would otherwise hold Core's port forever,
+        # and systemd refuses to redefine a transient unit that's still loaded
+        # (in any state) under the same name even with mode=replace.
+        await self._release_core_port()
 
-        bind_cmd = (
-            "import socket, signal; "
-            "s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); "
-            "s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); "
-            f"s.bind(('{host}', {port})); "
-            "signal.pause()"
-        )
+        properties: list[tuple[str, Variant]] = [
+            ("Description", Variant("s", "Home Assistant Core port reservation")),
+            ("Listen", Variant("a(ss)", [("Stream", f"{host}:{port}")])),
+        ]
+
         try:
-            container = await self.sys_docker.docker.containers.create(
-                {
-                    "Image": f"{image}:{tag}",
-                    "Cmd": ["python3", "-c", bind_cmd],
-                    "HostConfig": {"NetworkMode": "host"},
-                },
-                name=_PORT_RESERVE_CONTAINER,
+            await self.sys_dbus.systemd.start_transient_unit(
+                _PORT_RESERVE_UNIT, StartUnitMode.REPLACE, properties
             )
-            await container.start()
-            _LOGGER.debug(
-                "Reserved Home Assistant Core port %s:%d during app startup",
-                host,
-                port,
-            )
-            return container
-        except (aiodocker.DockerError, TimeoutError) as err:
+            unit = await self.sys_dbus.systemd.get_unit(_PORT_RESERVE_UNIT)
+            async with asyncio.timeout(_PORT_RESERVE_TIMEOUT):
+                state = await unit.wait_for_active_state(
+                    {UnitActiveState.ACTIVE, UnitActiveState.FAILED}
+                )
+            if state != UnitActiveState.ACTIVE:
+                raise DBusError(f"unit entered state {state}")
+        except (DBusError, TimeoutError) as err:
             _LOGGER.warning(
                 "Could not reserve Home Assistant Core port %s:%d: %s",
                 host,
                 port,
                 err,
             )
-            # Clean up any partially-created container
-            with suppress(Exception):
-                stale = await self.sys_docker.docker.containers.get(
-                    _PORT_RESERVE_CONTAINER
-                )
-                await stale.delete(force=True)
-            return None
+            await self._release_core_port()
+            return False
 
-    async def _release_core_port(self, container: DockerContainer) -> None:
-        """Stop and remove the Core port reservation container."""
-        with suppress(Exception):
-            await container.kill()
-        with suppress(Exception):
-            await container.delete(force=True)
-        _LOGGER.debug("Released Home Assistant Core port reservation")
+        _LOGGER.debug(
+            "Reserved Home Assistant Core port %s:%d during app startup",
+            host,
+            port,
+        )
+        return True
+
+    async def _release_core_port(self) -> None:
+        """Stop the port reservation unit if it exists, releasing the held port.
+
+        Waits for the unit to actually leave a running state before returning:
+        systemd refuses to redefine a transient unit that's still loaded (in
+        any state) even with mode=replace, so callers about to (re)create the
+        unit rely on this to avoid a "unit already exists" race. Safe to call
+        even when no unit exists (e.g. on a fresh boot, or if
+        start_transient_unit itself never got to create one) -- this is then
+        a cheap no-op. Used both to release a successful reservation and to
+        clean up a stale/failed one before (re)creating it.
+        """
+        if not self.sys_dbus.systemd.is_connected:
+            return
+
+        with suppress(DBusError):
+            unit = await self.sys_dbus.systemd.get_unit(_PORT_RESERVE_UNIT)
+
+            # A DBusError here (e.g. a timeout waiting for the reply) doesn't
+            # necessarily mean the stop didn't happen on the systemd side, so
+            # don't give up: wait_for_active_state below is the authoritative
+            # check of the real state, not this call's return value.
+            with suppress(DBusError):
+                await self.sys_dbus.systemd.stop_unit(
+                    _PORT_RESERVE_UNIT, StopUnitMode.REPLACE
+                )
+
+            state = UnitActiveState.FAILED
+            with suppress(TimeoutError):
+                async with asyncio.timeout(_PORT_RESERVE_TIMEOUT):
+                    state = await unit.wait_for_active_state(_TERMINAL_STATES)
+
+            # Only a FAILED unit needs resetting -- systemd keeps those around
+            # until reset, but garbage collects a cleanly INACTIVE one on its
+            # own. A timeout above leaves state at FAILED so we still try.
+            if state != UnitActiveState.INACTIVE:
+                with suppress(DBusError):
+                    await self.sys_dbus.systemd.reset_failed_unit(_PORT_RESERVE_UNIT)
+
+            _LOGGER.debug("Stopped Home Assistant Core port reservation unit")
 
     async def _adjust_system_datetime(self) -> None:
         """Adjust system time/date on startup."""
