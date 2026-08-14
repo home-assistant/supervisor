@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import aiodocker
 from aiodocker.containers import DockerContainer
 
+from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, UnhealthyReason
@@ -20,6 +21,12 @@ def _make_image_attr(image: str) -> DockerContainer:
             "Image": image,
         },
     }
+    return out
+
+
+def _make_app_attr(image: str) -> App:
+    out = MagicMock(spec=App)
+    out.image = image
     return out
 
 
@@ -53,6 +60,24 @@ async def test_evaluation(coresys: CoreSys):
     assert container.reason not in coresys.resolution.unsupported
 
     assert coresys.resolution.evaluate.cached_images == set()
+
+
+async def test_registry_with_port(coresys: CoreSys):
+    coresys._apps = MagicMock()
+    coresys._apps.installed = [_make_app_attr("ghcr.io:443/home-assistant/supervisor")]
+
+    container = EvaluateContainer(coresys)
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    coresys.docker.containers.list.return_value = [
+        _make_image_attr("ghcr.io:443/home-assistant/supervisor:latest"),
+    ]
+    await container()
+    assert container.reason not in coresys.resolution.unsupported
+
+    assert coresys.resolution.evaluate.cached_images == {
+        "ghcr.io:443/home-assistant/supervisor:latest"
+    }
 
 
 async def test_corrupt_docker(coresys: CoreSys):
