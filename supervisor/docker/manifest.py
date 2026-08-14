@@ -59,7 +59,7 @@ def parse_image_reference(image: str, tag: str) -> tuple[str, str, str]:
     # Split off the registry host if the image reference has one
     domain, repository = split_docker_domain(image)
     registry = domain or DOCKER_HUB
-    if not domain and "/" not in repository:
+    if registry == DOCKER_HUB and "/" not in repository:
         # Docker Hub requires "library/" prefix for official images
         repository = f"library/{repository}"
 

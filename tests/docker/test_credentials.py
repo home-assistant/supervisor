@@ -78,6 +78,23 @@ def test_legacy_docker_hub_credentials(
     assert image == f"{DOCKER_HUB}/homeassistant/amd64-supervisor"
 
 
+def test_explicit_docker_hub_domain_not_doubled(
+    coresys: CoreSys, test_docker_interface: DockerInterface
+):
+    """Test an image already carrying a Docker Hub domain is not prefixed twice."""
+    coresys.docker.config._data["registries"] = {
+        DOCKER_HUB: {"username": "Spongebob Squarepants", "password": "Password1!"},
+    }
+
+    for image in (
+        f"{DOCKER_HUB}/homeassistant/amd64-supervisor",
+        "index.docker.io/homeassistant/amd64-supervisor",
+    ):
+        credentials, qualified_image = test_docker_interface._get_credentials(image)
+        assert credentials["registry"] == DOCKER_HUB
+        assert qualified_image == f"{DOCKER_HUB}/homeassistant/amd64-supervisor"
+
+
 def test_docker_hub_preferred_over_legacy(
     coresys: CoreSys, test_docker_interface: DockerInterface
 ):
