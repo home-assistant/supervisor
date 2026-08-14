@@ -8,6 +8,7 @@ import logging
 import os
 from pathlib import Path, PurePath
 import time
+from typing import cast
 
 from dbus_fast import Variant
 from voluptuous import Coerce
@@ -25,19 +26,34 @@ from ..dbus.const import (
     UnitActiveState,
 )
 from ..dbus.systemd import SystemdUnit, job_removed_filter
+from ..dbus.udisks2.data import DeviceSpecification
 from ..docker.const import PATH_MEDIA, PATH_SHARE
 from ..exceptions import (
     DBusError,
+    DBusNotConnectedError,
     DBusSystemdNoSuchUnit,
     MountActivationError,
+    MountDeviceMismatchError,
+    MountDeviceNotFoundError,
+    MountDeviceReadOnlyError,
+    MountDisksNotSupportedError,
     MountError,
+    MountFilesystemNotSupportedError,
+    MountInvalidError,
     MountTargetNotDirectoryError,
     MountTargetNotEmptyError,
 )
 from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
 from ..utils.sentry import async_capture_exception
-from .const import MountCifsVersion, MountType, MountUsage
+from .const import (
+    KERNEL_FILESYSTEM_MAP,
+    SUPPORTED_LOCAL_FILESYSTEMS,
+    MountCifsVersion,
+    MountType,
+    MountUsage,
+)
+from .disks import validate_block_for_mount
 from .validate import MountData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -113,6 +129,8 @@ class Mount(CoreSysAttributes, ABC):
             return CIFSMount(coresys, data)
         if type_ == MountType.NFS:
             return NFSMount(coresys, data)
+        if type_ == MountType.DISK:
+            return DiskMount(coresys, data)
         return BindMount(coresys, data)
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
@@ -160,6 +178,16 @@ class Mount(CoreSysAttributes, ABC):
     def options(self) -> list[str]:
         """List of options to use to mount."""
         return ["ro"] if self.read_only else []
+
+    @property
+    def unit_type(self) -> str | None:
+        """Filesystem type for the systemd unit, or none to let systemd infer it.
+
+        A bind mount has no filesystem of its own, so it must not set Type=.
+        Disk mounts override this because the signature UDisks2 probes is not
+        always the name of the kernel driver that mounts it.
+        """
+        return None if self.type == MountType.BIND else self.type.value
 
     @property
     def description(self) -> str:
@@ -362,8 +390,8 @@ class Mount(CoreSysAttributes, ABC):
             if self.options
             else []
         )
-        if self.type != MountType.BIND:
-            options += [(DBUS_ATTR_TYPE, Variant("s", self.type))]
+        if (unit_type := self.unit_type) is not None:
+            options += [(DBUS_ATTR_TYPE, Variant("s", unit_type))]
         properties = options + [
             (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
             (DBUS_ATTR_WHAT, Variant("s", self.what)),
@@ -814,3 +842,208 @@ class BindMount(Mount):
     def options(self) -> list[str]:
         """List of options to use to mount."""
         return super().options + ["bind"]
+
+
+class DiskMount(Mount):
+    """A local disk mount.
+
+    A sibling of NetworkMount rather than a subclass: there is no server, no
+    port, and none of the reachability probing a network share needs. What it
+    does share with NetworkMount is `where`, which keeps every downstream
+    consumer (unit_name, container_where, bind plumbing, backup locations)
+    working without changes.
+    """
+
+    def to_dict(self, *, skip_secrets: bool = True) -> MountData:
+        """Return dictionary representation."""
+        out = MountData(**super().to_dict())
+        if self.uuid is not None:
+            out["uuid"] = self.uuid
+        if self.filesystem is not None:
+            out["filesystem"] = self.filesystem
+        return out
+
+    @property
+    def device(self) -> str | None:
+        """Get device path, only set before it has been resolved to a UUID."""
+        return self._data.get("device")
+
+    @property
+    def uuid(self) -> str | None:
+        """Get filesystem UUID of the device to mount."""
+        return self._data.get("uuid")
+
+    @property
+    def filesystem(self) -> str | None:
+        """Get filesystem as probed by UDisks2 (e.g. "ntfs", never "ntfs3")."""
+        return self._data.get("filesystem")
+
+    @property
+    def what(self) -> str:
+        """What to mount.
+
+        The by-uuid symlink rather than a /dev/sd* path: it survives reboots
+        and re-enumeration, and systemd turns it into a device-unit dependency
+        so a slow USB disk is waited for at boot (bounded by the unit's
+        TimeoutUSec) instead of failing outright.
+        """
+        return f"/dev/disk/by-uuid/{self.uuid}"
+
+    @property
+    def where(self) -> PurePath:
+        """Where to mount."""
+        return self.sys_config.path_extern_mounts / self.name
+
+    @property
+    def unit_type(self) -> str | None:
+        """Kernel filesystem type for the systemd unit."""
+        if (filesystem := self.filesystem) is None:
+            return None
+        return KERNEL_FILESYSTEM_MAP.get(filesystem, filesystem)
+
+    def forget_resolved_device(self) -> None:
+        """Drop the resolved filesystem so the next mount resolves again.
+
+        Resolving is what runs the mountable-device guard, and a mount that
+        already knows its filesystem skips both. Calling this marks a mount as
+        coming from data we do not trust — a restored backup — so it is
+        re-checked instead of taken at its word. The UUID is kept, since that
+        is what the device is resolved by.
+        """
+        if "filesystem" in self._data:
+            del self._data["filesystem"]
+
+    async def load(self) -> None:
+        """Initialize object."""
+        # Resolve before the base class decides what to do. `load()` only
+        # mounts when no unit exists yet, so a mount created while a unit for
+        # this path is already active would otherwise adopt it and never
+        # learn its UUID — and would then be persisted without one, which
+        # cannot be loaded back.
+        await self._ensure_resolved()
+
+        await super().load()
+
+    async def mount(self) -> None:
+        """Mount using systemd."""
+        await self._ensure_resolved()
+
+        await super().mount()
+
+    async def _ensure_resolved(self) -> None:
+        """Resolve the device unless it is already known.
+
+        A persisted mount comes back with its UUID and filesystem, so a
+        reboot or a backup restore needs no UDisks2 round trip. If the disk
+        is absent, mounting fails through the normal MountActivationError
+        path and picks up the existing failed-mount issue, fixups and retry
+        machinery.
+        """
+        if self.filesystem is None:
+            await self._resolve_device()
+
+        # Re-check the allowlist for a mount that did not just resolve. Such a
+        # mount skipped the guard: mounts.json may have been edited by hand, or
+        # restored from a backup taken on a supervisor with a wider allowlist.
+        # Failing here costs this one mount, whereas rejecting the value in the
+        # file schema would invalidate the whole file and reset every mount.
+        if self.filesystem not in SUPPORTED_LOCAL_FILESYSTEMS:
+            raise MountFilesystemNotSupportedError(_LOGGER.error, device=self.what)
+
+    async def _resolve_device(self) -> None:
+        """Resolve the configured device into a UUID and filesystem.
+
+        Deferred to mount time for the same reason CIFSMount writes its
+        credentials file there: it needs a live host, so it cannot happen
+        during validation.
+        """
+        # UDisks2 is how a device is resolved at all, so without it there is no
+        # way to mount a local disk. Checked up front because `resolve_device`
+        # would otherwise raise DBusNotConnectedError, which is not a DBusError
+        # and would surface as an unexpected server error rather than a clear
+        # "not supported here".
+        if not self.sys_dbus.udisks2.is_connected:
+            raise MountDisksNotSupportedError(_LOGGER.error)
+
+        # A candidates entry can be posted back carrying both identifiers.
+        # The uuid is what gets persisted, so it drives resolution; a device
+        # supplied alongside is verified for agreement afterwards.
+        if self.uuid is not None:
+            reference = self.uuid
+            devspec = DeviceSpecification(uuid=self.uuid)
+        elif self.device is not None:
+            reference = self.device
+            devspec = DeviceSpecification(path=Path(self.device))
+        else:
+            # Validation requires one of the two, so this only happens for a
+            # mount built in code or from a hand-edited configuration.
+            raise MountInvalidError(
+                f"Mount {self.name} has neither a device nor a UUID to resolve",
+                _LOGGER.error,
+            )
+
+        try:
+            devices = await self.sys_dbus.udisks2.resolve_device(devspec)
+        except DBusNotConnectedError as err:
+            # Belt and braces: UDisks2 could disconnect between the check above
+            # and the call. DBusNotConnectedError is not a DBusError, so it
+            # needs catching separately or it escapes as an unexpected error.
+            raise MountDisksNotSupportedError(_LOGGER.error) from err
+        except DBusError as err:
+            raise MountError(
+                f"Could not resolve device for mount {self.name} due to: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+        if not devices:
+            raise MountDeviceNotFoundError(_LOGGER.error, reference=reference)
+
+        if len(devices) > 1:
+            raise MountInvalidError(
+                f"{reference} matches {len(devices)} devices, cannot tell which "
+                f"one to mount for {self.name}",
+                _LOGGER.error,
+            )
+
+        block = devices[0]
+
+        # Both identifiers were supplied but no longer agree, e.g. a stale
+        # candidates entry after the device was re-enumerated. Refuse rather
+        # than silently prefer one of them.
+        if (
+            self.uuid is not None
+            and self.device is not None
+            and block.device.as_posix() != self.device
+        ):
+            raise MountDeviceMismatchError(
+                _LOGGER.error, device=self.device, uuid=self.uuid
+            )
+
+        validate_block_for_mount(
+            self.coresys,
+            block,
+            used_uuids=disk_mount_uuids(self.sys_mounts.mounts, exclude=self.name),
+        )
+
+        # No silent coercion: someone asking for a writable mount on a
+        # write-protected disk should be told, not quietly given read-only.
+        if block.read_only and not self.read_only:
+            raise MountDeviceReadOnlyError(
+                _LOGGER.error, device=block.device.as_posix()
+            )
+
+        self._data["uuid"] = block.id_uuid
+        self._data["filesystem"] = block.id_type
+        if "device" in self._data:
+            del self._data["device"]
+
+
+def disk_mount_uuids(mounts: list[Mount], *, exclude: str | None = None) -> set[str]:
+    """Return filesystem UUIDs already claimed by configured disk mounts."""
+    return {
+        uuid
+        for mount in mounts
+        if mount.type == MountType.DISK
+        and (uuid := cast(DiskMount, mount).uuid)
+        and mount.name != exclude
+    }
