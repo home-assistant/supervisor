@@ -55,7 +55,7 @@ from .const import (
     LogLevel,
     UpdateChannel,
 )
-from .docker.utils import get_registry_from_image
+from .docker.utils import is_registry_domain, split_docker_domain
 from .utils.validate import validate_timezone
 
 # Move to store.validate when addons_repository config removed
@@ -74,20 +74,19 @@ def docker_image(image: str) -> str:
     """Validate a Docker image name without tag.
 
     Tags are not allowed as the version/tag is managed separately.
-    Uses IMAGE_REGISTRY_REGEX from docker.utils for robust registry detection.
     """
     if not image or not isinstance(image, str):
         raise vol.Invalid(f"Expected a non-empty string for docker image, got: {image}")
 
-    # Extract registry if present (handles domains, IPv4/IPv6, ports, localhost)
-    registry = get_registry_from_image(image)
+    # Split off the registry if present (handles domains, IPv4/IPv6, ports,
+    # localhost) to validate the remaining image path components
+    registry, path = split_docker_domain(image)
     if registry:
         # Registry must be lowercase
         if registry != registry.lower():
             raise vol.Invalid(f"Docker image registry must be lowercase: {image}")
-        path = image[len(registry) + 1 :]  # Remove "registry/" prefix
-    else:
-        path = image
+        if not is_registry_domain(registry):
+            raise vol.Invalid(f"Invalid Docker image registry '{registry}' in: {image}")
 
     if not path:
         raise vol.Invalid(f"Docker image has no name: {image}")

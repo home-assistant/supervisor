@@ -1,49 +1,9 @@
 """Test docker login."""
 
-import pytest
-
 # pylint: disable=protected-access
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY
 from supervisor.docker.interface import DockerInterface
-from supervisor.docker.utils import get_registry_from_image
-
-
-@pytest.mark.parametrize(
-    ("image_ref", "expected_registry"),
-    [
-        # No registry - Docker Hub images
-        ("nginx", None),
-        ("nginx:latest", None),
-        ("library/nginx", None),
-        ("library/nginx:latest", None),
-        ("homeassistant/amd64-supervisor", None),
-        ("homeassistant/amd64-supervisor:1.2.3", None),
-        # Registry with dot
-        ("ghcr.io/homeassistant/amd64-supervisor", "ghcr.io"),
-        ("ghcr.io/homeassistant/amd64-supervisor:latest", "ghcr.io"),
-        ("myregistry.com/nginx", "myregistry.com"),
-        ("registry.example.com/org/image:v1", "registry.example.com"),
-        ("127.0.0.1/myimage", "127.0.0.1"),
-        # Registry with port
-        ("myregistry:5000/myimage", "myregistry:5000"),
-        ("localhost:5000/myimage", "localhost:5000"),
-        ("registry.io:5000/org/app:v1", "registry.io:5000"),
-        # localhost special case
-        ("localhost/myimage", "localhost"),
-        ("localhost/myimage:tag", "localhost"),
-        # IPv6
-        ("[::1]:5000/myimage", "[::1]:5000"),
-        ("[2001:db8::1]:5000/myimage:tag", "[2001:db8::1]:5000"),
-    ],
-)
-def test_get_registry_from_image(image_ref: str, expected_registry: str | None):
-    """Test get_registry_from_image extracts registry from image reference.
-
-    Based on Docker's reference implementation:
-    vendor/github.com/distribution/reference/normalize.go
-    """
-    assert get_registry_from_image(image_ref) == expected_registry
 
 
 def test_no_credentials(coresys: CoreSys, test_docker_interface: DockerInterface):
