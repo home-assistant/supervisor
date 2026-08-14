@@ -148,9 +148,7 @@ class APIProxy(CoreSysAttributes):
 
         path = request.match_info.get("path", "")
         if CORE_API_DENY.match(path):
-            _LOGGER.warning(
-                "Blocked proxied add-on access to Core API path %s", path
-            )
+            _LOGGER.warning("Blocked proxied add-on access to Core API path %s", path)
             raise HTTPForbidden
 
         if not await self.sys_homeassistant.api.check_api_state():
