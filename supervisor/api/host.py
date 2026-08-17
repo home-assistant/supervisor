@@ -37,11 +37,17 @@ from ..const import (
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
+from ..dbus.const import UnitActiveState
 from ..exceptions import (
     APIDBMigrationInProgress,
     APIError,
     HostContainerLogEpochError,
     HostLogError,
+    MountNotFound,
+    MountUsageNotActiveError,
+    MountUsageNotMountedError,
+    MountUsageReadError,
+    MountUsageTimeoutError,
 )
 from ..host.const import (
     PARAM_BOOT_ID,
@@ -51,6 +57,7 @@ from ..host.const import (
     LogFormatter,
 )
 from ..host.logs import SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX
+from ..mounts.mount import Mount
 from ..utils.systemd_journal import journal_logs_reader
 from .const import (
     ATTR_AGENT_VERSION,
@@ -59,6 +66,7 @@ from .const import (
     ATTR_BOOTS,
     ATTR_BROADCAST_LLMNR,
     ATTR_BROADCAST_MDNS,
+    ATTR_CHILDREN,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
     ATTR_FORCE,
@@ -79,6 +87,26 @@ IDENTIFIER = "identifier"
 BOOTID = "bootid"
 DEFAULT_LINES = 100
 
+DISK = "disk"
+
+# Reserved disk target naming the system disk. Takes precedence over a mount of
+# the same name, which the mount name pattern permits.
+DISK_TARGET_SYSTEM = "default"
+
+# The system disk lists labeled known paths at depth 1. A mount has no such
+# labels, so depth 1 would walk its whole tree to report a single total; mounts
+# therefore default to totals only and opt in to a breakdown explicitly.
+DISK_USAGE_MAX_DEPTH_SYSTEM = 1
+DISK_USAGE_MAX_DEPTH_MOUNT = 0
+
+# How long a caller waits on a mount usage probe before getting a timeout
+# error. Bounds only the wait, never the probe: the probe keeps running so
+# later requests join it instead of stacking executor threads against the
+# same slow mount. Deliberately longer than any protocol timeout, since a
+# probe of an unreachable network mount is expected to run to the kernel's
+# own bound.
+MOUNT_USAGE_TIMEOUT = 60
+
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
 # pylint: disable=no-value-for-parameter
@@ -92,6 +120,17 @@ SCHEMA_SHUTDOWN = vol.Schema(
 
 class APIHost(CoreSysAttributes):
     """Handle RESTful API for host functions."""
+
+    def __init__(self) -> None:
+        """Initialize host API handler."""
+        # In-flight mount usage probes, keyed by (mount name, max depth). A probe
+        # of an unreachable mount blocks until the kernel gives up, so callers
+        # asking for the same thing await the pending probe rather than parking
+        # another executor thread on identical work. Mounts only: the system disk
+        # keeps its existing per-request behavior.
+        self._mount_usage_probes: dict[
+            tuple[str, int], asyncio.Task[dict[str, Any]]
+        ] = {}
 
     @staticmethod
     def _legacy_disk_usage_ids_for_v1(data: dict[str, Any]) -> dict[str, Any]:
@@ -360,17 +399,29 @@ class APIHost(CoreSysAttributes):
 
     @api_process
     async def disk_usage(self, request: web.Request) -> dict[str, Any]:
-        """Return a breakdown of storage usage for the system."""
+        """Return a breakdown of storage usage for the system disk or a mount."""
         return await self._disk_usage_data(request)
 
     async def _disk_usage_data(self, request: web.Request) -> dict[str, Any]:
-        """Build disk usage response data."""
+        """Build disk usage response data for the requested disk."""
+        target = request.match_info.get(DISK, DISK_TARGET_SYSTEM)
+        if target == DISK_TARGET_SYSTEM:
+            return await self._system_disk_usage_data(request)
 
-        max_depth = request.query.get(ATTR_MAX_DEPTH, 1)
+        return await self._mount_disk_usage_data(request, target)
+
+    @staticmethod
+    def _requested_max_depth(request: web.Request, default: int) -> int:
+        """Return the requested max depth, falling back to default if unusable."""
+        max_depth = request.query.get(ATTR_MAX_DEPTH, default)
         try:
-            max_depth = int(max_depth)
+            return int(max_depth)
         except ValueError:
-            max_depth = 1
+            return default
+
+    async def _system_disk_usage_data(self, request: web.Request) -> dict[str, Any]:
+        """Build disk usage response data for the system disk."""
+        max_depth = self._requested_max_depth(request, DISK_USAGE_MAX_DEPTH_SYSTEM)
 
         disk = self.sys_hardware.disk
 
@@ -401,7 +452,7 @@ class APIHost(CoreSysAttributes):
             "label": "Root",
             "total_bytes": total,
             "used_bytes": used,
-            "children": [
+            ATTR_CHILDREN: [
                 {
                     "id": "system",
                     "label": "System",
@@ -411,6 +462,142 @@ class APIHost(CoreSysAttributes):
                 *known_paths,
             ],
         }
+
+    async def _mount_disk_usage_data(
+        self, request: web.Request, name: str
+    ) -> dict[str, Any]:
+        """Build disk usage response data for a supervisor mount."""
+        if name not in self.sys_mounts:
+            raise MountNotFound(name=name)
+
+        mount = self.sys_mounts.get(name)
+        if mount.state != UnitActiveState.ACTIVE:
+            raise MountUsageNotActiveError(name=name)
+
+        max_depth = self._requested_max_depth(request, DISK_USAGE_MAX_DEPTH_MOUNT)
+        return await self._mount_usage(mount, max_depth)
+
+    async def _mount_usage(self, mount: Mount, max_depth: int) -> dict[str, Any]:
+        """Return usage for a mount, joining an identical probe already running."""
+        key = (mount.name, max_depth)
+        if (probe := self._mount_usage_probes.get(key)) is None:
+
+            def _probe_done(task: asyncio.Task[dict[str, Any]]) -> None:
+                # Drop the entry so a failed probe cannot poison later requests
+                # and a stale result is never served. Guarded by identity so a
+                # replacement probe registered under the same key can never be
+                # evicted by a stale callback.
+                if self._mount_usage_probes.get(key) is task:
+                    del self._mount_usage_probes[key]
+
+                # Retrieve the failure even when nobody is left to receive it. A
+                # probe outlives the caller that started it, so a client giving up
+                # on an unreachable mount leaves a probe that still fails later;
+                # an unretrieved task exception would then be reported as though
+                # supervisor had faulted rather than a mount having not answered.
+                if not task.cancelled() and (err := task.exception()) is not None:
+                    _LOGGER.debug(
+                        "Storage usage probe for mount %s failed: %s", mount.name, err
+                    )
+
+            probe = self.sys_create_task(self._mount_usage_data(mount, max_depth))
+            self._mount_usage_probes[key] = probe
+            probe.add_done_callback(_probe_done)
+
+        # Waiting on the probe rather than awaiting it directly keeps a client
+        # that disconnects from cancelling work other callers share.
+        #
+        # Deliberately not asyncio.shield: it achieves the same isolation, but
+        # once its own await is cancelled it attaches a handler that pushes any
+        # failure through the loop exception handler as "<error> exception in
+        # shielded future". An unreachable mount is the case this endpoint exists
+        # to report on, so that would log a traceback for an expected outcome
+        # every time a user navigated away from a spinner.
+        #
+        # The timeout belongs to this wait, not to the probe. A probe killed by
+        # its own timeout would be popped from the registry while its executor
+        # thread stays parked in the kernel, so the next request would stack a
+        # fresh thread against the same unresponsive mount - the exact pile-up
+        # the registry exists to prevent. Timing out only the wait keeps the
+        # probe and its entry alive: slow callers get their error, later
+        # callers join the same probe, and the one thread is released by the
+        # kernel exactly once. Reachable legitimately via a long depth walk of
+        # a big share, not only via a dead server.
+        done, _ = await asyncio.wait({probe}, timeout=MOUNT_USAGE_TIMEOUT)
+        if not done:
+            raise MountUsageTimeoutError(name=mount.name)
+        return probe.result()
+
+    async def _mount_usage_data(self, mount: Mount, max_depth: int) -> dict[str, Any]:
+        """Probe a mount for its storage usage.
+
+        Runs to the kernel's own bound rather than a timeout of its own: the
+        frontend shows a loader per mount and a real answer is worth waiting
+        for. Callers bound their wait without cancelling this probe.
+        """
+        disk = self.sys_hardware.disk
+
+        try:
+            usage = await self.sys_run_in_executor(
+                disk.disk_usage_for_mount, mount.local_where
+            )
+
+            children: list[dict[str, Any]] = []
+            # The walker recurses regardless of max_depth and only emits
+            # children when max_depth exceeds 1, so it is skipped whenever it
+            # could not produce output - otherwise a request would walk the
+            # whole mount for nothing. Depth 1 emits nothing here because for
+            # the system disk that level is the labeled known paths, which
+            # come from get_dir_sizes rather than this walker, and a mount
+            # has no equivalent layer. Read errors from the walk stay this
+            # mount's problem: reporting them to the resolution center would
+            # mark the whole system unhealthy over an unreachable server.
+            if usage is not None and max_depth > 1:
+                structure = await self.sys_run_in_executor(
+                    disk.get_dir_structure_sizes,
+                    mount.local_where,
+                    max_depth,
+                    check_oserror=False,
+                )
+                children = structure.get(ATTR_CHILDREN, [])
+        except OSError as err:
+            raise MountUsageReadError(name=mount.name, reason=str(err)) from err
+
+        if usage is None:
+            # Ghost mount: systemd still reports the unit active, but the path
+            # no longer crosses a filesystem boundary, so statvfs was reading
+            # the host's data disk and would report its numbers under the
+            # mount's name.
+            raise MountUsageNotMountedError(name=mount.name)
+
+        total, _, free = usage
+        # Same reserved-space convention as the system disk
+        used = total - free
+
+        data: dict[str, Any] = {
+            "id": mount.name,
+            "label": mount.name,
+            "total_bytes": total,
+            "used_bytes": used,
+        }
+        # Omitted rather than empty, matching every other node in the tree
+        if children:
+            # Keep every node's children summing to its used_bytes, so a mount
+            # breaks down like anything else in the tree. Files directly at the
+            # mount root, reserved space, and anything the walk could not stat
+            # all land here. A walk racing deletion can overshoot the filesystem
+            # figure, so a non-positive remainder is dropped rather than
+            # reported as negative.
+            remainder = used - sum(child["used_bytes"] for child in children)
+            if remainder > 0:
+                children = [
+                    *children,
+                    {"id": "other", "label": "Other", "used_bytes": remainder},
+                ]
+
+            data[ATTR_CHILDREN] = children
+
+        return data
 
     @api_process
     async def disk_usage_v1(self, request: web.Request) -> dict[str, Any]:

@@ -1,7 +1,13 @@
 """Test Host API."""
 
+import asyncio
 from collections.abc import AsyncGenerator
+from contextlib import suppress
 from datetime import UTC, datetime
+import errno
+import gc
+import time
+from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
 from aiohttp import ClientPayloadError
@@ -10,12 +16,18 @@ from dbus_fast import DBusError, ErrorType
 import pytest
 import time_machine
 
+from supervisor.api.host import APIHost
 from supervisor.coresys import CoreSys
+from supervisor.dbus.const import UnitActiveState
 from supervisor.dbus.resolved import Resolved
-from supervisor.exceptions import HostJournalGatewaydConnectionError
+from supervisor.exceptions import (
+    HostJournalGatewaydConnectionError,
+    MountUsageTimeoutError,
+)
 from supervisor.homeassistant.api import APIState
 from supervisor.host.const import LogFormat, LogFormatter
 from supervisor.host.control import SystemControl
+from supervisor.mounts.mount import Mount
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.hostname import Hostname as HostnameService
@@ -1037,3 +1049,428 @@ async def test_set_hostname_invalid_returns_400(
     assert body["message"] == "Invalid hostname 'bad name'"
     assert body["error_key"] == "host_invalid_hostname"
     assert body["extra_fields"] == {"hostname": "bad name"}
+
+
+def _register_mount(coresys: CoreSys, name: str, state: UnitActiveState) -> Mount:
+    """Register a CIFS mount with the manager in the given systemd state."""
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": name,
+            "type": "cifs",
+            "usage": "media",
+            "server": "media.local",
+            "share": "media",
+        },
+    )
+    mount._state = state
+    coresys.mounts._mounts = {mount.name: mount}
+    return mount
+
+
+@pytest.fixture(name="active_mount")
+async def fixture_active_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern
+) -> Mount:
+    """Return an active CIFS mount registered with the mount manager."""
+    return _register_mount(coresys, "media_test", UnitActiveState.ACTIVE)
+
+
+@pytest.mark.parametrize(
+    "query",
+    ["", "?max_depth=0", "?max_depth=1"],
+    ids=["depth-default", "depth-explicit-0", "depth-1-emits-nothing"],
+)
+async def test_disk_usage_api_mount_totals_only(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    active_mount: Mount,
+    query: str,
+):
+    """Test a mount reports totals only without ever walking the tree.
+
+    The directory walker recurses regardless of max_depth and only emits
+    children beyond depth 1, so whenever it could not produce output — depth 0
+    and depth 1 alike — it has to be skipped outright. Calling it would walk
+    the whole mount on every request just to discard the result.
+    """
+    api_client, prefix = api_client_with_prefix
+
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage_for_mount") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_structure,
+    ):
+        # Middle value is deliberately wrong: used must come from total - free so
+        # that reserved space counts as used, as it does for the system disk.
+        mock_disk_usage.return_value = (2000000000, 999, 800000000)
+
+        resp = await api_client.get(f"{prefix}/host/disks/media_test/usage{query}")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"] == {
+        "id": "media_test",
+        "label": "media_test",
+        "total_bytes": 2000000000,
+        "used_bytes": 1200000000,
+    }
+    # Omitted entirely rather than empty, like every other node in the tree
+    assert "children" not in result["data"]
+    mock_structure.assert_not_called()
+    mock_disk_usage.assert_called_once_with(active_mount.local_where)
+
+
+async def test_disk_usage_api_mount_breakdown(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    active_mount: Mount,
+):
+    """Test a mount breakdown at depth 2.
+
+    Depth means the same thing as it does for the system disk: level 1 is the
+    labeled known paths, which a mount does not have, so a mount's own
+    subdirectories start at level 2.
+    """
+    api_client, prefix = api_client_with_prefix
+
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage_for_mount") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_structure,
+    ):
+        mock_disk_usage.return_value = (2000000000, 999, 800000000)
+        mock_structure.return_value = {
+            "used_bytes": 1100000000,
+            "children": [
+                {"id": "movies", "label": "movies", "used_bytes": 900000000},
+                {"id": "music", "label": "music", "used_bytes": 200000000},
+            ],
+        }
+
+        resp = await api_client.get(f"{prefix}/host/disks/media_test/usage?max_depth=2")
+
+    assert resp.status == 200
+    result = await resp.json()
+    children = result["data"]["children"]
+
+    # What the walk could not attribute is reported as "other", so a mount's
+    # children add up to its used_bytes like every other node in the tree.
+    assert children == [
+        {"id": "movies", "label": "movies", "used_bytes": 900000000},
+        {"id": "music", "label": "music", "used_bytes": 200000000},
+        {"id": "other", "label": "Other", "used_bytes": 100000000},
+    ]
+    assert (
+        sum(child["used_bytes"] for child in children) == (result["data"]["used_bytes"])
+    )
+    # check_oserror off: read errors from a mount walk must stay the mount's
+    # problem instead of marking the whole system unhealthy
+    mock_structure.assert_called_once_with(
+        active_mount.local_where, 2, check_oserror=False
+    )
+
+
+@pytest.mark.parametrize(
+    "walked_bytes",
+    [1200000000, 1300000000],
+    ids=["accounts-for-everything", "overshoots-the-filesystem"],
+)
+@pytest.mark.usefixtures("active_mount")
+async def test_disk_usage_api_mount_breakdown_without_remainder(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    walked_bytes: int,
+):
+    """Test no "other" child when there is nothing left to attribute.
+
+    A walk that accounts for everything needs no remainder, and one that
+    overshoots (racing a deletion against the filesystem figure) must not
+    produce a negative one.
+    """
+    api_client, prefix = api_client_with_prefix
+
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage_for_mount") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_structure,
+    ):
+        # used = total - free = 1200000000
+        mock_disk_usage.return_value = (2000000000, 999, 800000000)
+        mock_structure.return_value = {
+            "used_bytes": walked_bytes,
+            "children": [
+                {"id": "movies", "label": "movies", "used_bytes": walked_bytes},
+            ],
+        }
+
+        resp = await api_client.get(f"{prefix}/host/disks/media_test/usage?max_depth=2")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["children"] == [
+        {"id": "movies", "label": "movies", "used_bytes": walked_bytes},
+    ]
+    assert all(child["id"] != "other" for child in result["data"]["children"])
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_disk_usage_api_unknown_mount(
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test requesting usage for a mount that does not exist."""
+    api_client, prefix = api_client_with_prefix
+
+    resp = await api_client.get(f"{prefix}/host/disks/nope/usage")
+
+    assert resp.status == 404
+    result = await resp.json()
+    assert result["message"] == "No mount exists with name nope"
+    assert result["error_key"] == "mount_not_found_error"
+    assert result["extra_fields"] == {"name": "nope"}
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_disk_usage_api_inactive_mount(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test a mount that is not active cannot report usage."""
+    api_client, prefix = api_client_with_prefix
+    _register_mount(coresys, "media_test", UnitActiveState.FAILED)
+
+    with patch.object(coresys.hardware.disk, "disk_usage_for_mount") as mock_disk_usage:
+        resp = await api_client.get(f"{prefix}/host/disks/media_test/usage")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == "mount_usage_not_active_error"
+    assert result["extra_fields"] == {"name": "media_test"}
+    # Rejected before any probe is attempted
+    mock_disk_usage.assert_not_called()
+
+
+@pytest.mark.usefixtures("active_mount")
+async def test_disk_usage_api_mount_timeout(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test a probe that never returns fails cleanly for that mount."""
+    api_client, prefix = api_client_with_prefix
+
+    def _never_returns(_):
+        time.sleep(0.5)
+        return (1, 1, 1)
+
+    with (
+        patch("supervisor.api.host.MOUNT_USAGE_TIMEOUT", 0.05),
+        patch.object(
+            coresys.hardware.disk, "disk_usage_for_mount", side_effect=_never_returns
+        ),
+    ):
+        resp = await api_client.get(f"{prefix}/host/disks/media_test/usage")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == "mount_usage_timeout_error"
+    assert result["extra_fields"] == {"name": "media_test"}
+
+
+@pytest.mark.usefixtures("active_mount")
+async def test_disk_usage_api_mount_unreachable(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test an unreachable mount reports an error rather than failing the API."""
+    api_client, prefix = api_client_with_prefix
+
+    with patch.object(
+        coresys.hardware.disk,
+        "disk_usage_for_mount",
+        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    ):
+        resp = await api_client.get(f"{prefix}/host/disks/media_test/usage")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == "mount_usage_read_error"
+    assert result["extra_fields"]["name"] == "media_test"
+    assert "Host is down" in result["extra_fields"]["reason"]
+
+
+@pytest.mark.usefixtures("active_mount")
+async def test_disk_usage_api_ghost_mount(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test a ghost mount is reported unreadable, not misreported.
+
+    systemd can still report a unit active after the path stopped being a
+    mount point; statvfs then silently returns the host data disk's numbers.
+    Serving those under the mount's name would be a plausible-looking lie.
+    """
+    api_client, prefix = api_client_with_prefix
+
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage_for_mount", return_value=None),
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_structure,
+    ):
+        resp = await api_client.get(f"{prefix}/host/disks/media_test/usage?max_depth=2")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == "mount_usage_not_mounted_error"
+    assert result["extra_fields"] == {"name": "media_test"}
+    # A ghost is never walked either
+    mock_structure.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_mount_usage_caller_timeout_joins_same_probe(coresys: CoreSys):
+    """Test a caller's timeout neither cancels nor orphans the shared probe.
+
+    A probe killed by its own timeout would be dropped from the registry while
+    its executor thread stays parked in the kernel, so the next request would
+    stack a fresh thread against the same mount. The timeout therefore bounds
+    only the caller's wait: the probe and its registry entry outlive slow
+    callers, and later callers join the same probe.
+    """
+    api_host = APIHost()
+    api_host.coresys = coresys
+    mount = _register_mount(coresys, "media_test", UnitActiveState.ACTIVE)
+
+    def _slow(_):
+        time.sleep(0.4)
+        return (2000000000, 999, 800000000)
+
+    with patch.object(
+        coresys.hardware.disk, "disk_usage_for_mount", side_effect=_slow
+    ) as mock_usage:
+        with (
+            patch("supervisor.api.host.MOUNT_USAGE_TIMEOUT", 0.05),
+            pytest.raises(
+                MountUsageTimeoutError, match="Timed out reading storage usage"
+            ),
+        ):
+            await api_host._mount_usage(mount, 0)
+
+        # The probe survived its caller: still registered, still running
+        assert ("media_test", 0) in api_host._mount_usage_probes
+
+        # A later caller (with the real, generous timeout) joins that same
+        # probe rather than starting another executor thread
+        result = await api_host._mount_usage(mount, 0)
+
+    assert result["used_bytes"] == 1200000000
+    mock_usage.assert_called_once()
+    # Completion popped the entry, so the next request starts fresh
+    assert not api_host._mount_usage_probes
+
+
+@pytest.mark.usefixtures("active_mount")
+async def test_disk_usage_api_mount_shares_in_flight_probe(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test concurrent requests for the same mount share one probe.
+
+    A probe of an unreachable mount blocks until the kernel gives up, so
+    stacking one executor thread per caller is what this guards against.
+    """
+    api_client, prefix = api_client_with_prefix
+
+    def _slow(_):
+        time.sleep(0.3)
+        return (2000000000, 999, 800000000)
+
+    with patch.object(
+        coresys.hardware.disk, "disk_usage_for_mount", side_effect=_slow
+    ) as mock_disk_usage:
+        first, second = await asyncio.gather(
+            api_client.get(f"{prefix}/host/disks/media_test/usage"),
+            api_client.get(f"{prefix}/host/disks/media_test/usage"),
+        )
+
+    assert first.status == 200
+    assert second.status == 200
+    assert (await first.json())["data"] == (await second.json())["data"]
+    mock_disk_usage.assert_called_once()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_mount_usage_abandoned_probe_retrieves_its_exception(coresys: CoreSys):
+    """Test an abandoned failing probe is not reported as an unretrieved exception.
+
+    The shield deliberately keeps a probe alive past the caller that started it,
+    so a browser giving up on an unreachable mount leaves a probe that still
+    fails later with nobody waiting on it. Left unretrieved, asyncio reports it
+    with a traceback that reads like a supervisor fault rather than a mount that
+    was never going to answer.
+    """
+    api_host = APIHost()
+    api_host.coresys = coresys
+    mount = _register_mount(coresys, "media_test", UnitActiveState.ACTIVE)
+
+    reported: list[dict[str, Any]] = []
+    loop = asyncio.get_running_loop()
+    previous_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, context: reported.append(context))
+
+    def _fails_slowly(_):
+        time.sleep(0.2)
+        raise OSError(errno.EHOSTDOWN, "Host is down")
+
+    try:
+        with patch.object(
+            coresys.hardware.disk, "disk_usage_for_mount", side_effect=_fails_slowly
+        ):
+            waiter = asyncio.create_task(api_host._mount_usage(mount, 0))
+
+            # Let the probe get going, then abandon it the way a disconnecting
+            # client does
+            await asyncio.sleep(0.05)
+            waiter.cancel()
+            with suppress(asyncio.CancelledError):
+                await waiter
+
+            # Give the orphaned probe time to fail, then force collection so an
+            # unretrieved exception would be surfaced
+            await asyncio.sleep(0.5)
+            gc.collect()
+            await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(previous_handler)
+
+    # Nothing at all should reach the loop exception handler: an unreachable
+    # mount is an expected outcome, not a supervisor fault
+    assert not reported
+    # The entry is gone either way, so a later request starts a fresh probe
+    assert not api_host._mount_usage_probes
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_disk_usage_api_default_wins_over_mount_of_that_name(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test "default" always means the system disk.
+
+    The mount name pattern permits a mount called "default", so the resolution
+    order has to be documented and pinned: the reserved target wins.
+    """
+    api_client, prefix = api_client_with_prefix
+    _register_mount(coresys, "default", UnitActiveState.ACTIVE)
+
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(coresys.hardware.disk, "get_dir_sizes") as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+        mock_dir_sizes.return_value = []
+
+        resp = await api_client.get(f"{prefix}/host/disks/default/usage")
+
+    assert resp.status == 200
+    result = await resp.json()
+    # The system disk, not the mount
+    assert result["data"]["id"] == "root"
+    assert result["data"]["label"] == "Root"
