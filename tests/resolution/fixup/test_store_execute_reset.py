@@ -9,7 +9,7 @@ import pytest
 
 from supervisor.config import CoreConfig
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import StoreGitCloneError
+from supervisor.exceptions import ResolutionFixupError, StoreGitCloneError
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
@@ -114,6 +114,7 @@ async def test_fixup_still_invalid_after_reset(coresys: CoreSys):
         # Repository re-clones fine but its content is still not valid
         patch.object(RepositoryGit, "validate", return_value=False),
         patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
+        pytest.raises(ResolutionFixupError),
     ):
         await store_execute_reset()
 
@@ -147,6 +148,7 @@ async def test_fixup_clone_fail(coresys: CoreSys):
         patch.object(GitRepo, "load"),
         patch.object(GitRepo, "_clone", side_effect=StoreGitCloneError),
         patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
+        pytest.raises(ResolutionFixupError),
     ):
         await store_execute_reset()
 
@@ -182,7 +184,8 @@ async def test_fixup_move_fail(coresys: CoreSys, error_num: int, unhealthy: bool
         patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
     ):
         err.errno = error_num
-        await store_execute_reset()
+        with pytest.raises(ResolutionFixupError):
+            await store_execute_reset()
 
     assert len(coresys.resolution.suggestions) == 1
     assert len(coresys.resolution.issues) == 1

@@ -2,7 +2,7 @@
 
 import asyncio
 from http import HTTPStatus
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -16,7 +16,7 @@ from supervisor.const import (
     FeatureFlag,
 )
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import ResolutionError
+from supervisor.exceptions import ResolutionError, ResolutionFixupError
 from supervisor.homeassistant.const import WSType
 from supervisor.resolution.const import (
     ContextType,
@@ -92,6 +92,33 @@ async def test_api_resolution_apply_suggestion(
 
     with pytest.raises(ResolutionError):
         await coresys.resolution.apply_suggestion(clear_backup)
+
+
+async def test_api_resolution_apply_suggestion_fixup_error(
+    coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
+):
+    """Test a failing fixup surfaces as API error and keeps issue and suggestion."""
+    api_client, prefix = api_client_with_prefix
+    coresys.resolution.add_issue(
+        issue := Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="test"),
+        suggestions=[SuggestionType.EXECUTE_RELOAD],
+    )
+    suggestion = coresys.resolution.suggestions[-1]
+
+    with patch(
+        "supervisor.resolution.fixups.mount_execute_reload.FixupMountExecuteReload.process_fixup",
+        side_effect=ResolutionFixupError("Test fixup failure"),
+    ):
+        resp = await api_client.post(
+            f"{prefix}/resolution/suggestion/{suggestion.uuid}"
+        )
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Test fixup failure"
+
+    assert issue in coresys.resolution.issues
+    assert suggestion in coresys.resolution.suggestions
 
 
 async def test_api_resolution_dismiss_issue(

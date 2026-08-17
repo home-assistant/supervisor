@@ -1212,8 +1212,13 @@ class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
 
 
-class ResolutionFixupError(HassioError):
+class ResolutionFixupError(APIError):
     """Raise if a fixup fails."""
+
+    error_key = "resolution_fixup_error"
+    message_template = (
+        "Applying the suggestion failed. Check Supervisor logs for details"
+    )
 
 
 class ResolutionFixupJobError(ResolutionFixupError, JobException):

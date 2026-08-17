@@ -3,7 +3,10 @@
 import errno
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import ResolutionFixupError
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue
@@ -89,11 +92,14 @@ async def test_fixup_error_after_reload(
     )
     # Probe (statvfs) fails — the mount stays unreachable through the
     # reload -> restart cycle. Fixup catches MountError and re-raises
-    # ResolutionFixupError, which FixupBase.__call__ swallows to skip
-    # issue cleanup. Caller sees no error.
-    with patch(
-        "supervisor.mounts.mount._probe_network_mount",
-        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    # ResolutionFixupError, which propagates to the caller so the
+    # issue cleanup is skipped.
+    with (
+        patch(
+            "supervisor.mounts.mount._probe_network_mount",
+            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+        ),
+        pytest.raises(ResolutionFixupError),
     ):
         await mount_execute_reload()
 
