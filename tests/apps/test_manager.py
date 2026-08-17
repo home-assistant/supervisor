@@ -13,7 +13,14 @@ import pytest
 from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
-from supervisor.const import ATTR_INGRESS, AppBoot, AppStartup, AppState, BusEvent
+from supervisor.const import (
+    ATTR_INGRESS,
+    AppBoot,
+    AppStartup,
+    AppState,
+    BusEvent,
+    CpuArch,
+)
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -25,6 +32,7 @@ from supervisor.exceptions import (
     AppsError,
     DockerAPIError,
     DockerNotFound,
+    HassioArchNotFound,
 )
 from supervisor.plugins.dns import PluginDns
 from supervisor.resolution.const import (
@@ -342,6 +350,42 @@ async def test_update(
         start_task = await coresys.apps.update(TEST_ADDON_SLUG)
 
     assert bool(start_task) is (status == "running")
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_update_uses_store_architecture(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: DockerContainer,
+):
+    """Test update uses the store version's architecture list to pick the image arch."""
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    with patch(
+        "supervisor.store.data.read_json_or_yaml_file",
+        return_value=load_json_fixture("app-config-add-image.json"),
+    ):
+        await coresys.store.data.update()
+
+    # Simulate an app installed when the system still supported 32-bit
+    # architectures: the installed version's arch list no longer matches
+    # any supported architecture, but the store version's does.
+    coresys.apps.data.system[TEST_ADDON_SLUG]["arch"] = ["armv7"]
+    with pytest.raises(HassioArchNotFound):
+        _ = install_app_ssh.arch
+
+    with (
+        patch.object(DockerInterface, "install") as install,
+        patch.object(DockerApp, "is_running", return_value=False),
+    ):
+        await coresys.apps.update(TEST_ADDON_SLUG)
+
+    install.assert_called_once_with(
+        AwesomeVersion("10.0.0"), "test/amd64-my-ssh-addon", False, CpuArch.AMD64
+    )
+    assert install_app_ssh.arch == CpuArch.AMD64
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
