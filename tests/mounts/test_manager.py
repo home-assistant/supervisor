@@ -622,13 +622,14 @@ async def test_load_bind_failure_creates_local_data_issue(
     }
     await coresys.mounts.load()
 
-    issue = Issue(
-        IssueType.MOUNT_TARGET_NOT_EMPTY, ContextType.MOUNT, reference="media_test"
-    )
+    issue = Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="media_test")
     assert issue in coresys.resolution.issues
     assert coresys.resolution.suggestions_for_issue(issue) == {
         Suggestion(
             SuggestionType.MOVE_LOCAL_DATA, ContextType.MOUNT, reference="media_test"
+        ),
+        Suggestion(
+            SuggestionType.EXECUTE_RELOAD, ContextType.MOUNT, reference="media_test"
         ),
         Suggestion(
             SuggestionType.EXECUTE_REMOVE, ContextType.MOUNT, reference="media_test"
@@ -645,10 +646,14 @@ async def test_reload_mount_dismisses_local_data_issue(
     systemd_service: SystemdService = all_dbus_services["systemd"]
 
     coresys.resolution.create_issue(
-        IssueType.MOUNT_TARGET_NOT_EMPTY,
+        IssueType.MOUNT_FAILED,
         ContextType.MOUNT,
         reference="media_test",
-        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_REMOVE],
+        suggestions=[
+            SuggestionType.MOVE_LOCAL_DATA,
+            SuggestionType.EXECUTE_RELOAD,
+            SuggestionType.EXECUTE_REMOVE,
+        ],
     )
 
     systemd_service.response_get_unit = [

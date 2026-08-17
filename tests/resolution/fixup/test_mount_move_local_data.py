@@ -47,10 +47,14 @@ async def test_fixup_media_mount(
     (media_dir / "recording.mp4").touch()
 
     coresys.resolution.create_issue(
-        IssueType.MOUNT_TARGET_NOT_EMPTY,
+        IssueType.MOUNT_FAILED,
         ContextType.MOUNT,
         reference="media_test",
-        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_REMOVE],
+        suggestions=[
+            SuggestionType.MOVE_LOCAL_DATA,
+            SuggestionType.EXECUTE_RELOAD,
+            SuggestionType.EXECUTE_REMOVE,
+        ],
     )
 
     await mount_move_local_data()
@@ -81,10 +85,14 @@ async def test_fixup_backup_mount(
     (mount_dir / "stranded_backup.tar").touch()
 
     coresys.resolution.create_issue(
-        IssueType.MOUNT_TARGET_NOT_EMPTY,
+        IssueType.MOUNT_FAILED,
         ContextType.MOUNT,
         reference="backup_test",
-        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_REMOVE],
+        suggestions=[
+            SuggestionType.MOVE_LOCAL_DATA,
+            SuggestionType.EXECUTE_RELOAD,
+            SuggestionType.EXECUTE_REMOVE,
+        ],
     )
 
     await mount_move_local_data()
@@ -110,10 +118,14 @@ async def test_fixup_failure_keeps_suggestion(
     await coresys.mounts.create_mount(Mount.from_dict(coresys, MEDIA_TEST_DATA))
 
     coresys.resolution.create_issue(
-        IssueType.MOUNT_TARGET_NOT_EMPTY,
+        IssueType.MOUNT_FAILED,
         ContextType.MOUNT,
         reference="media_test",
-        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_REMOVE],
+        suggestions=[
+            SuggestionType.MOVE_LOCAL_DATA,
+            SuggestionType.EXECUTE_RELOAD,
+            SuggestionType.EXECUTE_REMOVE,
+        ],
     )
 
     with patch.object(
@@ -122,7 +134,7 @@ async def test_fixup_failure_keeps_suggestion(
         await mount_move_local_data()
 
     assert len(coresys.resolution.issues) == 1
-    assert len(coresys.resolution.suggestions) == 2
+    assert len(coresys.resolution.suggestions) == 3
 
 
 async def test_fixup_missing_mount(
@@ -139,10 +151,14 @@ async def test_fixup_missing_mount(
     await coresys.mounts.load()
 
     coresys.resolution.create_issue(
-        IssueType.MOUNT_TARGET_NOT_EMPTY,
+        IssueType.MOUNT_FAILED,
         ContextType.MOUNT,
         reference="does_not_exist",
-        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_REMOVE],
+        suggestions=[
+            SuggestionType.MOVE_LOCAL_DATA,
+            SuggestionType.EXECUTE_RELOAD,
+            SuggestionType.EXECUTE_REMOVE,
+        ],
     )
 
     await mount_move_local_data()

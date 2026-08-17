@@ -21,8 +21,7 @@ from ..exceptions import (
 from ..host.const import HostFeature
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, SuggestionType
-from ..resolution.data import Issue
+from ..resolution.const import SuggestionType
 from ..utils.common import FileConfiguration
 from ..utils.sentry import async_capture_exception
 from .const import (
@@ -182,7 +181,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             if not (err := errors[i]):
                 continue
             if isinstance(err, MountTargetNotEmptyError | MountTargetNotDirectoryError):
-                self._add_local_data_issue(mounts[i].name)
+                self._add_local_data_issue(mounts[i])
                 continue
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
@@ -197,24 +196,23 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 ],
             )
 
-    def _local_data_issue(self, name: str) -> Issue:
-        """Return the issue used when local data blocks a mount target."""
-        return Issue(
-            IssueType.MOUNT_TARGET_NOT_EMPTY, ContextType.MOUNT, reference=name
-        )
+    def _add_local_data_issue(self, mount: Mount) -> None:
+        """Add mount failed issue offering to move blocking local data.
 
-    def _add_local_data_issue(self, name: str) -> None:
-        """Add an issue for local data blocking a mount target."""
-        if not self.sys_resolution.get_issue_if_present(
-            issue := self._local_data_issue(name)
-        ):
-            self.sys_resolution.add_issue(
-                issue,
-                suggestions=[
-                    SuggestionType.MOVE_LOCAL_DATA,
-                    SuggestionType.EXECUTE_REMOVE,
-                ],
-            )
+        Uses the same mount failed issue as other mount failures so at most
+        one issue exists per mount, with an additional suggestion to move the
+        blocking data aside. Reload stays available for users who prefer to
+        clear the data themselves. Adding is idempotent: an existing issue
+        just gains the extra suggestion.
+        """
+        self.sys_resolution.add_issue(
+            replace(mount.failed_issue),
+            suggestions=[
+                SuggestionType.MOVE_LOCAL_DATA,
+                SuggestionType.EXECUTE_RELOAD,
+                SuggestionType.EXECUTE_REMOVE,
+            ],
+        )
 
     @Job(
         name="mount_manager_create_mount",
@@ -348,14 +346,11 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             try:
                 await self._bind_mount(bound_mount.mount, bound_mount.bind_mount.where)
             except MountTargetNotEmptyError, MountTargetNotDirectoryError:
-                self._add_local_data_issue(name)
+                # The reload above already dismissed the mount failed issue —
+                # re-add it so the repair does not vanish while media/share
+                # is still blocked by local data.
+                self._add_local_data_issue(bound_mount.mount)
                 raise
-
-        # Everything is mounted again, local data can no longer be in the way
-        if issue := self.sys_resolution.get_issue_if_present(
-            self._local_data_issue(name)
-        ):
-            self.sys_resolution.dismiss_issue(issue)
 
     @Job(
         name="mount_manager_relocate_local_data",

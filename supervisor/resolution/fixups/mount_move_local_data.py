@@ -45,7 +45,7 @@ class FixupMountMoveLocalData(FixupBase):
     @property
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.MOUNT_TARGET_NOT_EMPTY]
+        return [IssueType.MOUNT_FAILED]
 
     @property
     def auto(self) -> bool:

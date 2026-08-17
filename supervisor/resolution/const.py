@@ -102,7 +102,6 @@ class IssueType(StrEnum):
     IPV4_CONNECTION_PROBLEM = "ipv4_connection_problem"
     MISSING_IMAGE = "missing_image"
     MOUNT_FAILED = "mount_failed"
-    MOUNT_TARGET_NOT_EMPTY = "mount_target_not_empty"
     MULTIPLE_DATA_DISKS = "multiple_data_disks"
     NO_CURRENT_BACKUP = "no_current_backup"
     NTP_SYNC_FAILED = "ntp_sync_failed"
