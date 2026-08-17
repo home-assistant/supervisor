@@ -406,6 +406,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                     counter += 1
                     target = recovery_base / f"{name}_local_recovery_{counter}"
                 path.rename(target)
+                # Keep the path present for consumers even if the remount
+                # below fails: an empty directory instead of a missing one
+                path.mkdir()
                 moved.append((path, target))
             return moved
 

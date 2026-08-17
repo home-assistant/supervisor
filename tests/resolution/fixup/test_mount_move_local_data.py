@@ -61,7 +61,8 @@ async def test_fixup_media_mount(
 
     recovery_dir = coresys.config.path_media / "media_test_local_recovery"
     assert (recovery_dir / "recording.mp4").exists()
-    assert not media_dir.exists()
+    assert media_dir.is_dir()
+    assert not any(media_dir.iterdir())
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
     assert "media_test" in coresys.mounts
@@ -99,7 +100,8 @@ async def test_fixup_backup_mount(
 
     recovery_dir = coresys.config.path_backup / "backup_test_local_recovery"
     assert (recovery_dir / "stranded_backup.tar").exists()
-    assert not mount_dir.exists()
+    assert mount_dir.is_dir()
+    assert not any(mount_dir.iterdir())
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
 

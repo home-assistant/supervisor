@@ -682,7 +682,8 @@ async def test_relocate_local_data_recovery_name_collision(
 
     recovery_dir = coresys.config.path_media / "media_test_local_recovery_2"
     assert (recovery_dir / "recording.mp4").exists()
-    assert not media_dir.exists()
+    assert media_dir.is_dir()
+    assert not any(media_dir.iterdir())
 
 
 async def test_create_mount_blocked_by_existing_local_data(
