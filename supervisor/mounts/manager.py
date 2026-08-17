@@ -21,7 +21,7 @@ from ..exceptions import (
 from ..host.const import HostFeature
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
-from ..resolution.const import SuggestionType
+from ..resolution.const import ContextType, SuggestionType
 from ..utils.common import FileConfiguration
 from ..utils.sentry import async_capture_exception
 from .const import (
@@ -426,6 +426,18 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 path.as_posix(),
                 target.as_posix(),
             )
+
+        # With the local data out of the way, moving it again can no longer
+        # help. Drop the suggestion even if the remount below fails: the
+        # mount failed issue then remains with reload/remove, and detection
+        # re-adds the move suggestion if local data blocks the target again.
+        for suggestion in self.sys_resolution.suggestions:
+            if (
+                suggestion.type == SuggestionType.MOVE_LOCAL_DATA
+                and suggestion.context == ContextType.MOUNT
+                and suggestion.reference == name
+            ):
+                self.sys_resolution.dismiss_suggestion(suggestion)
 
         await self.reload_mount(name)
 
