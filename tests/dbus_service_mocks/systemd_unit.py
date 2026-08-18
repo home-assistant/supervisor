@@ -1,5 +1,7 @@
 """Mock of systemd unit dbus service."""
 
+import asyncio
+
 from dbus_fast.service import PropertyAccess, dbus_property
 
 from .base import DBusServiceMock
@@ -26,6 +28,11 @@ class SystemdUnit(DBusServiceMock):
         """Initialize object."""
         super().__init__()
         self.object_path = object_path
+        # Set whenever ActiveState is queried. Tests that drive
+        # wait_for_active_state can await this to be sure the client has
+        # installed its PropertiesChanged subscription before emitting a
+        # signal, avoiding a lost-signal race.
+        self.active_state_read = asyncio.Event()
 
     @dbus_property(access=PropertyAccess.READ)
     def Id(self) -> "s":
@@ -218,6 +225,7 @@ class SystemdUnit(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def ActiveState(self) -> "s":
         """Get ActiveState."""
+        self.active_state_read.set()
         if isinstance(self.active_state, list):
             return self.active_state.pop(0)
         return self.active_state

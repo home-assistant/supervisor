@@ -93,6 +93,21 @@ SCHEMA_SHUTDOWN = vol.Schema(
 class APIHost(CoreSysAttributes):
     """Handle RESTful API for host functions."""
 
+    @staticmethod
+    def _legacy_disk_usage_ids_for_v1(data: dict[str, Any]) -> dict[str, Any]:
+        """Translate app terminology IDs to legacy addon IDs for v1 responses."""
+        legacy_id_map = {
+            "apps_data": "addons_data",
+            "apps_config": "addons_config",
+        }
+
+        children = data.get("children", [])
+        for child in children:
+            if (child_id := child.get("id")) in legacy_id_map:
+                child["id"] = legacy_id_map[child_id]
+
+        return data
+
     async def _check_ha_offline_migration(self, force: bool) -> None:
         """Check if HA has an offline migration in progress and raise if not forced."""
         if (
@@ -282,10 +297,10 @@ class APIHost(CoreSysAttributes):
         async with self.sys_host.logs.journald_logs(
             params=params, range_header=range_header, accept=LogFormat.JOURNAL
         ) as resp:
+            response = web.StreamResponse()
+            response.content_type = CONTENT_TYPE_TEXT
+            headers_returned = False
             try:
-                response = web.StreamResponse()
-                response.content_type = CONTENT_TYPE_TEXT
-                headers_returned = False
                 async for cursor, line in journal_logs_reader(
                     resp, log_formatter, no_colors
                 ):
@@ -313,10 +328,19 @@ class APIHost(CoreSysAttributes):
                         )
                         break
             except (ConnectionResetError, ClientPayloadError) as ex:
-                # ClientPayloadError is most likely caused by the closing the connection
-                raise APIError(
-                    "Connection reset when trying to fetch data from systemd-journald."
-                ) from ex
+                # If the stream to the client already started, an error response
+                # can no longer be sent, so just end the stream. This happens
+                # e.g. when systemd-journal-gatewayd is stopped on host shutdown
+                # while a client is following the logs.
+                if not headers_returned:
+                    raise APIError(
+                        "Connection reset when trying to fetch data from systemd-journald."
+                    ) from ex
+                _LOGGER.debug(
+                    "%s raised when reading journal logs: %s",
+                    type(ex).__name__,
+                    ex,
+                )
             return response
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
@@ -337,6 +361,10 @@ class APIHost(CoreSysAttributes):
     @api_process
     async def disk_usage(self, request: web.Request) -> dict[str, Any]:
         """Return a breakdown of storage usage for the system."""
+        return await self._disk_usage_data(request)
+
+    async def _disk_usage_data(self, request: web.Request) -> dict[str, Any]:
+        """Build disk usage response data."""
 
         max_depth = request.query.get(ATTR_MAX_DEPTH, 1)
         try:
@@ -357,8 +385,8 @@ class APIHost(CoreSysAttributes):
         known_paths = await self.sys_run_in_executor(
             disk.get_dir_sizes,
             {
-                "addons_data": self.sys_config.path_apps_data,
-                "addons_config": self.sys_config.path_app_configs,
+                "apps_data": self.sys_config.path_apps_data,
+                "apps_config": self.sys_config.path_app_configs,
                 "media": self.sys_config.path_media,
                 "share": self.sys_config.path_share,
                 "backup": self.sys_config.path_backup,
@@ -383,6 +411,11 @@ class APIHost(CoreSysAttributes):
                 *known_paths,
             ],
         }
+
+    @api_process
+    async def disk_usage_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return disk usage with legacy addon IDs for v1 compatibility."""
+        return self._legacy_disk_usage_ids_for_v1(await self._disk_usage_data(request))
 
     async def _get_container_last_epoch(self, identifier: str | list[str]) -> str:
         """Get Docker's internal log epoch of the latest log entry for given identifier(s)."""

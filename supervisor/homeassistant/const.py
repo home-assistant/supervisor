@@ -33,13 +33,13 @@ class WSType(StrEnum):
     SUPERVISOR_EVENT = "supervisor/event"
     BACKUP_START = "backup/start"
     BACKUP_END = "backup/end"
-    HASSIO_UPDATE_ADDON = "hassio/update/addon"
+    HASSIO_UPDATE_APP = "hassio/update/app"
 
 
 class WSEvent(StrEnum):
     """Websocket events."""
 
-    ADDON = "addon"
+    APP = "app"
     HEALTH_CHANGED = "health_changed"
     ISSUE_CHANGED = "issue_changed"
     ISSUE_REMOVED = "issue_removed"

@@ -90,6 +90,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self._websocket: HomeAssistantWebSocket = HomeAssistantWebSocket(coresys)
         self._core: HomeAssistantCore = HomeAssistantCore(coresys)
         self._secrets: HomeAssistantSecrets = HomeAssistantSecrets(coresys)
+        self._http_server_host: list[str] | None = None
 
     @property
     def api(self) -> HomeAssistantAPI:
@@ -152,6 +153,20 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self._data[ATTR_SSL] = value
 
     @property
+    def http_server_host(self) -> list[str] | None:
+        """Return the hosts Core's HTTP server binds to, if known.
+
+        Pulled from Core's HTTP config over the Unix socket; None when unknown
+        (older Core). Not persisted, refreshed whenever Supervisor connects.
+        """
+        return self._http_server_host
+
+    @http_server_host.setter
+    def http_server_host(self, value: list[str] | None) -> None:
+        """Set the hosts Core's HTTP server binds to."""
+        self._http_server_host = value
+
+    @property
     def api_url(self) -> str:
         """Return API url to Home Assistant."""
         return (
@@ -203,6 +218,17 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def override_image(self, value: bool) -> None:
         """Enable/disable image override."""
         self._data[ATTR_OVERRIDE_IMAGE] = value
+
+    @property
+    def install_image(self) -> str | None:
+        """Return image to pull when installing or updating Home Assistant Core.
+
+        Uses the user-overridden image if set, otherwise the image from the
+        update information.
+        """
+        if self.override_image:
+            return self.image
+        return self.sys_updater.image_homeassistant
 
     @property
     def version(self) -> AwesomeVersion | None:

@@ -258,7 +258,7 @@ class App(AppModel):
             self.sys_resolution.dismiss_issue(access_issue)
 
         self.sys_homeassistant.websocket.supervisor_event_custom(
-            WSEvent.ADDON,
+            WSEvent.APP,
             {
                 ATTR_SLUG: self.slug,
                 ATTR_STATE: new_state,
@@ -293,7 +293,7 @@ class App(AppModel):
             self.has_deprecated_machine and not self.has_supported_machine
         ):
             self.sys_resolution.create_issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=self.slug,
                 suggestions=[SuggestionType.EXECUTE_REMOVE],
@@ -1262,15 +1262,15 @@ class App(AppModel):
         """Create a port conflict issue for the given port.
 
         Source can only be "core" or None currently, may be extended in future.
-        If problematic port is explicitly mapped by user, suggest clearing port
-        config as a potential fix. Else we just note the issue.
+        If problematic port is mapped for this app (by user override or config
+        default), suggest clearing the mapping and then starting the app again.
+        Otherwise suggest starting the app again.
         """
         ports = self.ports or {}
-        suggestions = (
-            [SuggestionType.CLEAR_PORT_CONFIG]
-            if any(public_port == port for public_port in ports.values())
-            else None
-        )
+        suggestions = [SuggestionType.EXECUTE_START]
+        if any(public_port == port for public_port in ports.values()):
+            suggestions.insert(0, SuggestionType.CLEAR_PORT_CONFIG)
+
         self.sys_resolution.create_issue(
             IssueType.APP_PORT_CONFLICT,
             ContextType.ADDON,

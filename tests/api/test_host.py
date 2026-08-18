@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from unittest.mock import ANY, MagicMock, patch
 
+from aiohttp import ClientPayloadError
 from aiohttp.test_utils import TestClient
 from dbus_fast import DBusError, ErrorType
 import pytest
@@ -11,6 +12,7 @@ import time_machine
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
+from supervisor.exceptions import HostJournalGatewaydConnectionError
 from supervisor.homeassistant.api import APIState
 from supervisor.host.const import LogFormat, LogFormatter
 from supervisor.host.control import SystemControl
@@ -437,6 +439,67 @@ async def test_advanced_logs_errors(
     )
 
 
+async def test_advanced_logs_gateway_closed_mid_stream(
+    journald_gateway: MagicMock,
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test connection to journal gateway closed mid-stream ends the stream gracefully."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_gateway.content.feed_data(b"__CURSOR=cursor1\nMESSAGE=Hello, world!\n\n")
+
+    resp = await api_client.get(f"{prefix}/host/logs/identifiers/test")
+    assert resp.status == 200
+
+    # Simulate connection to systemd-journal-gatewayd being closed mid-stream,
+    # e.g. because it was stopped on host shutdown.
+    journald_gateway.content.set_exception(
+        ClientPayloadError("Response payload is not completed")
+    )
+
+    assert await resp.text() == "Hello, world!\n"
+
+
+async def test_advanced_logs_gateway_reset_before_stream(
+    journald_gateway: MagicMock,
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test connection reset before the log stream started returns an API error."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_gateway.content.set_exception(
+        ClientPayloadError("Response payload is not completed")
+    )
+
+    resp = await api_client.get(f"{prefix}/host/logs/identifiers/test")
+    assert resp.status == 400
+    assert (
+        await resp.text()
+        == "Connection reset when trying to fetch data from systemd-journald."
+    )
+
+
+async def test_advanced_logs_gateway_unavailable(
+    api_client_with_prefix: tuple[TestClient, str],
+    journald_logs: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test connection failure to journal gateway returns a plain API error."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_logs.side_effect = HostJournalGatewaydConnectionError(
+        "Unable to connect to systemd-journal-gatewayd"
+    )
+
+    with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
+        resp = await api_client.get(f"{prefix}/host/logs")
+
+    assert resp.status == 400
+    assert await resp.text() == "Unable to connect to systemd-journal-gatewayd"
+    capture_exception.assert_not_called()
+    assert "Unexpected error during API call" not in caplog.text
+
+
 async def test_disk_usage_api(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
@@ -457,7 +520,7 @@ async def test_disk_usage_api(
         # Mock the directory structure sizes for each path
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 100000000,
                 "children": [
@@ -465,7 +528,7 @@ async def test_disk_usage_api(
                 ],
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 200000000,
                 "children": [
@@ -537,8 +600,10 @@ async def test_disk_usage_api(
         assert children[0]["label"] == "System"
 
         # Verify all expected directories are present in the remaining children
-        assert children[1]["id"] == "addons_data"
-        assert children[2]["id"] == "addons_config"
+        expected_data_id = "addons_data" if prefix == "" else "apps_data"
+        expected_config_id = "addons_config" if prefix == "" else "apps_config"
+        assert children[1]["id"] == expected_data_id
+        assert children[2]["id"] == expected_config_id
         assert children[3]["id"] == "media"
         assert children[4]["id"] == "share"
         assert children[5]["id"] == "backup"
@@ -575,8 +640,8 @@ async def test_disk_usage_api(
         call_args = mock_dir_sizes.call_args
         assert call_args[0][1] == 1  # max_depth parameter
         paths_dict = call_args[0][0]  # paths dictionary
-        assert paths_dict["addons_data"] == coresys.config.path_apps_data
-        assert paths_dict["addons_config"] == coresys.config.path_app_configs
+        assert paths_dict["apps_data"] == coresys.config.path_apps_data
+        assert paths_dict["apps_config"] == coresys.config.path_app_configs
         assert paths_dict["media"] == coresys.config.path_media
         assert paths_dict["share"] == coresys.config.path_share
         assert paths_dict["backup"] == coresys.config.path_backup
@@ -598,7 +663,7 @@ async def test_disk_usage_api_with_custom_depth(
         # Mock deeper directory structure
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 100000000,
                 "children": [
@@ -617,7 +682,7 @@ async def test_disk_usage_api_with_custom_depth(
                 ],
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 100000000,
                 "children": [
@@ -757,12 +822,12 @@ async def test_disk_usage_api_invalid_depth(
         mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 100000000,
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 100000000,
             },
@@ -822,12 +887,12 @@ async def test_disk_usage_api_empty_directories(
         # Mock empty directory structures (no children)
         mock_dir_sizes.return_value = [
             {
-                "id": "addons_data",
+                "id": "apps_data",
                 "label": "Apps Data",
                 "used_bytes": 0,
             },
             {
-                "id": "addons_config",
+                "id": "apps_config",
                 "label": "Apps Config",
                 "used_bytes": 0,
             },
@@ -872,6 +937,44 @@ async def test_disk_usage_api_empty_directories(
         # All other directories should have size 0
         for i in range(1, len(children)):
             assert children[i]["used_bytes"] == 0
+
+
+async def test_disk_usage_api_v1_uses_legacy_addon_ids(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test v1 disk usage response uses legacy addon IDs."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(coresys.hardware.disk, "get_dir_sizes") as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+        mock_dir_sizes.return_value = [
+            {"id": "apps_data", "label": "Apps Data", "used_bytes": 100000000},
+            {
+                "id": "apps_config",
+                "label": "Apps Config",
+                "used_bytes": 200000000,
+            },
+            {"id": "media", "label": "Media", "used_bytes": 50000000},
+            {"id": "share", "label": "Share", "used_bytes": 300000000},
+            {"id": "backup", "label": "Backup", "used_bytes": 10000000},
+            {"id": "ssl", "label": "SSL", "used_bytes": 40000000},
+            {
+                "id": "homeassistant",
+                "label": "Home Assistant",
+                "used_bytes": 40000000,
+            },
+        ]
+
+        resp = await api_client.get("/host/disks/default/usage")
+        assert resp.status == 200
+        result = await resp.json()
+
+        child_ids = [child["id"] for child in result["data"]["children"]]
+        assert "addons_data" in child_ids
+        assert "addons_config" in child_ids
+        assert "apps_data" not in child_ids
+        assert "apps_config" not in child_ids
 
 
 @pytest.mark.parametrize("action", ["reboot", "shutdown"])

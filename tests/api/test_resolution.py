@@ -1,5 +1,6 @@
 """Test Resolution API."""
 
+import asyncio
 from http import HTTPStatus
 from unittest.mock import AsyncMock
 
@@ -12,9 +13,11 @@ from supervisor.const import (
     ATTR_UNHEALTHY,
     ATTR_UNSUPPORTED,
     CoreState,
+    FeatureFlag,
 )
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
+from supervisor.homeassistant.const import WSType
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
@@ -245,3 +248,275 @@ async def test_check_not_found(
     assert body["message"] == "Check 'bad' does not exist"
     assert body["error_key"] == "resolution_check_not_found_error"
     assert body["extra_fields"] == {"check": "bad"}
+
+
+@pytest.mark.parametrize(
+    ("issue_type", "legacy_issue_type"),
+    [
+        (IssueType.DEPRECATED_APP, "deprecated_addon"),
+        (IssueType.DEPRECATED_ARCH_APP, "deprecated_arch_addon"),
+        (IssueType.DETACHED_APP_MISSING, "detached_addon_missing"),
+        (IssueType.DETACHED_APP_REMOVED, "detached_addon_removed"),
+    ],
+)
+async def test_api_resolution_info_v1_uses_legacy_names(
+    coresys: CoreSys, api_client: TestClient, issue_type: str, legacy_issue_type: str
+):
+    """Test v1 resolution info uses legacy issue type and check slug names."""
+    coresys.resolution.add_issue(Issue(issue_type, ContextType.ADDON, reference="test"))
+
+    resp = await api_client.get("/resolution/info")
+    result = await resp.json()
+
+    # V1 should return legacy issue type name
+    issue_types = [issue["type"] for issue in result["data"][ATTR_ISSUES]]
+    assert legacy_issue_type in issue_types
+    assert issue_type not in issue_types
+
+    # V1 should return legacy check slugs
+    check_slugs = [check["slug"] for check in result["data"]["checks"]]
+    assert "addon_pwned" in check_slugs
+    assert "deprecated_addon" in check_slugs
+    assert "deprecated_arch_addon" in check_slugs
+    assert "detached_addon_missing" in check_slugs
+    assert "detached_addon_removed" in check_slugs
+    # Should NOT have new names
+    assert "app_pwned" not in check_slugs
+    assert "deprecated_app" not in check_slugs
+    assert "deprecated_arch_app" not in check_slugs
+    assert "detached_app_missing" not in check_slugs
+    assert "detached_app_removed" not in check_slugs
+
+
+@pytest.mark.parametrize(
+    "issue_type",
+    [
+        IssueType.DEPRECATED_APP,
+        IssueType.DEPRECATED_ARCH_APP,
+        IssueType.DETACHED_APP_MISSING,
+        IssueType.DETACHED_APP_REMOVED,
+    ],
+)
+async def test_api_resolution_info_v2_uses_new_names(
+    coresys: CoreSys, api_client_v2: TestClient, issue_type: str
+):
+    """Test v2 resolution info uses new issue type and check slug names."""
+    coresys.resolution.add_issue(Issue(issue_type, ContextType.ADDON, reference="test"))
+
+    resp = await api_client_v2.get("/v2/resolution/info")
+    result = await resp.json()
+
+    # V2 should return new issue type name
+    issue_types = [issue["type"] for issue in result["data"][ATTR_ISSUES]]
+    assert issue_type in issue_types
+
+    # V2 should return new check slugs
+    check_slugs = [check["slug"] for check in result["data"]["checks"]]
+    assert "app_pwned" in check_slugs
+    assert "deprecated_app" in check_slugs
+    assert "deprecated_arch_app" in check_slugs
+    assert "detached_app_missing" in check_slugs
+    assert "detached_app_removed" in check_slugs
+    # Should NOT have legacy names
+    assert "addon_pwned" not in check_slugs
+    assert "deprecated_addon" not in check_slugs
+    assert "deprecated_arch_addon" not in check_slugs
+    assert "detached_addon_missing" not in check_slugs
+    assert "detached_addon_removed" not in check_slugs
+
+
+@pytest.mark.parametrize(
+    ("issue_type", "legacy_issue_type"),
+    [
+        (IssueType.DEPRECATED_APP, "deprecated_addon"),
+        (IssueType.DEPRECATED_ARCH_APP, "deprecated_arch_addon"),
+        (IssueType.DETACHED_APP_MISSING, "detached_addon_missing"),
+        (IssueType.DETACHED_APP_REMOVED, "detached_addon_removed"),
+    ],
+)
+async def test_ws_resolution_issue_events_legacy_compat(
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    issue_type: str,
+    legacy_issue_type: str,
+):
+    """Test WS issue events use legacy names when SUPERVISOR_WEBSOCKET_V2_API is disabled."""
+    # Default: SUPERVISOR_WEBSOCKET_V2_API is disabled
+    coresys.resolution.add_issue(Issue(issue_type, ContextType.ADDON, reference="test"))
+    await asyncio.sleep(0)
+
+    ws_events = [
+        call.args[0]
+        for call in ha_ws_client.async_send_command.call_args_list
+        if call.args[0].get("type") == WSType.SUPERVISOR_EVENT
+        and call.args[0].get("data", {}).get("event") == "issue_changed"
+    ]
+    assert len(ws_events) == 1
+    assert ws_events[0]["data"]["data"]["type"] == legacy_issue_type
+
+    # After dismissing, the issue_removed event should also use legacy name
+    ha_ws_client.async_send_command.reset_mock()
+    issue = coresys.resolution.issues[0]
+    coresys.resolution.dismiss_issue(issue)
+    await asyncio.sleep(0)
+
+    ws_events = [
+        call.args[0]
+        for call in ha_ws_client.async_send_command.call_args_list
+        if call.args[0].get("type") == WSType.SUPERVISOR_EVENT
+        and call.args[0].get("data", {}).get("event") == "issue_removed"
+    ]
+    assert len(ws_events) == 1
+    assert ws_events[0]["data"]["data"]["type"] == legacy_issue_type
+
+
+@pytest.mark.parametrize(
+    "issue_type",
+    [
+        IssueType.DEPRECATED_APP,
+        IssueType.DEPRECATED_ARCH_APP,
+        IssueType.DETACHED_APP_MISSING,
+        IssueType.DETACHED_APP_REMOVED,
+    ],
+)
+async def test_ws_resolution_issue_events_v2(
+    coresys: CoreSys, ha_ws_client: AsyncMock, issue_type: str
+):
+    """Test WS issue events use new names when SUPERVISOR_WEBSOCKET_V2_API is enabled."""
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+
+    coresys.resolution.add_issue(Issue(issue_type, ContextType.ADDON, reference="test"))
+    await asyncio.sleep(0)
+
+    ws_events = [
+        call.args[0]
+        for call in ha_ws_client.async_send_command.call_args_list
+        if call.args[0].get("type") == WSType.SUPERVISOR_EVENT
+        and call.args[0].get("data", {}).get("event") == "issue_changed"
+    ]
+    assert len(ws_events) == 1
+    assert ws_events[0]["data"]["data"]["type"] == issue_type
+
+    # After dismissing, the issue_removed event should also use new name
+    ha_ws_client.async_send_command.reset_mock()
+    issue = coresys.resolution.issues[0]
+    coresys.resolution.dismiss_issue(issue)
+    await asyncio.sleep(0)
+
+    ws_events = [
+        call.args[0]
+        for call in ha_ws_client.async_send_command.call_args_list
+        if call.args[0].get("type") == WSType.SUPERVISOR_EVENT
+        and call.args[0].get("data", {}).get("event") == "issue_removed"
+    ]
+    assert len(ws_events) == 1
+    assert ws_events[0]["data"]["data"]["type"] == issue_type
+
+
+@pytest.mark.parametrize(
+    ("check_slug", "legacy_slug"),
+    [
+        ("app_pwned", "addon_pwned"),
+        ("deprecated_app", "deprecated_addon"),
+        ("deprecated_arch_app", "deprecated_arch_addon"),
+        ("detached_app_missing", "detached_addon_missing"),
+        ("detached_app_removed", "detached_addon_removed"),
+    ],
+)
+async def test_api_resolution_check_run_v1_accepts_legacy_names(
+    api_client: TestClient,
+    check_slug: str,
+    legacy_slug: str,
+):
+    """Test v1 check run endpoint translates legacy check slugs to new ones."""
+    # V1 should accept legacy slug and translate it to new slug
+    resp = await api_client.post(f"/resolution/check/{legacy_slug}/run")
+    assert resp.status == 200
+
+    # V1 should also accept new slug directly
+    resp = await api_client.post(f"/resolution/check/{check_slug}/run")
+    assert resp.status == 200
+
+
+@pytest.mark.parametrize(
+    ("check_slug", "legacy_slug"),
+    [
+        ("app_pwned", "addon_pwned"),
+        ("deprecated_app", "deprecated_addon"),
+        ("deprecated_arch_app", "deprecated_arch_addon"),
+        ("detached_app_missing", "detached_addon_missing"),
+        ("detached_app_removed", "detached_addon_removed"),
+    ],
+)
+async def test_api_resolution_check_run_v2_accepts_new_names(
+    api_client_v2: TestClient, check_slug: str, legacy_slug: str
+):
+    """Test v2 check run endpoint accepts new check slugs and rejects legacy ones."""
+    # V2 should accept new slug
+    resp = await api_client_v2.post(f"/v2/resolution/check/{check_slug}/run")
+    assert resp.status == 200
+
+    # V2 should NOT accept legacy slug
+    resp = await api_client_v2.post(f"/v2/resolution/check/{legacy_slug}/run")
+    assert resp.status == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.parametrize(
+    ("check_slug", "legacy_slug"),
+    [
+        ("app_pwned", "addon_pwned"),
+        ("deprecated_app", "deprecated_addon"),
+        ("deprecated_arch_app", "deprecated_arch_addon"),
+        ("detached_app_missing", "detached_addon_missing"),
+        ("detached_app_removed", "detached_addon_removed"),
+    ],
+)
+async def test_api_resolution_check_options_v1_accepts_legacy_names(
+    api_client: TestClient,
+    check_slug: str,
+    legacy_slug: str,
+):
+    """Test v1 check options endpoint translates legacy check slugs to new ones."""
+    # V1 should accept legacy slug and translate it to new slug
+    resp = await api_client.post(
+        f"/resolution/check/{legacy_slug}/options", json={"enabled": False}
+    )
+    assert resp.status == 200
+
+    # V1 should also accept new slug directly
+    resp = await api_client.post(
+        f"/resolution/check/{check_slug}/options", json={"enabled": True}
+    )
+    assert resp.status == 200
+
+
+@pytest.mark.parametrize(
+    ("check_slug", "legacy_slug"),
+    [
+        ("app_pwned", "addon_pwned"),
+        ("deprecated_app", "deprecated_addon"),
+        ("deprecated_arch_app", "deprecated_arch_addon"),
+        ("detached_app_missing", "detached_addon_missing"),
+        ("detached_app_removed", "detached_addon_removed"),
+    ],
+)
+async def test_api_resolution_check_options_v2_accepts_new_names(
+    api_client_v2: TestClient, check_slug: str, legacy_slug: str
+):
+    """Test v2 check options endpoint accepts new check slugs and rejects legacy ones."""
+    # V2 should accept new slug
+    resp = await api_client_v2.post(
+        f"/v2/resolution/check/{check_slug}/options", json={"enabled": False}
+    )
+    assert resp.status == 200
+
+    resp = await api_client_v2.post(
+        f"/v2/resolution/check/{check_slug}/options", json={"enabled": True}
+    )
+    assert resp.status == 200
+
+    # V2 should NOT accept legacy slug
+    resp = await api_client_v2.post(
+        f"/v2/resolution/check/{legacy_slug}/options", json={"enabled": False}
+    )
+    assert resp.status == HTTPStatus.NOT_FOUND

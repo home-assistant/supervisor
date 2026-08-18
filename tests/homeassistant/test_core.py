@@ -28,6 +28,7 @@ from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.const import LANDINGPAGE, WSEvent
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
+from supervisor.jobs.const import JobCondition
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 from supervisor.updater import Updater
@@ -897,6 +898,71 @@ async def test_core_load_allows_image_override(
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/odroid-n2-homeassistant"
     )
+
+
+async def test_install_landingpage_uses_overridden_image(coresys: CoreSys):
+    """Test landingpage install pulls the user-overridden image."""
+    coresys.homeassistant.set_image("myorg/qemux86-64-homeassistant")
+    coresys.homeassistant.override_image = True
+
+    with (
+        patch.object(DockerHomeAssistant, "attach", side_effect=DockerError),
+        patch.object(DockerHomeAssistant, "install") as install,
+    ):
+        await coresys.homeassistant.core.install_landingpage()
+
+    install.assert_called_once_with(LANDINGPAGE, image="myorg/qemux86-64-homeassistant")
+    assert coresys.homeassistant.image == "myorg/qemux86-64-homeassistant"
+    assert coresys.homeassistant.version == LANDINGPAGE
+
+
+async def test_install_uses_overridden_image(coresys: CoreSys):
+    """Test Core install after landingpage pulls the user-overridden image."""
+    coresys.homeassistant.set_image("myorg/qemux86-64-homeassistant")
+    coresys.homeassistant.override_image = True
+
+    with (
+        patch.object(HomeAssistantCore, "start"),
+        patch.object(DockerHomeAssistant, "cleanup"),
+        patch.object(DockerHomeAssistant, "update") as update,
+        patch.object(
+            Updater,
+            "version_homeassistant",
+            new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
+        ),
+    ):
+        await coresys.homeassistant.core.install()
+
+    update.assert_called_once_with(
+        AwesomeVersion("2022.7.3"), image="myorg/qemux86-64-homeassistant"
+    )
+    assert coresys.homeassistant.image == "myorg/qemux86-64-homeassistant"
+
+
+async def test_update_uses_overridden_image(coresys: CoreSys):
+    """Test Core update pulls the user-overridden image."""
+    coresys.jobs.ignore_conditions = [
+        JobCondition.FREE_SPACE,
+        JobCondition.HEALTHY,
+        JobCondition.INTERNET_HOST,
+        JobCondition.PLUGINS_UPDATED,
+        JobCondition.SUPERVISOR_UPDATED,
+    ]
+    coresys.homeassistant.set_image("myorg/qemux86-64-homeassistant")
+    coresys.homeassistant.override_image = True
+    coresys.homeassistant.version = AwesomeVersion("2022.7.2")
+
+    with (
+        patch.object(DockerHomeAssistant, "update") as update,
+        patch.object(DockerHomeAssistant, "is_running", return_value=False),
+        patch.object(DockerHomeAssistant, "exists", return_value=False),
+    ):
+        await coresys.homeassistant.core.update(AwesomeVersion("2022.7.3"))
+
+    update.assert_called_once_with(
+        AwesomeVersion("2022.7.3"), image="myorg/qemux86-64-homeassistant"
+    )
+    assert coresys.homeassistant.image == "myorg/qemux86-64-homeassistant"
 
 
 async def test_core_loads_wrong_image_for_architecture(

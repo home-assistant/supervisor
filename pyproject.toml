@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools~=83.0.0"]
+requires = ["setuptools~=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -390,6 +390,9 @@ combine-as-imports = true
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
+
+# Pytest tests often accept many fixture parameters by design.
+"tests/**/*.py" = ["PLR0917"]
 
 # DBus Service Mocks must use typing and names understood by dbus-fast
 "tests/dbus_service_mocks/*.py" = ["F722", "F821", "N815", "UP037"]
