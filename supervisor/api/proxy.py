@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 import logging
 import re
 from typing import Final
@@ -44,12 +44,15 @@ CORE_API_DENY: Final = re.compile(r"^hassio(?:/|_)")
 DENIED_WS_TYPE_PREFIXES = ("supervisor/", "hassio/")
 
 
-def _denied_command_type(data: str) -> str | None:
+def _denied_command_type(data: str) -> tuple[str, str | None] | None:
     """Return the command type if it's one apps must never reach, else None."""
     try:
-        command_type = json_loads(data).get("type")
+        parsed = json_loads(data)
+        command_type = parsed.get("type")
         return (
-            command_type if command_type.startswith(DENIED_WS_TYPE_PREFIXES) else None
+            (command_type, parsed.get("id"))
+            if command_type and command_type.startswith(DENIED_WS_TYPE_PREFIXES)
+            else None
         )
     except ValueError, AttributeError:
         # ValueError: data wasn't valid JSON.
@@ -231,14 +234,12 @@ class APIProxy(CoreSysAttributes):
             msg = await source.receive()
             match msg.type:
                 case WSMsgType.TEXT if filter_app_commands and (
-                    denied_type := _denied_command_type(msg.data)
+                    denied_msg := _denied_command_type(msg.data)
                 ):
+                    denied_type, message_id = denied_msg
                     logger.warning(
                         "Blocked disallowed WebSocket command type %r", denied_type
                     )
-                    message_id = None
-                    with suppress(ValueError):
-                        message_id = json_loads(msg.data).get("id")
                     await source.send_json(
                         {
                             "id": message_id,
