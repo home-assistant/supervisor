@@ -1,9 +1,10 @@
 """Test fixup mount move local data."""
 
+from contextlib import suppress
 from unittest.mock import patch
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import MountError
+from supervisor.exceptions import MountError, ResolutionFixupError
 from supervisor.mounts.manager import MountManager
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -138,8 +139,12 @@ async def test_fixup_failed_remount_drops_move_suggestion(
         ],
     )
 
-    with patch.object(
-        MountManager, "reload_mount", side_effect=MountError("Test remount failure")
+    with (
+        patch.object(
+            MountManager, "reload_mount", side_effect=MountError("Test remount failure")
+        ),
+        # Swallowed today; raised once fixup failures propagate to the caller
+        suppress(ResolutionFixupError),
     ):
         await mount_move_local_data()
 
@@ -176,8 +181,12 @@ async def test_fixup_failure_keeps_suggestion(
         ],
     )
 
-    with patch.object(
-        MountManager, "relocate_local_data", side_effect=MountError("fail")
+    with (
+        patch.object(
+            MountManager, "relocate_local_data", side_effect=MountError("fail")
+        ),
+        # Swallowed today; raised once fixup failures propagate to the caller
+        suppress(ResolutionFixupError),
     ):
         await mount_move_local_data()
 
