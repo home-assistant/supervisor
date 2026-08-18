@@ -1,6 +1,7 @@
 """Init file for Supervisor app Git."""
 
 import asyncio
+import configparser
 from contextlib import suppress
 import functools as ft
 import logging
@@ -93,22 +94,36 @@ class GitRepo(CoreSysAttributes):
             git.CommandError,
             UnicodeDecodeError,
         ) as err:
-            _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
-            raise StoreGitError from err
+            raise StoreGitError(
+                f"Integrity check on {self.path} failed: {err!s}", _LOGGER.error
+            ) from err
 
     def _sync_origin_remote_url(self, repo: git.Repo) -> None:
         """Ensure the clone's origin URL matches the configured repository URL."""
-        remotes = {remote.name for remote in repo.remotes}
-        if "origin" not in remotes:
-            return
+        try:
+            origin = next(
+                (remote for remote in repo.remotes if remote.name == "origin"), None
+            )
+            if origin is None:
+                return
+            origin_url = origin.url
+        except (
+            git.InvalidGitRepositoryError,
+            git.NoSuchPathError,
+            git.CommandError,
+            configparser.Error,
+            UnicodeDecodeError,
+        ) as err:
+            raise StoreGitError(
+                f"Cannot access remotes on {self.path}: {err!s}", _LOGGER.error
+            ) from err
 
-        origin = repo.remotes.origin
-        if origin.url != self.url:
+        if origin_url != self.url:
             try:
                 _LOGGER.info(
                     "Updating app %s repository origin URL from %s to %s",
                     self.path,
-                    origin.url,
+                    origin_url,
                     self.url,
                 )
                 origin.set_url(self.url)
@@ -118,12 +133,10 @@ class GitRepo(CoreSysAttributes):
                 git.CommandError,
                 UnicodeDecodeError,
             ) as err:
-                _LOGGER.warning(
-                    "Failed to update app %s repository origin URL: %s",
-                    self.path,
-                    err,
-                )
-                raise StoreGitRemoteURLUpdateError from err
+                raise StoreGitRemoteURLUpdateError(
+                    f"Failed to update app {self.path} repository origin URL: {err!s}",
+                    _LOGGER.warning,
+                ) from err
 
     @Job(
         name="git_repo_clone",

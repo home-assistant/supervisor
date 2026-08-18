@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import configparser
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 import pytest
@@ -121,6 +122,25 @@ async def test_git_load_updates_origin_remote_url(coresys: CoreSys, tmp_path: Pa
         await repo.load()
 
     origin.set_url.assert_called_once_with(REPO_URL)
+
+
+async def test_git_load_corrupted_remotes_config(coresys: CoreSys, tmp_path: Path):
+    """Test git load raises StoreGitError when remotes config is corrupted."""
+    repo = GitRepo(coresys, tmp_path, REPO_URL)
+
+    # Pretend we have a repo
+    (tmp_path / ".git").mkdir()
+
+    mock_repo = MagicMock()
+    type(mock_repo).remotes = PropertyMock(
+        side_effect=configparser.MissingSectionHeaderError("config", 1, "garbage line")
+    )
+
+    with (
+        patch("git.Repo", return_value=mock_repo),
+        pytest.raises(StoreGitError, match="Cannot access remotes"),
+    ):
+        await repo.load()
 
 
 @pytest.mark.parametrize(
