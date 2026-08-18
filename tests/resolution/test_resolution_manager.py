@@ -2,8 +2,9 @@
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -479,3 +480,42 @@ def test_resolution_file_migration_legacy_check_slugs(legacy_slug: str, new_slug
     assert new_slug in migrated_config
     assert legacy_slug not in migrated_config
     assert migrated_config[new_slug]["enabled"] is False
+
+
+async def test_core_compatible_suggestions(coresys: CoreSys):
+    """Test suggestions gated on a minimum Core version are filtered."""
+    coresys.resolution.add_issue(
+        issue := Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="test"),
+        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_RELOAD],
+    )
+
+    for version, expected_types in [
+        (None, {SuggestionType.EXECUTE_RELOAD}),
+        (AwesomeVersion("landingpage"), {SuggestionType.EXECUTE_RELOAD}),
+        (AwesomeVersion("2026.8.3"), {SuggestionType.EXECUTE_RELOAD}),
+        (
+            AwesomeVersion("2026.9.0b0"),
+            {SuggestionType.EXECUTE_RELOAD, SuggestionType.MOVE_LOCAL_DATA},
+        ),
+        (
+            AwesomeVersion("2026.10.1"),
+            {SuggestionType.EXECUTE_RELOAD, SuggestionType.MOVE_LOCAL_DATA},
+        ),
+    ]:
+        with patch.object(
+            type(coresys.homeassistant),
+            "version",
+            new=PropertyMock(return_value=version),
+        ):
+            assert {
+                suggestion.type
+                for suggestion in coresys.resolution.core_compatible_suggestions(
+                    coresys.resolution.suggestions_for_issue(issue)
+                )
+            } == expected_types, f"unexpected filtering for Core {version}"
+
+            # The Core-facing issue event payload applies the same filter
+            message = coresys.resolution._make_issue_message(issue)  # pylint: disable=protected-access
+            assert {
+                suggestion["type"] for suggestion in message["suggestions"]
+            } == expected_types

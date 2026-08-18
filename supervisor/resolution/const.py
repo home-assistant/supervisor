@@ -3,6 +3,8 @@
 from enum import StrEnum
 from pathlib import Path
 
+from awesomeversion import AwesomeVersion
+
 from ..const import SUPERVISOR_DATA
 
 FILE_CONFIG_RESOLUTION = Path(SUPERVISOR_DATA, "resolution.json")
@@ -137,6 +139,15 @@ class SuggestionType(StrEnum):
     MOVE_LOCAL_DATA = "move_local_data"
     REGISTRY_LOGIN = "registry_login"
     RENAME_DATA_DISK = "rename_data_disk"
+
+
+# Suggestions the Home Assistant frontend can only present from a given Core
+# version on (the fix flow translations ship with Core). Suggestions below
+# their minimum version are filtered from Core-facing API responses and
+# events; all other API consumers always see them.
+SUGGESTION_MIN_CORE_VERSION: dict[SuggestionType, AwesomeVersion] = {
+    SuggestionType.MOVE_LOCAL_DATA: AwesomeVersion("2026.9.0b0"),
+}
 
 
 # Maps legacy check slugs to current slugs.

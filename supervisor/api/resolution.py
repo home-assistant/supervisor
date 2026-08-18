@@ -17,6 +17,7 @@ from ..const import (
     ATTR_SUGGESTIONS,
     ATTR_UNHEALTHY,
     ATTR_UNSUPPORTED,
+    REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
 from ..resolution.checks.base import CheckBase
@@ -67,14 +68,24 @@ class APIResolution(CoreSysAttributes):
         )
         return resp
 
-    def _build_info_response(self) -> dict[str, Any]:
+    def _suggestions_for_caller(
+        self, request: web.Request, suggestions: list[Suggestion] | set[Suggestion]
+    ) -> list[Suggestion]:
+        """Filter suggestions the calling Core version cannot present yet."""
+        if request.get(REQUEST_FROM) == self.sys_homeassistant:
+            return self.sys_resolution.core_compatible_suggestions(suggestions)
+        return list(suggestions)
+
+    def _build_info_response(self, request: web.Request) -> dict[str, Any]:
         """Build the resolution info response with current (v2) names."""
         return {
             ATTR_UNSUPPORTED: sorted(self.sys_resolution.unsupported),
             ATTR_UNHEALTHY: sorted(self.sys_resolution.unhealthy),
             ATTR_SUGGESTIONS: [
                 self._generate_suggestion_information(suggestion)
-                for suggestion in self.sys_resolution.suggestions
+                for suggestion in self._suggestions_for_caller(
+                    request, self.sys_resolution.suggestions
+                )
             ],
             ATTR_ISSUES: [asdict(issue) for issue in self.sys_resolution.issues],
             ATTR_CHECKS: [
@@ -86,12 +97,12 @@ class APIResolution(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return resolution information."""
-        return self._build_info_response()
+        return self._build_info_response(request)
 
     @api_process
     async def info_v1(self, request: web.Request) -> dict[str, Any]:
         """Return resolution info (v1: uses legacy issue types and check slugs)."""
-        data = self._build_info_response()
+        data = self._build_info_response(request)
         return data | {
             ATTR_ISSUES: [
                 process_issue_dict_for_legacy_compatibility(issue)
@@ -122,7 +133,9 @@ class APIResolution(CoreSysAttributes):
         return {
             ATTR_SUGGESTIONS: [
                 self._generate_suggestion_information(suggestion)
-                for suggestion in self.sys_resolution.suggestions_for_issue(issue)
+                for suggestion in self._suggestions_for_caller(
+                    request, self.sys_resolution.suggestions_for_issue(issue)
+                )
             ]
         }
 

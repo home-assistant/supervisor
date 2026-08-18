@@ -2,9 +2,10 @@
 
 import asyncio
 from http import HTTPStatus
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.const import (
@@ -92,6 +93,40 @@ async def test_api_resolution_apply_suggestion(
 
     with pytest.raises(ResolutionError):
         await coresys.resolution.apply_suggestion(clear_backup)
+
+
+async def test_api_resolution_suggestions_filtered_for_old_core(
+    coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
+):
+    """Test Core-facing responses hide suggestions the Core version cannot present."""
+    api_client, prefix = api_client_with_prefix
+    coresys.resolution.add_issue(
+        issue := Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="test"),
+        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_RELOAD],
+    )
+
+    for version, expected_types in [
+        (AwesomeVersion("2026.8.3"), {"execute_reload"}),
+        (AwesomeVersion("2026.9.0b0"), {"execute_reload", "move_local_data"}),
+    ]:
+        with patch.object(
+            type(coresys.homeassistant),
+            "version",
+            new=PropertyMock(return_value=version),
+        ):
+            resp = await api_client.get(f"{prefix}/resolution/info")
+            body = await resp.json()
+            assert {
+                suggestion["type"] for suggestion in body["data"]["suggestions"]
+            } == expected_types
+
+            resp = await api_client.get(
+                f"{prefix}/resolution/issue/{issue.uuid}/suggestions"
+            )
+            body = await resp.json()
+            assert {
+                suggestion["type"] for suggestion in body["data"]["suggestions"]
+            } == expected_types
 
 
 async def test_api_resolution_dismiss_issue(

@@ -13,7 +13,8 @@ from ..exceptions import (
     ResolutionIssueNotFound,
     ResolutionSuggestionNotFound,
 )
-from ..homeassistant.const import WSEvent
+from ..homeassistant.const import LANDINGPAGE, WSEvent
+from ..utils import version_is_new_enough
 from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
 from .const import (
@@ -21,6 +22,7 @@ from .const import (
     LEGACY_ISSUE_TYPE_MAP,
     OUTGOING_LEGACY_CHECK_SLUG_MAP,
     SCHEDULED_HEALTHCHECK,
+    SUGGESTION_MIN_CORE_VERSION,
     ContextType,
     IssueType,
     SuggestionType,
@@ -198,6 +200,27 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """
         return self._issue_event_data(issue, with_suggestions=True)
 
+    def core_compatible_suggestions(
+        self, suggestions: list[Suggestion] | set[Suggestion]
+    ) -> list[Suggestion]:
+        """Filter suggestions to those the current Core version can present.
+
+        Newer suggestions have no fix flow translation in older Core
+        frontends and would render as empty menu entries. Only used for
+        Core-facing output; other API consumers get the full list.
+        """
+        version = self.sys_homeassistant.version
+        return [
+            suggestion
+            for suggestion in suggestions
+            if (min_version := SUGGESTION_MIN_CORE_VERSION.get(suggestion.type)) is None
+            or (
+                version is not None
+                and version != LANDINGPAGE
+                and version_is_new_enough(version, min_version)
+            )
+        ]
+
     def _issue_event_data(
         self, issue: Issue, *, with_suggestions: bool = False
     ) -> dict[str, Any]:
@@ -207,7 +230,9 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             | {
                 "suggestions": [
                     asdict(suggestion)
-                    for suggestion in self.suggestions_for_issue(issue)
+                    for suggestion in self.core_compatible_suggestions(
+                        self.suggestions_for_issue(issue)
+                    )
                 ]
             }
             if with_suggestions
