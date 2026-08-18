@@ -254,7 +254,7 @@ async def test_app_uninstall_removes_discovery(coresys: CoreSys, install_app_ssh
     assert len(delete_calls) == 1
     assert (
         delete_calls[0].args[1]
-        == f"http://172.30.32.1:8123/api/hassio_push/discovery/{message.uuid}"
+        == f"http://172.30.32.1/api/hassio_push/discovery/{message.uuid}"
     )
     assert delete_calls[0].kwargs["json"] == {
         "addon": TEST_ADDON_SLUG,

@@ -140,7 +140,7 @@ async def test_use_unix_socket(
     ("use_unix", "expected_api_url", "expected_ws_url"),
     [
         (True, "http://localhost", "ws://localhost/api/websocket"),
-        (False, "http://172.30.32.1:8123", "ws://172.30.32.1:8123/api/websocket"),
+        (False, "http://172.30.32.1", "ws://172.30.32.1/api/websocket"),
     ],
 )
 async def test_api_and_ws_urls(
@@ -150,6 +150,41 @@ async def test_api_and_ws_urls(
     with patch.object(type(coresys.homeassistant.api), "use_unix_socket", use_unix):
         assert coresys.homeassistant.api.api_url == expected_api_url
         assert coresys.homeassistant.api.ws_url == expected_ws_url
+
+
+@pytest.mark.parametrize(
+    ("port", "ssl", "expected_api_url", "expected_ws_url"),
+    [
+        (80, False, "http://172.30.32.1", "ws://172.30.32.1/api/websocket"),
+        (443, True, "https://172.30.32.1", "wss://172.30.32.1/api/websocket"),
+        (
+            8123,
+            False,
+            "http://172.30.32.1:8123",
+            "ws://172.30.32.1:8123/api/websocket",
+        ),
+        (
+            8123,
+            True,
+            "https://172.30.32.1:8123",
+            "wss://172.30.32.1:8123/api/websocket",
+        ),
+        (80, True, "https://172.30.32.1:80", "wss://172.30.32.1:80/api/websocket"),
+    ],
+)
+async def test_url_omits_default_scheme_port(
+    coresys: CoreSys,
+    port: int,
+    ssl: bool,
+    expected_api_url: str,
+    expected_ws_url: str,
+):
+    """Test the port is only part of the url when the scheme doesn't imply it."""
+    coresys.homeassistant.api_port = port
+    coresys.homeassistant.api_ssl = ssl
+
+    assert coresys.homeassistant.api_url == expected_api_url
+    assert coresys.homeassistant.ws_url == expected_ws_url
 
 
 # --- connection lifecycle ---
@@ -357,8 +392,8 @@ async def test_http_config_pulled_on_connect(
         return_value={"state": "RUNNING", "recorder_state": {}}
     )
     coresys.homeassistant.save_data = AsyncMock()
+    coresys.homeassistant.api_port = 8123
 
-    assert coresys.homeassistant.api_port == 8123
     assert coresys.homeassistant.http_server_host is None
 
     with (
@@ -404,7 +439,7 @@ async def test_http_config_unchanged_not_saved(
     )
     coresys.homeassistant.save_data = AsyncMock()
 
-    config = {**TEST_HTTP_CONFIG, "port": 8123, "server_host": ["172.30.32.1"]}
+    config = {**TEST_HTTP_CONFIG, "server_host": ["172.30.32.1"]}
     with (
         patch.object(type(api), "use_unix_socket", True),
         patch.object(api, "_get_json", return_value=config),
