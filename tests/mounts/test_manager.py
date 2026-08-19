@@ -667,6 +667,32 @@ async def test_reload_mount_dismisses_local_data_issue(
     assert coresys.resolution.suggestions == []
 
 
+async def test_relocate_local_data_multiple_dirs_one_recovery_folder(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test data from multiple blocked directories lands in one recovery folder."""
+    mount_dir = mount.local_where
+    mount_dir.mkdir(parents=True, exist_ok=True)
+    (mount_dir / "stray.txt").touch()
+
+    media_dir = coresys.config.path_media / "media_test"
+    media_dir.mkdir(exist_ok=True)
+    (media_dir / "recording.mp4").touch()
+
+    await coresys.mounts.relocate_local_data(mount.name)
+
+    recovery_dir = coresys.config.path_media / "media_test_local_recovery"
+    assert (recovery_dir / "stray.txt").exists()
+    assert (recovery_dir / "media" / "recording.mp4").exists()
+    assert not (coresys.config.path_media / "media_test_local_recovery_2").exists()
+    assert mount_dir.is_dir()
+    assert not any(mount_dir.iterdir())
+    assert media_dir.is_dir()
+    assert not any(media_dir.iterdir())
+
+
 async def test_relocate_local_data_recovery_name_collision(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],

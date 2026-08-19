@@ -391,6 +391,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         def move_aside() -> list[tuple[Path, Path]]:
             moved: list[tuple[Path, Path]] = []
+            recovery_dir: Path | None = None
             for path in paths:
                 try:
                     if path.is_mount() or not path.exists():
@@ -400,11 +401,20 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 except OSError:
                     continue
 
-                target = recovery_base / f"{name}_local_recovery"
-                counter = 1
-                while target.exists():
-                    counter += 1
-                    target = recovery_base / f"{name}_local_recovery_{counter}"
+                # All local data blocking this mount goes to one recovery
+                # folder so the user finds it as a single fix. If more than
+                # one directory holds data, later ones become subfolders
+                # named after their parent (e.g. "mounts").
+                if recovery_dir is None:
+                    target = recovery_base / f"{name}_local_recovery"
+                    counter = 1
+                    while target.exists():
+                        counter += 1
+                        target = recovery_base / f"{name}_local_recovery_{counter}"
+                    recovery_dir = target
+                else:
+                    target = recovery_dir / path.parent.name
+
                 path.rename(target)
                 # Keep the path present for consumers even if the remount
                 # below fails: an empty directory instead of a missing one
@@ -415,6 +425,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         try:
             moved = await self.sys_run_in_executor(move_aside)
         except OSError as err:
+            self.sys_resolution.check_oserror(err)
             raise MountError(
                 f"Could not move local data for mount {name}: {err!s}", _LOGGER.error
             ) from err
