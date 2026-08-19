@@ -287,6 +287,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         mount = self._mounts[name]
         try:
             await mount.repair_trigger()
+        except MountTargetNotEmptyError, MountTargetNotDirectoryError:
+            # Local data blocks re-creating the mount — offer moving it
+            self._add_local_data_issue(mount)
+            raise
         except MountError:
             self._add_failed_issue(mount)
             raise
