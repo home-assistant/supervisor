@@ -1269,6 +1269,10 @@ class StoreGitError(StoreError):
     """Raise if something on git is happening."""
 
 
+class StoreGitRemoteURLUpdateError(StoreGitError):
+    """Raise if updating a repository remote URL fails."""
+
+
 class StoreGitCloneError(StoreGitError):
     """Raise if error occurred while cloning repository."""
 
