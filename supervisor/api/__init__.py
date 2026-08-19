@@ -453,6 +453,10 @@ class RestAPI(CoreSysAttributes):
                     web.post(
                         "/resolution/check/{check}/run", api_resolution.run_check_v1
                     ),
+                    web.get(
+                        "/resolution/issue/{issue}/suggestions",
+                        api_resolution.suggestions_for_issue_v1,
+                    ),
                 ]
             )
         else:
@@ -464,6 +468,10 @@ class RestAPI(CoreSysAttributes):
                         api_resolution.options_check,
                     ),
                     web.post("/resolution/check/{check}/run", api_resolution.run_check),
+                    web.get(
+                        "/resolution/issue/{issue}/suggestions",
+                        api_resolution.suggestions_for_issue,
+                    ),
                 ]
             )
 
@@ -480,10 +488,6 @@ class RestAPI(CoreSysAttributes):
                 web.delete(
                     "/resolution/issue/{issue}",
                     api_resolution.dismiss_issue,
-                ),
-                web.get(
-                    "/resolution/issue/{issue}/suggestions",
-                    api_resolution.suggestions_for_issue,
                 ),
                 web.post("/resolution/healthcheck", api_resolution.healthcheck),
             ]

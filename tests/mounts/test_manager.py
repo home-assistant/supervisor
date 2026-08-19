@@ -596,6 +596,122 @@ async def test_save_data(
         ]
 
 
+async def test_load_bind_failure_creates_local_data_issue(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test local data blocking the bind mount at load creates a repair issue."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+
+    mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
+    coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
+
+    media_dir = coresys.config.path_media / "media_test"
+    media_dir.mkdir()
+    (media_dir / "recording.mp4").touch()
+
+    systemd_service.response_get_unit = {
+        "mnt-data-supervisor-mounts-media_test.mount": [
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
+        ],
+        "mnt-data-supervisor-media-media_test.mount": [ERROR_NO_UNIT],
+    }
+    await coresys.mounts.load()
+
+    issue = Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="media_test")
+    assert issue in coresys.resolution.issues
+    assert coresys.resolution.suggestions_for_issue(issue) == {
+        Suggestion(
+            SuggestionType.MOVE_LOCAL_DATA, ContextType.MOUNT, reference="media_test"
+        ),
+        Suggestion(
+            SuggestionType.EXECUTE_RELOAD, ContextType.MOUNT, reference="media_test"
+        ),
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.MOUNT, reference="media_test"
+        ),
+    }
+
+
+async def test_reload_mount_dismisses_local_data_issue(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test a successful reload dismisses a stale local data issue."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+
+    coresys.resolution.create_issue(
+        IssueType.MOUNT_FAILED,
+        ContextType.MOUNT,
+        reference="media_test",
+        suggestions=[
+            SuggestionType.MOVE_LOCAL_DATA,
+            SuggestionType.EXECUTE_RELOAD,
+            SuggestionType.EXECUTE_REMOVE,
+        ],
+    )
+
+    systemd_service.response_get_unit = [
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+    await coresys.mounts.reload_mount(mount.name)
+
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []
+
+
+async def test_relocate_local_data_multiple_dirs_one_recovery_folder(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test data from multiple blocked directories lands in one recovery folder."""
+    mount_dir = mount.local_where
+    mount_dir.mkdir(parents=True, exist_ok=True)
+    (mount_dir / "stray.txt").touch()
+
+    media_dir = coresys.config.path_media / "media_test"
+    media_dir.mkdir(exist_ok=True)
+    (media_dir / "recording.mp4").touch()
+
+    await coresys.mounts.relocate_local_data(mount.name)
+
+    recovery_dir = coresys.config.path_media / "media_test_local_recovery"
+    assert (recovery_dir / "stray.txt").exists()
+    assert (recovery_dir / "media" / "recording.mp4").exists()
+    assert not (coresys.config.path_media / "media_test_local_recovery_2").exists()
+    assert mount_dir.is_dir()
+    assert not any(mount_dir.iterdir())
+    assert media_dir.is_dir()
+    assert not any(media_dir.iterdir())
+
+
+async def test_relocate_local_data_recovery_name_collision(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test relocating local data picks a free recovery folder name."""
+    media_dir = coresys.config.path_media / "media_test"
+    media_dir.mkdir(exist_ok=True)
+    (media_dir / "recording.mp4").touch()
+    (coresys.config.path_media / "media_test_local_recovery").mkdir()
+
+    await coresys.mounts.relocate_local_data(mount.name)
+
+    recovery_dir = coresys.config.path_media / "media_test_local_recovery_2"
+    assert (recovery_dir / "recording.mp4").exists()
+    assert media_dir.is_dir()
+    assert not any(media_dir.iterdir())
+
+
 async def test_create_mount_blocked_by_existing_local_data(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
