@@ -98,16 +98,21 @@ async def test_api_resolution_apply_suggestion(
 async def test_api_resolution_suggestions_filtered_for_old_core(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
-    """Test Core-facing responses hide suggestions the Core version cannot present."""
+    """Test v1 responses hide suggestions the Core version cannot present.
+
+    The v2 API never filters: no Core version predating the suggestion
+    filtering in its repair flow supports v2.
+    """
     api_client, prefix = api_client_with_prefix
     coresys.resolution.add_issue(
         issue := Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="test"),
         suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_RELOAD],
     )
 
+    all_types = {"execute_reload", "move_local_data"}
     for version, expected_types in [
-        (AwesomeVersion("2026.8.3"), {"execute_reload"}),
-        (AwesomeVersion("2026.9.0b0"), {"execute_reload", "move_local_data"}),
+        (AwesomeVersion("2026.8.3"), {"execute_reload"} if not prefix else all_types),
+        (AwesomeVersion("2026.9.0b0"), all_types),
     ]:
         with patch.object(
             type(coresys.homeassistant),

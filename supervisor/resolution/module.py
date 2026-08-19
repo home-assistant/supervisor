@@ -1,5 +1,6 @@
 """Supervisor resolution center."""
 
+from collections.abc import Iterable
 from dataclasses import asdict
 import errno
 import logging
@@ -201,7 +202,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         return self._issue_event_data(issue, with_suggestions=True)
 
     def core_compatible_suggestions(
-        self, suggestions: list[Suggestion] | set[Suggestion]
+        self, suggestions: Iterable[Suggestion]
     ) -> list[Suggestion]:
         """Filter suggestions to those the current Core version can present.
 
@@ -225,23 +226,24 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self, issue: Issue, *, with_suggestions: bool = False
     ) -> dict[str, Any]:
         """Build issue payload and apply legacy compatibility if needed."""
-        data = (
-            asdict(issue)
-            | {
-                "suggestions": [
-                    asdict(suggestion)
-                    for suggestion in self.core_compatible_suggestions(
-                        self.suggestions_for_issue(issue)
-                    )
-                ]
-            }
-            if with_suggestions
-            else asdict(issue)
+        v2_api = self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
         )
 
-        if not self.sys_config.feature_flags.get(
-            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
-        ):
+        if with_suggestions:
+            suggestions: Iterable[Suggestion] = self.suggestions_for_issue(issue)
+            if not v2_api:
+                # Core versions predating the v2 API render suggestions
+                # without fix flow translation as empty menu entries. Any
+                # Core new enough to enable v2 filters those itself.
+                suggestions = self.core_compatible_suggestions(suggestions)
+            data = asdict(issue) | {
+                "suggestions": [asdict(suggestion) for suggestion in suggestions]
+            }
+        else:
+            data = asdict(issue)
+
+        if not v2_api:
             data = process_issue_dict_for_legacy_compatibility(data)
         return data
 

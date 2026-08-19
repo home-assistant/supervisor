@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
 from supervisor.resolution.const import (
@@ -514,8 +515,21 @@ async def test_core_compatible_suggestions(coresys: CoreSys):
                 )
             } == expected_types, f"unexpected filtering for Core {version}"
 
-            # The Core-facing issue event payload applies the same filter
+            # The legacy issue event payload applies the same filter
             message = coresys.resolution._make_issue_message(issue)  # pylint: disable=protected-access
             assert {
                 suggestion["type"] for suggestion in message["suggestions"]
             } == expected_types
+
+            # With the v2 API enabled the Core filters itself — no filtering
+            coresys.config.set_feature_flag(
+                FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True
+            )
+            message = coresys.resolution._make_issue_message(issue)  # pylint: disable=protected-access
+            assert {suggestion["type"] for suggestion in message["suggestions"]} == {
+                SuggestionType.EXECUTE_RELOAD,
+                SuggestionType.MOVE_LOCAL_DATA,
+            }
+            coresys.config.set_feature_flag(
+                FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+            )
