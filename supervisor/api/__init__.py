@@ -263,7 +263,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/host/options", api_host.options),
                 web.get("/host/services", api_host.services),
                 web.get(
-                    "/host/disks/default/usage",
+                    "/host/disks/{disk}/usage",
                     api_host.disk_usage_v1
                     if app is self.versions[AppVersion.V1]
                     else api_host.disk_usage,
