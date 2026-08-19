@@ -13,6 +13,7 @@ from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import PropagationMode
 from .interface import DockerInterface
+from .utils import split_image_tag
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -168,8 +169,8 @@ class DockerSupervisor(DockerInterface):
                 if tag == "<none>:<none>":
                     continue
 
-                start_image = tag.partition(":")[0]
-                start_tag = tag.partition(":")[2] or "latest"
+                start_image, image_tag = split_image_tag(tag)
+                start_tag = image_tag or "latest"
 
                 # If version tag
                 if start_tag != "latest":

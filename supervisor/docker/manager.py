@@ -249,16 +249,14 @@ class DockerConfig(FileConfiguration):
 
         # Check if image uses a custom registry (e.g., ghcr.io/org/image)
         registry = get_registry_from_image(image)
-        if registry:
-            if registry in self.registries:
-                return registry
-        else:
-            # No registry prefix means Docker Hub
-            # Support both docker.io (official) and hub.docker.com (legacy)
-            if DOCKER_HUB in self.registries:
-                return DOCKER_HUB
-            if DOCKER_HUB_LEGACY in self.registries:
-                return DOCKER_HUB_LEGACY
+        if registry and registry != DOCKER_HUB:
+            return registry if registry in self.registries else None
+
+        # No registry prefix or an explicit Docker Hub domain
+        # Support both docker.io (official) and hub.docker.com (legacy)
+        for hub_registry in (DOCKER_HUB, DOCKER_HUB_LEGACY):
+            if hub_registry in self.registries:
+                return hub_registry
 
         return None
 
