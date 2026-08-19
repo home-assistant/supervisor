@@ -169,6 +169,125 @@ async def test_proxy_binary_message(
     assert await client.close()
 
 
+async def test_proxy_blocks_supervisor_api_command(
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test the proxy blocks a supervisor/api command instead of tunneling it to Core.
+
+    Regression test for the confused-deputy chain described in
+    ws-supervisor-api-disclosure.md: an app with only `homeassistant_api: true` could
+    reach the full, unrestricted Supervisor API by sending a `supervisor/api` command
+    through this proxy, since Core executes it by calling back into the Supervisor
+    with its own, fully privileged token.
+    """
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        await client.send_json_auto_id(
+            {
+                "type": "supervisor/api",
+                "endpoint": "/addons/self/options",
+                "method": "post",
+                "data": {"boot": "auto"},
+            }
+        )
+        result = await client.receive_json()
+        assert (
+            "Blocked disallowed WebSocket command type 'supervisor/api'" in caplog.text
+        )
+
+    assert result == {
+        "id": 1,
+        "type": "result",
+        "success": False,
+        "error": {"code": "unauthorized", "message": "Unauthorized"},
+    }
+    # The command must never have reached Home Assistant Core
+    assert ha_ws_server.incoming.empty()
+
+    assert await client.close()
+
+
+@pytest.mark.parametrize(
+    "command_type",
+    [
+        "supervisor/api",
+        "supervisor/event",
+        "supervisor/subscribe",
+        "hassio/update/core",
+    ],
+)
+async def test_proxy_blocks_denied_command_types(
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+    command_type: str,
+):
+    """Test every Supervisor/Core-only command namespace is blocked, not just supervisor/api."""
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+
+    await client.send_json_auto_id({"type": command_type})
+    result = await client.receive_json()
+
+    assert result["success"] is False
+    assert result["error"]["code"] == "unauthorized"
+    assert ha_ws_server.incoming.empty()
+
+    assert await client.close()
+
+
+async def test_proxy_allows_normal_commands_after_blocked_command(
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+):
+    """Test the connection stays usable after a denied command is rejected."""
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+
+    await client.send_json_auto_id({"type": "supervisor/api", "endpoint": "/backups"})
+    denied = await client.receive_json()
+    assert denied["success"] is False
+
+    await client.send_json_auto_id({"type": "call_service", "domain": "light"})
+    proxied_msg = await ha_ws_server.incoming.get()
+    assert proxied_msg.type == WSMsgType.TEXT
+    assert '"type": "call_service"' in proxied_msg.data
+
+    assert await client.close()
+
+
+async def test_proxy_forwards_malformed_text_message(
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+):
+    """Test non-JSON text frames are forwarded as-is (Core rejects them itself)."""
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+
+    await client.send_str("this is not JSON")
+    proxied_msg = await ha_ws_server.incoming.get()
+    assert proxied_msg.type == WSMsgType.TEXT
+    assert proxied_msg.data == "this is not JSON"
+
+    assert await client.close()
+
+
 async def test_proxy_large_message(
     proxy_ws_client: WebSocketGenerator,
     ha_ws_server: MockHAServerWebSocket,
