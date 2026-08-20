@@ -139,19 +139,16 @@ async def test_api_supervisor_options_v2_rejects_deprecated_fields(
 
 @pytest.mark.parametrize("git_error", [None, StoreGitError()])
 async def test_api_supervisor_options_repositories_skipped_on_error(
-    api_client_with_prefix: tuple[TestClient, str],
-    coresys: CoreSys,
-    git_error: StoreGitError,
+    api_client: TestClient, coresys: CoreSys, git_error: StoreGitError
 ):
     """Test repositories skipped on error via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     with (
         patch("supervisor.store.repository.RepositoryGit.load", side_effect=git_error),
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=False),
         patch("supervisor.store.repository.RepositoryCustom.remove"),
     ):
         response = await api_client.post(
-            f"{prefix}/supervisor/options", json={"addons_repositories": [REPO_URL]}
+            "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )
 
     assert response.status == 400

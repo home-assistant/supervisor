@@ -155,7 +155,6 @@ class APISupervisor(CoreSysAttributes):
         body = await api_validate(SCHEMA_OPTIONS, request)
         await self._options(body)
 
-        # Save changes before processing apps in case of errors
         await self.sys_updater.save_data()
         await self.sys_config.save_data()
 
