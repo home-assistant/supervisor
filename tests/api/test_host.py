@@ -1174,8 +1174,8 @@ async def test_disk_usage_api_mount_breakdown(
 
 
 @pytest.mark.parametrize(
-    "walked_bytes",
-    [1200000000, 1300000000],
+    ("walked_bytes", "expect_children"),
+    [(1200000000, True), (1300000000, False)],
     ids=["accounts-for-everything", "overshoots-the-filesystem"],
 )
 @pytest.mark.usefixtures("active_mount")
@@ -1183,13 +1183,10 @@ async def test_disk_usage_api_mount_breakdown_without_remainder(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
     walked_bytes: int,
+    expect_children: bool,
+    caplog: pytest.LogCaptureFixture,
 ):
-    """Test no "other" child when there is nothing left to attribute.
-
-    A walk that accounts for everything needs no remainder, and one that
-    overshoots (racing a deletion against the filesystem figure) must not
-    produce a negative one.
-    """
+    """Test an exact walk keeps its children and an overshooting walk drops them."""
     api_client, prefix = api_client_with_prefix
 
     with (
@@ -1211,10 +1208,21 @@ async def test_disk_usage_api_mount_breakdown_without_remainder(
 
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["children"] == [
-        {"id": "movies", "label": "movies", "used_bytes": walked_bytes},
-    ]
-    assert all(child["id"] != "other" for child in result["data"]["children"])
+    if expect_children:
+        assert result["data"]["children"] == [
+            {"id": "movies", "label": "movies", "used_bytes": walked_bytes},
+        ]
+        assert "Omitting the breakdown" not in caplog.text
+    else:
+        assert "children" not in result["data"]
+        # Dropped data is not silent: leave a trace for user reports
+        assert "Directory sizes of mount media_test" in caplog.text
+        assert "Omitting the breakdown" in caplog.text
+    # Either way the children never sum past used_bytes
+    assert (
+        sum(child["used_bytes"] for child in result["data"].get("children", []))
+        <= result["data"]["used_bytes"]
+    )
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -1446,6 +1454,59 @@ async def test_mount_usage_abandoned_probe_retrieves_its_exception(coresys: Core
     assert not reported
     # The entry is gone either way, so a later request starts a fresh probe
     assert not api_host._mount_usage_probes
+
+
+@pytest.mark.usefixtures("active_mount")
+async def test_disk_usage_api_mount_depths_below_two_share_one_probe(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test concurrent callers at depths 0 and 1 share a single probe."""
+    api_client, prefix = api_client_with_prefix
+
+    def _slow(_):
+        time.sleep(0.3)
+        return (2000000000, 999, 800000000)
+
+    with patch.object(
+        coresys.hardware.disk, "disk_usage_for_mount", side_effect=_slow
+    ) as mock_disk_usage:
+        first, second = await asyncio.gather(
+            api_client.get(f"{prefix}/host/disks/media_test/usage?max_depth=0"),
+            api_client.get(f"{prefix}/host/disks/media_test/usage?max_depth=1"),
+        )
+
+    assert first.status == 200
+    assert second.status == 200
+    assert (await first.json())["data"] == (await second.json())["data"]
+    mock_disk_usage.assert_called_once()
+
+
+@pytest.mark.usefixtures("active_mount")
+async def test_disk_usage_api_v1_mount_children_are_not_remapped(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test a mount directory named apps_data keeps its name in v1 responses."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage_for_mount") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_structure,
+    ):
+        mock_disk_usage.return_value = (2000000000, 999, 800000000)
+        mock_structure.return_value = {
+            "used_bytes": 1200000000,
+            "children": [
+                {"id": "apps_data", "label": "apps_data", "used_bytes": 1200000000},
+            ],
+        }
+
+        resp = await api_client.get("/host/disks/media_test/usage?max_depth=2")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["children"] == [
+        {"id": "apps_data", "label": "apps_data", "used_bytes": 1200000000},
+    ]
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")

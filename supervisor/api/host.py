@@ -475,6 +475,10 @@ class APIHost(CoreSysAttributes):
             raise MountUsageNotActiveError(name=name)
 
         max_depth = self._requested_max_depth(request, DISK_USAGE_MAX_DEPTH_MOUNT)
+        # All depths below 2 give totals only; normalize so concurrent callers
+        # share one probe regardless of the requested depth.
+        if max_depth < 2:
+            max_depth = DISK_USAGE_MAX_DEPTH_MOUNT
         return await self._mount_usage(mount, max_depth)
 
     async def _mount_usage(self, mount: Mount, max_depth: int) -> dict[str, Any]:
@@ -585,16 +589,28 @@ class APIHost(CoreSysAttributes):
             # Keep every node's children summing to its used_bytes, so a mount
             # breaks down like anything else in the tree. Files directly at the
             # mount root, reserved space, and anything the walk could not stat
-            # all land here. A walk racing deletion can overshoot the filesystem
-            # figure, so a non-positive remainder is dropped rather than
-            # reported as negative.
-            remainder = used - sum(child["used_bytes"] for child in children)
+            # all land here.
+            walked = sum(child["used_bytes"] for child in children)
+            remainder = used - walked
             if remainder > 0:
                 children = [
                     *children,
                     {"id": "other", "label": "Other", "used_bytes": remainder},
                 ]
+            elif remainder < 0:
+                # Walk raced a deletion; drop the breakdown rather than serve
+                # children summing past their parent.
+                _LOGGER.warning(
+                    "Directory sizes of mount %s (%d bytes) exceed its reported "
+                    "usage (%d bytes), likely because files changed during the "
+                    "scan. Omitting the breakdown for this request",
+                    mount.name,
+                    walked,
+                    used,
+                )
+                children = []
 
+        if children:
             data[ATTR_CHILDREN] = children
 
         return data
@@ -602,7 +618,15 @@ class APIHost(CoreSysAttributes):
     @api_process
     async def disk_usage_v1(self, request: web.Request) -> dict[str, Any]:
         """Return disk usage with legacy addon IDs for v1 compatibility."""
-        return self._legacy_disk_usage_ids_for_v1(await self._disk_usage_data(request))
+        data = await self._disk_usage_data(request)
+
+        # Legacy ids exist only in the system disk's labeled layer. Mount
+        # children are real directory names, and the shared probe result
+        # must not be mutated in place.
+        if request.match_info.get(DISK, DISK_TARGET_SYSTEM) == DISK_TARGET_SYSTEM:
+            data = self._legacy_disk_usage_ids_for_v1(data)
+
+        return data
 
     async def _get_container_last_epoch(self, identifier: str | list[str]) -> str:
         """Get Docker's internal log epoch of the latest log entry for given identifier(s)."""
