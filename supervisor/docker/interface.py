@@ -56,7 +56,7 @@ from .manager import CommandReturn, ExecReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
 from .pull_progress import ImagePullProgress
 from .stats import DockerStats
-from .utils import get_registry_from_image
+from .utils import get_registry_from_image, split_docker_domain, split_image_tag
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ class DockerInterface(JobGroup, ABC):
     def image(self) -> str | None:
         """Return name of Docker image."""
         try:
-            return self.meta_config["Image"].partition(":")[0]
+            return split_image_tag(self.meta_config["Image"])[0]
         except KeyError:
             return None
 
@@ -227,9 +227,11 @@ class DockerInterface(JobGroup, ABC):
             # prefix (e.g. "homeassistant/foo" instead of "docker.io/homeassistant/foo").
             # aiodocker derives ServerAddress from image.partition("/"), so without
             # the prefix it would use the namespace ("homeassistant") as ServerAddress,
-            # which Docker's containerd resolver rejects as a host mismatch.
+            # which Docker's containerd resolver rejects as a host mismatch. Qualify
+            # the remainder so an image which already carries a Docker Hub domain
+            # does not end up with a doubled prefix.
             if registry in (DOCKER_HUB, DOCKER_HUB_LEGACY):
-                qualified_image = f"{DOCKER_HUB}/{image}"
+                qualified_image = f"{DOCKER_HUB}/{split_docker_domain(image)[1]}"
 
             _LOGGER.info(
                 "Using stored registry credentials for %s (user: %s) to pull %s",
@@ -711,7 +713,9 @@ class DockerInterface(JobGroup, ABC):
                 filters={"reference": [self.image]}
             ):
                 for tag in image["RepoTags"]:
-                    version = AwesomeVersion(tag.partition(":")[2])
+                    if (image_tag := split_image_tag(tag)[1]) is None:
+                        continue
+                    version = AwesomeVersion(image_tag)
                     if version.strategy == AwesomeVersionStrategy.UNKNOWN:
                         continue
                     available_version.append(version)

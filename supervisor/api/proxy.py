@@ -16,7 +16,7 @@ from aiohttp.web_exceptions import HTTPBadGateway, HTTPForbidden, HTTPUnauthoriz
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
-from ..utils.json import json_dumps
+from ..utils.json import json_dumps, json_loads
 from ..utils.logging import AppLoggerAdapter
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -36,6 +36,29 @@ HEADER_HA_ACCESS = "X-Ha-Access"
 # The security middleware blacklist already blocks them; this is a redundant
 # guard so the proxy can't become a confused deputy if that ever regresses.
 CORE_API_DENY: Final = re.compile(r"^hassio(?:/|_)")
+# Command types that only Home Assistant's own frontend may use, reserved for the
+# `hassio` integration in Core. Apps proxying to the Home Assistant WebSocket API
+# only ever need normal HA commands (e.g. call_service, subscribe_events) and must
+# never be able to reach these, since Core executes them by calling back into the
+# Supervisor with its own, fully privileged token.
+DENIED_WS_TYPE_PREFIXES = ("supervisor/", "hassio/")
+
+
+def _denied_command_type(data: str) -> tuple[str, str | None] | None:
+    """Return the command type if it's one apps must never reach, else None."""
+    try:
+        parsed = json_loads(data)
+        command_type = parsed.get("type")
+        return (
+            (command_type, parsed.get("id"))
+            if command_type and command_type.startswith(DENIED_WS_TYPE_PREFIXES)
+            else None
+        )
+    except ValueError, AttributeError:
+        # ValueError: data wasn't valid JSON.
+        # AttributeError: decoded message wasn't a dict (no .get) or "type" wasn't
+        # a string (no .startswith) or missing entirely (.get returns None).
+        return None
 
 
 class APIProxy(CoreSysAttributes):
@@ -197,11 +220,38 @@ class APIProxy(CoreSysAttributes):
         source: web.WebSocketResponse | ClientWebSocketResponse,
         target: web.WebSocketResponse | ClientWebSocketResponse,
         logger: AppLoggerAdapter,
+        *,
+        filter_app_commands: bool = False,
     ) -> None:
-        """Proxy a message from client to server or vice versa."""
+        """Proxy a message from client to server or vice versa.
+
+        If filter_app_commands is set, TEXT messages whose command type is reserved
+        for Home Assistant's own frontend (see DENIED_WS_TYPE_PREFIXES) are rejected
+        instead of forwarded, to prevent apps from using this proxy to reach the
+        Supervisor API at full privilege through Home Assistant Core.
+        """
         while not source.closed and not target.closed:
             msg = await source.receive()
             match msg.type:
+                case WSMsgType.TEXT if filter_app_commands and (
+                    denied_msg := _denied_command_type(msg.data)
+                ):
+                    denied_type, message_id = denied_msg
+                    logger.warning(
+                        "Blocked disallowed WebSocket command type %r", denied_type
+                    )
+                    await source.send_json(
+                        {
+                            "id": message_id,
+                            "type": "result",
+                            "success": False,
+                            "error": {
+                                "code": "unauthorized",
+                                "message": "Unauthorized",
+                            },
+                        },
+                        dumps=json_dumps,
+                    )
                 case WSMsgType.TEXT:
                     await target.send_str(msg.data)
                 case WSMsgType.BINARY:
@@ -297,7 +347,9 @@ class APIProxy(CoreSysAttributes):
         logger.info("Home Assistant WebSocket API proxy running")
 
         client_task = self.sys_create_task(self._proxy_message(client, server, logger))
-        server_task = self.sys_create_task(self._proxy_message(server, client, logger))
+        server_task = self.sys_create_task(
+            self._proxy_message(server, client, logger, filter_app_commands=True)
+        )
 
         # Typically, this will return with an empty pending set. However, if one of
         # the directions has an exception, make sure to close both connections and

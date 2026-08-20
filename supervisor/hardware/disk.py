@@ -87,11 +87,32 @@ class HwDisk(CoreSysAttributes):
         """
         return shutil.disk_usage(path)
 
-    def get_dir_structure_sizes(self, path: Path, max_depth: int = 1) -> dict[str, Any]:
+    def disk_usage_for_mount(self, path: Path) -> tuple[int, int, int] | None:
+        """Return (total, used, free) in bytes for a mount path, or None if not mounted.
+
+        Must be run in executor. statvfs succeeds on a ghost mount — a systemd
+        unit still reported active whose path is no longer actually mounted — by
+        returning the underlying filesystem's numbers, so only the device
+        boundary check tells the mount's own figures apart from the host disk's.
+        Mirrors `_probe_network_mount` in mounts/mount.py; keep the two agreeing.
+        """
+        usage = shutil.disk_usage(path)
+        if path.stat().st_dev == path.parent.stat().st_dev:
+            return None
+        return usage
+
+    def get_dir_structure_sizes(
+        self, path: Path, max_depth: int = 1, *, check_oserror: bool = True
+    ) -> dict[str, Any]:
         """Return a recursive dict of subdirectories and their sizes, only if size > 0.
 
         Excludes external mounts and symlinks to avoid counting files on other filesystems
         or following symlinks that could lead to infinite loops or incorrect sizes.
+
+        `check_oserror` reports read errors to the resolution center, which
+        documents its checks as local-path-only. Disable it when walking a
+        network mount: an I/O error from an unreachable server is that mount's
+        problem and must not mark the whole system unhealthy.
         """
 
         size = 0
@@ -113,7 +134,8 @@ class HwDisk(CoreSysAttributes):
                 _LOGGER.warning("File not found: %s", child.as_posix())
                 continue
             except OSError as err:
-                self.sys_resolution.check_oserror(err)
+                if check_oserror:
+                    self.sys_resolution.check_oserror(err)
                 if err.errno == errno.EBADMSG:
                     break
                 continue
@@ -125,7 +147,9 @@ class HwDisk(CoreSysAttributes):
                 size += stat.st_size
                 continue
 
-            child_result = self.get_dir_structure_sizes(child, max_depth - 1)
+            child_result = self.get_dir_structure_sizes(
+                child, max_depth - 1, check_oserror=check_oserror
+            )
             if child_result["used_bytes"] > 0:
                 size += child_result["used_bytes"]
                 if max_depth > 1:

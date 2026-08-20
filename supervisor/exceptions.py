@@ -1265,6 +1265,10 @@ class StoreGitError(StoreError):
     """Raise if something on git is happening."""
 
 
+class StoreGitRemoteURLUpdateError(StoreGitError):
+    """Raise if updating a repository remote URL fails."""
+
+
 class StoreGitCloneError(StoreGitError):
     """Raise if error occurred while cloning repository."""
 
@@ -1499,6 +1503,86 @@ class MountTargetNotEmptyError(MountInvalidError):
 
 class MountNotFound(MountError, APINotFound):
     """Raise on mount not found."""
+
+    error_key = "mount_not_found_error"
+    message_template = "No mount exists with name {name}"
+
+    def __init__(
+        self,
+        message: str | None = None,
+        logger: Callable[..., None] | None = None,
+        *,
+        name: str | None = None,
+    ) -> None:
+        """Initialize exception.
+
+        Callers either pass a ready-made message, as the mount manager does, or
+        just the mount name to get the template message and translation fields.
+        """
+        if name is not None:
+            self.extra_fields = {"name": name}
+        super().__init__(message, logger)
+
+
+class MountUsageNotActiveError(MountError):
+    """Raise when storage usage is requested for a mount that is not active."""
+
+    error_key = "mount_usage_not_active_error"
+    message_template = "Mount {name} is not active, cannot report storage usage"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class MountUsageNotMountedError(MountError):
+    """Raise when a mount's path turns out to no longer be mounted.
+
+    The ghost mount case: systemd still reports the unit active, but the path
+    no longer crosses a filesystem boundary, so any numbers read from it would
+    be the host disk's, not the mount's.
+    """
+
+    error_key = "mount_usage_not_mounted_error"
+    message_template = (
+        "Could not read storage usage for mount {name}: no longer mounted"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class MountUsageReadError(MountError):
+    """Raise when reading a mount's storage usage fails."""
+
+    error_key = "mount_usage_read_error"
+    message_template = "Could not read storage usage for mount {name}: {reason}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        name: str,
+        reason: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name, "reason": reason}
+        super().__init__(None, logger)
+
+
+class MountUsageTimeoutError(MountError):
+    """Raise when a caller gives up waiting on a mount's storage usage probe."""
+
+    error_key = "mount_usage_timeout_error"
+    message_template = "Timed out reading storage usage for mount {name}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
 
 
 class MountJobError(MountError, JobException):

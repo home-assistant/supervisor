@@ -105,7 +105,7 @@ async def test_api_send_del_discovery(
     assert coresys.websession.request.call_args.args[0] == "post"
     assert (
         coresys.websession.request.call_args.args[1]
-        == f"http://172.30.32.1:8123/api/hassio_push/discovery/{uuid}"
+        == f"http://172.30.32.1/api/hassio_push/discovery/{uuid}"
     )
     assert coresys.websession.request.call_args.kwargs["json"] == {
         "addon": install_app_ssh.slug,
@@ -125,7 +125,7 @@ async def test_api_send_del_discovery(
     assert coresys.websession.request.call_args.args[0] == "delete"
     assert (
         coresys.websession.request.call_args.args[1]
-        == f"http://172.30.32.1:8123/api/hassio_push/discovery/{uuid}"
+        == f"http://172.30.32.1/api/hassio_push/discovery/{uuid}"
     )
     assert coresys.websession.request.call_args.kwargs["json"] == {
         "addon": install_app_ssh.slug,
