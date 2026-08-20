@@ -11,7 +11,6 @@ from typing import Self
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
-    MountActivationError,
     MountError,
     MountJobError,
     MountNotFound,
@@ -260,6 +259,42 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         return mount
 
+    @Job(name="mount_manager_reload", conditions=[JobCondition.MOUNT_AVAILABLE])
+    async def reload(self) -> None:
+        """Reconcile mount triggers, state, and resolution issues.
+
+        Deliberately no reload/restart of established mounts — the kernel
+        recovers those on its own. This re-arms dead autofs triggers (so
+        the path never degrades to a plain writable directory), refreshes
+        the probe-based state that the API and backup locations report,
+        and syncs the mount failed issue in both directions.
+        """
+        if not self.mounts:
+            return
+
+        await asyncio.gather(
+            *[self._reconcile_mount(mount) for mount in self.mounts.copy()]
+        )
+
+    async def _reconcile_mount(self, mount: Mount) -> None:
+        """Reconcile a single mount's trigger, state, and issue."""
+        try:
+            await mount.repair_trigger()
+        except MountTargetNotEmptyError, MountTargetNotDirectoryError:
+            self._add_local_data_issue(mount)
+            return
+        except MountError as err:
+            _LOGGER.warning(
+                "Could not repair automount trigger for %s: %s", mount.name, err
+            )
+            self._add_failed_issue(mount)
+            return
+
+        if await mount.is_mounted():
+            mount.dismiss_failed_issue()
+        else:
+            self._add_failed_issue(mount)
+
     @Job(
         name="mount_manager_reload_mount",
         conditions=[JobCondition.MOUNT_AVAILABLE],
@@ -300,13 +335,24 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             mount.dismiss_failed_issue()
             return
 
-        self._add_failed_issue(mount)
-        raise MountActivationError(
-            f"Mount {name} is not reachable. "
-            f"Check host logs for errors from mount or systemd unit "
-            f"{mount.unit_name} for details.",
-            _LOGGER.error,
-        )
+        # The kernel cannot recover an established mount whose session is
+        # permanently dead (e.g. the server was replaced): the path stays
+        # mounted, so the trigger never re-fires and reconnection never
+        # succeeds. Re-create the unit pair once — the unmount detaches
+        # lazily and mount() probes the fresh pair, raising if the share
+        # is still unreachable.
+        _LOGGER.info("Mount %s is unreachable, re-creating its mount units", name)
+        try:
+            await mount.unmount()
+            await mount.mount()
+        except MountTargetNotEmptyError, MountTargetNotDirectoryError:
+            self._add_local_data_issue(mount)
+            raise
+        except MountError:
+            self._add_failed_issue(mount)
+            raise
+
+        mount.dismiss_failed_issue()
 
     def _add_failed_issue(self, mount: Mount) -> None:
         """Surface a failed mount as resolution issue if not already there."""

@@ -33,7 +33,9 @@ class Systemd(DBusServiceMock):
     response_get_unit: (
         dict[str, list[str | DBusError]] | list[str | DBusError] | str | DBusError
     ) = "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
-    response_stop_unit: str | DBusError = "/org/freedesktop/systemd1/job/7623"
+    response_stop_unit: list[str | DBusError] | str | DBusError = (
+        "/org/freedesktop/systemd1/job/7623"
+    )
     response_reload_or_restart_unit: str | DBusError = (
         "/org/freedesktop/systemd1/job/7623"
     )
@@ -742,12 +744,16 @@ class Systemd(DBusServiceMock):
     @dbus_method()
     def StopUnit(self, name: "s", mode: "s") -> "o":
         """Stop a service unit."""
-        if isinstance(self.response_stop_unit, DBusError):
-            raise self.response_stop_unit  # pylint: disable=raising-bad-type
+        if isinstance(self.response_stop_unit, list):
+            response = self.response_stop_unit.pop(0)
+        else:
+            response = self.response_stop_unit
+        if isinstance(response, DBusError):
+            raise response  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "inactive"
-        self._emit_job_removed(self.response_stop_unit, name)
-        return self.response_stop_unit
+        self._emit_job_removed(response, name)
+        return response
 
     @dbus_method()
     def ReloadOrRestartUnit(self, name: "s", mode: "s") -> "o":

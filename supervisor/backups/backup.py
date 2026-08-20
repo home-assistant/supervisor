@@ -768,27 +768,26 @@ class Backup(JobGroup):
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
 
-            def is_excluded_by_filter(item_arcpath: PurePath) -> bool:
-                """Skip network mount points when archiving local folders.
-
-                Media/share network mounts live directly under
-                path_media / path_share. We don't want to recurse into
-                them on backup — that would archive the remote share
-                contents alongside the local data, and the autofs
-                trigger would activate the mount just so we could read
-                files we're going to throw out anyway.
-                """
-                full_path = origin_dir / item_arcpath.relative_to(".")
-
+            # Media/share network mounts live directly under path_media /
+            # path_share. We don't want to recurse into them on backup —
+            # that would archive the remote share contents alongside the
+            # local data, and the autofs trigger would activate the mount
+            # just so we could read files we're going to throw out anyway.
+            excluded_paths = {
+                mount.local_where
                 for mount in (
                     *self.sys_mounts.media_mounts,
                     *self.sys_mounts.share_mounts,
-                ):
-                    if full_path != mount.local_where:
-                        continue
+                )
+            }
+
+            def is_excluded_by_filter(item_arcpath: PurePath) -> bool:
+                """Skip network mount points when archiving local folders."""
+                full_path = origin_dir / item_arcpath.relative_to(".")
+
+                if full_path in excluded_paths:
                     _LOGGER.debug(
-                        "Ignoring %s because it is a network mount",
-                        full_path,
+                        "Ignoring %s because it is a network mount", full_path
                     )
                     return True
 
@@ -902,7 +901,23 @@ class Backup(JobGroup):
             await self.sys_run_in_executor(_restore)
         finally:
             if nested_mounts:
-                await asyncio.gather(*[mount.mount() for mount in nested_mounts])
+                results = await asyncio.gather(
+                    *[mount.mount() for mount in nested_mounts],
+                    return_exceptions=True,
+                )
+                for mount, result in zip(nested_mounts, results):
+                    # A failed probe (unreachable server) still leaves the
+                    # trigger armed — the mount recovers on the next access.
+                    # It must not fail the restore that already succeeded,
+                    # nor mask an in-flight restore error.
+                    if isinstance(result, MountError):
+                        _LOGGER.warning(
+                            "Could not verify mount %s after restore: %s",
+                            mount.name,
+                            result,
+                        )
+                    elif isinstance(result, BaseException):
+                        raise result
 
     @Job(name="backup_restore_folders", cleanup=False)
     async def restore_folders(self, folder_list: list[str]) -> bool:

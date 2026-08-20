@@ -74,7 +74,6 @@ async def test_mount_unit_failures_ignored(coresys: CoreSys, capture_message: Mo
     """Test mount unit failures are ignored."""
     systemd_unit_failure = CheckSystemdUnitFailure(coresys)
     coresys.mounts._mounts = {"test": MagicMock(unit_name="mnt-data.mount")}
-    coresys.mounts._bound_mounts = {}
 
     with patch.object(
         coresys.dbus.systemd,

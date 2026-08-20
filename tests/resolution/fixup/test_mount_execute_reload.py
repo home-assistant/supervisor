@@ -66,6 +66,7 @@ async def test_fixup_error_after_reload(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     mock_is_mount: MagicMock,
+    tmp_supervisor_data,
     path_extern,
     mount_propagation,
 ):
@@ -91,8 +92,8 @@ async def test_fixup_error_after_reload(
         suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
     )
     # Probe (statvfs) fails — the mount stays unreachable through the
-    # reload -> restart cycle. The MountActivationError propagates to
-    # the caller so the issue cleanup is skipped.
+    # escalation. The MountActivationError propagates to the caller so
+    # the issue cleanup is skipped.
     with (
         patch(
             "supervisor.mounts.mount._probe_network_mount",
