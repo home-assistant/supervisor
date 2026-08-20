@@ -9,7 +9,7 @@ from supervisor.const import AppState
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.interface import DockerInterface
-from supervisor.exceptions import DockerError, ResolutionFixupError
+from supervisor.exceptions import AppUnknownError, DockerError
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 from supervisor.resolution.fixups.app_execute_restart import FixupAppExecuteRestart
@@ -71,13 +71,13 @@ async def test_fixup_stop_error(
         patch.object(DockerInterface, "stop", side_effect=DockerError),
         patch.object(DockerApp, "run") as run,
     ):
-        with pytest.raises(ResolutionFixupError):
+        with pytest.raises(AppUnknownError):
             await app_execute_start()
         run.assert_not_called()
 
     assert DEVICE_ACCESS_MISSING_ISSUE in coresys.resolution.issues
     assert EXECUTE_RESTART_SUGGESTION in coresys.resolution.suggestions
-    assert "Could not stop local_ssh" in caplog.text
+    assert "Could not stop container for app local_ssh" in caplog.text
 
 
 @pytest.mark.usefixtures("path_extern")

@@ -16,7 +16,7 @@ from supervisor.const import (
     FeatureFlag,
 )
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import ResolutionError, ResolutionFixupError
+from supervisor.exceptions import MountActivationError, ResolutionError
 from supervisor.homeassistant.const import WSType
 from supervisor.resolution.const import (
     ContextType,
@@ -107,7 +107,7 @@ async def test_api_resolution_apply_suggestion_fixup_error(
 
     with patch(
         "supervisor.resolution.fixups.mount_execute_reload.FixupMountExecuteReload.process_fixup",
-        side_effect=ResolutionFixupError("Test fixup failure"),
+        side_effect=MountActivationError("Test fixup failure"),
     ):
         resp = await api_client.post(
             f"{prefix}/resolution/suggestion/{suggestion.uuid}"

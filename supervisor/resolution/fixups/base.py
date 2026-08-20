@@ -28,10 +28,11 @@ class FixupBase(ABC, CoreSysAttributes):
         if fixing_suggestion is None:
             return
 
-        # Process fixup. A failure propagates to the caller: the autofix
-        # loop logs and continues with the next fixup, while a user-applied
-        # suggestion surfaces the failure as an API error so the repair is
-        # not reported as successful (the issue and suggestion stay around).
+        # Process fixup. A failure propagates to the caller with its
+        # original, well-defined error: the autofix loop logs and continues
+        # with the next fixup, while a user-applied suggestion surfaces the
+        # failure as an API error so the repair is not reported as
+        # successful (the issue and suggestion stay around).
         _LOGGER.debug("Run fixup for %s/%s", self.suggestion, self.context)
         await self.process_fixup(fixing_suggestion)
 

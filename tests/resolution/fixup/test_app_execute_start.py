@@ -8,7 +8,7 @@ from supervisor.apps.app import App
 from supervisor.const import AppState
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
-from supervisor.exceptions import DockerError, ResolutionFixupError
+from supervisor.exceptions import AppsError, AppUnknownError, DockerError
 from supervisor.resolution.const import ContextType, SuggestionType
 from supervisor.resolution.data import Suggestion
 from supervisor.resolution.fixups.app_execute_start import FixupAppExecuteStart
@@ -64,7 +64,7 @@ async def test_fixup_start_error(coresys: CoreSys, install_app_ssh: App):
         patch.object(DockerApp, "run", side_effect=DockerError) as run,
         patch.object(App, "write_options"),
     ):
-        with pytest.raises(ResolutionFixupError):
+        with pytest.raises(AppUnknownError):
             await app_execute_start()
         run.assert_called_once()
 
@@ -93,7 +93,7 @@ async def test_fixup_wait_start_failure(
         patch.object(App, "_wait_for_startup", new=mock_start),
         patch.object(App, "write_options"),
     ):
-        with pytest.raises(ResolutionFixupError):
+        with pytest.raises(AppsError):
             await app_execute_start()
         run.assert_called_once()
 

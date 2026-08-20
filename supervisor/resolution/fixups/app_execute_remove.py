@@ -3,7 +3,6 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import AppsError, ResolutionFixupError
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
 from .base import FixupBase
@@ -30,11 +29,7 @@ class FixupAppExecuteRemove(FixupBase):
 
         # Remove app
         _LOGGER.info("Remove app: %s", suggestion.reference)
-        try:
-            await app.uninstall(remove_config=False)
-        except AppsError as err:
-            _LOGGER.error("Could not remove %s due to %s", suggestion.reference, err)
-            raise ResolutionFixupError from None
+        await app.uninstall(remove_config=False)
 
     @property
     def suggestion(self) -> SuggestionType:
