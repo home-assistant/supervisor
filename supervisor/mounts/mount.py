@@ -105,13 +105,13 @@ COERCE_MOUNT_TYPE: Callable[[str], MountType] = Coerce(MountType)
 COERCE_MOUNT_USAGE: Callable[[str], MountUsage] = Coerce(MountUsage)
 
 
-def _unit_name_from_path(path: PurePath) -> str:
-    """Return the systemd .mount unit name for a mount path.
+def _unit_name_from_path(path: PurePath, unit_type: str = "mount") -> str:
+    """Return the systemd unit name for a mount path.
 
     Matches systemd's unit_name_from_path() for the simple paths used
     here (no characters needing escaping beyond '/').
     """
-    return f"{path.as_posix()[1:].replace('/', '-')}.mount"
+    return f"{path.as_posix()[1:].replace('/', '-')}.{unit_type}"
 
 
 class Mount(CoreSysAttributes, ABC):
@@ -201,7 +201,7 @@ class Mount(CoreSysAttributes, ABC):
     @property
     def automount_unit_name(self) -> str:
         """Systemd unit name for the companion .automount unit."""
-        return f"{self.where.as_posix()[1:].replace('/', '-')}.automount"
+        return _unit_name_from_path(self.where, "automount")
 
     @property
     def unit(self) -> SystemdUnit | None:
@@ -261,9 +261,24 @@ class Mount(CoreSysAttributes, ABC):
         torn down before the pair is set up fresh.
         """
         unit = await self._update_unit()
+        automount_state = await self._automount_state()
 
-        if not await self._automount_unit_exists():
+        if automount_state is None:
             await self._teardown_legacy_units()
+            await self.mount()
+            return
+
+        if automount_state != UnitActiveState.ACTIVE:
+            # Never adopt a dead trigger (failed, or stopped out-of-band):
+            # it leaves the path a plain writable directory — the silent
+            # local-write degradation this design must prevent. Tear the
+            # remnants down and arm a fresh pair.
+            _LOGGER.info(
+                "Automount trigger for %s is %s on load, re-arming",
+                self.name,
+                automount_state,
+            )
+            await self.unmount()
             await self.mount()
             return
 
@@ -271,19 +286,27 @@ class Mount(CoreSysAttributes, ABC):
             await self._update_state_await(unit)
         # Probe to refresh state — the .mount unit may be inactive simply
         # because nothing has triggered it yet. The probe both forces
-        # activation and surfaces server reachability.
-        await self.is_mounted()
+        # activation and surfaces server reachability. An unreachable
+        # server is an error here, same as on a fresh mount, so the
+        # manager turns it into a resolution issue.
+        if not await self.is_mounted():
+            raise MountActivationError(
+                f"Mount {self.name} is not reachable. Check host logs for "
+                f"errors from mount or systemd unit {self.unit_name} for "
+                f"details.",
+                _LOGGER.error,
+            )
 
-    async def _automount_unit_exists(self) -> bool:
-        """Return true if the .automount unit is loaded in systemd."""
+    async def _automount_state(self) -> UnitActiveState | None:
+        """Return the .automount unit state, or None if no unit is loaded."""
         try:
-            await self.sys_dbus.systemd.get_unit(self.automount_unit_name)
+            unit = await self.sys_dbus.systemd.get_unit(self.automount_unit_name)
+            return UnitActiveState(await unit.get_active_state())
         except DBusSystemdNoSuchUnit:
-            return False
+            return None
         except DBusError as err:
             await async_capture_exception(err)
             raise MountError(f"Could not get automount unit due to: {err!s}") from err
-        return True
 
     async def _teardown_legacy_units(self) -> None:
         """Remove units left over from the eager-mount design.
@@ -318,14 +341,26 @@ class Mount(CoreSysAttributes, ABC):
                 "Removing legacy mount unit %s for mount %s", unit_name, self.name
             )
             try:
-                await self._run_systemd_job(
+                result = await self._run_systemd_job(
                     "stop_unit",
                     self.sys_dbus.systemd.stop_unit(unit_name, StopUnitMode.FAIL),
                 )
             except DBusSystemdNoSuchUnit:
                 continue
             except DBusError as err:
-                _LOGGER.warning("Could not stop legacy unit %s: %s", unit_name, err)
+                raise MountError(
+                    f"Could not stop legacy unit {unit_name} for {self.name} "
+                    f"due to: {err!s}",
+                    _LOGGER.error,
+                ) from err
+            # A failed or timed-out stop leaves the legacy mount attached;
+            # arming over it would misclassify remote data as local
+            if result != "done":
+                raise MountError(
+                    f"Could not stop legacy unit {unit_name} for {self.name} "
+                    f"(systemd result: {result})",
+                    _LOGGER.error,
+                )
             with suppress(DBusError):
                 await self.sys_dbus.systemd.reset_failed_unit(unit_name)
 
@@ -337,17 +372,7 @@ class Mount(CoreSysAttributes, ABC):
         gone entirely. Resets any failure state so the transient units can
         be re-created, then arms a fresh pair.
         """
-        try:
-            unit = await self.sys_dbus.systemd.get_unit(self.automount_unit_name)
-            state = await unit.get_active_state()
-        except DBusSystemdNoSuchUnit:
-            state = None
-        except DBusError as err:
-            raise MountError(
-                f"Could not check automount unit of {self.name} due to: {err!s}",
-                _LOGGER.error,
-            ) from err
-
+        state = await self._automount_state()
         if state == UnitActiveState.ACTIVE:
             return
 
@@ -356,9 +381,11 @@ class Mount(CoreSysAttributes, ABC):
             self.name,
             state or "missing",
         )
-        for unit_name in (self.automount_unit_name, self.unit_name):
-            with suppress(DBusError):
-                await self.sys_dbus.systemd.reset_failed_unit(unit_name)
+        # Full teardown first: the .mount may still be attached (e.g. the
+        # .automount was stopped out-of-band while the share stayed
+        # mounted). Arming over it would fail — or worse, mount() would
+        # misread the mounted share's contents as blocking local data.
+        await self.unmount()
         await self.mount()
 
     async def _update_state(self, unit: SystemdUnit) -> None:
@@ -382,20 +409,6 @@ class Mount(CoreSysAttributes, ABC):
             await async_capture_exception(err)
             raise MountError(f"Could not get mount unit due to: {err!s}") from err
         return self.unit
-
-    async def update(self) -> bool:
-        """Update info about mount from dbus. Return true if it is mounted and available."""
-        if not (unit := await self._update_unit()):
-            return False
-
-        await self._update_state(unit)
-
-        if not await self.is_mounted():
-            return False
-
-        if issue := self.sys_resolution.get_issue_if_present(self.failed_issue):
-            self.sys_resolution.dismiss_issue(issue)
-        return True
 
     async def _update_state_await(
         self,
@@ -563,24 +576,38 @@ class Mount(CoreSysAttributes, ABC):
 
     async def unmount(self) -> None:
         """Unmount using systemd."""
-        unit = await self._update_unit()
-
         # Stop the .automount first: it disarms the trigger so nothing can
         # re-mount during cleanup, and it lazily detaches the whole stack
         # at the path (systemd's unmount_autofs() uses MNT_DETACH), so the
-        # stop cannot block on an unreachable server.
+        # stop cannot block on an unreachable server. A failure other than
+        # "no such unit" must not pass silently — it would leave an armed
+        # trigger behind at the path of a supposedly removed mount.
         try:
-            await self._run_systemd_job(
+            result = await self._run_systemd_job(
                 "stop_unit",
                 self.sys_dbus.systemd.stop_unit(
                     self.automount_unit_name, StopUnitMode.FAIL
                 ),
             )
+            if result != "done":
+                raise MountError(
+                    f"Could not stop automount unit for {self.name} "
+                    f"(systemd result: {result})",
+                    _LOGGER.error,
+                )
         except DBusSystemdNoSuchUnit:
             pass
         except DBusError as err:
-            _LOGGER.warning("Could not stop automount unit for %s: %s", self.name, err)
+            raise MountError(
+                f"Could not stop automount unit for {self.name} due to: {err!s}",
+                _LOGGER.error,
+            ) from err
 
+        # Resolve the .mount unit only after the automount stop: the lazy
+        # detach can take the active .mount down with it, and systemd then
+        # garbage-collects the transient unit — a proxy fetched earlier
+        # would point at a vanished D-Bus object.
+        unit = await self._update_unit()
         if not unit:
             _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
         else:

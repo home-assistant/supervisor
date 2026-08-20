@@ -17,7 +17,6 @@ from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import MountActivationError, MountError, MountInvalidError
 from supervisor.mounts.const import MountCifsVersion, MountType, MountUsage
 from supervisor.mounts.mount import CIFSMount, Mount, NFSMount
-from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 
 from tests.common import mount_start_transient_unit_call
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -351,7 +350,9 @@ async def test_load(
     # state — `_update_state_await` polls via PropertiesChanged until
     # the unit settles. The kernel's autofs trigger handles activation
     # from here on, so we don't reload/restart from `load()` anymore.
-    systemd_unit_service.active_state = "activating"
+    # State reads: the .automount trigger is active (so the pair is
+    # adopted), then the .mount is seen activating until the signal.
+    systemd_unit_service.active_state = ["active", "activating"]
     mount = Mount.from_dict(coresys, mount_data)
 
     load_task = asyncio.create_task(mount.load())
@@ -362,6 +363,95 @@ async def test_load(
     assert mount.state == UnitActiveState.ACTIVE
     assert systemd_service.StartTransientUnit.calls == []
     assert systemd_service.ReloadOrRestartUnit.calls == []
+
+
+async def test_load_rearms_failed_automount_trigger(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mock_is_mount,
+):
+    """Test load re-arms the trigger instead of adopting a failed automount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.ResetFailedUnit.calls.clear()
+
+    # State reads: the .automount trigger has failed (never adopt it —
+    # the path would be a plain writable directory), the .mount is seen
+    # failed as well during unmount (no stop job dispatched for it),
+    # then the post-mount refresh reads active.
+    systemd_unit_service.active_state = ["failed", "failed", "active"]
+
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "share",
+        },
+    )
+    await mount.load()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-mounts-test.automount", "fail")
+    ]
+    assert [call[0] for call in systemd_service.ResetFailedUnit.calls] == [
+        "mnt-data-supervisor-mounts-test.automount",
+        "mnt-data-supervisor-mounts-test.mount",
+    ]
+    assert systemd_service.StartTransientUnit.calls == [
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-mounts-test.automount",
+            mount_unit="mnt-data-supervisor-mounts-test.mount",
+            where="/mnt/data/supervisor/mounts/test",
+            description="Supervisor cifs mount: test",
+            what="//test.local/share",
+            fstype="cifs",
+            options="noserverino,soft,echo_interval=10,retrans=0,guest",
+        )
+    ]
+
+
+async def test_load_adopted_mount_probe_failure(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test load raises when the adopted active pair fails the probe."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "share",
+        },
+    )
+
+    # Both units exist and the .automount is active, but the server does
+    # not answer the probe — an unreachable server is an error on adopt,
+    # same as on a fresh mount.
+    with (
+        patch(
+            "supervisor.mounts.mount._probe_network_mount",
+            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+        ),
+        pytest.raises(MountActivationError),
+    ):
+        await mount.load()
+
+    assert systemd_service.StartTransientUnit.calls == []
 
 
 async def test_unmount(
@@ -473,14 +563,31 @@ async def test_unmount_failure(
         },
     )
 
-    # Raise error on StopUnit failure
+    # A failed .automount stop aborts the unmount before the .mount is
+    # touched — continuing would leave an armed trigger behind at the
+    # path of a supposedly removed mount.
     systemd_service.response_stop_unit = ERROR_FAILURE
     with pytest.raises(MountError):
         await mount.unmount()
 
-    # The .automount stop is best-effort (warning logged, swallowed); the
-    # subsequent .mount stop raises and surfaces as MountError.
-    assert len(systemd_service.StopUnit.calls) == 2
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-mounts-test.automount", "fail")
+    ]
+
+    # With the .automount stopped, a failure stopping the .mount itself
+    # raises as well.
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.response_stop_unit = [
+        "/org/freedesktop/systemd1/job/7623",
+        ERROR_FAILURE,
+    ]
+    with pytest.raises(MountError):
+        await mount.unmount()
+
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-mounts-test.automount", "fail"),
+        ("mnt-data-supervisor-mounts-test.mount", "fail"),
+    ]
 
     # If the .mount unit is missing only the .automount stop is attempted —
     # it disarms the trigger and detaches anything left at the path.
@@ -532,77 +639,6 @@ async def test_mount_local_where_invalid(
         await mount.mount()
 
     assert systemd_service.StartTransientUnit.calls == []
-
-
-async def test_update_clears_issue(coresys: CoreSys, path_extern, mock_is_mount):
-    """Test updating mount data clears corresponding failed mount issue if active."""
-    mount = Mount.from_dict(
-        coresys,
-        {
-            "name": "test",
-            "usage": "backup",
-            "type": "cifs",
-            "server": "test.local",
-            "share": "share",
-        },
-    )
-
-    assert mount.failed_issue not in coresys.resolution.issues
-
-    coresys.resolution.create_issue(
-        IssueType.MOUNT_FAILED,
-        ContextType.MOUNT,
-        reference="test",
-        suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
-    )
-
-    assert mount.failed_issue in coresys.resolution.issues
-    assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
-
-    assert await mount.update() is True
-
-    assert mount.state == UnitActiveState.ACTIVE
-    assert mount.failed_issue not in coresys.resolution.issues
-    assert not coresys.resolution.suggestions_for_issue(mount.failed_issue)
-
-
-async def test_update_leaves_issue_if_down(
-    coresys: CoreSys, mock_is_mount: MagicMock, path_extern
-):
-    """Test issue is left if system is down after update (probe fails)."""
-    mount = Mount.from_dict(
-        coresys,
-        {
-            "name": "test",
-            "usage": "backup",
-            "type": "cifs",
-            "server": "test.local",
-            "share": "share",
-        },
-    )
-
-    assert mount.failed_issue not in coresys.resolution.issues
-
-    coresys.resolution.create_issue(
-        IssueType.MOUNT_FAILED,
-        ContextType.MOUNT,
-        reference="test",
-        suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
-    )
-
-    assert mount.failed_issue in coresys.resolution.issues
-    assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
-
-    with patch(
-        "supervisor.mounts.mount._probe_network_mount",
-        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
-    ):
-        assert (await mount.update()) is False
-
-    # The probe failure leaves the cached state at INACTIVE.
-    assert mount.state == UnitActiveState.INACTIVE
-    assert mount.failed_issue in coresys.resolution.issues
-    assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
 
 
 async def test_mount_fails_if_down(

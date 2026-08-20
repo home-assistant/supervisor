@@ -285,6 +285,43 @@ async def test_mount_failed_during_load(
     assert len(systemd_service.StartTransientUnit.calls) == 2
 
 
+async def test_load_adopted_mount_probe_failure_creates_issue(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test adopting an active pair whose probe fails surfaces an issue."""
+    media_test = Mount.from_dict(coresys, MEDIA_TEST_DATA)
+    # pylint: disable-next=protected-access
+    coresys.mounts._mounts = {"media_test": media_test}
+
+    assert coresys.resolution.issues == []
+
+    # Both units exist and the .automount is active (mock defaults), but
+    # the server does not answer the probe.
+    with patch(
+        "supervisor.mounts.mount._probe_network_mount",
+        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    ):
+        await coresys.mounts.load()
+
+    assert media_test.failed_issue in coresys.resolution.issues
+    assert (
+        Suggestion(
+            SuggestionType.EXECUTE_RELOAD, ContextType.MOUNT, reference="media_test"
+        )
+        in coresys.resolution.suggestions
+    )
+    assert (
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.MOUNT, reference="media_test"
+        )
+        in coresys.resolution.suggestions
+    )
+
+
 async def test_create_mount(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
@@ -426,16 +463,24 @@ async def test_reload_mount_rearms_missing_trigger(
     """Test reload re-creates the unit pair when the automount trigger is gone."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
     systemd_service.ResetFailedUnit.calls.clear()
 
+    # .mount lookups: once by the full unmount (the .mount may still be
+    # attached and must be stopped), once by the post-mount refresh.
     systemd_service.response_get_unit = {
         "mnt-data-supervisor-media-media_test.automount": [ERROR_NO_UNIT],
         "mnt-data-supervisor-media-media_test.mount": [
-            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ],
     }
     await coresys.mounts.reload_mount(mount.name)
 
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-media_test.automount", "fail"),
+        ("mnt-data-supervisor-media-media_test.mount", "fail"),
+    ]
     assert [call[0] for call in systemd_service.ResetFailedUnit.calls] == [
         "mnt-data-supervisor-media-media_test.automount",
         "mnt-data-supervisor-media-media_test.mount",
@@ -489,6 +534,53 @@ async def test_reload_mount_probe_failure_surfaces_resolution_issue(
 
     assert systemd_service.ReloadOrRestartUnit.calls == []
     assert mount.failed_issue in coresys.resolution.issues
+
+
+async def test_reload_mount_escalates_to_unit_recreation(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test reload re-creates the unit pair when the probe keeps failing.
+
+    An established mount whose session is permanently dead never
+    re-triggers on its own — reload escalates once to a full unmount +
+    mount. If the share is still unreachable through the fresh pair the
+    error and issue surface to the caller.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    with (
+        patch(
+            "supervisor.mounts.mount._probe_network_mount",
+            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+        ),
+        pytest.raises(MountActivationError),
+    ):
+        await coresys.mounts.reload_mount(mount.name)
+
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-media_test.automount", "fail"),
+        ("mnt-data-supervisor-media-media_test.mount", "fail"),
+    ]
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-media-media_test.automount",
+    ]
+    assert mount.failed_issue in coresys.resolution.issues
+
+    # Once the share answers again (probe passes via mock_is_mount from
+    # the mount fixture), reload does not escalate: no systemd operations
+    # and the issue is dismissed.
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    await coresys.mounts.reload_mount(mount.name)
+
+    assert systemd_service.StopUnit.calls == []
+    assert systemd_service.StartTransientUnit.calls == []
+    assert mount.failed_issue not in coresys.resolution.issues
 
 
 async def test_remove_mount(
@@ -887,3 +979,41 @@ async def test_create_share_mount(
     assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
         "mnt-data-supervisor-share-share_test.automount",
     ]
+
+
+async def test_reload_reconciles_issue_dismissal(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test the periodic reconcile dismisses the issue once the mount is healthy."""
+    coresys.resolution.create_issue(
+        IssueType.MOUNT_FAILED,
+        ContextType.MOUNT,
+        reference="media_test",
+        suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
+    )
+
+    await coresys.mounts.reload()
+
+    assert mount.failed_issue not in coresys.resolution.issues
+    assert not coresys.resolution.suggestions_for_issue(mount.failed_issue)
+
+
+async def test_reload_reconciles_issue_creation(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """Test the periodic reconcile surfaces an unreachable mount as issue."""
+    assert mount.failed_issue not in coresys.resolution.issues
+
+    with patch(
+        "supervisor.mounts.mount._probe_network_mount",
+        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    ):
+        await coresys.mounts.reload()
+
+    assert mount.state == UnitActiveState.INACTIVE
+    assert mount.failed_issue in coresys.resolution.issues
+    assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2

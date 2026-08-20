@@ -39,6 +39,7 @@ from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.jobs import JobSchedulerOptions
 from supervisor.jobs.const import JobCondition
+from supervisor.mounts.manager import MountManager
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils.json import read_json_file, write_json_file
@@ -548,14 +549,20 @@ async def test_backup_media_with_mounts_retains_files(
     """Test backing up media folder with mounts retains mount files."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = ["active", "active", "active", "inactive"]
+    systemd_unit_service.active_state = "active"
     systemd_service.response_get_unit = [
+        # create_mount: no .mount, no .automount, no legacy units
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        # create_mount: post-arm state refresh
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        # folder restore: unmount resolves the .mount after automount stop
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        # folder restore: re-mount post-arm state refresh
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        # mount config restore: unmount of the replaced mount
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
 
@@ -581,13 +588,22 @@ async def test_backup_media_with_mounts_retains_files(
 
     systemd_service.StopUnit.calls.clear()
     systemd_service.StartTransientUnit.calls.clear()
-    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+    # Freeze background activation of the restored mount config — it is
+    # exercised by its own tests and would race the call assertions here
+    with (
+        patch.object(DockerHomeAssistant, "is_running", return_value=True),
+        patch.object(MountManager, "_activate_restored_mount"),
+    ):
         await coresys.backups.do_restore_partial(backup, folders=["media"])
 
     # Restore unmounts the network mount nested inside `media` (stops
     # both the .automount and .mount), then re-mounts it after writes.
     # The re-mount creates a new transient .mount + aux .automount pair.
+    # The backup also carries the mount configuration, so the mount is
+    # replaced afterwards: another unmount plus the activation mount.
     assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-media_test.automount", "fail"),
+        ("mnt-data-supervisor-media-media_test.mount", "fail"),
         ("mnt-data-supervisor-media-media_test.automount", "fail"),
         ("mnt-data-supervisor-media-media_test.mount", "fail"),
     ]
