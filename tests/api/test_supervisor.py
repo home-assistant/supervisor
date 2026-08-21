@@ -44,13 +44,38 @@ async def test_api_supervisor_options_debug(
     assert coresys.config.debug
 
 
+async def test_api_supervisor_info_v1_includes_deprecated_fields(
+    api_client: TestClient,
+):
+    """Test v1 /supervisor/info includes deprecated contract fields."""
+    resp = await api_client.get("/supervisor/info")
+    assert resp.status == 200
+
+    data = (await resp.json())["data"]
+    assert "wait_boot" in data
+    assert "addons" in data
+    assert "addons_repositories" in data
+
+
+async def test_api_supervisor_info_v2_excludes_deprecated_fields(
+    api_client_v2: TestClient,
+):
+    """Test v2 /supervisor/info excludes deprecated contract fields."""
+    resp = await api_client_v2.get("/v2/supervisor/info")
+    assert resp.status == 200
+
+    data = (await resp.json())["data"]
+    assert "wait_boot" not in data
+    assert "addons" not in data
+    assert "addons_repositories" not in data
+
+
 async def test_api_supervisor_options_add_repository(
-    api_client_with_prefix: tuple[TestClient, str],
+    api_client: TestClient,
     coresys: CoreSys,
     supervisor_internet: AsyncMock,
 ):
     """Test add a repository via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     assert REPO_URL not in coresys.store.repository_urls
 
     with (
@@ -58,7 +83,7 @@ async def test_api_supervisor_options_add_repository(
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
     ):
         response = await api_client.post(
-            f"{prefix}/supervisor/options", json={"addons_repositories": [REPO_URL]}
+            "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )
 
     assert response.status == 200
@@ -66,17 +91,16 @@ async def test_api_supervisor_options_add_repository(
 
 
 async def test_api_supervisor_options_remove_repository(
-    api_client_with_prefix: tuple[TestClient, str],
+    api_client: TestClient,
     coresys: CoreSys,
     test_repository: Repository,
 ):
     """Test remove a repository via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     assert test_repository.source in coresys.store.repository_urls
     assert test_repository.slug in coresys.store.repositories
 
     response = await api_client.post(
-        f"{prefix}/supervisor/options", json={"addons_repositories": []}
+        "/supervisor/options", json={"addons_repositories": []}
     )
 
     assert response.status == 200
@@ -84,21 +108,47 @@ async def test_api_supervisor_options_remove_repository(
     assert test_repository.slug not in coresys.store.repositories
 
 
+async def test_api_supervisor_options_v1_accepts_deprecated_fields(
+    api_client: TestClient,
+    coresys: CoreSys,
+):
+    """Test v1 /supervisor/options accepts deprecated request fields."""
+    with patch.object(coresys.store, "update_repositories", new=AsyncMock()) as update:
+        response = await api_client.post(
+            "/supervisor/options",
+            json={"wait_boot": 42, "addons_repositories": []},
+        )
+
+    assert response.status == 200
+    assert coresys.config.wait_boot == 42
+    update.assert_awaited_once_with(set())
+
+
+async def test_api_supervisor_options_v2_rejects_deprecated_fields(
+    api_client_v2: TestClient,
+):
+    """Test v2 /supervisor/options rejects deprecated request fields."""
+    response = await api_client_v2.post("/v2/supervisor/options", json={"wait_boot": 7})
+    assert response.status == 400
+
+    response = await api_client_v2.post(
+        "/v2/supervisor/options", json={"addons_repositories": []}
+    )
+    assert response.status == 400
+
+
 @pytest.mark.parametrize("git_error", [None, StoreGitError()])
 async def test_api_supervisor_options_repositories_skipped_on_error(
-    api_client_with_prefix: tuple[TestClient, str],
-    coresys: CoreSys,
-    git_error: StoreGitError,
+    api_client: TestClient, coresys: CoreSys, git_error: StoreGitError
 ):
     """Test repositories skipped on error via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     with (
         patch("supervisor.store.repository.RepositoryGit.load", side_effect=git_error),
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=False),
         patch("supervisor.store.repository.RepositoryCustom.remove"),
     ):
         response = await api_client.post(
-            f"{prefix}/supervisor/options", json={"addons_repositories": [REPO_URL]}
+            "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )
 
     assert response.status == 400
@@ -107,17 +157,16 @@ async def test_api_supervisor_options_repositories_skipped_on_error(
 
 
 async def test_api_supervisor_options_repo_error_with_config_change(
-    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+    api_client: TestClient, coresys: CoreSys
 ):
     """Test config change with add repository error via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     assert not coresys.config.debug
 
     with patch(
         "supervisor.store.repository.RepositoryGit.load", side_effect=StoreGitError()
     ):
         response = await api_client.post(
-            f"{prefix}/supervisor/options",
+            "/supervisor/options",
             json={"debug": True, "addons_repositories": [REPO_URL]},
         )
 

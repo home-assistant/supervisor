@@ -793,3 +793,40 @@ async def test_v2_list_apps_uses_apps_key(api_client_v2: TestClient):
     assert "apps" in body["data"]
     assert "addons" not in body["data"]
     assert body["data"]["apps"][0]["slug"] == "local_ssh"
+
+
+@pytest.mark.usefixtures("install_app_ssh")
+async def test_v1_list_apps_includes_deprecated_advanced(api_client: TestClient):
+    """V1 GET /addons keeps deprecated advanced field."""
+    resp = await api_client.get("/addons")
+    assert resp.status == 200
+
+    body = await resp.json()
+    assert "advanced" in body["data"]["addons"][0]
+
+
+@pytest.mark.usefixtures("install_app_ssh")
+async def test_v2_list_apps_excludes_deprecated_advanced(api_client_v2: TestClient):
+    """V2 GET /v2/apps drops deprecated advanced field."""
+    resp = await api_client_v2.get("/v2/apps")
+    assert resp.status == 200
+
+    body = await resp.json()
+    assert "advanced" not in body["data"]["apps"][0]
+
+
+@pytest.mark.usefixtures("install_app_ssh")
+async def test_apps_info_versioned_advanced_field(
+    app_api_client_with_root: tuple[TestClient, str],
+):
+    """V1 app info keeps advanced, v2 app info drops it."""
+    client, root = app_api_client_with_root
+
+    resp = await client.get(f"{root}/{TEST_ADDON_SLUG}/info")
+    assert resp.status == 200
+
+    data = (await resp.json())["data"]
+    if root == "/addons":
+        assert "advanced" in data
+    else:
+        assert "advanced" not in data
