@@ -6,7 +6,7 @@ from contextlib import suppress
 from dataclasses import dataclass, replace
 import logging
 from pathlib import Path, PurePath
-from typing import Self
+from typing import Self, cast
 
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
@@ -28,9 +28,10 @@ from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
     FILE_CONFIG_MOUNTS,
+    MountType,
     MountUsage,
 )
-from .mount import BindMount, Mount
+from .mount import BindMount, DiskMount, Mount
 from .validate import SCHEMA_MOUNTS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -514,6 +515,18 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         Returns an asyncio.Task for activating the mount in the background.
         If a mount with the same name exists, it is replaced.
         """
+        # A backup is data from outside this host, so a disk mount out of one
+        # is not taken at its word. Forgetting the resolved filesystem makes
+        # activation resolve the device again, which is what runs the
+        # mountable-device guard — otherwise a crafted backup could name the
+        # UUID of a system disk and have it mounted unchecked. This is safe
+        # here and deliberately not done for mounts.json at startup: a restore
+        # runs on a live host where UDisks2 is available. If the disk is absent
+        # the activation fails, the entry is retained, and each later reload
+        # retries the resolution until it appears.
+        if mount.type == MountType.DISK:
+            cast(DiskMount, mount).forget_resolved_device()
+
         if mount.name in self._mounts:
             _LOGGER.info(
                 "Mount '%s' already exists, replacing with backup config", mount.name

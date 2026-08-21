@@ -395,18 +395,22 @@ async def fixture_udisks2_services(
                 "/org/freedesktop/UDisks2/block_devices/sda1",
                 "/org/freedesktop/UDisks2/block_devices/sdb",
                 "/org/freedesktop/UDisks2/block_devices/sdb1",
+                "/org/freedesktop/UDisks2/block_devices/sdc",
+                "/org/freedesktop/UDisks2/block_devices/sdc1",
                 "/org/freedesktop/UDisks2/block_devices/zram1",
             ],
             "udisks2_drive": [
                 "/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291",
                 "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6",
                 "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56",
+                "/org/freedesktop/UDisks2/drives/Seagate_Expansion_1234567890",
             ],
             "udisks2_filesystem": [
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
                 "/org/freedesktop/UDisks2/block_devices/sda1",
                 "/org/freedesktop/UDisks2/block_devices/sdb1",
+                "/org/freedesktop/UDisks2/block_devices/sdc1",
                 "/org/freedesktop/UDisks2/block_devices/zram1",
             ],
             "udisks2_loop": None,
@@ -416,6 +420,7 @@ async def fixture_udisks2_services(
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1",
                 "/org/freedesktop/UDisks2/block_devices/sda",
                 "/org/freedesktop/UDisks2/block_devices/sdb",
+                "/org/freedesktop/UDisks2/block_devices/sdc",
             ],
             "udisks2_partition": [
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
@@ -423,10 +428,37 @@ async def fixture_udisks2_services(
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
                 "/org/freedesktop/UDisks2/block_devices/sda1",
                 "/org/freedesktop/UDisks2/block_devices/sdb1",
+                "/org/freedesktop/UDisks2/block_devices/sdc1",
             ],
         },
         dbus_session_bus,
     )
+
+
+@pytest.fixture(name="sdc_candidate")
+async def fixture_sdc_candidate(
+    coresys: CoreSys,
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> DBusServiceMock:
+    """Make the unmounted sdc1 disk visible to UDisks2 enumeration.
+
+    sdc/sdc1 are mocked but deliberately left out of the manager's default
+    block device list, so tests that assert over the full set of disks and
+    drives keep seeing an unchanged host. Request this fixture to opt in.
+
+    Returns the sdc1 block service: mutate `.fixture` and call
+    `coresys.dbus.udisks2.update()` again to re-read the changed properties.
+    """
+    udisks2_manager = udisks2_services["udisks2_manager"]
+    udisks2_manager.block_devices = udisks2_manager.block_devices + [
+        "/org/freedesktop/UDisks2/block_devices/sdc",
+        "/org/freedesktop/UDisks2/block_devices/sdc1",
+    ]
+    await coresys.dbus.udisks2.update()
+
+    return udisks2_services["udisks2_block"][
+        "/org/freedesktop/UDisks2/block_devices/sdc1"
+    ]
 
 
 @pytest.fixture(name="os_agent_services")
