@@ -3,7 +3,7 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import AppsError, ResolutionFixupError
+from ...exceptions import AppsError
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
 from .base import FixupBase
@@ -31,11 +31,7 @@ class FixupAppExecuteRestart(FixupBase):
             return
 
         # Stop app
-        try:
-            await app.stop()
-        except AppsError as err:
-            _LOGGER.error("Could not stop %s due to %s", suggestion.reference, err)
-            raise ResolutionFixupError from None
+        await app.stop()
 
         # Start app
         # Removing the container has already fixed the issue and dismissed it

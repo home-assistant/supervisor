@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ...coresys import CoreSys
 from ...dbus.udisks2.data import DeviceSpecification
-from ...exceptions import DBusError, ResolutionFixupError
+from ...exceptions import DBusError, HassOSDataDiskError
 from ...os.const import FILESYSTEM_LABEL_OLD_DATA_DISK
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
@@ -53,7 +53,7 @@ class FixupSystemRenameDataDisk(FixupBase):
         try:
             await resolved[0].filesystem.set_label(FILESYSTEM_LABEL_OLD_DATA_DISK)
         except DBusError as err:
-            raise ResolutionFixupError(
+            raise HassOSDataDiskError(
                 f"Could not rename filesystem at {suggestion.reference}: {err!s}",
                 _LOGGER.error,
             ) from err

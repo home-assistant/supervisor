@@ -4,7 +4,7 @@ import logging
 
 from ...const import AppState
 from ...coresys import CoreSys
-from ...exceptions import AppsError, ResolutionFixupError
+from ...exceptions import AppsError
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
 from .base import FixupBase
@@ -32,17 +32,15 @@ class FixupAppExecuteStart(FixupBase):
             return
 
         # Start app
-        try:
-            start_task = await app.start()
-        except AppsError as err:
-            _LOGGER.error("Could not start %s due to %s", suggestion.reference, err)
-            raise ResolutionFixupError from None
+        start_task = await app.start()
 
         # Wait for app start. If it ends up in error or unknown state it's not fixed
         await start_task
         if app.state in {AppState.ERROR, AppState.UNKNOWN}:
-            _LOGGER.error("App %s could not start successfully", suggestion.reference)
-            raise ResolutionFixupError
+            raise AppsError(
+                f"App {suggestion.reference} could not start successfully",
+                _LOGGER.error,
+            )
 
     @property
     def suggestion(self) -> SuggestionType:

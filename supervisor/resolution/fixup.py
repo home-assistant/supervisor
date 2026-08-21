@@ -4,6 +4,7 @@ from importlib import import_module
 import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HassioError
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..utils.sentry import async_capture_exception
@@ -53,6 +54,10 @@ class ResolutionFixup(CoreSysAttributes):
                 continue
             try:
                 await fix()
+            except HassioError as err:
+                # Environmental/config failures — reported to Sentry at the
+                # raise site if warranted; here just log and continue
+                _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
                 await async_capture_exception(err)

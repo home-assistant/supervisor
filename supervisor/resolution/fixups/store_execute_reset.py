@@ -3,13 +3,7 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import (
-    ResolutionFixupError,
-    ResolutionFixupJobError,
-    StoreError,
-    StoreInvalidAppRepo,
-    StoreNotFound,
-)
+from ...exceptions import ResolutionFixupJobError, StoreInvalidAppRepo, StoreNotFound
 from ...jobs.const import JobCondition
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
@@ -52,9 +46,7 @@ class FixupStoreExecuteReset(FixupBase):
             # suggestion to stop the hourly auto-retry, while leaving the
             # issue (and its remove suggestion) so the user stays informed.
             self.sys_resolution.dismiss_suggestion(suggestion)
-            raise ResolutionFixupError from None
-        except StoreError:
-            raise ResolutionFixupError from None
+            raise
 
     @property
     def suggestion(self) -> SuggestionType:

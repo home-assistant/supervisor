@@ -10,6 +10,7 @@ from ..bus import EventListener
 from ..const import FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
+    HassioError,
     ResolutionError,
     ResolutionIssueNotFound,
     ResolutionSuggestionNotFound,
@@ -135,8 +136,18 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         for fixup in self.fixup.fixes_for_suggestion(suggestion):
             if fixup.auto and fixup.bus_event:
 
-                def event_callback(reference, fixup=fixup):
-                    return fixup(suggestion)
+                async def event_callback(reference, fixup=fixup):
+                    try:
+                        await fixup(suggestion)
+                    except HassioError as err:
+                        # Same as during autofix: log and wait for the
+                        # next occasion instead of leaving an unhandled
+                        # error in the bus event task
+                        _LOGGER.warning(
+                            "Fixup for %s failed on bus event: %s",
+                            fixup.suggestion,
+                            err,
+                        )
 
                 listener = self.sys_bus.register_event(fixup.bus_event, event_callback)
                 listeners.append(listener)
