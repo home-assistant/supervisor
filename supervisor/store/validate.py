@@ -19,6 +19,8 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema(
 
 def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
+    repository = repository.strip()
+
     if repository in BuiltinRepository:
         return repository
 

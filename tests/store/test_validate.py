@@ -24,3 +24,27 @@ async def test_repository_validate(repo_list: list[str], valid: bool):
     else:
         with pytest.raises(Invalid):
             repositories(repo_list)
+
+
+@pytest.mark.parametrize(
+    ("repo_list", "expected"),
+    [
+        (
+            ["  https://github.com/hassio-addons/repository  "],
+            ["https://github.com/hassio-addons/repository"],
+        ),
+        (
+            ["\nhttps://github.com/hassio-addons/repository\n"],
+            ["https://github.com/hassio-addons/repository"],
+        ),
+        (
+            ["\thttps://github.com/hassio-addons/repository\t"],
+            ["https://github.com/hassio-addons/repository"],
+        ),
+    ],
+)
+async def test_repository_validate_strips_whitespace(
+    repo_list: list[str], expected: list[str]
+):
+    """Test repository validation strips leading/trailing whitespace."""
+    assert repositories(repo_list) == expected
