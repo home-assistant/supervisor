@@ -129,6 +129,22 @@ async def test_api_store_add_repository_duplicate(
     assert result["message"] == f"Can't add {REPO_URL}, already in the store"
 
 
+async def test_api_store_add_repository_whitespace(
+    api_client: TestClient, coresys: CoreSys, supervisor_internet: AsyncMock
+) -> None:
+    """Test POST /store/repositories strips whitespace from the repository URL."""
+    with (
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
+    ):
+        response = await api_client.post(
+            "/store/repositories", json={"repository": f"  {REPO_URL}  "}
+        )
+
+    assert response.status == 200
+    assert REPO_URL in coresys.store.repository_urls
+
+
 async def test_api_store_remove_repository(
     api_client: TestClient, coresys: CoreSys, test_repository: Repository
 ):
