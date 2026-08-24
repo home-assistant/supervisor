@@ -97,8 +97,12 @@ async def test_api_store_repositories_repository(
     assert result["data"]["slug"] == test_repository.slug
 
 
+@pytest.mark.parametrize("repo_url", [REPO_URL, f"  {REPO_URL}  "])
 async def test_api_store_add_repository(
-    api_client: TestClient, coresys: CoreSys, supervisor_internet: AsyncMock
+    api_client: TestClient,
+    coresys: CoreSys,
+    supervisor_internet: AsyncMock,
+    repo_url: str,
 ) -> None:
     """Test POST /store/repositories REST API."""
     with (
@@ -106,7 +110,7 @@ async def test_api_store_add_repository(
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
     ):
         response = await api_client.post(
-            "/store/repositories", json={"repository": REPO_URL}
+            "/store/repositories", json={"repository": repo_url}
         )
 
     assert response.status == 200
@@ -127,22 +131,6 @@ async def test_api_store_add_repository_duplicate(
     assert result["error_key"] == "store_repository_already_added_error"
     assert result["extra_fields"] == {"url": REPO_URL}
     assert result["message"] == f"Can't add {REPO_URL}, already in the store"
-
-
-async def test_api_store_add_repository_whitespace(
-    api_client: TestClient, coresys: CoreSys, supervisor_internet: AsyncMock
-) -> None:
-    """Test POST /store/repositories strips whitespace from the repository URL."""
-    with (
-        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
-        patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
-    ):
-        response = await api_client.post(
-            "/store/repositories", json={"repository": f"  {REPO_URL}  "}
-        )
-
-    assert response.status == 200
-    assert REPO_URL in coresys.store.repository_urls
 
 
 async def test_api_store_remove_repository(

@@ -14,6 +14,10 @@ from supervisor.store.validate import repositories
         (["https://github.com/hassio-addons/repository#beta"], True),
         (["https://github.com/hassio-addons/repository#feature/hot-new-stuff"], True),
         (["not_a_url"], False),
+        (
+            ["https://github.com/hassio-addons/repository #beta"],
+            False,
+        ),
         (["https://fail.com/duplicate", "https://fail.com/duplicate"], False),
     ],
 )
@@ -30,15 +34,7 @@ async def test_repository_validate(repo_list: list[str], valid: bool):
     ("repo_list", "expected"),
     [
         (
-            ["  https://github.com/hassio-addons/repository  "],
-            ["https://github.com/hassio-addons/repository"],
-        ),
-        (
-            ["\nhttps://github.com/hassio-addons/repository\n"],
-            ["https://github.com/hassio-addons/repository"],
-        ),
-        (
-            ["\thttps://github.com/hassio-addons/repository\t"],
+            [" \t\nhttps://github.com/hassio-addons/repository \n\t"],
             ["https://github.com/hassio-addons/repository"],
         ),
     ],
