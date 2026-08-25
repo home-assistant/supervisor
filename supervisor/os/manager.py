@@ -554,7 +554,7 @@ class OSManager(CoreSysAttributes):
         internal=True,
     )
     async def clear_ssh_authorized_keys(self) -> None:
-        """Remove all SSH authorized keys of root on the host."""
+        """Remove all SSH authorized keys of root on the host and stop dropbear."""
         _LOGGER.info("Clearing SSH authorized keys on host")
         try:
             await self.sys_dbus.agent.system.clear_ssh_auth_keys()
@@ -568,3 +568,16 @@ class OSManager(CoreSysAttributes):
                 raise HassOSError(
                     f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
                 ) from err
+
+        # Mirror the USB config import (haos-config), which stops dropbear
+        # when the imported authorized_keys file is removed. Clearing all
+        # keys is a revocation, so also terminate established sessions,
+        # which survive until the service stops. Stopping an inactive unit
+        # is a no-op.
+        try:
+            await self.sys_host.services.stop(DROPBEAR_SERVICE)
+        except (HostError, DBusError) as err:
+            raise HassOSError(
+                f"SSH authorized keys cleared, but can't stop dropbear: {err!s}",
+                _LOGGER.error,
+            ) from err

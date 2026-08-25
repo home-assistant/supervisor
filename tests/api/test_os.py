@@ -984,12 +984,17 @@ async def test_api_os_ssh_authorized_keys_clear(
     system_service: SystemService = os_agent_services["agent_system"]
     system_service.ClearSSHAuthKeys.calls.clear()
 
-    with patch.object(coresys.host.services, "start", new=AsyncMock()) as start:
+    with (
+        patch.object(coresys.host.services, "start", new=AsyncMock()) as start,
+        patch.object(coresys.host.services, "stop", new=AsyncMock()) as stop,
+    ):
         resp = await api_client.delete(f"{prefix}/os/ssh/authorized_keys")
     assert resp.status == 200
 
     assert system_service.ClearSSHAuthKeys.calls == [()]
     start.assert_not_called()
+    # Established sessions only end when the service stops (revocation)
+    stop.assert_called_once_with("dropbear.service")
 
 
 @pytest.mark.parametrize(
@@ -1000,6 +1005,7 @@ async def test_api_os_ssh_authorized_keys_clear(
 @pytest.mark.usefixtures("os_available", "os_agent_version")
 async def test_api_os_ssh_authorized_keys_clear_old_os_agent_missing_file(
     api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
     expected_status: int,
 ):
@@ -1015,17 +1021,22 @@ async def test_api_os_ssh_authorized_keys_clear_old_os_agent_missing_file(
         "remove /root/.ssh/authorized_keys: no such file or directory",
     )
 
-    resp = await api_client.delete(f"{prefix}/os/ssh/authorized_keys")
+    with patch.object(coresys.host.services, "stop", new=AsyncMock()) as stop:
+        resp = await api_client.delete(f"{prefix}/os/ssh/authorized_keys")
     assert resp.status == expected_status
 
-    if expected_status == 400:
+    if expected_status == 200:
+        stop.assert_called_once_with("dropbear.service")
+    else:
         result = await resp.json()
         assert "Can't clear SSH authorized keys" in result["message"]
+        stop.assert_not_called()
 
 
 @pytest.mark.usefixtures("os_available")
 async def test_api_os_ssh_authorized_keys_clear_error(
     api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
 ):
     """Test a genuine clear failure is reported."""
@@ -1035,10 +1046,30 @@ async def test_api_os_ssh_authorized_keys_clear_error(
         ErrorType.FAILED, "remove /root/.ssh/authorized_keys: permission denied"
     )
 
-    resp = await api_client.delete(f"{prefix}/os/ssh/authorized_keys")
+    with patch.object(coresys.host.services, "stop", new=AsyncMock()) as stop:
+        resp = await api_client.delete(f"{prefix}/os/ssh/authorized_keys")
     assert resp.status == 400
     result = await resp.json()
     assert "Can't clear SSH authorized keys" in result["message"]
+    stop.assert_not_called()
+
+
+@pytest.mark.usefixtures("os_available")
+async def test_api_os_ssh_authorized_keys_dropbear_stop_error(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+):
+    """Test a dropbear stop failure is reported after the keys were cleared."""
+    api_client, prefix = api_client_with_prefix
+
+    with patch.object(
+        coresys.host.services, "stop", new=AsyncMock(side_effect=HostError("boom"))
+    ):
+        resp = await api_client.delete(f"{prefix}/os/ssh/authorized_keys")
+    assert resp.status == 400
+    result = await resp.json()
+    assert "can't stop dropbear" in result["message"]
 
 
 @pytest.mark.parametrize(
