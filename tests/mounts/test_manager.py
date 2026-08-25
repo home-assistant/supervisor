@@ -1017,3 +1017,40 @@ async def test_reload_reconciles_issue_creation(
     assert mount.state == UnitActiveState.INACTIVE
     assert mount.failed_issue in coresys.resolution.issues
     assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_suggestions"),
+    [
+        (
+            MountTargetNotEmptyError(name="media_test", path="/media/media_test"),
+            {
+                SuggestionType.MOVE_LOCAL_DATA,
+                SuggestionType.EXECUTE_RELOAD,
+                SuggestionType.EXECUTE_REMOVE,
+            },
+        ),
+        (
+            MountError("Test trigger repair failure"),
+            {SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE},
+        ),
+    ],
+)
+async def test_reload_reconciles_trigger_repair_failure(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+    error: MountError,
+    expected_suggestions: set[SuggestionType],
+):
+    """Test the reconcile surfaces a failed trigger repair as issue."""
+    assert mount.failed_issue not in coresys.resolution.issues
+
+    with patch.object(Mount, "repair_trigger", side_effect=error):
+        await coresys.mounts.reload()
+
+    assert mount.failed_issue in coresys.resolution.issues
+    assert {
+        suggestion.type
+        for suggestion in coresys.resolution.suggestions_for_issue(mount.failed_issue)
+    } == expected_suggestions
