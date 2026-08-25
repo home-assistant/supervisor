@@ -31,7 +31,7 @@ def rating_security(app: AppModel) -> int:
         rating += 1
 
     # Home Assistant Login & Ingress
-    if app.with_ingress:
+    if app.with_ingress or not app.webui:
         rating += 2
     elif app.access_auth_api:
         rating += 1
