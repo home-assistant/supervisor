@@ -7,7 +7,13 @@ from pathlib import Path
 import subprocess
 from typing import TYPE_CHECKING
 
-from ..const import ROLE_ADMIN, ROLE_MANAGER, SECURITY_DISABLE, SECURITY_PROFILE
+from ..const import (
+    ATTR_PORTS,
+    ROLE_ADMIN,
+    ROLE_MANAGER,
+    SECURITY_DISABLE,
+    SECURITY_PROFILE,
+)
 from ..docker.const import Capabilities
 
 if TYPE_CHECKING:
@@ -31,7 +37,11 @@ def rating_security(app: AppModel) -> int:
         rating += 1
 
     # Home Assistant Login & Ingress
-    if app.with_ingress or not app.webui:
+    if app.with_ingress:
+        rating += 2
+    elif not app.host_network and not any(
+        port is not None for port in (app.data.get(ATTR_PORTS) or {}).values()
+    ):
         rating += 2
     elif app.access_auth_api:
         rating += 1
