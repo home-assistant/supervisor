@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import DBusError, DBusSystemdNoSuchUnit
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -66,12 +68,15 @@ async def test_fixup_reset_dbus_error_keeps_issue(coresys: CoreSys):
     coresys.resolution.add_suggestion(SUGGESTION)
     coresys.resolution.add_issue(ISSUE)
 
-    with patch.object(
-        coresys.dbus.systemd,
-        "reset_failed_unit",
-        new_callable=AsyncMock,
-        side_effect=DBusError("boom"),
-    ) as reset_failed_unit:
+    with (
+        patch.object(
+            coresys.dbus.systemd,
+            "reset_failed_unit",
+            new_callable=AsyncMock,
+            side_effect=DBusError("boom"),
+        ) as reset_failed_unit,
+        pytest.raises(DBusError),
+    ):
         await systemd_unit_execute_reset()
 
     reset_failed_unit.assert_awaited_once_with("a.service")

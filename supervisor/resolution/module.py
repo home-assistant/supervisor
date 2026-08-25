@@ -32,7 +32,7 @@ from .const import (
 )
 from .data import HealthChanged, Issue, Suggestion, SupportedChanged
 from .evaluate import ResolutionEvaluation
-from .fixup import ResolutionFixup
+from .fixup import ResolutionFixup, apply_fixup_safely
 from .validate import SCHEMA_RESOLUTION_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -136,7 +136,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             if fixup.auto and fixup.bus_event:
 
                 def event_callback(reference, fixup=fixup):
-                    return fixup(suggestion)
+                    return apply_fixup_safely(fixup, suggestion)
 
                 listener = self.sys_bus.register_event(fixup.bus_event, event_callback)
                 listeners.append(listener)

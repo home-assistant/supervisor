@@ -3,7 +3,7 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import MountError, MountNotFound, ResolutionFixupError
+from ...exceptions import MountNotFound
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
 from .base import FixupBase
@@ -25,12 +25,8 @@ class FixupMountMoveLocalData(FixupBase):
             await self.sys_mounts.relocate_local_data(suggestion.reference)
         except MountNotFound:
             _LOGGER.warning("Can't find mount %s for fixup", suggestion.reference)
-        except MountError as err:
-            # Leave the issue/suggestion in place so the user can try again
-            _LOGGER.warning(
-                "Could not move local data for mount %s: %s", suggestion.reference, err
-            )
-            raise ResolutionFixupError from err
+        # A MountError bubbles: the issue/suggestion stay in place so the
+        # user can try again once the underlying problem is fixed
 
     @property
     def suggestion(self) -> SuggestionType:
