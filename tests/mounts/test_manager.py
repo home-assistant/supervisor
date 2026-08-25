@@ -386,13 +386,14 @@ async def test_update_mount(
     # remove_mount finds the existing unit, unmount() runs, then
     # mount_new.load() finds neither unit nor automount nor legacy
     # leftovers and creates a fresh transient .automount + .mount pair.
+    # The legacy data unit check runs after the post-mount refresh.
     systemd_service.response_get_unit = [
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ERROR_NO_UNIT,
         ERROR_NO_UNIT,
         ERROR_NO_UNIT,
-        ERROR_NO_UNIT,
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ERROR_NO_UNIT,
     ]
     await coresys.mounts.create_mount(mount_new)
 
@@ -453,6 +454,62 @@ async def test_load_migrates_legacy_layout(
     assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
         "mnt-data-supervisor-media-media_test.automount",
     ]
+
+
+async def test_load_migrates_legacy_layout_dead_data_mount(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test warm upgrade succeeds when the legacy data mount cannot stop.
+
+    The eager-mount-era data mount conflicts with nothing; a failed stop
+    (e.g. unmount timing out against an unreachable server) must not fail
+    the automount setup — the path would otherwise be left a plain
+    writable directory without an armed trigger.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
+    systemd_unit_service.active_state = "active"
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
+    coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
+
+    systemd_service.response_get_unit = {
+        "mnt-data-supervisor-media-media_test.mount": [
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ],
+        "mnt-data-supervisor-media-media_test.automount": [ERROR_NO_UNIT],
+        "mnt-data-supervisor-mounts-media_test.mount": [
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
+        ],
+    }
+    # Legacy bind stop succeeds, legacy data mount stop fails
+    systemd_service.response_stop_unit = [
+        "/org/freedesktop/systemd1/job/7623",
+        DBusError(ErrorType.FAILED, "Job timed out"),
+    ]
+    await coresys.mounts.load()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount.failed_issue not in coresys.resolution.issues
+    # The automount was armed before the legacy data mount stop was tried
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-media-media_test.automount",
+    ]
+    assert (
+        "Could not stop legacy unit mnt-data-supervisor-mounts-media_test.mount"
+        in caplog.text
+    )
 
 
 async def test_reload_mount_rearms_missing_trigger(
