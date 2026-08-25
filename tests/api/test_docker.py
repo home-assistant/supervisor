@@ -1,6 +1,7 @@
 """Test Docker API."""
 
 from aiohttp.test_utils import TestClient
+from dbus_fast import DBusError, ErrorType
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -170,3 +171,104 @@ async def test_api_migrate_docker_storage_driver_old_os(
         json={"storage_driver": "overlayfs"},
     )
     assert resp.status == 404
+
+
+@pytest.mark.parametrize("os_available", ["18.3.dev0"], indirect=True)
+async def test_api_docker_reset_storage(
+    coresys: CoreSys,
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test Docker storage reset."""
+    api_client, prefix = api_client_with_prefix
+    system_service: SystemService = os_agent_services["agent_system"]
+    system_service.ScheduleDockerStorageReset.calls.clear()
+
+    resp = await api_client.post(f"{prefix}/docker/reset-storage")
+    assert resp.status == 200
+
+    assert system_service.ScheduleDockerStorageReset.calls == [()]
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        in coresys.resolution.issues
+    )
+    assert (
+        Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
+        in coresys.resolution.suggestions
+    )
+
+
+async def test_api_docker_reset_storage_not_os(
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test 404 is returned if not running on HAOS."""
+    api_client, prefix = api_client_with_prefix
+    resp = await api_client.post(f"{prefix}/docker/reset-storage")
+    assert resp.status == 404
+
+
+@pytest.mark.parametrize("os_available", ["18.2"], indirect=True)
+async def test_api_docker_reset_storage_old_os(
+    api_client_with_prefix: tuple[TestClient, str],
+    os_available,
+):
+    """Test 404 is returned if OS is older than 18.3."""
+    api_client, prefix = api_client_with_prefix
+    resp = await api_client.post(f"{prefix}/docker/reset-storage")
+    assert resp.status == 404
+
+
+@pytest.mark.parametrize("os_available", ["18.3.dev0"], indirect=True)
+async def test_api_docker_reset_storage_schedule_failed(
+    coresys: CoreSys,
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test error if OS Agent could not schedule the reset."""
+    api_client, prefix = api_client_with_prefix
+    system_service: SystemService = os_agent_services["agent_system"]
+    system_service.ScheduleDockerStorageReset.calls.clear()
+    system_service.response_schedule_docker_storage_reset = False
+
+    resp = await api_client.post(f"{prefix}/docker/reset-storage")
+    assert resp.status == 400
+    body = await resp.json()
+    assert (
+        body["message"]
+        == "Can't schedule Docker storage reset, check host logs for details"
+    )
+
+    assert system_service.ScheduleDockerStorageReset.calls == [()]
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        not in coresys.resolution.issues
+    )
+
+
+@pytest.mark.parametrize("os_available", ["18.3.dev0"], indirect=True)
+async def test_api_docker_reset_storage_dbus_error(
+    coresys: CoreSys,
+    api_client_with_prefix: tuple[TestClient, str],
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test error if the D-Bus call fails."""
+    api_client, prefix = api_client_with_prefix
+    system_service: SystemService = os_agent_services["agent_system"]
+    system_service.ScheduleDockerStorageReset.calls.clear()
+    system_service.response_schedule_docker_storage_reset = DBusError(
+        ErrorType.FAILED, "fail"
+    )
+
+    resp = await api_client.post(f"{prefix}/docker/reset-storage")
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Can't schedule Docker storage reset: fail"
+
+    assert system_service.ScheduleDockerStorageReset.calls == [()]
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        not in coresys.resolution.issues
+    )

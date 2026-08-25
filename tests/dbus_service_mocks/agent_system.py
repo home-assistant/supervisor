@@ -22,6 +22,7 @@ class System(DBusServiceMock):
     interface = "io.hass.os.System"
     response_schedule_wipe_device: bool | DBusError = True
     response_migrate_docker_storage_driver: None | DBusError = None
+    response_schedule_docker_storage_reset: bool | DBusError = True
 
     @dbus_method()
     def ScheduleWipeDevice(self) -> "b":
@@ -40,3 +41,10 @@ class System(DBusServiceMock):
                 ErrorType.FAILED,
                 f"unsupported driver: {backend} (only 'overlayfs' is currently supported)",
             )
+
+    @dbus_method()
+    def ScheduleDockerStorageReset(self) -> "b":
+        """Schedule Docker storage reset."""
+        if isinstance(self.response_schedule_docker_storage_reset, DBusError):
+            raise self.response_schedule_docker_storage_reset  # pylint: disable=raising-bad-type
+        return self.response_schedule_docker_storage_reset

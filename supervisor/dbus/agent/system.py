@@ -20,3 +20,8 @@ class System(DBusInterface):
     async def migrate_docker_storage_driver(self, backend: str) -> None:
         """Migrate Docker storage driver."""
         await self.connected_dbus.System.call("migrate_docker_storage_driver", backend)
+
+    @dbus_connected
+    async def schedule_docker_storage_reset(self) -> bool:
+        """Schedule a Docker storage reset on next system boot."""
+        return await self.connected_dbus.System.call("schedule_docker_storage_reset")
