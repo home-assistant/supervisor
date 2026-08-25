@@ -593,17 +593,19 @@ async def test_reload_mount_probe_failure_surfaces_resolution_issue(
     assert mount.failed_issue in coresys.resolution.issues
 
 
-async def test_reload_mount_escalates_to_unit_recreation(
+async def test_reload_mount_escalates_to_session_discard(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     mount: Mount,
 ):
-    """Test reload re-creates the unit pair when the probe keeps failing.
+    """Test reload discards the session when the probe keeps failing.
 
     An established mount whose session is permanently dead never
-    re-triggers on its own — reload escalates once to a full unmount +
-    mount. If the share is still unreachable through the fresh pair the
-    error and issue surface to the caller.
+    re-triggers on its own — reload stops the .mount unit once, keeping
+    the armed .automount so the path is never a plain writable
+    directory, and re-probes through the trigger for a fresh session.
+    If the share is still unreachable the error and issue surface to
+    the caller.
     """
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StartTransientUnit.calls.clear()
@@ -618,13 +620,12 @@ async def test_reload_mount_escalates_to_unit_recreation(
     ):
         await coresys.mounts.reload_mount(mount.name)
 
+    # Only the .mount unit is stopped — the .automount stays armed and
+    # no new units are created.
     assert systemd_service.StopUnit.calls == [
-        ("mnt-data-supervisor-media-media_test.automount", "fail"),
         ("mnt-data-supervisor-media-media_test.mount", "fail"),
     ]
-    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
-        "mnt-data-supervisor-media-media_test.automount",
-    ]
+    assert systemd_service.StartTransientUnit.calls == []
     assert mount.failed_issue in coresys.resolution.issues
 
     # Once the share answers again (probe passes via mock_is_mount from

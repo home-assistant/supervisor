@@ -707,6 +707,43 @@ class Mount(CoreSysAttributes, ABC):
         self._unit = None
         self._state = None
 
+    async def discard_session(self) -> None:
+        """Stop the .mount unit while keeping the automount trigger armed.
+
+        Used when an established mount's session is permanently dead
+        (e.g. the server was replaced): the kernel cannot recover it,
+        and since the path stays covered the trigger never re-fires.
+        Stopping only the `.mount` (LazyUnmount detaches immediately)
+        makes systemd re-install the autofs trigger over the path — the
+        same mechanism idle-expiry uses, and the automount's Triggers=
+        reference keeps the transient `.mount` definition alive — so
+        the path is never exposed as a writable directory. The next
+        access mounts fresh, establishing a new session.
+        """
+        try:
+            result = await self._run_systemd_job(
+                "stop_unit",
+                self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL),
+            )
+            if result != "done":
+                raise MountError(
+                    f"Could not unmount {self.name} (systemd result: {result})",
+                    _LOGGER.error,
+                )
+        except DBusSystemdNoSuchUnit:
+            # Nothing mounted — the trigger alone covers the path
+            pass
+        except DBusError as err:
+            raise MountError(
+                f"Could not unmount {self.name} due to: {err!s}", _LOGGER.error
+            ) from err
+
+        with suppress(DBusError):
+            await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
+
+        self._unit = None
+        self._state = None
+
     def dismiss_failed_issue(self) -> None:
         """Dismiss the failed-mount resolution issue if present."""
         if issue := self.sys_resolution.get_issue_if_present(self.failed_issue):

@@ -11,6 +11,7 @@ from typing import Self
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
+    MountActivationError,
     MountError,
     MountJobError,
     MountNotFound,
@@ -338,19 +339,26 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         # The kernel cannot recover an established mount whose session is
         # permanently dead (e.g. the server was replaced): the path stays
         # mounted, so the trigger never re-fires and reconnection never
-        # succeeds. Re-create the unit pair once — the unmount detaches
-        # lazily and mount() probes the fresh pair, raising if the share
-        # is still unreachable.
-        _LOGGER.info("Mount %s is unreachable, re-creating its mount units", name)
+        # succeeds. Stop the .mount unit while the armed .automount stays
+        # in place — systemd re-installs the trigger over the path, so it
+        # is never exposed as a writable directory, and the re-probe
+        # mounts fresh with a new session.
+        _LOGGER.info(
+            "Mount %s is unreachable, discarding its session for a fresh mount", name
+        )
         try:
-            await mount.unmount()
-            await mount.mount()
-        except MountTargetNotEmptyError, MountTargetNotDirectoryError:
-            self._add_local_data_issue(mount)
-            raise
+            await mount.discard_session()
         except MountError:
             self._add_failed_issue(mount)
             raise
+
+        if not await mount.is_mounted():
+            self._add_failed_issue(mount)
+            raise MountActivationError(
+                f"Mount {name} is not reachable. Check host logs for errors "
+                f"from mount or systemd unit {mount.unit_name} for details",
+                _LOGGER.error,
+            )
 
         mount.dismiss_failed_issue()
 
