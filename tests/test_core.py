@@ -513,9 +513,9 @@ def test_format_bind_address(host: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("http_server_host", "expected_listen"),
     [
-        (None, ["0.0.0.0:8123", "[::]:8123"]),
-        (["192.0.2.1", "0.0.0.0"], ["192.0.2.1:8123", "0.0.0.0:8123"]),
-        (["::"], ["[::]:8123"]),
+        (None, ["0.0.0.0:80", "[::]:80"]),
+        (["192.0.2.1", "0.0.0.0"], ["192.0.2.1:80", "0.0.0.0:80"]),
+        (["::"], ["[::]:80"]),
     ],
     ids=["no_server_host", "with_server_host", "ipv6_only"],
 )
@@ -532,7 +532,7 @@ async def test_start_reserves_core_port(
     host is reserved, not just the first one.
     """
     coresys.homeassistant.http_server_host = http_server_host
-    assert coresys.homeassistant.api_port == 8123
+    assert coresys.homeassistant.api_port == 80
 
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StartTransientUnit.calls.clear()
@@ -549,6 +549,10 @@ async def test_start_reserves_core_port(
     assert listen_property == Variant(
         "a(ss)", [("Stream", entry) for entry in expected_listen]
     )
+    ipv6_only_property = next(
+        value for key, value in properties if key == "BindIPv6Only"
+    )
+    assert ipv6_only_property == Variant("s", "ipv6-only")
 
     # The socket must be paired atomically with a holder service, or the
     # first incoming connection during boot would tear the reservation down

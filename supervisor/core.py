@@ -542,6 +542,7 @@ class Core(CoreSysAttributes):
                     [("Stream", _format_bind_address(host, port)) for host in hosts],
                 ),
             ),
+            ("BindIPv6Only", Variant("s", "ipv6-only")),
         ]
 
         try:
@@ -593,11 +594,11 @@ class Core(CoreSysAttributes):
             with suppress(HassioError):
                 await self.sys_dbus.systemd.stop_unit(unit_name, StopUnitMode.REPLACE)
 
-            with suppress(TimeoutError):
-                async with asyncio.timeout(_PORT_RESERVE_TIMEOUT):
-                    await unit.wait_for_active_state(_TERMINAL_STATES)
-
             try:
+                with suppress(TimeoutError):
+                    async with asyncio.timeout(_PORT_RESERVE_TIMEOUT):
+                        await unit.wait_for_active_state(_TERMINAL_STATES)
+
                 state = await unit.get_active_state()
             except HassioError:
                 return True  # unit disappeared -- nothing left to hold it
