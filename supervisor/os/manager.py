@@ -9,7 +9,7 @@ import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
 
-from ..coresys import CoreSys, CoreSysAttributes
+from ..coresys import CoreSys
 from ..dbus.agent.boards.const import BOARD_NAME_SUPERVISED
 from ..dbus.rauc import RaucState, SlotStatusDataType
 from ..exceptions import (
@@ -24,6 +24,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
+from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from .data_disk import DataDisk
 
@@ -92,12 +93,12 @@ class SlotStatus:
         )
 
 
-class OSManager(CoreSysAttributes):
+class OSManager(JobGroup):
     """OS interface inside supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize HassOS handler."""
-        self.coresys: CoreSys = coresys
+        super().__init__(coresys, "os_manager")
         self._datadisk: DataDisk = DataDisk(coresys)
         self._available: bool = False
         self._version: AwesomeVersion | None = None
@@ -518,6 +519,7 @@ class OSManager(CoreSysAttributes):
         name="os_manager_add_ssh_authorized_key",
         conditions=[JobCondition.HAOS],
         on_condition=HassOSJobError,
+        concurrency=JobConcurrency.GROUP_QUEUE,
         internal=True,
     )
     async def add_ssh_authorized_key(self, key: str) -> None:
@@ -551,6 +553,7 @@ class OSManager(CoreSysAttributes):
         name="os_manager_clear_ssh_authorized_keys",
         conditions=[JobCondition.HAOS],
         on_condition=HassOSJobError,
+        concurrency=JobConcurrency.GROUP_QUEUE,
         internal=True,
     )
     async def clear_ssh_authorized_keys(self) -> None:
