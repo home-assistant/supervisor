@@ -32,6 +32,7 @@ from supervisor.exceptions import (
     BackupJobError,
     BackupMountDownError,
     DockerError,
+    MountError,
 )
 from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.const import WSType
@@ -551,16 +552,21 @@ async def test_backup_media_with_mounts_retains_files(
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_unit_service.active_state = "active"
     systemd_service.response_get_unit = [
-        # create_mount: no .mount, no .automount, no legacy units
+        # create_mount: no .mount, no .automount, no legacy path unit
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
-        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
-        # create_mount: post-arm state refresh
+        # create_mount: post-arm state refresh resolves the new .mount
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        # create_mount: no legacy data mount unit to clean up
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         # folder restore: unmount resolves the .mount after automount stop
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
-        # folder restore: re-mount post-arm state refresh
+        # folder restore: repair_trigger finds no .automount after the unmount
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        # folder restore: repair's own unmount finds no .mount either
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        # folder restore: re-arm post-arm state refresh
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         # mount config restore: unmount of the replaced mount
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
@@ -597,19 +603,82 @@ async def test_backup_media_with_mounts_retains_files(
         await coresys.backups.do_restore_partial(backup, folders=["media"])
 
     # Restore unmounts the network mount nested inside `media` (stops
-    # both the .automount and .mount), then re-mounts it after writes.
-    # The re-mount creates a new transient .mount + aux .automount pair.
+    # both the .automount and .mount), then repairs the trigger after
+    # writes: repair_trigger sees the .automount is gone, tears down once
+    # more (only the .automount stop is dispatched — the .mount is gone
+    # too) and arms a fresh transient .automount + aux .mount pair.
     # The backup also carries the mount configuration, so the mount is
     # replaced afterwards: another unmount plus the activation mount.
     assert systemd_service.StopUnit.calls == [
         ("mnt-data-supervisor-media-media_test.automount", "fail"),
         ("mnt-data-supervisor-media-media_test.mount", "fail"),
         ("mnt-data-supervisor-media-media_test.automount", "fail"),
+        ("mnt-data-supervisor-media-media_test.automount", "fail"),
         ("mnt-data-supervisor-media-media_test.mount", "fail"),
     ]
     assert systemd_service.StartTransientUnit.calls == [
         ("mnt-data-supervisor-media-media_test.automount", "fail", ANY, ANY)
     ]
+
+
+@pytest.mark.usefixtures(
+    "supervisor_internet",
+    "tmp_supervisor_data",
+    "path_extern",
+    "mount_propagation",
+    "mock_is_mount",
+)
+async def test_folder_restore_repairs_trigger_on_unmount_failure(
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
+):
+    """Test folder restore repairs the automount trigger if unmount fails."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_unit_service.active_state = "active"
+    systemd_service.response_get_unit = [
+        # create_mount: no .mount, no .automount, no legacy path unit
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        # create_mount: post-arm state refresh resolves the new .mount
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        # create_mount: no legacy data mount unit to clean up
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+    ]
+
+    # Add a media mount nested inside the folder to be restored
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "media_test",
+                "usage": "media",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+
+    # Make a partial backup
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    backup: Backup = await coresys.backups.do_backup_partial("test", folders=["media"])
+
+    # A failed unmount aborts the restore before any file is written, but
+    # the finally must still repair the automount trigger so the path does
+    # not stay a plain writable directory — and the error must surface
+    with (
+        patch.object(Mount, "unmount", side_effect=MountError("boom")),
+        patch.object(Mount, "repair_trigger") as repair_trigger,
+        pytest.raises(MountError),
+    ):
+        async with backup.open(None):
+            # pylint: disable-next=protected-access
+            await backup._folder_restore("media")
+
+    repair_trigger.assert_awaited_once()
 
 
 @pytest.mark.usefixtures(

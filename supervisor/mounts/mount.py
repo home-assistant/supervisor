@@ -607,7 +607,7 @@ class Mount(CoreSysAttributes, ABC):
         ]
 
         try:
-            await self._run_systemd_job(
+            result = await self._run_systemd_job(
                 "start_transient_unit",
                 self.sys_dbus.systemd.start_transient_unit(
                     self.automount_unit_name,
@@ -620,6 +620,15 @@ class Mount(CoreSysAttributes, ABC):
             raise MountError(
                 f"Could not mount {self.name} due to: {err!s}", _LOGGER.error
             ) from err
+        # A failed start job means the trigger never armed and the path is
+        # a plain writable directory — a hard setup failure, distinct from
+        # the armed-but-unreachable MountActivationError the probe raises
+        if result != "done":
+            raise MountError(
+                f"Could not arm automount for {self.name} "
+                f"(systemd job result: {result})",
+                _LOGGER.error,
+            )
 
         if unit := await self._update_unit():
             await self._update_state(unit)

@@ -57,6 +57,7 @@ from ..exceptions import (
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupPermissionError,
+    MountActivationError,
     MountError,
 )
 from ..homeassistant.const import LANDINGPAGE
@@ -894,23 +895,33 @@ class Backup(JobGroup):
             )
             if mount.local_where and mount.local_where.is_relative_to(origin_dir)
         ]
-        if nested_mounts:
-            await asyncio.gather(*[mount.unmount() for mount in nested_mounts])
-
         try:
+            if nested_mounts:
+                # An unmount can fail halfway through (trigger disarmed, share
+                # still attached) — the finally re-arms whatever teardown was
+                # attempted, so the path never stays a plain writable directory
+                unmount_results = await asyncio.gather(
+                    *[mount.unmount() for mount in nested_mounts],
+                    return_exceptions=True,
+                )
+                for result in unmount_results:
+                    if isinstance(result, BaseException):
+                        raise result
+
             await self.sys_run_in_executor(_restore)
         finally:
             if nested_mounts:
                 results = await asyncio.gather(
-                    *[mount.mount() for mount in nested_mounts],
+                    *[mount.repair_trigger() for mount in nested_mounts],
                     return_exceptions=True,
                 )
                 for mount, result in zip(nested_mounts, results):
                     # A failed probe (unreachable server) still leaves the
                     # trigger armed — the mount recovers on the next access.
-                    # It must not fail the restore that already succeeded,
-                    # nor mask an in-flight restore error.
-                    if isinstance(result, MountError):
+                    # It must not fail the restore that already succeeded.
+                    # Anything else (arming failed, local data blocking the
+                    # target) left the path unprotected and must surface.
+                    if isinstance(result, MountActivationError):
                         _LOGGER.warning(
                             "Could not verify mount %s after restore: %s",
                             mount.name,

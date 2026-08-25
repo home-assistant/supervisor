@@ -545,6 +545,41 @@ async def test_mount_failure(
     assert len(systemd_service.StartTransientUnit.calls) == 1
 
 
+async def test_mount_arming_failure(
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mock_is_mount,
+):
+    """Test mount raises MountError if the automount start job is not done."""
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "share",
+        },
+    )
+
+    # A non-"done" start job result means the trigger never armed and the
+    # path is a plain writable directory — a hard MountError, distinct
+    # from the armed-but-unreachable MountActivationError of the probe
+    with (
+        patch.object(Mount, "_run_systemd_job", return_value="failed") as run_job,
+        pytest.raises(MountError) as excinfo,
+    ):
+        await mount.mount()
+
+    # Close the StartTransientUnit dispatch coroutine the mocked job
+    # helper swallowed so it does not warn at garbage collection
+    run_job.await_args.args[1].close()
+
+    assert "systemd job result: failed" in str(excinfo.value)
+    assert not isinstance(excinfo.value, MountActivationError)
+
+
 async def test_unmount_failure(
     coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], path_extern
 ):
