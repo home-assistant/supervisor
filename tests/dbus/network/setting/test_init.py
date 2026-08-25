@@ -57,7 +57,7 @@ async def test_ethernet_update(
         uuid=dbus_interface.settings.connection.uuid,
     )
 
-    await dbus_interface.settings.update(conn)
+    assert await dbus_interface.settings.update(conn) is True
 
     assert len(connection_settings_service.Update.calls) == 1
     settings = connection_settings_service.Update.calls[0][0]
@@ -119,6 +119,10 @@ async def test_ethernet_update(
         assert "powersave" not in settings["802-11-wireless"]
 
         assert "802-11-wireless-security" not in settings
+
+    # Applying the same settings again does not change the profile
+    assert await dbus_interface.settings.update(conn) is False
+    assert len(connection_settings_service.Update.calls) == 2
 
 
 async def test_ipv6_disabled_is_link_local(

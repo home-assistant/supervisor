@@ -4,12 +4,17 @@ import asyncio
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import AsyncMock, patch
 
-from dbus_fast import Variant
+from dbus_fast import DBusError, Variant
 import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import InterfaceMethod
+from supervisor.dbus.network.setting import (
+    CONF_ATTR_802_WIRELESS_SECURITY,
+    CONF_ATTR_802_WIRELESS_SECURITY_PSK,
+)
+from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.exceptions import HostNotSupportedError
 from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.host.const import WifiMode
@@ -22,6 +27,7 @@ from tests.dbus_service_mocks.network_connection_settings import (
     SETTINGS_1_FIXTURE,
     ConnectionSettings as ConnectionSettingsService,
 )
+from tests.dbus_service_mocks.network_device import Device as DeviceService
 from tests.dbus_service_mocks.network_device_wireless import (
     DeviceWireless as DeviceWirelessService,
 )
@@ -38,14 +44,26 @@ async def fixture_wireless_service(
     return network_manager_services["network_device_wireless"]
 
 
+@pytest.fixture(name="device_eth0_service")
+async def fixture_device_eth0_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> DeviceService:
+    """Return mock device eth0 service."""
+    return network_manager_services["network_device"][
+        "/org/freedesktop/NetworkManager/Devices/1"
+    ]
+
+
 async def test_load(
     coresys: CoreSys,
     network_manager_service: NetworkManagerService,
     connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
 ):
     """Test network manager load."""
     network_manager_service.ActivateConnection.calls.clear()
     network_manager_service.CheckConnectivity.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
 
     await coresys.host.network.load()
 
@@ -95,18 +113,164 @@ async def test_load(
     assert "eth0.10" in name_dict
     assert name_dict["eth0.10"].enabled is True
 
-    assert len(network_manager_service.ActivateConnection.calls) == 2
+    # The profiles changed (Supervisor defaults applied) with the connections
+    # active, so the settings are reapplied in place without re-activation
+    assert len(device_eth0_service.Reapply.calls) == 2
     assert (
-        "/org/freedesktop/NetworkManager/Settings/38",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        {},
+        0,
+        0,
+    ) in device_eth0_service.Reapply.calls
+    assert (
         "/org/freedesktop/NetworkManager/Devices/38",
-        "/",
-    ) in network_manager_service.ActivateConnection.calls
+        {},
+        0,
+        0,
+    ) in device_eth0_service.Reapply.calls
+    assert network_manager_service.ActivateConnection.calls == []
+    assert network_manager_service.CheckConnectivity.calls == []
+
+
+async def test_load_unchanged_settings_skips_activation(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    device_eth0_service: DeviceService,
+):
+    """Test load does not touch connections when settings are unchanged."""
+    # First load updates the profiles to Supervisor defaults and applies them
+    await coresys.host.network.load()
+
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    # Profiles now match what Supervisor generates, nothing to apply
+    await coresys.host.network.load()
+    assert network_manager_service.ActivateConnection.calls == []
+    assert device_eth0_service.Reapply.calls == []
+
+
+async def test_load_outdated_settings_reapplies(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
+):
+    """Test load applies an out of date profile in place."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    # Simulate a profile predating a change of Supervisor defaults
+    connection_settings_service.settings["connection"]["id"] = Variant(
+        "s", "Wired connection 1"
+    )
+    await coresys.dbus.network.get("eth0").settings.reload()
+
+    await coresys.host.network.load()
+    assert device_eth0_service.Reapply.calls == [
+        ("/org/freedesktop/NetworkManager/Devices/1", {}, 0, 0)
+    ]
+    assert network_manager_service.ActivateConnection.calls == []
+
+
+async def test_load_reapply_fails_activates(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
+):
+    """Test load re-activates when changed settings can't be reapplied in place."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+
+    # Simulate a profile predating a change of Supervisor defaults
+    connection_settings_service.settings["connection"]["id"] = Variant(
+        "s", "Wired connection 1"
+    )
+    await coresys.dbus.network.get("eth0").settings.reload()
+    device_eth0_service.reapply_error = DBusError(
+        "org.freedesktop.NetworkManager.Device.IncompatibleConnection",
+        "Can't reapply any changes to '802-3-ethernet' setting",
+    )
+
+    await coresys.host.network.load()
     assert (
         "/org/freedesktop/NetworkManager/Settings/1",
         "/org/freedesktop/NetworkManager/Devices/1",
         "/",
     ) in network_manager_service.ActivateConnection.calls
-    assert network_manager_service.CheckConnectivity.calls == []
+
+
+async def test_apply_changes_reapplies_in_place(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    device_eth0_service: DeviceService,
+):
+    """Test user-initiated apply of changed settings reapplies in place."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    interface = coresys.host.network.get("eth0")
+    interface.ipv4setting.nameservers = [IPv4Address("1.1.1.1")]
+    await coresys.host.network.apply_changes(interface)
+
+    assert device_eth0_service.Reapply.calls == [
+        ("/org/freedesktop/NetworkManager/Devices/1", {}, 0, 0)
+    ]
+    assert network_manager_service.ActivateConnection.calls == []
+
+
+async def test_apply_changes_unchanged_reactivates(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    device_eth0_service: DeviceService,
+):
+    """Test user-initiated apply of unchanged settings re-activates."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    await coresys.host.network.apply_changes(coresys.host.network.get("eth0"))
+
+    assert device_eth0_service.Reapply.calls == []
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+
+
+async def test_apply_changes_with_psk_reactivates(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    device_eth0_service: DeviceService,
+):
+    """Test apply with a Wi-Fi PSK in the payload re-activates."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    interface = coresys.host.network.get("eth0")
+    interface.ipv4setting.nameservers = [IPv4Address("1.1.1.1")]
+
+    def add_psk(*args, **kwargs):
+        conn = get_connection_from_interface(*args, **kwargs)
+        conn[CONF_ATTR_802_WIRELESS_SECURITY] = {
+            CONF_ATTR_802_WIRELESS_SECURITY_PSK: Variant("s", "supersecret")
+        }
+        return conn
+
+    with patch("supervisor.host.network.get_connection_from_interface", new=add_psk):
+        await coresys.host.network.apply_changes(interface)
+
+    assert device_eth0_service.Reapply.calls == []
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
 
 
 async def test_load_with_disabled_methods(

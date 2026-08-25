@@ -3,7 +3,7 @@
 from ctypes import c_uint32
 from dataclasses import dataclass
 
-from dbus_fast import Variant
+from dbus_fast import DBusError, Variant
 from dbus_fast.service import PropertyAccess, dbus_property, signal
 
 from .base import DBusServiceMock, dbus_method
@@ -283,6 +283,7 @@ class Device(DBusServiceMock):
         super().__init__()
         self.object_path = object_path
         self.fixture: DeviceFixture = FIXTURES[object_path]
+        self.reapply_error: DBusError | None = None
 
     @dbus_property(access=PropertyAccess.READ)
     def Udi(self) -> "s":
@@ -459,9 +460,11 @@ class Device(DBusServiceMock):
         """Signal StateChanged."""
         return [120, 100, 1]
 
-    @dbus_method()
+    @dbus_method(track_obj_path=True)
     def Reapply(self, connection: "a{sa{sv}}", version_id: "t", flags: "u") -> None:
         """Do Reapply method."""
+        if self.reapply_error is not None:
+            raise self.reapply_error
 
     @dbus_method()
     def GetAppliedConnection(self, flags: "u") -> "a{sa{sv}}t":

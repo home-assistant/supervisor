@@ -8,6 +8,7 @@ import aiodocker
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...docker.const import ADDON_BUILDER_IMAGE
+from ...docker.utils import split_image_tag
 from ..const import (
     ContextType,
     IssueType,
@@ -96,7 +97,7 @@ class EvaluateContainer(EvaluateBase):
         for image in images:
             self.sys_resolution.evaluate.cached_images.add(image)
 
-            image_name = image.partition(":")[0]
+            image_name = split_image_tag(image)[0]
             if image_name not in IGNORE_IMAGES and image_name not in self.known_images:
                 self._images.add(image_name)
                 if any(

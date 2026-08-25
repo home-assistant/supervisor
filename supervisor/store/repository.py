@@ -8,19 +8,13 @@ from pathlib import Path
 
 import voluptuous as vol
 
-from ..const import (
-    ATTR_MAINTAINER,
-    ATTR_NAME,
-    ATTR_URL,
-    FILE_SUFFIX_CONFIGURATION,
-    REPOSITORY_CORE,
-    REPOSITORY_LOCAL,
-)
+from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL, FILE_SUFFIX_CONFIGURATION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     ConfigurationFileError,
     StoreError,
     StoreGitError,
+    StoreInvalidAppRepo,
     StoreRepositoryLocalCannotReset,
     StoreRepositoryUnknownError,
 )
@@ -56,18 +50,14 @@ class Repository(CoreSysAttributes, ABC):
     def _create_builtin(coresys: CoreSys, builtin: BuiltinRepository) -> Repository:
         """Create builtin repository."""
         if builtin == BuiltinRepository.LOCAL:
-            slug = REPOSITORY_LOCAL
             local_path = coresys.config.path_apps_local
-            return RepositoryLocal(coresys, local_path, slug)
+            return RepositoryLocal(coresys, local_path, builtin.slug)
         if builtin == BuiltinRepository.CORE:
-            slug = REPOSITORY_CORE
             local_path = coresys.config.path_apps_core
         else:
-            # For other builtin repositories (URL-based)
-            slug = get_hash_from_repository(builtin.value)
-            local_path = coresys.config.path_apps_git / slug
+            local_path = coresys.config.path_apps_git / builtin.slug
         return RepositoryGitBuiltin(
-            coresys, builtin.value, local_path, slug, builtin.git_url
+            coresys, builtin.value, local_path, builtin.slug, builtin.git_url
         )
 
     @staticmethod
@@ -207,6 +197,17 @@ class RepositoryGit(Repository, ABC):
         except StoreGitError as err:
             _LOGGER.error("Can't reset repository %s: %s", self.slug, err)
             raise StoreRepositoryUnknownError(repo=self.slug) from err
+
+        # A reset only recovers a corrupt local copy. If the freshly cloned
+        # repository still doesn't validate, the problem is upstream (for
+        # example the repository configuration was removed), so report the
+        # failure instead of silently considering it fixed.
+        if not await self.validate():
+            raise StoreInvalidAppRepo(
+                f"Repository {self.slug} is still not a valid app repository "
+                "after reset",
+                logger=_LOGGER.error,
+            )
 
 
 class RepositoryLocal(RepositoryBuiltin):

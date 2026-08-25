@@ -117,6 +117,16 @@ class NetworkInterface(DBusInterfaceProxy):
 
         self._wireless = wireless
 
+    @dbus_connected
+    async def reapply(self) -> None:
+        """Reapply the active connection's settings to the device.
+
+        Applies changed settings without a full re-activation cycle. Raises
+        if NetworkManager cannot reapply the changes (e.g. a change to the
+        wireless security settings).
+        """
+        await self.connected_dbus.Device.call("reapply", {}, 0, 0)
+
     def __eq__(self, other: object) -> bool:
         """Is object equal to another."""
         return (

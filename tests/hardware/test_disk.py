@@ -3,7 +3,7 @@
 # pylint: disable=protected-access
 import errno
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from dbus_fast.aio import MessageBus
 import pytest
@@ -387,3 +387,42 @@ async def test_try_get_nvme_life_time_dbus_not_connected(coresys: CoreSys):
         coresys.config.path_supervisor
     )
     assert lifetime is None
+
+
+async def test_dir_walker_oserror_reporting_can_be_gated(coresys: CoreSys):
+    """Test the walker only reports read errors to resolution when asked to.
+
+    The resolution center's OSError checks are documented local-path-only, so a
+    read error from a network mount walk must not mark the whole system
+    unhealthy. The EBADMSG break-out stays either way: whatever the source, a
+    corrupted-message error means the rest of the walk is untrustworthy.
+    """
+
+    def make_path() -> tuple[MagicMock, MagicMock]:
+        path = MagicMock(spec=Path)
+        path.exists.return_value = True
+        path.stat.return_value.st_dev = 1
+        failing = MagicMock(spec=Path)
+        failing.is_symlink.return_value = False
+        failing.stat.side_effect = OSError(errno.EBADMSG, "Bad message")
+        never_reached = MagicMock(spec=Path)
+        never_reached.is_symlink.return_value = False
+        path.iterdir.return_value = [failing, never_reached]
+        return path, never_reached
+
+    # Gated off (a mount walk): resolution never hears about it
+    path, never_reached = make_path()
+    with patch.object(coresys.resolution, "check_oserror") as check:
+        result = coresys.hardware.disk.get_dir_structure_sizes(
+            path, 2, check_oserror=False
+        )
+    check.assert_not_called()
+    assert result == {"used_bytes": 0}
+    # EBADMSG still aborts the walk regardless of the gating
+    never_reached.stat.assert_not_called()
+
+    # Default (the system disk): reported as before
+    path, _ = make_path()
+    with patch.object(coresys.resolution, "check_oserror") as check:
+        coresys.hardware.disk.get_dir_structure_sizes(path, 2)
+    check.assert_called_once()

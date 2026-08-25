@@ -10,7 +10,7 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import DockerError, HomeAssistantAPIError
-from supervisor.homeassistant.api import APIState, HomeAssistantAPI
+from supervisor.homeassistant.api import APIState, CoreHTTPConfig, HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
 
 from tests.common import MockResponse
@@ -140,7 +140,7 @@ async def test_use_unix_socket(
     ("use_unix", "expected_api_url", "expected_ws_url"),
     [
         (True, "http://localhost", "ws://localhost/api/websocket"),
-        (False, "http://172.30.32.1:8123", "ws://172.30.32.1:8123/api/websocket"),
+        (False, "http://172.30.32.1", "ws://172.30.32.1/api/websocket"),
     ],
 )
 async def test_api_and_ws_urls(
@@ -150,6 +150,41 @@ async def test_api_and_ws_urls(
     with patch.object(type(coresys.homeassistant.api), "use_unix_socket", use_unix):
         assert coresys.homeassistant.api.api_url == expected_api_url
         assert coresys.homeassistant.api.ws_url == expected_ws_url
+
+
+@pytest.mark.parametrize(
+    ("port", "ssl", "expected_api_url", "expected_ws_url"),
+    [
+        (80, False, "http://172.30.32.1", "ws://172.30.32.1/api/websocket"),
+        (443, True, "https://172.30.32.1", "wss://172.30.32.1/api/websocket"),
+        (
+            8123,
+            False,
+            "http://172.30.32.1:8123",
+            "ws://172.30.32.1:8123/api/websocket",
+        ),
+        (
+            8123,
+            True,
+            "https://172.30.32.1:8123",
+            "wss://172.30.32.1:8123/api/websocket",
+        ),
+        (80, True, "https://172.30.32.1:80", "wss://172.30.32.1:80/api/websocket"),
+    ],
+)
+async def test_url_omits_default_scheme_port(
+    coresys: CoreSys,
+    port: int,
+    ssl: bool,
+    expected_api_url: str,
+    expected_ws_url: str,
+):
+    """Test the port is only part of the url when the scheme doesn't imply it."""
+    coresys.homeassistant.api_port = port
+    coresys.homeassistant.api_ssl = ssl
+
+    assert coresys.homeassistant.api_url == expected_api_url
+    assert coresys.homeassistant.ws_url == expected_ws_url
 
 
 # --- connection lifecycle ---
@@ -218,7 +253,7 @@ async def test_container_state_changed_ignores_other_containers(
     caplog.clear()
     await api.container_state_changed(
         DockerContainerStateEvent(
-            name="addon_local_ssh",
+            name="app_local_ssh",
             state=ContainerState.STOPPED,
             id="abc123",
             time=1234567890,
@@ -283,6 +318,158 @@ async def test_get_api_state(
     with patch.object(type(coresys.homeassistant.api), "use_unix_socket", False):
         assert await coresys.homeassistant.api.get_api_state() == expected_state
         assert await coresys.homeassistant.api.check_api_state() is expected_check
+
+
+# --- get_http_config ---
+
+TEST_HTTP_CONFIG = {
+    "port": 80,
+    "ssl": False,
+    "ssl_peer_certificate": False,
+    "server_host": ["0.0.0.0", "::"],
+}
+
+
+async def test_get_http_config(coresys: CoreSys):
+    """Test get_http_config parses the endpoint response."""
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0")
+    api = coresys.homeassistant.api
+    with (
+        patch.object(type(api), "use_unix_socket", True),
+        patch.object(api, "_get_json", return_value=TEST_HTTP_CONFIG),
+    ):
+        assert await api.get_http_config() == CoreHTTPConfig(
+            port=80,
+            ssl=False,
+            ssl_peer_certificate=False,
+            server_host=["0.0.0.0", "::"],
+        )
+
+
+@pytest.mark.parametrize(
+    ("use_unix_socket", "version", "response"),
+    [
+        # TCP fallback: the endpoint is socket-only.
+        (False, "2026.8.0", TEST_HTTP_CONFIG),
+        # Core version without the endpoint.
+        (True, "2026.7.0", TEST_HTTP_CONFIG),
+        # Endpoint request fails.
+        (True, "2026.8.0", HomeAssistantAPIError("Core API return 404")),
+        # Malformed responses.
+        (True, "2026.8.0", {"port": 80}),
+        (True, "2026.8.0", {**TEST_HTTP_CONFIG, "port": "no-number"}),
+        (True, "2026.8.0", {**TEST_HTTP_CONFIG, "server_host": 42}),
+    ],
+)
+async def test_get_http_config_unavailable(
+    coresys: CoreSys,
+    use_unix_socket: bool,
+    version: str,
+    response: dict | Exception,
+):
+    """Test get_http_config returns None when the config cannot be fetched."""
+    coresys.homeassistant.version = AwesomeVersion(version)
+    api = coresys.homeassistant.api
+    get_json = (
+        AsyncMock(side_effect=response)
+        if isinstance(response, Exception)
+        else AsyncMock(return_value=response)
+    )
+    with (
+        patch.object(type(api), "use_unix_socket", use_unix_socket),
+        patch.object(api, "_get_json", get_json),
+    ):
+        assert await api.get_http_config() is None
+
+
+async def test_http_config_pulled_on_connect(
+    coresys: CoreSys, real_get_api_state: HomeAssistantAPI
+):
+    """Test connection parameters refresh from Core's HTTP config on connect."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0")
+    api.get_core_state = AsyncMock(
+        return_value={"state": "RUNNING", "recorder_state": {}}
+    )
+    coresys.homeassistant.save_data = AsyncMock()
+    coresys.homeassistant.api_port = 8123
+
+    assert coresys.homeassistant.http_server_host is None
+
+    with (
+        patch.object(type(api), "use_unix_socket", True),
+        patch.object(api, "_get_json", return_value=TEST_HTTP_CONFIG) as get_json,
+    ):
+        await api.get_api_state()
+        assert coresys.homeassistant.api_port == 80
+        assert coresys.homeassistant.api_ssl is False
+        assert coresys.homeassistant.http_server_host == ["0.0.0.0", "::"]
+        coresys.homeassistant.save_data.assert_awaited_once()
+
+        # Already connected: no pull on subsequent checks.
+        get_json.reset_mock()
+        await api.get_api_state()
+        get_json.assert_not_awaited()
+
+    # Container restart resets the connection; the config is pulled again.
+    await api.container_state_changed(
+        DockerContainerStateEvent(
+            name="homeassistant",
+            state=ContainerState.STOPPED,
+            id="abc123",
+            time=1234567890,
+        )
+    )
+    with (
+        patch.object(type(api), "use_unix_socket", True),
+        patch.object(api, "_get_json", return_value=TEST_HTTP_CONFIG) as get_json,
+    ):
+        await api.get_api_state()
+        get_json.assert_awaited_once_with("api/core/http_config")
+
+
+async def test_http_config_unchanged_not_saved(
+    coresys: CoreSys, real_get_api_state: HomeAssistantAPI
+):
+    """Test unchanged connection parameters are not saved to disk."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0")
+    api.get_core_state = AsyncMock(
+        return_value={"state": "RUNNING", "recorder_state": {}}
+    )
+    coresys.homeassistant.save_data = AsyncMock()
+
+    config = {**TEST_HTTP_CONFIG, "server_host": ["172.30.32.1"]}
+    with (
+        patch.object(type(api), "use_unix_socket", True),
+        patch.object(api, "_get_json", return_value=config),
+    ):
+        await api.get_api_state()
+
+    coresys.homeassistant.save_data.assert_not_awaited()
+    # The bind hosts are still updated for the frontend reachability check.
+    assert coresys.homeassistant.http_server_host == ["172.30.32.1"]
+
+
+async def test_http_config_reset_when_unavailable(
+    coresys: CoreSys, real_get_api_state: HomeAssistantAPI
+):
+    """Test bind hosts reset when the HTTP config cannot be fetched.
+
+    After a downgrade to a Core without the endpoint, reachability decisions
+    must not use the previous Core's binds.
+    """
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0")
+    api.get_core_state = AsyncMock(
+        return_value={"state": "RUNNING", "recorder_state": {}}
+    )
+    coresys.homeassistant.http_server_host = ["172.30.32.1"]
+
+    with patch.object(type(api), "use_unix_socket", False):
+        await api.get_api_state()
+
+    assert coresys.homeassistant.http_server_host is None
 
 
 # --- make_request ---

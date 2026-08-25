@@ -45,6 +45,40 @@ def test_simple_schema(coresys):
         )({"name": "Pascal", "fires": True})
 
 
+def test_simple_schema_string_length(coresys):
+    """Test string length limits."""
+    assert AppOptions(
+        coresys,
+        {"name": "str(1,32)", "password": "password(8,)"},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )({"name": "Pascal", "password": "12345678"})
+
+    with pytest.raises(vol.error.Invalid):
+        AppOptions(
+            coresys,
+            {"name": "str(1,32)", "password": "password(8,)"},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "", "password": "12345678"})
+
+    with pytest.raises(vol.error.Invalid):
+        AppOptions(
+            coresys,
+            {"name": "str(1,32)", "password": "password(8,)"},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "x" * 33, "password": "12345678"})
+
+    with pytest.raises(vol.error.Invalid):
+        AppOptions(
+            coresys,
+            {"name": "str(1,32)", "password": "password(8,)"},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "Pascal", "password": "1234"})
+
+
 def test_simple_schema_integers(coresys):
     """Test integer limits."""
     assert AppOptions(

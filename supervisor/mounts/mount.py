@@ -31,7 +31,8 @@ from ..exceptions import (
     DBusSystemdNoSuchUnit,
     MountActivationError,
     MountError,
-    MountInvalidError,
+    MountTargetNotDirectoryError,
+    MountTargetNotEmptyError,
 )
 from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
@@ -346,14 +347,12 @@ class Mount(CoreSysAttributes, ABC):
                 )
                 self.local_where.mkdir(parents=True)
             elif not self.local_where.is_dir():
-                raise MountInvalidError(
-                    f"Cannot mount {self.name} at {self.local_where.as_posix()} as it is not a directory",
-                    _LOGGER.error,
+                raise MountTargetNotDirectoryError(
+                    _LOGGER.error, name=self.name, path=self.local_where.as_posix()
                 )
             elif any(self.local_where.iterdir()):
-                raise MountInvalidError(
-                    f"Cannot mount {self.name} at {self.local_where.as_posix()} because it is not empty",
-                    _LOGGER.error,
+                raise MountTargetNotEmptyError(
+                    _LOGGER.error, name=self.name, path=self.local_where.as_posix()
                 )
 
         await self.sys_run_in_executor(ensure_empty_folder)

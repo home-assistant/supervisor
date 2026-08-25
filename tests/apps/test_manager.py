@@ -13,7 +13,14 @@ import pytest
 from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
-from supervisor.const import ATTR_INGRESS, AppBoot, AppStartup, AppState, BusEvent
+from supervisor.const import (
+    ATTR_INGRESS,
+    AppBoot,
+    AppStartup,
+    AppState,
+    BusEvent,
+    CpuArch,
+)
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -25,6 +32,7 @@ from supervisor.exceptions import (
     AppsError,
     DockerAPIError,
     DockerNotFound,
+    HassioArchNotFound,
 )
 from supervisor.plugins.dns import PluginDns
 from supervisor.resolution.const import (
@@ -254,7 +262,7 @@ async def test_app_uninstall_removes_discovery(coresys: CoreSys, install_app_ssh
     assert len(delete_calls) == 1
     assert (
         delete_calls[0].args[1]
-        == f"http://172.30.32.1:8123/api/hassio_push/discovery/{message.uuid}"
+        == f"http://172.30.32.1/api/hassio_push/discovery/{message.uuid}"
     )
     assert delete_calls[0].kwargs["json"] == {
         "addon": TEST_ADDON_SLUG,
@@ -272,7 +280,7 @@ async def test_load(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     caplog.clear()
 
     with (
-        patch.object(DockerInterface, "attach") as attach,
+        patch.object(DockerApp, "attach") as attach,
         patch.object(PluginDns, "write_hosts") as write_hosts,
     ):
         await coresys.apps.load()
@@ -300,7 +308,7 @@ async def test_boot_waits_for_apps(coresys: CoreSys, install_app_ssh: App):
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.RUNNING,
                 id="abc123",
                 time=1,
@@ -342,6 +350,42 @@ async def test_update(
         start_task = await coresys.apps.update(TEST_ADDON_SLUG)
 
     assert bool(start_task) is (status == "running")
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_update_uses_store_architecture(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: DockerContainer,
+):
+    """Test update uses the store version's architecture list to pick the image arch."""
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    with patch(
+        "supervisor.store.data.read_json_or_yaml_file",
+        return_value=load_json_fixture("app-config-add-image.json"),
+    ):
+        await coresys.store.data.update()
+
+    # Simulate an app installed when the system still supported 32-bit
+    # architectures: the installed version's arch list no longer matches
+    # any supported architecture, but the store version's does.
+    coresys.apps.data.system[TEST_ADDON_SLUG]["arch"] = ["armv7"]
+    with pytest.raises(HassioArchNotFound):
+        _ = install_app_ssh.arch
+
+    with (
+        patch.object(DockerInterface, "install") as install,
+        patch.object(DockerApp, "is_running", return_value=False),
+    ):
+        await coresys.apps.update(TEST_ADDON_SLUG)
+
+    install.assert_called_once_with(
+        AwesomeVersion("10.0.0"), "test/amd64-my-ssh-addon", False, CpuArch.AMD64
+    )
+    assert install_app_ssh.arch == CpuArch.AMD64
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
@@ -388,7 +432,7 @@ async def test_start_wait_resolved_on_uninstall_in_startup(
         coresys,
         BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
         DockerContainerStateEvent(
-            name=f"addon_{TEST_ADDON_SLUG}",
+            name=f"app_{TEST_ADDON_SLUG}",
             state=ContainerState.RUNNING,
             id="abc123",
             time=1,
@@ -506,7 +550,7 @@ async def test_watchdog_runs_during_update(
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.STOPPED,
                 id="abc123",
                 time=1,

@@ -2,10 +2,12 @@
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
 from supervisor.resolution.const import (
@@ -16,6 +18,7 @@ from supervisor.resolution.const import (
     UnsupportedReason,
 )
 from supervisor.resolution.data import Issue, Suggestion
+from supervisor.resolution.validate import _migrate_checks_config
 
 
 def test_properies_unsupported(coresys: CoreSys):
@@ -454,3 +457,79 @@ async def test_dismiss_issue_removes_orphaned_suggestions(coresys: CoreSys):
                 },
             )
         )
+
+
+@pytest.mark.parametrize(
+    ("legacy_slug", "new_slug"),
+    [
+        ("addon_pwned", "app_pwned"),
+        ("deprecated_addon", "deprecated_app"),
+        ("deprecated_arch_addon", "deprecated_arch_app"),
+        ("detached_addon_missing", "detached_app_missing"),
+        ("detached_addon_removed", "detached_app_removed"),
+    ],
+)
+def test_resolution_file_migration_legacy_check_slugs(legacy_slug: str, new_slug: str):
+    """Test that resolution.json with legacy check slugs is migrated to new names."""
+    # Create a checks config with legacy slug
+    legacy_config = {legacy_slug: {"enabled": False}}
+
+    # Migrate it using the same function used in schema validation
+    migrated_config = _migrate_checks_config(legacy_config)
+
+    # Verify the legacy slug was migrated to the new slug
+    assert new_slug in migrated_config
+    assert legacy_slug not in migrated_config
+    assert migrated_config[new_slug]["enabled"] is False
+
+
+async def test_core_compatible_suggestions(coresys: CoreSys):
+    """Test suggestions gated on a minimum Core version are filtered."""
+    coresys.resolution.add_issue(
+        issue := Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="test"),
+        suggestions=[SuggestionType.MOVE_LOCAL_DATA, SuggestionType.EXECUTE_RELOAD],
+    )
+
+    for version, expected_types in [
+        (None, {SuggestionType.EXECUTE_RELOAD}),
+        (AwesomeVersion("landingpage"), {SuggestionType.EXECUTE_RELOAD}),
+        (AwesomeVersion("2026.8.3"), {SuggestionType.EXECUTE_RELOAD}),
+        (
+            AwesomeVersion("2026.9.0b0"),
+            {SuggestionType.EXECUTE_RELOAD, SuggestionType.MOVE_LOCAL_DATA},
+        ),
+        (
+            AwesomeVersion("2026.10.1"),
+            {SuggestionType.EXECUTE_RELOAD, SuggestionType.MOVE_LOCAL_DATA},
+        ),
+    ]:
+        with patch.object(
+            type(coresys.homeassistant),
+            "version",
+            new=PropertyMock(return_value=version),
+        ):
+            assert {
+                suggestion.type
+                for suggestion in coresys.resolution.core_compatible_suggestions(
+                    coresys.resolution.suggestions_for_issue(issue)
+                )
+            } == expected_types, f"unexpected filtering for Core {version}"
+
+            # The legacy issue event payload applies the same filter
+            message = coresys.resolution._make_issue_message(issue)  # pylint: disable=protected-access
+            assert {
+                suggestion["type"] for suggestion in message["suggestions"]
+            } == expected_types
+
+            # With the v2 API enabled the Core filters itself — no filtering
+            coresys.config.set_feature_flag(
+                FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True
+            )
+            message = coresys.resolution._make_issue_message(issue)  # pylint: disable=protected-access
+            assert {suggestion["type"] for suggestion in message["suggestions"]} == {
+                SuggestionType.EXECUTE_RELOAD,
+                SuggestionType.MOVE_LOCAL_DATA,
+            }
+            coresys.config.set_feature_flag(
+                FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+            )

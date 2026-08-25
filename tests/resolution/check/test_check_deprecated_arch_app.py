@@ -13,7 +13,7 @@ from supervisor.resolution.data import Issue
 async def test_base(coresys: CoreSys):
     """Test check basics."""
     deprecated_arch_app = CheckDeprecatedArchApp(coresys)
-    assert deprecated_arch_app.slug == "deprecated_arch_addon"
+    assert deprecated_arch_app.slug == "deprecated_arch_app"
     assert deprecated_arch_app.enabled
 
 
@@ -30,7 +30,7 @@ async def test_check(coresys: CoreSys, install_app_ssh: App):
     await deprecated_arch_app()
 
     assert len(coresys.resolution.issues) == 1
-    assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_ARCH_ADDON
+    assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_ARCH_APP
     assert coresys.resolution.issues[0].context is ContextType.ADDON
     assert coresys.resolution.issues[0].reference == install_app_ssh.slug
     assert len(coresys.resolution.suggestions) == 1
@@ -61,7 +61,7 @@ async def test_check_deprecated_machine(coresys: CoreSys, install_app_ssh: App):
     await deprecated_arch_app()
 
     assert len(coresys.resolution.issues) == 1
-    assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_ARCH_ADDON
+    assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_ARCH_APP
     assert coresys.resolution.suggestions[0].type is SuggestionType.EXECUTE_REMOVE
 
 
@@ -100,7 +100,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_arch_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
@@ -113,7 +113,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_arch_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
@@ -126,7 +126,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_arch_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
@@ -140,7 +140,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_arch_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
@@ -153,7 +153,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_arch_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )
@@ -166,7 +166,7 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     assert (
         await deprecated_arch_app.approve_check(
             Issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=install_app_ssh.slug,
             )

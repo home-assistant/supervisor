@@ -18,14 +18,14 @@ class CheckDeprecatedApp(CheckBase):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return "deprecated_addon"
+        return "deprecated_app"
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for app in self.sys_apps.installed:
             if app.stage == AppStage.DEPRECATED:
                 self.sys_resolution.create_issue(
-                    IssueType.DEPRECATED_ADDON,
+                    IssueType.DEPRECATED_APP,
                     ContextType.ADDON,
                     reference=app.slug,
                     suggestions=[SuggestionType.EXECUTE_REMOVE],
@@ -42,7 +42,7 @@ class CheckDeprecatedApp(CheckBase):
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DEPRECATED_ADDON
+        return IssueType.DEPRECATED_APP
 
     @property
     def context(self) -> ContextType:

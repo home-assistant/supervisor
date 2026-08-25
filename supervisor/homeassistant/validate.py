@@ -30,7 +30,7 @@ SCHEMA_HASS_CONFIG = vol.Schema(
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_ACCESS_TOKEN): token,
         vol.Optional(ATTR_BOOT, default=True): vol.Boolean(),
-        vol.Optional(ATTR_PORT, default=8123): network_port,
+        vol.Optional(ATTR_PORT, default=80): network_port,
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(str),
         vol.Optional(ATTR_SSL, default=False): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),

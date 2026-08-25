@@ -3,6 +3,7 @@
 import logging
 
 from ...coresys import CoreSys
+from ...exceptions import AppsError
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
 from .base import FixupBase
@@ -57,7 +58,10 @@ class FixupAppClearPortConfig(FixupBase):
             )
             return
 
-        ports[port_key] = None
+        # Persist only the cleared port as a user override on top of any
+        # existing ones, so clearing one conflicting port doesn't turn the
+        # current config defaults into user changes.
+        app.ports = {**app.user_ports(), port_key: None}
         await app.save_persist()
 
         _LOGGER.info(
@@ -65,6 +69,15 @@ class FixupAppClearPortConfig(FixupBase):
             conflict_port,
             suggestion.reference,
         )
+
+        try:
+            await app.start()
+        except AppsError as err:
+            _LOGGER.error(
+                "Could not start app %s after clearing conflicting port config: %s",
+                suggestion.reference,
+                err,
+            )
 
     @property
     def suggestion(self) -> SuggestionType:

@@ -26,7 +26,7 @@ class CheckAppPwned(CheckBase):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return "addon_pwned"
+        return "app_pwned"
 
     @Job(
         name="check_app_pwned_run",

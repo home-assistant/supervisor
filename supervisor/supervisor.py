@@ -250,7 +250,13 @@ class Supervisor(CoreSysAttributes):
     async def restart(self) -> None:
         """Restart Supervisor soft."""
         self.sys_core.exit_code = 100
-        self.sys_create_task(self.sys_core.stop())
+        stopping = asyncio.Event()
+        self.sys_create_task(self.sys_core.stop(stopping_complete=stopping))
+
+        # Return only once STOPPING is entered and new API requests are
+        # rejected, so a request sent after the restart response can no
+        # longer be accepted and then killed by the API teardown
+        await stopping.wait()
 
     @property
     def in_progress(self) -> bool:

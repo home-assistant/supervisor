@@ -5,6 +5,8 @@ from contextlib import suppress
 import logging
 from typing import Any
 
+from dbus_fast import Variant
+
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
@@ -20,6 +22,11 @@ from ..dbus.const import (
     WirelessMethodType,
 )
 from ..dbus.network.connection import NetworkConnection
+from ..dbus.network.interface import NetworkInterface
+from ..dbus.network.setting import (
+    CONF_ATTR_802_WIRELESS_SECURITY,
+    CONF_ATTR_802_WIRELESS_SECURITY_PSK,
+)
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
@@ -240,6 +247,58 @@ class NetworkManager(CoreSysAttributes):
 
         await self.update(force_connectivity_check=True)
 
+    async def _apply_settings_in_place(
+        self,
+        inet: NetworkInterface,
+        interface: Interface,
+        settings: dict[str, dict[str, Variant]],
+        settings_changed: bool,
+        *,
+        update_only: bool,
+    ) -> bool:
+        """Try to make updated connection settings effective in place.
+
+        Return True if the settings are in effect without a full re-activation
+        cycle (unchanged or reapplied in place), False if the connection needs
+        to be activated.
+        """
+        # Secrets (Wi-Fi PSK) are excluded from GetSettings and ignored by
+        # NetworkManager's Reapply, so a change to them is neither detected
+        # nor applied in place. Always re-activate when the payload contains
+        # a PSK.
+        if CONF_ATTR_802_WIRELESS_SECURITY_PSK in settings.get(
+            CONF_ATTR_802_WIRELESS_SECURITY, {}
+        ):
+            return False
+
+        # In-place application requires an active connection
+        if not inet.connection or inet.connection.state != ConnectionState.ACTIVATED:
+            return False
+
+        if not settings_changed:
+            # User-initiated updates with unchanged settings still re-activate,
+            # both as a way to force a reconnect and to cover secret-only
+            # changes.
+            if not update_only:
+                return False
+            _LOGGER.debug(
+                "Settings for %s unchanged, skipping activation", interface.name
+            )
+            return True
+
+        try:
+            await inet.reapply()
+        except DBusError as err:
+            _LOGGER.debug(
+                "Can't reapply settings for %s in place: %s", interface.name, err
+            )
+            return False
+
+        _LOGGER.info(
+            "Reapplied changed settings for interface %s in place", interface.name
+        )
+        return True
+
     async def apply_changes(
         self, interface: Interface, *, update_only: bool = False
     ) -> None:
@@ -272,14 +331,24 @@ class NetworkManager(CoreSysAttributes):
             )
 
             try:
-                await inet.settings.update(settings)
-                con = activated = await self.sys_dbus.network.activate_connection(
-                    inet.settings.object_path, inet.object_path
-                )
-                _LOGGER.debug(
-                    "activate_connection returns %s",
-                    activated.object_path,
-                )
+                settings_changed = await inet.settings.update(settings)
+                if not await self._apply_settings_in_place(
+                    inet,
+                    interface,
+                    settings,
+                    settings_changed,
+                    update_only=update_only,
+                ):
+                    _LOGGER.info(
+                        "Activating connection for interface %s", interface.name
+                    )
+                    con = activated = await self.sys_dbus.network.activate_connection(
+                        inet.settings.object_path, inet.object_path
+                    )
+                    _LOGGER.debug(
+                        "activate_connection returns %s",
+                        activated.object_path,
+                    )
             except DBusError as err:
                 raise HostNetworkError(
                     f"Can't update config on {interface.name}: {err}", _LOGGER.error
@@ -294,7 +363,9 @@ class NetworkManager(CoreSysAttributes):
 
         # Create new configuration and activate interface
         elif interface.enabled:
-            _LOGGER.debug("Create new configuration for %s", interface.name)
+            _LOGGER.info(
+                "Creating and activating connection for interface %s", interface.name
+            )
             settings = get_connection_from_interface(interface, self.sys_dbus.network)
 
             try:

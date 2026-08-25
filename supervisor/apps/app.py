@@ -258,7 +258,7 @@ class App(AppModel):
             self.sys_resolution.dismiss_issue(access_issue)
 
         self.sys_homeassistant.websocket.supervisor_event_custom(
-            WSEvent.ADDON,
+            WSEvent.APP,
             {
                 ATTR_SLUG: self.slug,
                 ATTR_STATE: new_state,
@@ -293,7 +293,7 @@ class App(AppModel):
             self.has_deprecated_machine and not self.has_supported_machine
         ):
             self.sys_resolution.create_issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=self.slug,
                 suggestions=[SuggestionType.EXECUTE_REMOVE],
@@ -591,8 +591,21 @@ class App(AppModel):
 
     @property
     def ports(self) -> dict[str, int | None] | None:
-        """Return ports of app."""
-        return self.persist.get(ATTR_NETWORK, super().ports)
+        """Return effective ports, merging user overrides over config defaults.
+
+        This keeps every config-declared port visible even when the user only
+        remapped a subset, so optional ports left unpublished (and ports newly
+        added by an app update) stay visible and keep applying their defaults.
+        """
+        config_ports = super().ports
+        if config_ports is None:
+            return self.persist.get(ATTR_NETWORK)
+
+        persisted = self.persist.get(ATTR_NETWORK, {})
+        return {
+            container_port: persisted.get(container_port, default_host_port)
+            for container_port, default_host_port in config_ports.items()
+        }
 
     @ports.setter
     def ports(self, value: dict[str, int | None] | None) -> None:
@@ -608,6 +621,14 @@ class App(AppModel):
                 new_ports[container_port] = host_port
 
         self.persist[ATTR_NETWORK] = new_ports
+
+    def user_ports(self) -> dict[str, int | None]:
+        """Return only the user's persisted port overrides.
+
+        Unlike ``ports`` this excludes config defaults the user never touched,
+        so callers persisting a change only write back real user overrides.
+        """
+        return dict(self.persist.get(ATTR_NETWORK) or {})
 
     @property
     def ingress_url(self) -> str | None:
@@ -1036,7 +1057,11 @@ class App(AppModel):
         store = self.app_store.clone()
 
         try:
-            await self.instance.update(store.version, store.image, arch=self.arch)
+            # Use the store's architecture list to pick the image architecture. The
+            # installed version may not support any of the system's architectures
+            # anymore (e.g. after 32-bit support was dropped), while the new version
+            # does — availability of the store version was validated by the caller.
+            await self.instance.update(store.version, store.image, arch=store.arch)
         except DockerBuildError as err:
             _LOGGER.error("Could not build image for app %s: %s", self.slug, err)
             raise AppBuildFailedUnknownError(app=self.slug) from err
@@ -1241,15 +1266,15 @@ class App(AppModel):
         """Create a port conflict issue for the given port.
 
         Source can only be "core" or None currently, may be extended in future.
-        If problematic port is explicitly mapped by user, suggest clearing port
-        config as a potential fix. Else we just note the issue.
+        If problematic port is mapped for this app (by user override or config
+        default), suggest clearing the mapping and then starting the app again.
+        Otherwise suggest starting the app again.
         """
         ports = self.ports or {}
-        suggestions = (
-            [SuggestionType.CLEAR_PORT_CONFIG]
-            if any(public_port == port for public_port in ports.values())
-            else None
-        )
+        suggestions = [SuggestionType.EXECUTE_START]
+        if any(public_port == port for public_port in ports.values()):
+            suggestions.insert(0, SuggestionType.CLEAR_PORT_CONFIG)
+
         self.sys_resolution.create_issue(
             IssueType.APP_PORT_CONFLICT,
             ContextType.ADDON,

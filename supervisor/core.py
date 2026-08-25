@@ -315,16 +315,28 @@ class Core(CoreSysAttributes):
             )
             _LOGGER.info("Supervisor is up and running")
 
-    async def stop(self) -> None:
-        """Stop a running orchestration."""
+    async def stop(self, *, stopping_complete: asyncio.Event | None = None) -> None:
+        """Stop a running orchestration.
+
+        stopping_complete is set once the Supervisor is in STOPPING state,
+        in which the system validation middleware rejects new API requests.
+        API handlers that trigger a Supervisor stop (see Supervisor.restart)
+        wait for it before responding, so a request sent after the response
+        gets a clear error instead of being accepted and then killed
+        mid-request when the API server is torn down.
+        """
         # store new last boot / prevent time adjustments
         if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN):
             await self._update_last_boot()
         if self.state in (CoreState.STOPPING, CoreState.CLOSE):
+            if stopping_complete:
+                stopping_complete.set()
             return
 
         # don't process scheduler anymore
         await self.set_state(CoreState.STOPPING)
+        if stopping_complete:
+            stopping_complete.set()
 
         # Stage 1
         try:

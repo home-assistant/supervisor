@@ -1,5 +1,7 @@
 """Validate App configs."""
 
+import logging
+
 import pytest
 import voluptuous as vol
 
@@ -255,7 +257,7 @@ def test_warn_legacy_arch_values(caplog: pytest.LogCaptureFixture):
 
     vd.SCHEMA_APP_CONFIG(config)
 
-    assert "App config 'arch' uses deprecated values" in caplog.text
+    assert "uses deprecated 'arch' values" in caplog.text
 
 
 def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
@@ -265,7 +267,7 @@ def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
 
     vd.SCHEMA_APP_CONFIG(config)
 
-    assert "App config 'machine' uses deprecated values" in caplog.text
+    assert "uses deprecated 'machine' values" in caplog.text
 
 
 def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
@@ -275,7 +277,7 @@ def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
 
     vd.SCHEMA_APP_CONFIG(config)
 
-    assert "uses deprecated 'advanced' field in config" in caplog.text
+    assert "uses the deprecated 'advanced' config field" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -298,7 +300,29 @@ def test_warn_legacy_map_types(
     vd.SCHEMA_APP_CONFIG(config)
 
     assert f"uses legacy map type '{legacy_mapping}'" in caplog.text
-    assert f"Please update to '{app_mapping}'" in caplog.text
+    assert f"use '{app_mapping}' instead" in caplog.text
+
+
+def test_quiet_schema_logs_advisories_at_debug(caplog: pytest.LogCaptureFixture):
+    """SCHEMA_APP_CONFIG_QUIET emits the same advisories, but at debug level."""
+    config = load_json_fixture("basic-app-config.json")
+    config["advanced"] = True
+    config["arch"] = ["armv7", "amd64"]
+
+    with caplog.at_level(logging.DEBUG, logger="supervisor.apps.validate"):
+        vd.SCHEMA_APP_CONFIG_QUIET(config)
+
+    # The advisories are still emitted, so they remain available in debug logs.
+    assert "uses the deprecated 'advanced' config field" in caplog.text
+    assert "uses deprecated 'arch' values" in caplog.text
+
+    # But never at warning level, so regular users don't see them.
+    assert not [
+        record
+        for record in caplog.records
+        if record.name == "supervisor.apps.validate"
+        and record.levelno >= logging.WARNING
+    ]
 
 
 @pytest.mark.parametrize(
@@ -320,10 +344,10 @@ def test_warn_incompatible_map_types_legacy_ignored(
 
     vd.SCHEMA_APP_CONFIG(config)
 
-    assert "using incompatible map options" in caplog.text
+    assert "uses incompatible map options" in caplog.text
     assert f"'{app_mapping}'" in caplog.text
     assert f"'{legacy_mapping}'" in caplog.text
-    assert f"Legacy option '{legacy_mapping}' will be ignored" in caplog.text
+    assert f"legacy option '{legacy_mapping}' will be ignored" in caplog.text
 
 
 async def test_valid_manifest_build():

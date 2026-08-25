@@ -13,9 +13,8 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 
-from supervisor.docker.utils import get_registry_from_image
-
 from .const import DOCKER_HUB, DOCKER_HUB_API, DOCKER_HUB_LEGACY
+from .utils import split_docker_domain
 
 if TYPE_CHECKING:
     from ..coresys import CoreSys
@@ -57,16 +56,12 @@ def parse_image_reference(image: str, tag: str) -> tuple[str, str, str]:
             -> (registry-1.docker.io, library/alpine, 3.18)
 
     """
-    # Check if image has explicit registry host
-    registry = get_registry_from_image(image)
-    if registry:
-        repository = image[len(registry) + 1 :]  # Remove "registry/" prefix
-    else:
-        registry = DOCKER_HUB
-        repository = image
+    # Split off the registry host if the image reference has one
+    domain, repository = split_docker_domain(image)
+    registry = domain or DOCKER_HUB
+    if registry == DOCKER_HUB and "/" not in repository:
         # Docker Hub requires "library/" prefix for official images
-        if "/" not in repository:
-            repository = f"library/{repository}"
+        repository = f"library/{repository}"
 
     return registry, repository, tag
 

@@ -97,8 +97,12 @@ async def test_api_store_repositories_repository(
     assert result["data"]["slug"] == test_repository.slug
 
 
+@pytest.mark.parametrize("repo_url", [REPO_URL, f"  {REPO_URL}  "])
 async def test_api_store_add_repository(
-    api_client: TestClient, coresys: CoreSys, supervisor_internet: AsyncMock
+    api_client: TestClient,
+    coresys: CoreSys,
+    supervisor_internet: AsyncMock,
+    repo_url: str,
 ) -> None:
     """Test POST /store/repositories REST API."""
     with (
@@ -106,11 +110,27 @@ async def test_api_store_add_repository(
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
     ):
         response = await api_client.post(
-            "/store/repositories", json={"repository": REPO_URL}
+            "/store/repositories", json={"repository": repo_url}
         )
 
     assert response.status == 200
     assert REPO_URL in coresys.store.repository_urls
+
+
+@pytest.mark.usefixtures("test_repository")
+async def test_api_store_add_repository_duplicate(
+    api_client: TestClient, supervisor_internet: AsyncMock
+) -> None:
+    """Test POST /store/repositories REST API with an already added repository."""
+    response = await api_client.post(
+        "/store/repositories", json={"repository": REPO_URL}
+    )
+
+    assert response.status == 409
+    result = await response.json()
+    assert result["error_key"] == "store_repository_already_added_error"
+    assert result["extra_fields"] == {"url": REPO_URL}
+    assert result["message"] == f"Can't add {REPO_URL}, already in the store"
 
 
 async def test_api_store_remove_repository(
@@ -229,7 +249,7 @@ async def test_api_store_update_healthcheck(
 
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.STOPPED,
                 id="abc123",
                 time=1,
@@ -239,7 +259,7 @@ async def test_api_store_update_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.RUNNING,
                 id="abc123",
                 time=1,
@@ -249,7 +269,7 @@ async def test_api_store_update_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.HEALTHY,
                 id="abc123",
                 time=1,
@@ -466,8 +486,8 @@ async def test_store_app_not_found(
     if json_expected:
         body = await resp.json()
         assert body["message"] == "App bad does not exist in the store"
-        assert body["error_key"] == "store_addon_not_found_error"
-        assert body["extra_fields"] == {"addon": "bad"}
+        assert body["error_key"] == "store_app_not_found_error"
+        assert body["extra_fields"] == {"app": "bad"}
     else:
         assert await resp.text() == "App bad does not exist in the store"
 
@@ -490,8 +510,8 @@ async def test_store_app_not_found_legacy_paths(
     if json_expected:
         body = await resp.json()
         assert body["message"] == "App bad does not exist in the store"
-        assert body["error_key"] == "store_addon_not_found_error"
-        assert body["extra_fields"] == {"addon": "bad"}
+        assert body["error_key"] == "store_app_not_found_error"
+        assert body["extra_fields"] == {"app": "bad"}
     else:
         assert await resp.text() == "App bad does not exist in the store"
 
@@ -688,7 +708,7 @@ async def test_api_store_apps_app_availability_success(
     ],
 )
 async def test_api_store_apps_app_availability_arch_not_supported(
-    api_client: TestClient,
+    store_app_api_client_with_root: tuple[TestClient, str],
     coresys: CoreSys,
     supported_architectures: list[str],
     api_action: str,
@@ -696,6 +716,7 @@ async def test_api_store_apps_app_availability_arch_not_supported(
     installed: bool,
 ):
     """Test availability errors for /store/apps/{app}/* REST APIs - architecture not supported."""
+    client, root = store_app_api_client_with_root
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     # Create an app with unsupported architecture
     app_obj = AppStore(coresys, "test_arch_addon")
@@ -721,14 +742,17 @@ async def test_api_store_apps_app_availability_arch_not_supported(
     with patch.object(
         CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
     ):
-        resp = await api_client.request(
-            api_method, f"/store/addons/{app_obj.slug}/{api_action}"
-        )
+        resp = await client.request(api_method, f"/{root}/{app_obj.slug}/{api_action}")
         assert resp.status == 400
         result = await resp.json()
-        assert result["error_key"] == "addon_not_supported_architecture_error"
+        expected_error_key = (
+            "app_not_supported_architecture_error"
+            if root.startswith("v2/")
+            else "addon_not_supported_architecture_error"
+        )
+        assert result["error_key"] == expected_error_key
         assert result["extra_fields"] == {
-            "addon": "Test Arch Add-on",
+            "app": "Test Arch Add-on",
             "slug": "test_arch_addon",
             "architectures": (architectures := ", ".join(supported_architectures)),
         }
@@ -753,7 +777,7 @@ async def test_api_store_apps_app_availability_arch_not_supported(
     ],
 )
 async def test_api_store_apps_app_availability_machine_not_supported(
-    api_client: TestClient,
+    store_app_api_client_with_root: tuple[TestClient, str],
     coresys: CoreSys,
     supported_machines: list[str],
     api_action: str,
@@ -761,6 +785,7 @@ async def test_api_store_apps_app_availability_machine_not_supported(
     installed: bool,
 ):
     """Test availability errors for /store/apps/{app}/* REST APIs - machine not supported."""
+    client, root = store_app_api_client_with_root
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     # Create an app with unsupported machine type
     app_obj = AppStore(coresys, "test_machine_addon")
@@ -785,14 +810,17 @@ async def test_api_store_apps_app_availability_machine_not_supported(
 
     # Mock the system machine to be different
     with patch.object(CoreSys, "machine", new=PropertyMock(return_value="qemux86-64")):
-        resp = await api_client.request(
-            api_method, f"/store/addons/{app_obj.slug}/{api_action}"
-        )
+        resp = await client.request(api_method, f"/{root}/{app_obj.slug}/{api_action}")
         assert resp.status == 400
         result = await resp.json()
-        assert result["error_key"] == "addon_not_supported_machine_type_error"
+        expected_error_key = (
+            "app_not_supported_machine_type_error"
+            if root.startswith("v2/")
+            else "addon_not_supported_machine_type_error"
+        )
+        assert result["error_key"] == expected_error_key
         assert result["extra_fields"] == {
-            "addon": "Test Machine Add-on",
+            "app": "Test Machine Add-on",
             "slug": "test_machine_addon",
             "machine_types": (machine_types := ", ".join(supported_machines)),
         }
@@ -811,13 +839,14 @@ async def test_api_store_apps_app_availability_machine_not_supported(
     ],
 )
 async def test_api_store_apps_app_availability_homeassistant_version_too_old(
-    api_client: TestClient,
+    store_app_api_client_with_root: tuple[TestClient, str],
     coresys: CoreSys,
     api_action: str,
     api_method: str,
     installed: bool,
 ):
     """Test availability errors for /store/apps/{app}/* REST APIs - Home Assistant version too old."""
+    client, root = store_app_api_client_with_root
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     # Create an app that requires newer Home Assistant version
     app_obj = AppStore(coresys, "test_version_addon")
@@ -846,14 +875,17 @@ async def test_api_store_apps_app_availability_homeassistant_version_too_old(
         "version",
         new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
     ):
-        resp = await api_client.request(
-            api_method, f"/store/addons/{app_obj.slug}/{api_action}"
-        )
+        resp = await client.request(api_method, f"/{root}/{app_obj.slug}/{api_action}")
         assert resp.status == 400
         result = await resp.json()
-        assert result["error_key"] == "addon_not_supported_home_assistant_version_error"
+        expected_error_key = (
+            "app_not_supported_home_assistant_version_error"
+            if root.startswith("v2/")
+            else "addon_not_supported_home_assistant_version_error"
+        )
+        assert result["error_key"] == expected_error_key
         assert result["extra_fields"] == {
-            "addon": "Test Version Add-on",
+            "app": "Test Version Add-on",
             "slug": "test_version_addon",
             "version": "2023.1.1",
         }

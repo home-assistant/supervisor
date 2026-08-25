@@ -6,6 +6,7 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
+from ..const import FeatureFlag
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, JobNotFound
 from ..jobs import SupervisorJob, process_job_dict_for_legacy_compatibility
@@ -38,6 +39,10 @@ class APIJobs(CoreSysAttributes):
         the order they occurred within the parent. For the list as a whole, sort from newest
         to oldest as its likely any client is most interested in the newer ones.
         """
+        websocket_v2_api_enabled = self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        )
+
         # Initially sort oldest to newest so all child lists end up in correct order
         jobs_by_parent: dict[str | None, list[SupervisorJob]] = {}
         for job in sorted(self.sys_jobs.jobs):
@@ -67,7 +72,11 @@ class APIJobs(CoreSysAttributes):
             # We remove parent_id and instead use that info to represent jobs as a tree
             job_dict = current_job.as_dict() | {"child_jobs": child_jobs}
             job_dict.pop("parent_id")
-            current_list.append(process_job_dict_for_legacy_compatibility(job_dict))
+            current_list.append(
+                job_dict
+                if websocket_v2_api_enabled
+                else process_job_dict_for_legacy_compatibility(job_dict)
+            )
 
             if current_job.uuid in jobs_by_parent:
                 queue.extend(

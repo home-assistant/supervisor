@@ -11,6 +11,7 @@ from supervisor.exceptions import (
     StoreError,
     StoreGitCloneError,
     StoreGitError,
+    StoreGitRemoteURLUpdateError,
     StoreJobError,
     StoreNotFound,
 )
@@ -126,12 +127,18 @@ async def test_add_invalid_repository_file(
             set(current) | {"http://example.com"}, issue_on_error=True
         )
 
-        assert not await get_repository_by_url(
-            store_manager, "http://example.com"
-        ).validate()
+        repository = get_repository_by_url(store_manager, "http://example.com")
+        assert not await repository.validate()
 
     assert "http://example.com" in coresys.store.repository_urls
-    assert coresys.resolution.suggestions[-1].type == SuggestionType.EXECUTE_REMOVE
+    assert {
+        suggestion.type
+        for suggestion in coresys.resolution.suggestions
+        if suggestion.reference == repository.slug
+    } == {
+        SuggestionType.EXECUTE_RESET,
+        SuggestionType.EXECUTE_REMOVE,
+    }
 
 
 @pytest.mark.parametrize(
@@ -158,6 +165,23 @@ async def test_add_repository_with_git_error(
     assert coresys.resolution.suggestions[-1].type == suggestion_type
 
 
+async def test_add_repository_with_remote_url_update_error_on_startup(
+    coresys: CoreSys, store_manager: StoreManager
+):
+    """Test startup path ignores remote URL update errors."""
+    current = coresys.store.repository_urls
+    with patch(
+        "supervisor.store.git.GitRepo.load",
+        side_effect=StoreGitRemoteURLUpdateError(),
+    ):
+        await store_manager.update_repositories(
+            set(current) | {"http://example.com"}, issue_on_error=True
+        )
+
+    assert "http://example.com" in coresys.store.repository_urls
+    assert len(coresys.resolution.suggestions) == 0
+
+
 @pytest.mark.parametrize(
     ("use_update", "git_error"),
     [
@@ -165,6 +189,7 @@ async def test_add_repository_with_git_error(
         (True, StoreGitError()),
         (False, StoreGitCloneError()),
         (False, StoreGitError()),
+        (False, StoreGitRemoteURLUpdateError()),
     ],
 )
 async def test_error_on_repository_with_git_error(

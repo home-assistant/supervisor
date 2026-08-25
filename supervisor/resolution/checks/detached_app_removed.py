@@ -18,14 +18,14 @@ class CheckDetachedAppRemoved(CheckBase):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return "detached_addon_removed"
+        return "detached_app_removed"
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for app in self.sys_apps.installed:
             if app.is_detached and app.repository in self.sys_store.repositories:
                 self.sys_resolution.create_issue(
-                    IssueType.DETACHED_ADDON_REMOVED,
+                    IssueType.DETACHED_APP_REMOVED,
                     ContextType.ADDON,
                     reference=app.slug,
                     suggestions=[SuggestionType.EXECUTE_REMOVE],
@@ -42,7 +42,7 @@ class CheckDetachedAppRemoved(CheckBase):
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DETACHED_ADDON_REMOVED
+        return IssueType.DETACHED_APP_REMOVED
 
     @property
     def context(self) -> ContextType:

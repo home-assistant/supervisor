@@ -11,7 +11,11 @@ from aiohttp import hdrs, web
 from ..apps.app import App
 from ..const import SUPERVISOR_DOCKER_NAME, AppState, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIAppNotInstalled, HostNotSupportedError
+from ..exceptions import (
+    APIAppNotInstalled,
+    HostJournalGatewaydConnectionError,
+    HostNotSupportedError,
+)
 from ..utils.sentry import async_capture_exception
 from .apps import APIApps
 from .audio import APIAudio
@@ -258,7 +262,12 @@ class RestAPI(CoreSysAttributes):
                 web.post("/host/reload", api_host.reload),
                 web.post("/host/options", api_host.options),
                 web.get("/host/services", api_host.services),
-                web.get("/host/disks/default/usage", api_host.disk_usage),
+                web.get(
+                    "/host/disks/{disk}/usage",
+                    api_host.disk_usage_v1
+                    if app is self.versions[AppVersion.V1]
+                    else api_host.disk_usage,
+                ),
             ]
         )
 
@@ -436,13 +445,41 @@ class RestAPI(CoreSysAttributes):
         api_resolution = APIResolution()
         api_resolution.coresys = self.coresys
 
+        if app is self.versions[AppVersion.V1]:
+            app.add_routes(
+                [
+                    web.get("/resolution/info", api_resolution.info_v1),
+                    web.post(
+                        "/resolution/check/{check}/options",
+                        api_resolution.options_check_v1,
+                    ),
+                    web.post(
+                        "/resolution/check/{check}/run", api_resolution.run_check_v1
+                    ),
+                    web.get(
+                        "/resolution/issue/{issue}/suggestions",
+                        api_resolution.suggestions_for_issue_v1,
+                    ),
+                ]
+            )
+        else:
+            app.add_routes(
+                [
+                    web.get("/resolution/info", api_resolution.info),
+                    web.post(
+                        "/resolution/check/{check}/options",
+                        api_resolution.options_check,
+                    ),
+                    web.post("/resolution/check/{check}/run", api_resolution.run_check),
+                    web.get(
+                        "/resolution/issue/{issue}/suggestions",
+                        api_resolution.suggestions_for_issue,
+                    ),
+                ]
+            )
+
         app.add_routes(
             [
-                web.get("/resolution/info", api_resolution.info),
-                web.post(
-                    "/resolution/check/{check}/options", api_resolution.options_check
-                ),
-                web.post("/resolution/check/{check}/run", api_resolution.run_check),
                 web.post(
                     "/resolution/suggestion/{suggestion}",
                     api_resolution.apply_suggestion,
@@ -454,10 +491,6 @@ class RestAPI(CoreSysAttributes):
                 web.delete(
                     "/resolution/issue/{issue}",
                     api_resolution.dismiss_issue,
-                ),
-                web.get(
-                    "/resolution/issue/{issue}/suggestions",
-                    api_resolution.suggestions_for_issue,
                 ),
                 web.post("/resolution/healthcheck", api_resolution.healthcheck),
             ]
@@ -483,15 +516,26 @@ class RestAPI(CoreSysAttributes):
         api_supervisor = APISupervisor()
         api_supervisor.coresys = self.coresys
 
+        info_handler = (
+            api_supervisor.info_v1
+            if app is self.versions[AppVersion.V1]
+            else api_supervisor.info
+        )
+        options_handler = (
+            api_supervisor.options_v1
+            if app is self.versions[AppVersion.V1]
+            else api_supervisor.options
+        )
+
         app.add_routes(
             [
                 web.get("/supervisor/ping", api_supervisor.ping),
-                web.get("/supervisor/info", api_supervisor.info),
+                web.get("/supervisor/info", info_handler),
                 web.get("/supervisor/stats", api_supervisor.stats),
                 web.post("/supervisor/update", api_supervisor.update),
                 web.post("/supervisor/reload", api_supervisor.reload),
                 web.post("/supervisor/restart", api_supervisor.restart),
-                web.post("/supervisor/options", api_supervisor.options),
+                web.post("/supervisor/options", options_handler),
                 web.post("/supervisor/repair", api_supervisor.repair),
             ]
         )
@@ -504,12 +548,19 @@ class RestAPI(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-exception-caught
                 # Supervisor logs are critical, so catch everything, log the exception
                 # and try to return Docker container logs as the fallback
-                _LOGGER.exception(
-                    "Failed to get supervisor logs using advanced_logs API"
-                )
-                if not isinstance(err, HostNotSupportedError):
-                    # No need to capture HostNotSupportedError to Sentry, the cause
-                    # is known and reported to the user using the resolution center.
+                if isinstance(
+                    err, (HostNotSupportedError, HostJournalGatewaydConnectionError)
+                ):
+                    # No need for a traceback or capturing to Sentry, the cause
+                    # is known and already logged at the source (e.g. missing or
+                    # unreachable systemd-journal-gatewayd).
+                    _LOGGER.warning(
+                        "Failed to get supervisor logs using advanced_logs API"
+                    )
+                else:
+                    _LOGGER.exception(
+                        "Failed to get supervisor logs using advanced_logs API"
+                    )
                     await async_capture_exception(err)
                 kwargs.pop("follow", None)  # Follow is not supported for Docker logs
                 kwargs.pop("latest", None)  # Latest is not supported for Docker logs
@@ -631,7 +682,7 @@ class RestAPI(CoreSysAttributes):
                 """Route to store if info requested for not installed app."""
                 try:
                     addon: App = api_apps.get_app_for_request(request)
-                    return await api_apps.info_data(addon, request)
+                    return await api_apps.info_data_v1(addon, request)
                 except APIAppNotInstalled:
                     # Route to store/{app}/info but add missing fields
                     return dict(

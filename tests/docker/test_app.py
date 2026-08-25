@@ -5,9 +5,10 @@ from http import HTTPStatus
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
 import aiodocker
+from aiodocker.containers import DockerContainer
 import pytest
 
 from supervisor.apps import validate as vd
@@ -850,6 +851,48 @@ async def test_app_options_device_policy_check(
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_attach_migrates_legacy_container_name(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: MagicMock,
+):
+    """Test attach renames legacy addon_* container names to app_* once."""
+    legacy_container = container
+    legacy_container.rename = AsyncMock()
+
+    coresys.docker.containers.get.reset_mock()
+    coresys.docker.containers.get.side_effect = [
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"}),
+        legacy_container,
+    ]
+
+    await install_app_ssh.instance.attach(install_app_ssh.version)
+
+    assert coresys.docker.containers.get.call_args_list == [
+        call(install_app_ssh.instance.name),
+        call(f"addon_{install_app_ssh.slug}"),
+    ]
+    legacy_container.rename.assert_called_once_with(install_app_ssh.instance.name)
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_attach_reuses_prefetched_container(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: MagicMock,
+):
+    """Test attach only performs one get call when app_* container already exists."""
+    coresys.docker.containers.get.reset_mock()
+    coresys.docker.containers.get.return_value = container
+
+    await install_app_ssh.instance.attach(install_app_ssh.version)
+
+    assert coresys.docker.containers.get.call_args_list == [
+        call(install_app_ssh.instance.name)
+    ]
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_app_build_builder_cleanup_timeout(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
@@ -858,7 +901,7 @@ async def test_app_build_builder_cleanup_timeout(
 
     mock_build_env = MagicMock()
     mock_build_env.is_valid = AsyncMock()
-    coresys.docker.containers.get.return_value.delete.side_effect = TimeoutError()
+    coresys.docker.containers.list.side_effect = TimeoutError()
 
     with (
         patch(
@@ -870,6 +913,35 @@ async def test_app_build_builder_cleanup_timeout(
         ),
     ):
         await docker_app.install(docker_app.version, need_build=True)
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_build_cleans_up_builder_container(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+):
+    """Test _build also cleans up existing builder containers."""
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+
+    mock_build_env = MagicMock()
+    mock_build_env.is_valid = AsyncMock()
+    mock_build_env.get_docker_config_json.return_value = None
+    mock_build_env.get_docker_args.return_value = {}
+
+    builder_container = AsyncMock(spec=DockerContainer)
+    coresys.docker.containers.list.return_value = [builder_container]
+    coresys.docker.run_command = AsyncMock(return_value=MagicMock(exit_code=0, log=[]))
+
+    with patch(
+        "supervisor.docker.app.AppBuild.create",
+        AsyncMock(return_value=mock_build_env),
+    ):
+        await docker_app.install(docker_app.version, need_build=True)
+
+    coresys.docker.containers.list.assert_called_once_with(
+        all=True,
+        filters={"name": ["^(?:app|addon)_builder_test_addon$"]},
+    )
+    builder_container.delete.assert_called_once_with(force=True, v=True)
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")

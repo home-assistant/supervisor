@@ -1596,9 +1596,9 @@ async def test_pre_post_backup_command_error(
         "1. Please report this to the app developer. Enable debug "
         "logging to capture complete command output using ha supervisor options --logging debug"
     )
-    assert job.errors[0].error_key == "addon_pre_post_backup_command_returned_error"
+    assert job.errors[0].error_key == "app_pre_post_backup_command_returned_error"
     assert job.errors[0].extra_fields == {
-        "addon": "local_example",
+        "app": "local_example",
         "exit_code": 1,
         "debug_logging_command": "ha supervisor options --logging debug",
     }
@@ -1627,6 +1627,50 @@ async def test_restore_partial_with_addons_key(
     assert "apps" in call_kwargs
     assert call_kwargs["apps"] == ["local_ssh"]
     assert "addons" not in call_kwargs
+
+
+async def test_v1_partial_backup_accepts_homeassistant_folder(
+    api_client: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V1 partial backup accepts legacy 'homeassistant' folder value."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(
+        BackupManager, "do_backup_partial", return_value=mock_partial_backup
+    ) as mock_backup:
+        resp = await api_client.post(
+            "/backups/new/partial",
+            json={"folders": ["homeassistant"]},
+        )
+
+    assert resp.status == 200
+    mock_backup.assert_called_once()
+    _, call_kwargs = mock_backup.call_args
+    assert call_kwargs["folders"] == ["homeassistant"]
+
+
+async def test_v1_partial_restore_accepts_homeassistant_folder(
+    api_client: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V1 partial restore accepts legacy 'homeassistant' folder value."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(
+        BackupManager, "do_restore_partial", return_value=True
+    ) as mock_restore:
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"folders": ["homeassistant"]},
+        )
+
+    assert resp.status == 200
+    mock_restore.assert_called_once()
+    _, call_kwargs = mock_restore.call_args
+    assert call_kwargs["folders"] == ["homeassistant"]
 
 
 # ── V2 API tests ──────────────────────────────────────────────────────────────
@@ -1758,3 +1802,40 @@ async def test_v2_restore_partial_accepts_apps_key(
     assert "apps" in call_kwargs
     assert call_kwargs["apps"] == ["local_ssh"]
     assert "addons" not in call_kwargs
+
+
+async def test_v2_partial_backup_rejects_homeassistant_folder(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+):
+    """V2 partial backup rejects legacy 'homeassistant' folder value."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    resp = await api_client_v2.post(
+        "/v2/backups/new/partial",
+        json={"folders": ["homeassistant"]},
+    )
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert "homeassistant" in result["message"]
+
+
+async def test_v2_partial_restore_rejects_homeassistant_folder(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V2 partial restore rejects legacy 'homeassistant' folder value."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    resp = await api_client_v2.post(
+        f"/v2/backups/{mock_partial_backup.slug}/restore/partial",
+        json={"folders": ["homeassistant"]},
+    )
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert "homeassistant" in result["message"]

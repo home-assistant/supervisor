@@ -38,10 +38,14 @@ _V2_FRONTEND_PATHS: Final = (
 
 
 # Block Anytime
+# The boundary after "hassio" must match both the loopback proxy (hassio/...)
+# and the Core auth endpoints (hassio_auth, hassio_auth/password_reset).
+# Matching only "hassio/" would let an add-on reach /core/api/hassio_auth via
+# the proxy, which runs as the Supervisor user and can reset any user's password.
 BLACKLIST: Final = re.compile(
     r"^(?:/v2)?(?:"  # both implicit v1 and v2 paths
-    r"|/homeassistant/api/hassio/.*"
-    r"|/core/api/hassio/.*"
+    r"|/homeassistant/api/hassio(?:/|_).*"
+    r"|/core/api/hassio(?:/|_).*"
     r")$"
 )
 
@@ -294,7 +298,7 @@ class SecurityMiddleware(CoreSysAttributes):
         """Check if core is ready to response."""
         if self.sys_core.state not in VALID_API_STATES:
             return api_return_error(
-                message=f"System is not ready with state: {self.sys_core.state}"
+                message=f"System is not ready with state: {self.sys_core.state}",
             )
 
         return await handler(request)

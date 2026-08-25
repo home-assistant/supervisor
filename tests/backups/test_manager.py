@@ -980,7 +980,7 @@ async def test_backup_with_healthcheck(
 
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.STOPPED,
                 id="abc123",
                 time=1,
@@ -990,7 +990,7 @@ async def test_backup_with_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.RUNNING,
                 id="abc123",
                 time=1,
@@ -1000,7 +1000,7 @@ async def test_backup_with_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.HEALTHY,
                 id="abc123",
                 time=1,
@@ -1058,7 +1058,7 @@ async def test_restore_with_healthcheck(
 
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.STOPPED,
                 id="abc123",
                 time=1,
@@ -1068,7 +1068,7 @@ async def test_restore_with_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.RUNNING,
                 id="abc123",
                 time=1,
@@ -1078,7 +1078,7 @@ async def test_restore_with_healthcheck(
         state_changes.append(install_app_ssh.state)
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
+                name=f"app_{TEST_ADDON_SLUG}",
                 state=ContainerState.HEALTHY,
                 id="abc123",
                 time=1,
@@ -1484,7 +1484,7 @@ async def test_freeze_thaw(
                 action="freeze_all", reference=None, stage="home_assistant"
             ),
             _make_backup_message_for_assert(
-                action="freeze_all", reference=None, stage="addons"
+                action="freeze_all", reference=None, stage="apps"
             ),
             _make_backup_message_for_assert(
                 action="thaw_all", reference=None, stage=None
@@ -1492,7 +1492,7 @@ async def test_freeze_thaw(
             _make_backup_message_for_assert(
                 action="freeze_all",
                 reference=None,
-                stage="addons",
+                stage="apps",
                 done=True,
                 progress=100,
             ),
@@ -1519,12 +1519,12 @@ async def test_freeze_thaw(
                 action="thaw_all", reference=None, stage="home_assistant"
             ),
             _make_backup_message_for_assert(
-                action="thaw_all", reference=None, stage="addons"
+                action="thaw_all", reference=None, stage="apps"
             ),
             _make_backup_message_for_assert(
                 action="thaw_all",
                 reference=None,
-                stage="addons",
+                stage="apps",
                 done=True,
                 progress=100,
             ),
