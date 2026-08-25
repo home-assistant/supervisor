@@ -109,6 +109,7 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
     core_only=re.compile(
         r"^(?:"
         r"/addons/" + RE_SLUG + r"/sys_options"
+        r"|/os/ssh/authorized_keys"
         r")$"
     ),
     role_access={
@@ -190,6 +191,7 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
     core_only=re.compile(
         r"^/v2(?:"
         r"/apps/" + RE_SLUG + r"/sys_options"
+        r"|/os/ssh/authorized_keys"
         r")$"
     ),
     role_access={
