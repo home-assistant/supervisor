@@ -26,6 +26,8 @@ from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+HAOS_DOCKER_STORAGE_RESET_MIN_VERSION = AwesomeVersion("18.3.dev20260826")
+
 SCHEMA_DOCKER_REGISTRY = vol.Schema(
     {
         str: {
@@ -161,7 +163,7 @@ class APIDocker(CoreSysAttributes):
         if (
             not self.coresys.os.available
             or not self.coresys.os.version
-            or self.coresys.os.version < AwesomeVersion("18.3.dev0")
+            or self.coresys.os.version < HAOS_DOCKER_STORAGE_RESET_MIN_VERSION
         ):
             raise APINotFound(
                 "Home Assistant OS 18.3 or newer required for Docker storage reset"

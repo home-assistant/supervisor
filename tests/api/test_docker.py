@@ -173,7 +173,7 @@ async def test_api_migrate_docker_storage_driver_old_os(
     assert resp.status == 404
 
 
-@pytest.mark.parametrize("os_available", ["18.3.dev0"], indirect=True)
+@pytest.mark.parametrize("os_available", ["18.3.dev20260826"], indirect=True)
 async def test_api_docker_reset_storage(
     coresys: CoreSys,
     api_client_with_prefix: tuple[TestClient, str],
@@ -208,18 +208,18 @@ async def test_api_docker_reset_storage_not_os(
     assert resp.status == 404
 
 
-@pytest.mark.parametrize("os_available", ["18.2"], indirect=True)
+@pytest.mark.parametrize("os_available", ["18.3.dev20260825"], indirect=True)
 async def test_api_docker_reset_storage_old_os(
     api_client_with_prefix: tuple[TestClient, str],
     os_available,
 ):
-    """Test 404 is returned if OS is older than 18.3."""
+    """Test 404 is returned if OS is older than the first release with the reset."""
     api_client, prefix = api_client_with_prefix
     resp = await api_client.post(f"{prefix}/docker/reset-storage")
     assert resp.status == 404
 
 
-@pytest.mark.parametrize("os_available", ["18.3.dev0"], indirect=True)
+@pytest.mark.parametrize("os_available", ["18.3.dev20260826"], indirect=True)
 async def test_api_docker_reset_storage_schedule_failed(
     coresys: CoreSys,
     api_client_with_prefix: tuple[TestClient, str],
@@ -247,7 +247,7 @@ async def test_api_docker_reset_storage_schedule_failed(
     )
 
 
-@pytest.mark.parametrize("os_available", ["18.3.dev0"], indirect=True)
+@pytest.mark.parametrize("os_available", ["18.3.dev20260826"], indirect=True)
 async def test_api_docker_reset_storage_dbus_error(
     coresys: CoreSys,
     api_client_with_prefix: tuple[TestClient, str],
