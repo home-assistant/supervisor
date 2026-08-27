@@ -109,6 +109,7 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
     core_only=re.compile(
         r"^(?:"
         r"/addons/" + RE_SLUG + r"/sys_options"
+        r"|/os/ssh/authorized_keys"
         r")$"
     ),
     role_access={
@@ -150,7 +151,7 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
             r"|/multicast/.+"
             r"|/network/.+"
             r"|/observer/.+"
-            r"|/os/(?!datadisk/wipe).+"
+            r"|/os/(?!datadisk/wipe|ssh/authorized_keys).+"
             r"|/refresh_updates"
             r"|/resolution/.+"
             r"|/security/.+"
@@ -190,6 +191,7 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
     core_only=re.compile(
         r"^/v2(?:"
         r"/apps/" + RE_SLUG + r"/sys_options"
+        r"|/os/ssh/authorized_keys"
         r")$"
     ),
     role_access={
@@ -230,7 +232,7 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
             r"|/multicast/.+"
             r"|/network/.+"
             r"|/observer/.+"
-            r"|/os/(?!datadisk/wipe).+"
+            r"|/os/(?!datadisk/wipe|ssh/authorized_keys).+"
             r"|/reload_updates"
             r"|/resolution/.+"
             r"|/security/.+"
