@@ -8,7 +8,7 @@ import pytest
 
 from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import ResolutionFixupError
+from supervisor.exceptions import StoreError
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 from supervisor.resolution.fixups.store_execute_reload import FixupStoreExecuteReload
@@ -116,7 +116,7 @@ async def test_store_execute_reload_dismiss_suggestion_removes_listener(
     )
 
     with patch.object(
-        FixupStoreExecuteReload, "process_fixup", side_effect=ResolutionFixupError
+        FixupStoreExecuteReload, "process_fixup", side_effect=StoreError
     ) as mock_fixup:
         # Fire event with issue there to trigger fixup
         await fire_bus_event(coresys, BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, True)

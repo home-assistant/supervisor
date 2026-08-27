@@ -215,6 +215,9 @@ def _versioned_path(prefix: str, path: str) -> str:
         ("post", "/addons/abc123/restart", {"admin", "manager"}),
         ("post", "/addons/abc123/security", {"admin"}),
         ("post", "/os/datadisk/wipe", {"admin"}),
+        ("get", "/os/ssh/authorized_keys", set()),
+        ("post", "/os/ssh/authorized_keys", set()),
+        ("delete", "/os/ssh/authorized_keys", set()),
         ("post", "/addons/self/sys_options", set()),
         ("post", "/addons/abc123/sys_options", set()),
     ],
@@ -259,6 +262,13 @@ async def test_home_assistant_paths(
         headers={"Authorization": "Bearer abc123"},
     )
     assert resp.status == 200
+
+    for method in ("get", "post", "delete"):
+        resp = await getattr(client, method)(
+            _versioned_path(prefix, "/os/ssh/authorized_keys"),
+            headers={"Authorization": "Bearer abc123"},
+        )
+        assert resp.status == 200
 
 
 @pytest.mark.usefixtures("plugin_tokens")

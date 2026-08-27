@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import StartUnitMode
 from supervisor.exceptions import DBusError, DBusSystemdNoSuchUnit
@@ -67,12 +69,15 @@ async def test_fixup_restart_dbus_error_keeps_issue(coresys: CoreSys):
     coresys.resolution.add_suggestion(SUGGESTION)
     coresys.resolution.add_issue(ISSUE)
 
-    with patch.object(
-        coresys.dbus.systemd,
-        "restart_unit",
-        new_callable=AsyncMock,
-        side_effect=DBusError("boom"),
-    ) as restart_unit:
+    with (
+        patch.object(
+            coresys.dbus.systemd,
+            "restart_unit",
+            new_callable=AsyncMock,
+            side_effect=DBusError("boom"),
+        ) as restart_unit,
+        pytest.raises(DBusError),
+    ):
         await systemd_unit_execute_restart()
 
     restart_unit.assert_awaited_once_with("a.service", StartUnitMode.REPLACE)

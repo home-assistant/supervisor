@@ -4,7 +4,7 @@ import logging
 
 from ...coresys import CoreSys
 from ...dbus.const import StartUnitMode
-from ...exceptions import DBusError, DBusSystemdNoSuchUnit, ResolutionFixupError
+from ...exceptions import DBusError, DBusSystemdNoSuchUnit
 from ...resolution.const import ContextType, IssueType, SuggestionType
 from ...resolution.data import Suggestion
 from .base import FixupBase
@@ -34,7 +34,7 @@ class FixupSystemdUnitExecuteRestart(FixupBase):
             _LOGGER.warning("Systemd unit not found: %s", unit_name)
         except DBusError as err:
             _LOGGER.error("Failed to restart systemd unit %s: %s", unit_name, err)
-            raise ResolutionFixupError from err
+            raise
 
     @property
     def suggestion(self) -> SuggestionType:

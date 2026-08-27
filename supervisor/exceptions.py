@@ -1212,11 +1212,7 @@ class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
 
 
-class ResolutionFixupError(HassioError):
-    """Raise if a fixup fails."""
-
-
-class ResolutionFixupJobError(ResolutionFixupError, JobException):
+class ResolutionFixupJobError(ResolutionError, JobException):
     """Raise on job error."""
 
 

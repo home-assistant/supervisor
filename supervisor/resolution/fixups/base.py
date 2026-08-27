@@ -5,7 +5,6 @@ import logging
 
 from ...const import BusEvent
 from ...coresys import CoreSys, CoreSysAttributes
-from ...exceptions import ResolutionFixupError
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Issue, Suggestion
 
@@ -29,12 +28,13 @@ class FixupBase(ABC, CoreSysAttributes):
         if fixing_suggestion is None:
             return
 
-        # Process fixup
+        # Process fixup. A failure propagates to the caller with its
+        # original, well-defined error: the autofix loop logs and continues
+        # with the next fixup, while a user-applied suggestion surfaces the
+        # failure as an API error so the repair is not reported as
+        # successful (the issue and suggestion stay around).
         _LOGGER.debug("Run fixup for %s/%s", self.suggestion, self.context)
-        try:
-            await self.process_fixup(fixing_suggestion)
-        except ResolutionFixupError:
-            return
+        await self.process_fixup(fixing_suggestion)
 
         # Cleanup issue
         for issue in self.sys_resolution.issues_for_suggestion(fixing_suggestion):

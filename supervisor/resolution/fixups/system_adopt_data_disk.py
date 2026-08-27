@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ...coresys import CoreSys
 from ...dbus.udisks2.data import DeviceSpecification
-from ...exceptions import DBusError, HostError, ResolutionFixupError
+from ...exceptions import DBusError, HassOSDataDiskError, HostError
 from ...os.const import FILESYSTEM_LABEL_DATA_DISK, FILESYSTEM_LABEL_OLD_DATA_DISK
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
@@ -48,7 +48,7 @@ class FixupSystemAdoptDataDisk(FixupBase):
             )
             or not current_resolved[0].filesystem
         ):
-            raise ResolutionFixupError(
+            raise HassOSDataDiskError(
                 "Cannot resolve current data disk for rename", _LOGGER.error
             )
 
@@ -61,7 +61,7 @@ class FixupSystemAdoptDataDisk(FixupBase):
             try:
                 await new_resolved[0].filesystem.set_label(FILESYSTEM_LABEL_DATA_DISK)
             except DBusError as err:
-                raise ResolutionFixupError(
+                raise HassOSDataDiskError(
                     f"Could not rename filesystem at {suggestion.reference}: {err!s}",
                     _LOGGER.error,
                 ) from err
@@ -77,7 +77,7 @@ class FixupSystemAdoptDataDisk(FixupBase):
                 FILESYSTEM_LABEL_OLD_DATA_DISK
             )
         except DBusError as err:
-            raise ResolutionFixupError(
+            raise HassOSDataDiskError(
                 f"Could not rename filesystem at {current.as_posix()}: {err!s}",
                 _LOGGER.error,
             ) from err

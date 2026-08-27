@@ -3,7 +3,7 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import ResolutionFixupError, StoreError, StoreNotFound
+from ...exceptions import StoreNotFound
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Suggestion
 from .base import FixupBase
@@ -32,10 +32,7 @@ class FixupStoreExecuteRemove(FixupBase):
             return
 
         # Remove repository
-        try:
-            await self.sys_store.remove_repository(repository)
-        except StoreError:
-            raise ResolutionFixupError from None
+        await self.sys_store.remove_repository(repository)
 
     @property
     def suggestion(self) -> SuggestionType:

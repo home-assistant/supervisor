@@ -4,12 +4,7 @@ import logging
 
 from ...const import BusEvent
 from ...coresys import CoreSys
-from ...exceptions import (
-    ResolutionFixupError,
-    ResolutionFixupJobError,
-    StoreError,
-    StoreNotFound,
-)
+from ...exceptions import ResolutionFixupJobError, StoreNotFound
 from ...jobs.const import JobCondition
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
@@ -45,11 +40,8 @@ class FixupStoreExecuteReload(FixupBase):
             return
 
         # Load data again
-        try:
-            await repository.load()
-            await self.sys_store.reload(repository)
-        except StoreError:
-            raise ResolutionFixupError from None
+        await repository.load()
+        await self.sys_store.reload(repository)
 
     @property
     def suggestion(self) -> SuggestionType:
