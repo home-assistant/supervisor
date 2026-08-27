@@ -255,18 +255,21 @@ class Mount(CoreSysAttributes, ABC):
         Transient units don't persist across host reboots, so on a fresh
         host start both units are missing and we create the `.automount`
         + `.mount` pair. On a Supervisor-only restart the pair may still
-        exist and is adopted. If no `.automount` exists, any unit found
-        at the target path (or at the legacy data-mount location) is a
-        leftover from the eager-mount design — a warm upgrade — and is
-        torn down before the pair is set up fresh.
+        exist and is adopted.
         """
         unit = await self._update_unit()
         automount_state = await self._automount_state()
 
         if automount_state is None:
-            await self._teardown_legacy_units()
+            # A unit at the automount's path without a trigger is a
+            # leftover from the eager-mount design (Supervisor restart
+            # without a host reboot). It has to go before arming: the unit
+            # name collides, and mount() would misread the mounted share's
+            # contents as blocking local data
+            if unit:
+                await self._stop_legacy_unit(self.unit_name, strict=True)
             await self.mount()
-            await self._cleanup_legacy_data_unit()
+            await self._cleanup_legacy_data_mount()
             return
 
         if automount_state != UnitActiveState.ACTIVE:
@@ -309,72 +312,61 @@ class Mount(CoreSysAttributes, ABC):
             await async_capture_exception(err)
             raise MountError(f"Could not get automount unit due to: {err!s}") from err
 
-    async def _teardown_legacy_units(self) -> None:
-        """Remove the path-conflicting unit left over from the eager-mount design.
+    async def _stop_legacy_unit(self, unit_name: str, *, strict: bool) -> None:
+        """Stop a mount unit left over from the eager-mount design.
 
-        Before the automount design, network mounts were eagerly mounted
-        at the mounts data directory, and media/share usage added a bind
-        mount at the media/share path — under the same unit name the
-        network `.mount` uses now. On a warm upgrade (Supervisor restart
-        without a host reboot) those transient units are still alive.
-
-        Only the unit occupying the automount's path (the bind for
-        media/share usage, the eager mount itself for backup usage) is
-        stopped here, strictly: a failed stop leaves the path covered,
-        which is safe and retryable. The legacy eager mount at the mounts
-        data directory conflicts with nothing and is cleaned up after the
-        automount is armed (see _cleanup_legacy_data_unit) — a strict stop
-        of it before arming could time out against an unreachable server
-        while systemd has already unmounted the bind as its dependent,
-        leaving the path a plain writable directory.
+        Strict for the unit occupying the automount's path: a failed stop
+        leaves the path covered, which is safe and retryable, while arming
+        over a still mounted share would misread its contents as local
+        data. Best effort for the mount at the mounts data directory: it
+        conflicts with neither the path nor the unit names, and its
+        unmount can time out against an unreachable server (legacy units
+        have no LazyUnmount).
         """
-        try:
-            await self.sys_dbus.systemd.get_unit(self.unit_name)
-        except DBusSystemdNoSuchUnit:
-            return
-        except DBusError as err:
-            await async_capture_exception(err)
-            raise MountError(
-                f"Could not check legacy unit {self.unit_name} due to: {err!s}"
-            ) from err
-
-        _LOGGER.info(
-            "Removing legacy mount unit %s for mount %s", self.unit_name, self.name
-        )
         try:
             result = await self._run_systemd_job(
                 "stop_unit",
-                self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL),
+                self.sys_dbus.systemd.stop_unit(unit_name, StopUnitMode.FAIL),
             )
         except DBusSystemdNoSuchUnit:
             return
         except DBusError as err:
-            raise MountError(
-                f"Could not stop legacy unit {self.unit_name} for {self.name} "
-                f"due to: {err!s}",
-                _LOGGER.error,
-            ) from err
-        # A failed or timed-out stop leaves the legacy mount attached;
-        # arming over it would misclassify remote data as local
-        if result != "done":
-            raise MountError(
-                f"Could not stop legacy unit {self.unit_name} for {self.name} "
-                f"(systemd result: {result})",
-                _LOGGER.error,
+            if strict:
+                raise MountError(
+                    f"Could not stop legacy unit {unit_name} for {self.name} "
+                    f"due to: {err!s}",
+                    _LOGGER.error,
+                ) from err
+            _LOGGER.warning(
+                "Could not stop legacy unit %s for %s: %s", unit_name, self.name, err
             )
+            return
+
+        if result != "done":
+            if strict:
+                raise MountError(
+                    f"Could not stop legacy unit {unit_name} for {self.name} "
+                    f"(systemd result: {result})",
+                    _LOGGER.error,
+                )
+            _LOGGER.warning(
+                "Could not stop legacy unit %s for %s (systemd result: %s)",
+                unit_name,
+                self.name,
+                result,
+            )
+            return
+
+        _LOGGER.info("Removed legacy mount unit %s for mount %s", unit_name, self.name)
         with suppress(DBusError):
-            await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
+            await self.sys_dbus.systemd.reset_failed_unit(unit_name)
 
-    async def _cleanup_legacy_data_unit(self) -> None:
-        """Best-effort stop of the eager-mount-era data mount unit.
+    async def _cleanup_legacy_data_mount(self) -> None:
+        """Unmount the eager-mount-era share at the mounts data directory.
 
-        Runs after the automount is armed at the target path. The legacy
-        eager mount at the mounts data directory conflicts with neither
-        the automount's path nor its unit names, so a failed stop (e.g. a
-        timed-out unmount against an unreachable server — legacy units
-        have no LazyUnmount) must not fail the mount setup. The orphaned
-        mount is retried on the next Supervisor restart or cleared by a
-        host reboot.
+        Runs after the automount is armed, so a failure here cannot leave
+        the container-facing path unprotected. An orphaned mount is
+        retried on the next Supervisor restart and cleared by a reboot.
         """
         legacy_data_unit = _unit_name_from_path(
             self.sys_config.path_extern_mounts / self.name
@@ -382,6 +374,9 @@ class Mount(CoreSysAttributes, ABC):
         if legacy_data_unit == self.unit_name:
             return
 
+        # Ask systemd rather than stat'ing the path: with the server gone
+        # the stat blocks until the mount's soft timeout, and its error
+        # would fail a load that armed the trigger just fine
         try:
             await self.sys_dbus.systemd.get_unit(legacy_data_unit)
         except DBusSystemdNoSuchUnit:
@@ -395,36 +390,7 @@ class Mount(CoreSysAttributes, ABC):
             )
             return
 
-        _LOGGER.info(
-            "Removing legacy data mount unit %s for mount %s",
-            legacy_data_unit,
-            self.name,
-        )
-        try:
-            result = await self._run_systemd_job(
-                "stop_unit",
-                self.sys_dbus.systemd.stop_unit(legacy_data_unit, StopUnitMode.FAIL),
-            )
-        except DBusSystemdNoSuchUnit:
-            return
-        except DBusError as err:
-            _LOGGER.warning(
-                "Could not stop legacy unit %s for %s: %s",
-                legacy_data_unit,
-                self.name,
-                err,
-            )
-            return
-        if result != "done":
-            _LOGGER.warning(
-                "Could not stop legacy unit %s for %s (systemd result: %s)",
-                legacy_data_unit,
-                self.name,
-                result,
-            )
-            return
-        with suppress(DBusError):
-            await self.sys_dbus.systemd.reset_failed_unit(legacy_data_unit)
+        await self._stop_legacy_unit(legacy_data_unit, strict=False)
 
     async def repair_trigger(self) -> None:
         """Ensure the automount trigger is armed, re-creating units if needed.

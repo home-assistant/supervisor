@@ -94,15 +94,17 @@ async def test_load(
     assert not media_test.local_where.exists()
     assert not any(coresys.config.path_media.iterdir())
 
+    # Per mount: the .mount and .automount lookups on load (neither
+    # exists on a fresh host) and the post-mount refresh, plus the
+    # legacy data unit check for the media mount (for a backup mount
+    # that is the same unit name, so it is skipped).
     systemd_service.response_get_unit = {
         "mnt-data-supervisor-mounts-backup_test.mount": [
-            ERROR_NO_UNIT,
             ERROR_NO_UNIT,
             "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ],
         "mnt-data-supervisor-mounts-backup_test.automount": [ERROR_NO_UNIT],
         "mnt-data-supervisor-media-media_test.mount": [
-            ERROR_NO_UNIT,
             ERROR_NO_UNIT,
             "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ],
@@ -168,7 +170,6 @@ async def test_load_share_mount(
 
     systemd_service.response_get_unit = {
         "mnt-data-supervisor-share-share_test.mount": [
-            ERROR_NO_UNIT,
             ERROR_NO_UNIT,
             "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ],
@@ -383,13 +384,12 @@ async def test_update_mount(
     assert mount.state == UnitActiveState.ACTIVE
     assert mount_new.state is None
 
-    # remove_mount finds the existing unit, unmount() runs, then
-    # mount_new.load() finds neither unit nor automount nor legacy
-    # leftovers and creates a fresh transient .automount + .mount pair.
-    # The legacy data unit check runs after the post-mount refresh.
+    # remove_mount finds the existing unit and unmounts it, then
+    # mount_new.load() finds neither unit nor automount, creates a fresh
+    # transient pair, refreshes the .mount and checks the legacy data
+    # unit, which is not loaded.
     systemd_service.response_get_unit = [
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
-        ERROR_NO_UNIT,
         ERROR_NO_UNIT,
         ERROR_NO_UNIT,
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
@@ -433,9 +433,11 @@ async def test_load_migrates_legacy_layout(
     mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
     coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
 
+    # .mount lookups: the legacy bind unit found on load, then the
+    # post-mount refresh. No trigger exists yet at the automount name,
+    # and the eager-mount-era data unit is still loaded.
     systemd_service.response_get_unit = {
         "mnt-data-supervisor-media-media_test.mount": [
-            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
             "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
             "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ],
@@ -482,9 +484,11 @@ async def test_load_migrates_legacy_layout_dead_data_mount(
     mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
     coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
 
+    # .mount lookups: the legacy bind unit found on load, then the
+    # post-mount refresh. No trigger exists yet at the automount name,
+    # and the eager-mount-era data unit is still loaded.
     systemd_service.response_get_unit = {
         "mnt-data-supervisor-media-media_test.mount": [
-            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
             "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
             "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ],
@@ -510,6 +514,46 @@ async def test_load_migrates_legacy_layout_dead_data_mount(
         "Could not stop legacy unit mnt-data-supervisor-mounts-media_test.mount"
         in caplog.text
     )
+
+
+async def test_load_fresh_host_boot_skips_legacy_teardown(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test load only arms the trigger when there are no eager-mount leftovers.
+
+    On a normal host boot no unit occupies the automount's path and no
+    eager-mount-era data unit is loaded, so load must issue no stop at
+    all — neither for the unit name nor for the legacy data mount.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
+    coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
+
+    # .mount and .automount lookups on load, then the post-mount refresh.
+    # Nothing is loaded at the eager-mount-era data unit either.
+    systemd_service.response_get_unit = {
+        "mnt-data-supervisor-media-media_test.mount": [
+            ERROR_NO_UNIT,
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ],
+        "mnt-data-supervisor-media-media_test.automount": [ERROR_NO_UNIT],
+        "mnt-data-supervisor-mounts-media_test.mount": [ERROR_NO_UNIT],
+    }
+    await coresys.mounts.load()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert systemd_service.StopUnit.calls == []
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-media-media_test.automount",
+    ]
 
 
 async def test_reload_mount_rearms_missing_trigger(

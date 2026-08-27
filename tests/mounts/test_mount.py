@@ -304,9 +304,8 @@ async def test_load(
     }
 
     # Load mounts it if the unit does not exist. Sequence: .mount lookup,
-    # .automount lookup, legacy-unit check, then the post-mount refresh.
+    # .automount lookup, then the post-mount refresh.
     systemd_service.response_get_unit = [
-        ERROR_NO_UNIT,
         ERROR_NO_UNIT,
         ERROR_NO_UNIT,
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",

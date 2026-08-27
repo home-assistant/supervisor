@@ -552,8 +552,7 @@ async def test_backup_media_with_mounts_retains_files(
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_unit_service.active_state = "active"
     systemd_service.response_get_unit = [
-        # create_mount: no .mount, no .automount, no legacy path unit
-        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        # create_mount: no .mount, no .automount
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         # create_mount: post-arm state refresh resolves the new .mount
@@ -636,8 +635,7 @@ async def test_folder_restore_repairs_trigger_on_unmount_failure(
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_unit_service.active_state = "active"
     systemd_service.response_get_unit = [
-        # create_mount: no .mount, no .automount, no legacy path unit
-        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        # create_mount: no .mount, no .automount
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         # create_mount: post-arm state refresh resolves the new .mount
