@@ -696,9 +696,9 @@ class DockerInterface(JobGroup, ABC):
         """Create a temporary container and run command."""
         raise NotImplementedError
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Read and return stats from container."""
-        stats = await self.sys_docker.container_stats(self.name)
+        stats = await self.sys_docker.container_stats(self.name, one_shot=one_shot)
         return DockerStats(stats)
 
     async def is_failed(self) -> bool:

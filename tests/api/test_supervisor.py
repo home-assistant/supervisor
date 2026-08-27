@@ -598,9 +598,8 @@ async def test_supervisor_api_stats_failure(
         == "An unknown error occurred with Supervisor. Check Supervisor logs for details"
     )
     assert body["error_key"] == "supervisor_unknown_error"
-    assert "extra_fields" not in body
     assert (
-        "Could not inspect container 'hassio_supervisor': [500] {'message': 'fail'}"
+        "Could not inspect container 'hassio_supervisor' for stats: [500] {'message': 'fail'}"
         in caplog.text
     )
 

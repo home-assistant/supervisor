@@ -21,9 +21,13 @@ from supervisor.docker.const import (
 )
 from supervisor.docker.manager import CommandReturn, DockerAPI, PullLogEntry
 from supervisor.exceptions import (
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerError,
     DockerNoSpaceOnDevice,
     DockerRegistryRateLimitExceeded,
+    DockerStatsTimeoutError,
+    DockerStatsUnknownError,
     DockerTimeoutError,
 )
 
@@ -833,10 +837,115 @@ async def test_container_logs_get_timeout(docker: DockerAPI):
 
 
 async def test_container_stats_get_timeout(docker: DockerAPI):
-    """Test container_stats raises DockerTimeoutError when containers.get times out."""
+    """Test container_stats raises DockerStatsTimeoutError when containers.get times out."""
     docker.containers.get.side_effect = TimeoutError()
-    with pytest.raises(DockerTimeoutError, match="Timeout inspecting container"):
+    with pytest.raises(
+        DockerStatsTimeoutError, match="Timed out getting stats for container"
+    ):
         await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_not_found(docker: DockerAPI):
+    """Test container_stats raises DockerContainerNotFoundError when container doesn't exist."""
+    docker.containers.get.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "not found"}
+    )
+    with pytest.raises(DockerContainerNotFoundError, match="not found"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_inspect_unknown_error(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerStatsUnknownError on unexpected inspect error."""
+    container.show.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "boom"}
+    )
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_not_running(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerContainerNotRunningError when stopped."""
+    container.show.return_value["State"]["Status"] = "stopped"
+    with pytest.raises(DockerContainerNotRunningError, match="is not running"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_timeout(docker: DockerAPI, container: DockerContainer):
+    """Test container_stats raises DockerStatsTimeoutError when the stats call times out."""
+    container.show.return_value["State"]["Status"] = "running"
+    container.stats.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerStatsTimeoutError, match="Timed out getting stats for container"
+    ):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_unknown_error(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerStatsUnknownError on unexpected stats error."""
+    container.show.return_value["State"]["Status"] = "running"
+    container.stats.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "boom"}
+    )
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_one_shot(docker: DockerAPI, container: DockerContainer):
+    """Test container_stats requests an immediate, un-windowed sample without inspecting the container."""
+    stats_payload = {"cpu_stats": {"cpu_usage": {"total_usage": 123}}}
+    response = AsyncMock()
+    response.json = AsyncMock(return_value=stats_payload)
+    query_cm = MagicMock()
+    query_cm.__aenter__ = AsyncMock(return_value=response)
+    query_cm.__aexit__ = AsyncMock(return_value=False)
+    docker.docker._query = MagicMock(return_value=query_cm)
+    docker.containers.get.reset_mock()
+    container.show.reset_mock()
+
+    result = await docker.container_stats("mycontainer", one_shot=True)
+
+    assert result == stats_payload
+    docker.docker._query.assert_called_once_with(
+        "containers/mycontainer/stats", params={"stream": "0", "one-shot": "1"}
+    )
+    docker.containers.get.assert_not_called()
+    container.show.assert_not_called()
+    container.stats.assert_not_called()
+
+
+async def test_container_stats_one_shot_timeout(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsTimeoutError on timeout."""
+    docker.docker._query = MagicMock(side_effect=TimeoutError())
+    with pytest.raises(
+        DockerStatsTimeoutError, match="Timed out getting stats for container"
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_not_found(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerContainerNotFoundError when container doesn't exist."""
+    docker.docker._query = MagicMock(
+        side_effect=aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "gone"})
+    )
+    with pytest.raises(DockerContainerNotFoundError, match="not found"):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_unknown_error(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsUnknownError on unexpected error."""
+    docker.docker._query = MagicMock(
+        side_effect=aiodocker.DockerError(
+            HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "boom"}
+        )
+    )
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer", one_shot=True)
 
 
 async def test_container_run_inside_get_timeout(docker: DockerAPI):

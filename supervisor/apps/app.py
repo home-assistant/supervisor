@@ -75,15 +75,19 @@ from ..exceptions import (
     AppPrePostBackupCommandReturnedError,
     AppsError,
     AppsJobError,
+    AppStatsTimeoutError,
     AppUnknownError,
     BackupInvalidError,
     BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerContainerPortConflict,
     DockerError,
     DockerNotFound,
     DockerRegistryAuthError,
+    DockerStatsTimeoutError,
     HostAppArmorError,
     StoreAppNotFoundError,
 )
@@ -1378,13 +1382,14 @@ class App(AppModel):
         """
         return self.instance.is_running()
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of container."""
         try:
-            if not await self.is_running():
-                raise AppNotRunningError(_LOGGER.warning, app=self.slug)
-
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise AppNotRunningError(_LOGGER.warning, app=self.slug) from err
+        except DockerStatsTimeoutError as err:
+            raise AppStatsTimeoutError(_LOGGER.error, app=self.slug) from err
         except DockerError as err:
             _LOGGER.error(
                 "Could not get stats of container for app %s: %s", self.slug, err

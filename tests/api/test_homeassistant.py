@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
@@ -55,9 +55,42 @@ async def test_api_stats(
     assert resp.status == 200
     result = await resp.json()
     assert result["data"]["cpu_percent"] == 90.0
+    assert result["data"]["cpu_usage"] == 190
+    assert result["data"]["cpu_system_usage"] == 200
+    assert result["data"]["online_cpus"] == 24
     assert result["data"]["memory_usage"] == 59700000
     assert result["data"]["memory_limit"] == 4000000000
     assert result["data"]["memory_percent"] == 1.49
+
+
+async def test_api_stats_one_shot(
+    core_api_client_with_root: tuple[TestClient, str],
+    container: DockerContainer,
+    coresys: CoreSys,
+):
+    """Test stats one-shot mode skips the calculated window."""
+    api_client, root = core_api_client_with_root
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+
+    stats_fixture = load_json_fixture("container_stats.json")
+    del stats_fixture["precpu_stats"]
+    query_response = AsyncMock()
+    query_response.json = AsyncMock(return_value=stats_fixture)
+    query_cm = MagicMock()
+    query_cm.__aenter__ = AsyncMock(return_value=query_response)
+    query_cm.__aexit__ = AsyncMock(return_value=False)
+    coresys.docker.docker._query = MagicMock(return_value=query_cm)
+
+    resp = await api_client.get(f"{root}/stats?one_shot")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["cpu_percent"] is None
+    assert result["data"]["cpu_usage"] == 190
+    assert result["data"]["cpu_system_usage"] == 200
+    assert result["data"]["online_cpus"] == 24
+    container.stats.assert_not_called()
 
 
 async def test_api_set_options(core_api_client_with_root: tuple[TestClient, str]):

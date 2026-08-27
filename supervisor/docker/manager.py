@@ -38,11 +38,15 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     DockerAPIError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerContainerPortConflict,
     DockerError,
     DockerNoSpaceOnDevice,
     DockerNotFound,
     DockerRegistryRateLimitExceeded,
+    DockerStatsTimeoutError,
+    DockerStatsUnknownError,
     DockerTimeoutError,
 )
 from ..utils.common import FileConfiguration
@@ -1003,38 +1007,71 @@ class DockerAPI(CoreSysAttributes):
                 f"Can't grep logs from {name}: {err}", _LOGGER.warning
             ) from err
 
-    async def container_stats(self, name: str) -> dict[str, Any]:
-        """Read and return stats from container."""
+    async def container_stats(
+        self, name: str, *, one_shot: bool = False
+    ) -> dict[str, Any]:
+        """Read and return stats from container.
+
+        By default this waits ~1s for Docker to gather two samples so it can
+        return a windowed CPU percentage, which requires the container to be
+        running. When ``one_shot`` is True, Docker is asked directly for a
+        single, immediate sample of the container's lifetime totals instead
+        (no wait, no comparison window, and it doesn't matter whether the
+        container is currently running).
+        """
+        if one_shot:
+            try:
+                # aiodocker has no native support for the "one-shot" query
+                # parameter added in Docker API 1.41, so the request is made
+                # directly against the same endpoint it uses internally.
+                async with self.docker._query(  # pylint: disable=protected-access
+                    f"containers/{name}/stats",
+                    params={"stream": "0", "one-shot": "1"},
+                ) as response:
+                    stats = await response.json(content_type=None)
+            except TimeoutError as err:
+                raise DockerStatsTimeoutError(_LOGGER.error, name=name) from err
+            except aiodocker.DockerError as err:
+                if err.status == HTTPStatus.NOT_FOUND:
+                    raise DockerContainerNotFoundError(
+                        _LOGGER.warning, name=name
+                    ) from None
+                _LOGGER.error("Can't read stats from %s: %s", name, err)
+                raise DockerStatsUnknownError(name=name) from err
+
+            if not stats:
+                _LOGGER.error("Docker returned no stats for %s", name)
+                raise DockerStatsUnknownError(name=name)
+            return stats
+
         try:
             docker_container = await self.containers.get(name)
             container_metadata = await docker_container.show()
         except TimeoutError as err:
-            raise DockerTimeoutError(
-                f"Timeout inspecting container '{name}'", _LOGGER.error
-            ) from err
+            raise DockerStatsTimeoutError(_LOGGER.error, name=name) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
-                raise DockerNotFound(
-                    f"Container {name} not found for stats", _LOGGER.warning
-                ) from None
-            raise DockerError(
-                f"Could not inspect container '{name}': {err!s}", _LOGGER.error
-            ) from err
+                raise DockerContainerNotFoundError(_LOGGER.warning, name=name) from None
+            _LOGGER.error("Could not inspect container '%s' for stats: %s", name, err)
+            raise DockerStatsUnknownError(name=name) from err
 
         # container is not running
         if container_metadata["State"]["Status"] != "running":
-            raise DockerError(f"Container {name} is not running", _LOGGER.error)
+            raise DockerContainerNotRunningError(_LOGGER.error, name=name)
 
         try:
-            stats = await docker_container.stats(stream=False)
+            stats_list = await docker_container.stats(stream=False)
+        except TimeoutError as err:
+            raise DockerStatsTimeoutError(_LOGGER.error, name=name) from err
         except aiodocker.DockerError as err:
-            raise DockerError(
-                f"Can't read stats from {name}: {err}", _LOGGER.error
-            ) from err
+            _LOGGER.error("Can't read stats from %s: %s", name, err)
+            raise DockerStatsUnknownError(name=name) from err
 
+        stats = stats_list[-1] if stats_list else None
         if not stats:
-            raise DockerError(f"Could not get stats for {name}", _LOGGER.error)
-        return stats[-1]
+            _LOGGER.error("Docker returned no stats for %s", name)
+            raise DockerStatsUnknownError(name=name)
+        return stats
 
     async def container_run_inside(self, name: str, command: str) -> ExecReturn:
         """Execute a command inside Docker container."""
