@@ -580,7 +580,10 @@ async def test_mount_arming_failure(
 
 
 async def test_unmount_failure(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], path_extern
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
 ):
     """Test failure to unmount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -608,19 +611,27 @@ async def test_unmount_failure(
         ("mnt-data-supervisor-mounts-test.automount", "fail")
     ]
 
-    # With the .automount stopped, a failure stopping the .mount itself
-    # raises as well.
+    # With the .automount stopped the path is detached, so a failure
+    # stopping the .mount raises but arms a fresh pair first — otherwise
+    # the path stays a plain writable directory.
     systemd_service.StopUnit.calls.clear()
+    systemd_service.StartTransientUnit.calls.clear()
     systemd_service.response_stop_unit = [
         "/org/freedesktop/systemd1/job/7623",
         ERROR_FAILURE,
     ]
-    with pytest.raises(MountError):
+    with (
+        patch("supervisor.mounts.mount._probe_network_mount", return_value=True),
+        pytest.raises(MountError),
+    ):
         await mount.unmount()
 
     assert systemd_service.StopUnit.calls == [
         ("mnt-data-supervisor-mounts-test.automount", "fail"),
         ("mnt-data-supervisor-mounts-test.mount", "fail"),
+    ]
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-mounts-test.automount"
     ]
 
     # If the .mount unit is missing only the .automount stop is attempted —

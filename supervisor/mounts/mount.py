@@ -616,9 +616,10 @@ class Mount(CoreSysAttributes, ABC):
         # Stop the .automount first: it disarms the trigger so nothing can
         # re-mount during cleanup, and it lazily detaches the whole stack
         # at the path (systemd's unmount_autofs() uses MNT_DETACH), so the
-        # stop cannot block on an unreachable server. A failure other than
-        # "no such unit" must not pass silently — it would leave an armed
-        # trigger behind at the path of a supposedly removed mount.
+        # stop cannot block on an unreachable server. Stopping an automount
+        # is synchronous and cannot fail on its own — an error here means
+        # systemd could not be reached, which must not pass silently: it
+        # would leave an armed trigger at the path of a removed mount.
         try:
             result = await self._run_systemd_job(
                 "stop_unit",
@@ -661,6 +662,7 @@ class Mount(CoreSysAttributes, ABC):
                     # it as done is how a stale mount once survived a
                     # "successful" cleanup (see #6938).
                     if result != "done":
+                        await self._rearm_after_failed_unmount()
                         raise MountError(
                             f"Could not unmount {self.name} (systemd result: {result})",
                             _LOGGER.error,
@@ -669,6 +671,7 @@ class Mount(CoreSysAttributes, ABC):
                 # Unit went away with the automount detach — fine.
                 pass
             except DBusError as err:
+                await self._rearm_after_failed_unmount()
                 raise MountError(
                     f"Could not unmount {self.name} due to: {err!s}", _LOGGER.error
                 ) from err
@@ -681,6 +684,28 @@ class Mount(CoreSysAttributes, ABC):
 
         self._unit = None
         self._state = None
+
+    async def _rearm_after_failed_unmount(self) -> None:
+        """Cover the path again after the .mount could not be stopped.
+
+        The automount stop already detached the whole stack, so a failing
+        .mount stop leaves a plain writable directory behind. One attempt
+        to arm a fresh pair, best effort — if that fails too the local
+        data repair picks up whatever lands there.
+        """
+        for unit_name in (self.automount_unit_name, self.unit_name):
+            with suppress(DBusError):
+                await self.sys_dbus.systemd.reset_failed_unit(unit_name)
+
+        try:
+            await self.mount()
+        except (MountError, OSError) as err:
+            _LOGGER.warning(
+                "Could not re-arm automount for %s after a failed unmount, "
+                "its path is a local directory until the next reload: %s",
+                self.name,
+                err,
+            )
 
     async def discard_session(self) -> None:
         """Stop the .mount unit while keeping the automount trigger armed.
