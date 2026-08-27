@@ -1074,6 +1074,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/docker/registries", api_docker.registries),
                 web.post("/docker/registries", api_docker.create_registry),
                 web.delete("/docker/registries/{hostname}", api_docker.remove_registry),
+                web.post("/docker/reset-storage", api_docker.reset_storage),
             ]
         )
 

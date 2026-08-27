@@ -22,6 +22,7 @@ class System(DBusServiceMock):
     interface = "io.hass.os.System"
     response_schedule_wipe_device: bool | DBusError = True
     response_migrate_docker_storage_driver: None | DBusError = None
+    response_schedule_docker_storage_reset: bool | DBusError = True
     response_add_ssh_auth_key: None | DBusError = None
     response_clear_ssh_auth_keys: None | DBusError = None
     response_list_ssh_auth_keys: list[str] | DBusError = []
@@ -43,6 +44,13 @@ class System(DBusServiceMock):
                 ErrorType.FAILED,
                 f"unsupported driver: {backend} (only 'overlayfs' is currently supported)",
             )
+
+    @dbus_method()
+    def ScheduleDockerStorageReset(self) -> "b":
+        """Schedule Docker storage reset."""
+        if isinstance(self.response_schedule_docker_storage_reset, DBusError):
+            raise self.response_schedule_docker_storage_reset  # pylint: disable=raising-bad-type
+        return self.response_schedule_docker_storage_reset
 
     @dbus_method()
     def AddSSHAuthKey(self, key: "s") -> None:

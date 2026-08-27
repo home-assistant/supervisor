@@ -22,6 +22,11 @@ class System(DBusInterface):
         await self.connected_dbus.System.call("migrate_docker_storage_driver", backend)
 
     @dbus_connected
+    async def schedule_docker_storage_reset(self) -> bool:
+        """Schedule a Docker storage reset on next system boot."""
+        return await self.connected_dbus.System.call("schedule_docker_storage_reset")
+
+    @dbus_connected
     async def add_ssh_auth_key(self, key: str) -> None:
         """Append a public key to root's SSH authorized keys on the host.
 

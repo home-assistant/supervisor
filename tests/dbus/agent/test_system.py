@@ -34,6 +34,22 @@ async def test_dbus_osagent_system_wipe(
     assert system_service.ScheduleWipeDevice.calls == [()]
 
 
+async def test_dbus_osagent_system_schedule_docker_storage_reset(
+    system_service: SystemService, dbus_session_bus: MessageBus
+):
+    """Test scheduling Docker storage reset on host."""
+    system_service.ScheduleDockerStorageReset.calls.clear()
+    os_agent = OSAgent()
+
+    with pytest.raises(DBusNotConnectedError):
+        await os_agent.system.schedule_docker_storage_reset()
+
+    await os_agent.connect(dbus_session_bus)
+
+    assert await os_agent.system.schedule_docker_storage_reset() is True
+    assert system_service.ScheduleDockerStorageReset.calls == [()]
+
+
 async def test_dbus_osagent_system_ssh_auth_keys(
     system_service: SystemService, dbus_session_bus: MessageBus
 ):
