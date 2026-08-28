@@ -898,7 +898,7 @@ async def test_container_stats_unknown_error(
 
 async def test_container_stats_one_shot(docker: DockerAPI, container: DockerContainer):
     """Test container_stats requests an immediate, un-windowed sample without inspecting the container."""
-    stats_payload = {"cpu_stats": {"cpu_usage": {"total_usage": 123}}}
+    stats_payload = {"cpu_stats": {"cpu_usage": {"total_usage": 123}, "online_cpus": 4}}
     docker.containers.get.reset_mock()
     container.show.reset_mock()
 
@@ -959,6 +959,30 @@ async def test_container_stats_one_shot_unknown_error(docker: DockerAPI):
             ),
         ),
         pytest.raises(DockerStatsUnknownError, match="unknown error"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_not_running(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerContainerNotRunningError for a stopped container.
+
+    Docker returns a stub response containing only id/name (no online_cpus in
+    cpu_stats, no memory_stats.usage, no networks) instead of an error for a
+    stopped or restarting container, even in one-shot mode.
+    """
+    stub_response = {
+        "id": "abc123",
+        "name": "/mycontainer",
+        "cpu_stats": {"cpu_usage": {"total_usage": 0}},
+        "memory_stats": {},
+    }
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=stub_response),
+        ),
+        pytest.raises(DockerContainerNotRunningError, match="is not running"),
     ):
         await docker.container_stats("mycontainer", one_shot=True)
 

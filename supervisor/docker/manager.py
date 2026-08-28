@@ -1052,6 +1052,15 @@ class DockerAPI(CoreSysAttributes):
             if not stats:
                 _LOGGER.error("Docker returned no stats for %s", name)
                 raise DockerStatsUnknownError(name=name)
+
+            # Docker returns a stub response containing only the container's
+            # id/name (no cpu_stats/memory_stats/networks data) for a
+            # container that is stopped or restarting, instead of an error.
+            # online_cpus is only ever present while the container is
+            # running, making it a reliable way to detect that stub.
+            if "online_cpus" not in stats.get("cpu_stats", {}):
+                raise DockerContainerNotRunningError(_LOGGER.error, name=name)
+
             return stats
 
         try:
