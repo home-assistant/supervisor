@@ -594,7 +594,7 @@ async def test_start(
     coresys.docker.images.inspect.return_value = {"Id": "123"}
     coresys.docker.images.inspect.side_effect = image_exc
     container.id = "123"
-    coresys.docker.containers.get.side_effect = container_exc
+    container.show.side_effect = container_exc
 
     with (
         patch.object(
