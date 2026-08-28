@@ -3,6 +3,7 @@
 # ruff: noqa: T100
 import asyncio
 from collections.abc import Callable
+from contextlib import suppress
 import logging
 import os
 import signal
@@ -154,6 +155,21 @@ def _migrate_legacy_paths(coresys: CoreSys) -> None:
             "Legacy addons directory '%s' not empty, leaving in place",
             legacy_addons.as_posix(),
         )
+
+    # Same for the emergency folder of the eager-mount design, including the
+    # empty mount points it holds.
+    emergency = supervisor / "emergency"
+    if emergency.is_dir():
+        for leftover in emergency.iterdir():
+            with suppress(OSError):
+                leftover.rmdir()
+        try:
+            emergency.rmdir()
+        except OSError:
+            _LOGGER.debug(
+                "Emergency directory '%s' not empty, leaving in place",
+                emergency.as_posix(),
+            )
 
 
 def initialize_system(coresys: CoreSys) -> None:
