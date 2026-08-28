@@ -769,11 +769,9 @@ class Backup(JobGroup):
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
 
-            # Media/share network mounts live directly under path_media /
-            # path_share. We don't want to recurse into them on backup —
-            # that would archive the remote share contents alongside the
-            # local data, and the autofs trigger would activate the mount
-            # just so we could read files we're going to throw out anyway.
+            # Network mounts live directly under path_media / path_share.
+            # Recursing into them would archive the remote share and
+            # activate the trigger just to read files we discard anyway.
             excluded_paths = {
                 mount.local_where
                 for mount in (
@@ -882,11 +880,9 @@ class Backup(JobGroup):
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
 
-        # Unmount any network mounts that live inside the folder being
-        # restored. Otherwise the restore would write into the remote
-        # share instead of replacing the local mount-point directory.
-        # The autofs trigger gets re-armed by `mount()` afterwards so
-        # the next access re-activates the share transparently.
+        # Nested network mounts have to go first, otherwise the restore
+        # writes into the remote share instead of replacing the local
+        # mount-point directory. The finally below re-arms them.
         nested_mounts = [
             mount
             for mount in (
@@ -916,11 +912,10 @@ class Backup(JobGroup):
                     return_exceptions=True,
                 )
                 for mount, result in zip(nested_mounts, results):
-                    # A failed probe (unreachable server) still leaves the
-                    # trigger armed — the mount recovers on the next access.
-                    # It must not fail the restore that already succeeded.
-                    # Anything else (arming failed, local data blocking the
-                    # target) left the path unprotected and must surface.
+                    # An unreachable server leaves the trigger armed, so the
+                    # mount recovers on the next access and must not fail a
+                    # restore that succeeded. Anything else left the path
+                    # unprotected and has to surface.
                     if isinstance(result, MountActivationError):
                         _LOGGER.warning(
                             "Could not verify mount %s after restore: %s",
