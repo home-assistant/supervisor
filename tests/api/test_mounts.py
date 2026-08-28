@@ -117,6 +117,7 @@ async def test_api_create_dbus_error_mount_not_added(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    caplog: pytest.LogCaptureFixture,
 ):
     """Test mount not added to list of mounts if a dbus error occurs."""
     api_client, prefix = api_client_with_prefix
@@ -143,13 +144,23 @@ async def test_api_create_dbus_error_mount_not_added(
         assert resp.status == 400
         result = await resp.json()
         assert result["result"] == "error"
-        assert result["message"] == "Could not mount backup_test due to: fail"
+        # User-facing message is generic and translatable...
+        assert (
+            result["message"]
+            == "Could not set up mount backup_test. Check the Supervisor logs for details"
+        )
+        assert result["error_key"] == "mount_setup_error"
+        assert result["extra_fields"] == {"name": "backup_test"}
         capture_exception.assert_not_called()
+
+    # ...while the D-Bus detail is only in the log
+    assert "Could not mount backup_test due to: fail" in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
     assert result["data"]["mounts"] == []
 
+    caplog.clear()
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
@@ -176,9 +187,16 @@ async def test_api_create_dbus_error_mount_not_added(
         assert result["result"] == "error"
         assert (
             result["message"]
-            == "Mounting backup_test did not succeed. Check host logs for errors from mount or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details."
+            == "Mount backup_test is not reachable. Check the Supervisor logs for details"
         )
+        assert result["error_key"] == "mount_activation_error"
+        assert result["extra_fields"] == {"name": "backup_test"}
         capture_exception.assert_not_called()
+
+    assert (
+        "Mounting backup_test did not succeed. Check host logs for errors from mount "
+        "or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details"
+    ) in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
@@ -289,6 +307,7 @@ async def test_api_update_dbus_error_mount_remains(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    caplog: pytest.LogCaptureFixture,
 ):
     """Test mount remains in list with unsuccessful state if dbus error occurs during update."""
     api_client, prefix = api_client_with_prefix
@@ -317,7 +336,14 @@ async def test_api_update_dbus_error_mount_remains(
     assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
-    assert result["message"] == "Could not mount backup_test due to: fail"
+    # User-facing message is generic and translatable, detail stays in the log
+    assert (
+        result["message"]
+        == "Could not set up mount backup_test. Check the Supervisor logs for details"
+    )
+    assert result["error_key"] == "mount_setup_error"
+    assert result["extra_fields"] == {"name": "backup_test"}
+    assert "Could not mount backup_test due to: fail" in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
@@ -349,6 +375,7 @@ async def test_api_update_dbus_error_mount_remains(
         "failed",
         "failed",
     ]
+    caplog.clear()
 
     resp = await api_client.put(
         f"{prefix}/mounts/backup_test",
@@ -364,8 +391,14 @@ async def test_api_update_dbus_error_mount_remains(
     assert result["result"] == "error"
     assert (
         result["message"]
-        == "Mounting backup_test did not succeed. Check host logs for errors from mount or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details."
+        == "Mount backup_test is not reachable. Check the Supervisor logs for details"
     )
+    assert result["error_key"] == "mount_activation_error"
+    assert result["extra_fields"] == {"name": "backup_test"}
+    assert (
+        "Mounting backup_test did not succeed. Check host logs for errors from mount "
+        "or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details"
+    ) in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()

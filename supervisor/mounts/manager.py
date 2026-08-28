@@ -304,13 +304,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def reload_mount(self, name: str) -> None:
         """Probe a mount's health and surface the result.
 
-        With autofs handling re-activation transparently, a user-driven
-        "reload" reduces to: re-arm the automount trigger if it died
-        (out-of-band unmount, failure), then poke the mount via the
-        probe so the kernel triggers any pending activation, and update
-        the resolution issue accordingly. No reload/restart of a
-        healthy setup — the kernel repeats that work on its own when
-        something actually accesses the path.
+        Re-arms the trigger if it died, probes the path so the kernel
+        activates the mount, and updates the resolution issue from the
+        outcome. A healthy mount is left alone, autofs repeats that work
+        whenever something accesses the path.
         """
         # Add mount name to job
         self.sys_jobs.current.reference = name
@@ -336,13 +333,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             mount.dismiss_failed_issue()
             return
 
-        # The kernel cannot recover an established mount whose session is
-        # permanently dead (e.g. the server was replaced): the path stays
-        # mounted, so the trigger never re-fires and reconnection never
-        # succeeds. Stop the .mount unit while the armed .automount stays
-        # in place — systemd re-installs the trigger over the path, so it
-        # is never exposed as a writable directory, and the re-probe
-        # mounts fresh with a new session.
+        # A permanently dead session (e.g. the server was replaced) keeps
+        # the path mounted, so the trigger never re-fires. Stopping just
+        # the .mount makes systemd re-install the trigger — the path stays
+        # covered and the re-probe mounts fresh.
         _LOGGER.info(
             "Mount %s is unreachable, discarding its session for a fresh mount", name
         )
@@ -354,11 +348,13 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         if not await mount.is_mounted():
             self._add_failed_issue(mount)
-            raise MountActivationError(
-                f"Mount {name} is not reachable. Check host logs for errors "
-                f"from mount or systemd unit {mount.unit_name} for details",
-                _LOGGER.error,
+            _LOGGER.error(
+                "Mount %s is not reachable. Check host logs for errors from "
+                "mount or systemd unit %s for details",
+                name,
+                mount.unit_name,
             )
+            raise MountActivationError(name=name)
 
         mount.dismiss_failed_issue()
 
@@ -446,10 +442,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 target.as_posix(),
             )
 
-        # With the local data out of the way, moving it again can no longer
-        # help. Drop the suggestion even if the remount below fails: the
-        # mount failed issue then remains with reload/remove, and detection
-        # re-adds the move suggestion if local data blocks the target again.
+        # Moving again cannot help now, so drop the suggestion even if the
+        # remount below fails. Detection re-adds it if local data blocks
+        # the target again.
         for suggestion in self.sys_resolution.suggestions:
             if (
                 suggestion.type == SuggestionType.MOVE_LOCAL_DATA

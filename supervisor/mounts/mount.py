@@ -37,8 +37,11 @@ from ..exceptions import (
     MountActivationError,
     MountError,
     MountInvalidError,
+    MountReloadError,
+    MountSetupError,
     MountTargetNotDirectoryError,
     MountTargetNotEmptyError,
+    MountUnmountError,
 )
 from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
@@ -79,26 +82,15 @@ def _probe_network_mount(path: Path) -> bool:
     return path.stat().st_dev != path.parent.stat().st_dev
 
 
-# Three layered timeouts cooperate to keep the host alive when an NFS server
-# becomes unreachable while a `.mount` unit is being reloaded (see #6827):
-#
-#   NFS RPC timeout (timeo=100,retrans=2) ~30 s
-#     < systemd unit TimeoutSec (MOUNT_UNIT_TIMEOUT_USEC)  35 s
-#     < supervisor state-await (UPDATE_STATE_TIMEOUT)      40 s
-#
-# Ordering is what matters. The kernel RPC layer fails first so the mount
-# helper can exit; systemd then SIGTERMs anything that didn't and moves the
-# unit to `failed` before supervisor abandons its observation. Any later
-# restart then runs from `failed` (no in-flight helper, no pinned kernel
-# task) — the safe path.
+# Layered timeouts, ordered so each layer gives up before the one above it
+# (see #6827): the kernel RPC timeout (~30 s from timeo=100,retrans=2) lets
+# the mount helper exit, systemd's unit timeout then kills whatever is left,
+# and only after that does Supervisor stop awaiting the unit state.
 MOUNT_UNIT_TIMEOUT_USEC = 35 * 1_000_000
 UPDATE_STATE_TIMEOUT = 40
-# Maximum time to wait for a systemd job (mount/unmount/reload/restart)
-# to leave the queue. Sized to cover RestartUnit = stop + start, each
-# bounded by MOUNT_UNIT_TIMEOUT_USEC (35 s), with headroom for systemd's
-# queue dispatch. A single-phase job (mount/unmount/reload) typically
-# completes within ~40 s; the larger budget is just so the RestartUnit
-# case doesn't time out one second before JobRemoved fires.
+# Maximum time to wait for a systemd job to leave the queue, comfortably
+# above the unit timeout so a job against a dead server fails on its own
+# terms rather than here.
 SYSTEMD_JOB_TIMEOUT = 90
 
 COERCE_MOUNT_TYPE: Callable[[str], MountType] = Coerce(MountType)
@@ -268,15 +260,17 @@ class Mount(CoreSysAttributes, ABC):
             # contents as blocking local data
             if unit:
                 await self._stop_legacy_unit(self.unit_name, strict=True)
-            await self.mount()
-            await self._cleanup_legacy_data_mount()
+            try:
+                await self.mount()
+            finally:
+                # Arming is what orphans the eager-mount-era share, so it
+                # has to go even when the probe found the server down
+                await self._cleanup_legacy_data_mount()
             return
 
         if automount_state != UnitActiveState.ACTIVE:
-            # Never adopt a dead trigger (failed, or stopped out-of-band):
-            # it leaves the path a plain writable directory — the silent
-            # local-write degradation this design must prevent. Tear the
-            # remnants down and arm a fresh pair.
+            # A dead trigger (failed, or stopped out-of-band) leaves the
+            # path a plain writable directory, so never adopt one
             _LOGGER.info(
                 "Automount trigger for %s is %s on load, re-arming",
                 self.name,
@@ -288,18 +282,16 @@ class Mount(CoreSysAttributes, ABC):
 
         if unit:
             await self._update_state_await(unit)
-        # Probe to refresh state — the .mount unit may be inactive simply
-        # because nothing has triggered it yet. The probe both forces
-        # activation and surfaces server reachability. An unreachable
-        # server is an error here, same as on a fresh mount, so the
-        # manager turns it into a resolution issue.
+        # The .mount unit is inactive until something triggers it, so only
+        # the probe tells reachability apart from a dormant trigger
         if not await self.is_mounted():
-            raise MountActivationError(
-                f"Mount {self.name} is not reachable. Check host logs for "
-                f"errors from mount or systemd unit {self.unit_name} for "
-                f"details.",
-                _LOGGER.error,
+            _LOGGER.error(
+                "Mount %s is not reachable. Check host logs for errors from "
+                "mount or systemd unit %s for details",
+                self.name,
+                self.unit_name,
             )
+            raise MountActivationError(name=self.name)
 
     async def _automount_state(self) -> UnitActiveState | None:
         """Return the .automount unit state, or None if no unit is loaded."""
@@ -332,11 +324,13 @@ class Mount(CoreSysAttributes, ABC):
             return
         except DBusError as err:
             if strict:
-                raise MountError(
-                    f"Could not stop legacy unit {unit_name} for {self.name} "
-                    f"due to: {err!s}",
-                    _LOGGER.error,
-                ) from err
+                _LOGGER.error(
+                    "Could not stop legacy unit %s for %s due to: %s",
+                    unit_name,
+                    self.name,
+                    err,
+                )
+                raise MountSetupError(name=self.name) from err
             _LOGGER.warning(
                 "Could not stop legacy unit %s for %s: %s", unit_name, self.name, err
             )
@@ -344,11 +338,13 @@ class Mount(CoreSysAttributes, ABC):
 
         if result != "done":
             if strict:
-                raise MountError(
-                    f"Could not stop legacy unit {unit_name} for {self.name} "
-                    f"(systemd result: {result})",
-                    _LOGGER.error,
+                _LOGGER.error(
+                    "Could not stop legacy unit %s for %s (systemd result: %s)",
+                    unit_name,
+                    self.name,
+                    result,
                 )
+                raise MountSetupError(name=self.name)
             _LOGGER.warning(
                 "Could not stop legacy unit %s for %s (systemd result: %s)",
                 unit_name,
@@ -539,31 +535,22 @@ class Mount(CoreSysAttributes, ABC):
             (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
             (DBUS_ATTR_WHAT, Variant("s", self.what)),
             (DBUS_ATTR_TIMEOUT_USEC, Variant("t", MOUNT_UNIT_TIMEOUT_USEC)),
-            # MNT_DETACH on umount: when the share is gone, the stop/restart
-            # paths don't block waiting for an unreachable server to drain.
-            # Pairs with softerr (NFS) / soft (CIFS) — existing fds error
-            # out on their next op instead of hanging forever.
+            # MNT_DETACH on umount, so teardown never blocks on an
+            # unreachable server. Open fds error out on their next
+            # operation through softerr (NFS) / soft (CIFS).
             (DBUS_ATTR_LAZY_UNMOUNT, Variant("b", True)),
-            # Never rate-limit starts of the triggered .mount. With the
-            # default limit (5 starts/10s — counting successful starts too)
-            # a fast-failing mount plus any polling consumer trips it within
-            # seconds, upon which systemd removes the autofs trigger
-            # entirely (AUTOMOUNT_FAILURE_MOUNT_START_LIMIT_HIT) and the
-            # path silently degrades to a plain, writable local directory.
-            # Retry pacing against a dead server is bounded by TimeoutUSec
-            # and kernel-side waiter coalescing instead.
+            # No start rate limiting: hitting the default limit (5 starts
+            # in 10 s, successful ones included) makes systemd detach the
+            # autofs trigger entirely and the path degrades to a plain,
+            # writable directory. TimeoutUSec paces retries instead.
             (DBUS_ATTR_START_LIMIT_INTERVAL_USEC, Variant("t", 0)),
         ]
 
-        # The .automount is the primary unit: its start job arms the autofs
-        # trigger. The .mount is created alongside as an aux unit and is
-        # only ever started by the trigger — aux units get no start job.
-        # This mirrors what `systemd-mount --automount=yes` does.
-        # TimeoutIdleUSec is deliberately left at its default (0 — never
-        # expire): kernel idle expiry cannot see open files held by
-        # container processes (may_umount_tree() only counts the host
-        # namespace instance) and would unmount shares under actively
-        # writing add-ons.
+        # The .automount has to be the primary unit — its start job is what
+        # arms the trigger, and aux units get no start job of their own.
+        # TimeoutIdleUSec stays at its default of never: kernel idle expiry
+        # counts only the host namespace, so it would unmount shares from
+        # under add-ons holding files open in their own namespace.
         automount_properties = [
             (
                 DBUS_ATTR_DESCRIPTION,
@@ -583,18 +570,18 @@ class Mount(CoreSysAttributes, ABC):
                 ),
             )
         except DBusError as err:
-            raise MountError(
-                f"Could not mount {self.name} due to: {err!s}", _LOGGER.error
-            ) from err
+            _LOGGER.error("Could not mount %s due to: %s", self.name, err)
+            raise MountSetupError(name=self.name) from err
         # A failed start job means the trigger never armed and the path is
         # a plain writable directory — a hard setup failure, distinct from
         # the armed-but-unreachable MountActivationError the probe raises
         if result != "done":
-            raise MountError(
-                f"Could not arm automount for {self.name} "
-                f"(systemd job result: {result})",
-                _LOGGER.error,
+            _LOGGER.error(
+                "Could not arm automount for %s (systemd job result: %s)",
+                self.name,
+                result,
             )
+            raise MountSetupError(name=self.name)
 
         if unit := await self._update_unit():
             await self._update_state(unit)
@@ -606,10 +593,13 @@ class Mount(CoreSysAttributes, ABC):
         # rather than letting them lurk until the next consumer hits the
         # path.
         if not await self.is_mounted():
-            raise MountActivationError(
-                f"Mounting {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
-                _LOGGER.error,
+            _LOGGER.error(
+                "Mounting %s did not succeed. Check host logs for errors from "
+                "mount or systemd unit %s for details",
+                self.name,
+                self.unit_name,
             )
+            raise MountActivationError(name=self.name)
 
     async def unmount(self) -> None:
         """Unmount using systemd."""
@@ -628,18 +618,19 @@ class Mount(CoreSysAttributes, ABC):
                 ),
             )
             if result != "done":
-                raise MountError(
-                    f"Could not stop automount unit for {self.name} "
-                    f"(systemd result: {result})",
-                    _LOGGER.error,
+                _LOGGER.error(
+                    "Could not stop automount unit for %s (systemd result: %s)",
+                    self.name,
+                    result,
                 )
+                raise MountUnmountError(name=self.name)
         except DBusSystemdNoSuchUnit:
             pass
         except DBusError as err:
-            raise MountError(
-                f"Could not stop automount unit for {self.name} due to: {err!s}",
-                _LOGGER.error,
-            ) from err
+            _LOGGER.error(
+                "Could not stop automount unit for %s due to: %s", self.name, err
+            )
+            raise MountUnmountError(name=self.name) from err
 
         # Resolve the .mount unit only after the automount stop: the lazy
         # detach can take the active .mount down with it, and systemd then
@@ -662,19 +653,20 @@ class Mount(CoreSysAttributes, ABC):
                     # it as done is how a stale mount once survived a
                     # "successful" cleanup (see #6938).
                     if result != "done":
-                        await self._rearm_after_failed_unmount()
-                        raise MountError(
-                            f"Could not unmount {self.name} (systemd result: {result})",
-                            _LOGGER.error,
+                        _LOGGER.error(
+                            "Could not unmount %s (systemd result: %s)",
+                            self.name,
+                            result,
                         )
+                        await self._rearm_after_failed_unmount()
+                        raise MountUnmountError(name=self.name)
             except DBusSystemdNoSuchUnit:
                 # Unit went away with the automount detach — fine.
                 pass
             except DBusError as err:
+                _LOGGER.error("Could not unmount %s due to: %s", self.name, err)
                 await self._rearm_after_failed_unmount()
-                raise MountError(
-                    f"Could not unmount {self.name} due to: {err!s}", _LOGGER.error
-                ) from err
+                raise MountUnmountError(name=self.name) from err
 
         # Clear any failure state so the dead transient units get
         # garbage-collected instead of lingering.
@@ -726,17 +718,23 @@ class Mount(CoreSysAttributes, ABC):
                 self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL),
             )
             if result != "done":
-                raise MountError(
-                    f"Could not unmount {self.name} (systemd result: {result})",
-                    _LOGGER.error,
+                _LOGGER.error(
+                    "Could not stop %s to force re-creation of the mount "
+                    "(systemd result: %s)",
+                    self.name,
+                    result,
                 )
+                raise MountReloadError(name=self.name)
         except DBusSystemdNoSuchUnit:
             # Nothing mounted — the trigger alone covers the path
             pass
         except DBusError as err:
-            raise MountError(
-                f"Could not unmount {self.name} due to: {err!s}", _LOGGER.error
-            ) from err
+            _LOGGER.error(
+                "Could not stop %s to force re-creation of the mount due to: %s",
+                self.name,
+                err,
+            )
+            raise MountReloadError(name=self.name) from err
 
         with suppress(DBusError):
             await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
@@ -902,16 +900,11 @@ class CIFSMount(NetworkMount):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        # soft + echo_interval=10 + retrans=0 give a ~30s per-operation budget
-        # before the kernel reports the server unreachable (3 × echo_interval
-        # since last server response). This roughly matches the NFS budget
-        # from `softerr,timeo=100,retrans=2` so the userspace probe behaves
-        # symmetrically across both protocols. On give-up the syscall
-        # returns EHOSTDOWN / ECONNABORTED rather than blocking forever,
-        # which is what makes the statvfs probe a reliable health check.
-        # `soft` is the kernel default but is set explicitly so the
-        # behavior is part of the recorded mount options rather than an
-        # implicit assumption.
+        # soft + echo_interval=10 + retrans=0 give a ~30 s budget per
+        # operation before the syscall returns EHOSTDOWN instead of blocking,
+        # which is what makes the statvfs probe a reliable health check. It
+        # matches the NFS budget above so both protocols behave alike. soft
+        # is the kernel default, set explicitly to record the intent.
         options = super().options + [
             "noserverino",
             "soft",

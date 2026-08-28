@@ -14,7 +14,12 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
-from supervisor.exceptions import MountActivationError, MountError, MountInvalidError
+from supervisor.exceptions import (
+    MountActivationError,
+    MountInvalidError,
+    MountSetupError,
+    MountUnmountError,
+)
 from supervisor.mounts.const import MountCifsVersion, MountType, MountUsage
 from supervisor.mounts.mount import CIFSMount, Mount, NFSMount
 
@@ -518,7 +523,7 @@ async def test_mount_failure(
 
     # Raise error on StartTransientUnit error
     systemd_service.response_start_transient_unit = ERROR_FAILURE
-    with pytest.raises(MountError):
+    with pytest.raises(MountSetupError):
         await mount.mount()
 
     assert mount.state is None
@@ -549,8 +554,9 @@ async def test_mount_arming_failure(
     tmp_supervisor_data,
     path_extern,
     mock_is_mount,
+    caplog: pytest.LogCaptureFixture,
 ):
-    """Test mount raises MountError if the automount start job is not done."""
+    """Test mount raises MountSetupError if the automount start job is not done."""
     mount = Mount.from_dict(
         coresys,
         {
@@ -563,11 +569,11 @@ async def test_mount_arming_failure(
     )
 
     # A non-"done" start job result means the trigger never armed and the
-    # path is a plain writable directory — a hard MountError, distinct
+    # path is a plain writable directory — a hard MountSetupError, distinct
     # from the armed-but-unreachable MountActivationError of the probe
     with (
         patch.object(Mount, "_run_systemd_job", return_value="failed") as run_job,
-        pytest.raises(MountError) as excinfo,
+        pytest.raises(MountSetupError) as excinfo,
     ):
         await mount.mount()
 
@@ -575,8 +581,17 @@ async def test_mount_arming_failure(
     # helper swallowed so it does not warn at garbage collection
     run_job.await_args.args[1].close()
 
-    assert "systemd job result: failed" in str(excinfo.value)
     assert not isinstance(excinfo.value, MountActivationError)
+    # The user-facing error is generic and translatable...
+    assert (
+        str(excinfo.value)
+        == "Could not set up mount test. Check the Supervisor logs for details"
+    )
+    assert excinfo.value.error_key == "mount_setup_error"
+    # ...while the technical detail stays in the log
+    assert (
+        "Could not arm automount for test (systemd job result: failed)" in caplog.text
+    )
 
 
 async def test_unmount_failure(
@@ -604,7 +619,7 @@ async def test_unmount_failure(
     # touched — continuing would leave an armed trigger behind at the
     # path of a supposedly removed mount.
     systemd_service.response_stop_unit = ERROR_FAILURE
-    with pytest.raises(MountError):
+    with pytest.raises(MountUnmountError):
         await mount.unmount()
 
     assert systemd_service.StopUnit.calls == [
@@ -622,7 +637,7 @@ async def test_unmount_failure(
     ]
     with (
         patch("supervisor.mounts.mount._probe_network_mount", return_value=True),
-        pytest.raises(MountError),
+        pytest.raises(MountUnmountError),
     ):
         await mount.unmount()
 
