@@ -46,6 +46,10 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         super().__init__(FILE_HASSIO_DISCOVERY, SCHEMA_DISCOVERY_CONFIG)
         self.coresys: CoreSys = coresys
         self.message_obj: dict[str, Message] = {}
+        # Messages restored from a backup which Home Assistant was not told
+        # about yet. Only the app knows when its service is actually up, so the
+        # push waits for the app to send the message itself (see send()).
+        self._unannounced: set[str] = set()
 
     async def load(self) -> None:
         """Load exists discovery message into storage."""
@@ -76,6 +80,10 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         """Return list of available discovery messages."""
         return list(self.message_obj.values())
 
+    def messages_for_app(self, slug: str) -> list[Message]:
+        """Return list of discovery messages sent by an app."""
+        return [message for message in self.list_messages if message.app == slug]
+
     async def send(self, app: App, service: str, config: dict[str, Any]) -> Message:
         """Send a discovery message to Home Assistant."""
         # Create message
@@ -88,6 +96,10 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             if exists_msg.config != config:
                 message = exists_msg
                 message.config = config
+            elif exists_msg.uuid in self._unannounced:
+                # Restored from a backup, this is the first time the app
+                # announces it, so Home Assistant still needs to hear about it
+                message = exists_msg
             else:
                 _LOGGER.debug("Duplicate discovery message from %s", app.slug)
                 return exists_msg
@@ -97,6 +109,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             "Sending discovery to Home Assistant %s from %s", service, app.slug
         )
         self.message_obj[message.uuid] = message
+        self._unannounced.discard(message.uuid)
         await self.save()
 
         self.sys_create_task(self._push_discovery(message, CMD_NEW))
@@ -105,6 +118,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
     async def remove(self, message: Message) -> None:
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
+        self._unannounced.discard(message.uuid)
         await self.save()
 
         _LOGGER.info(
@@ -113,6 +127,47 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             message.app,
         )
         self.sys_create_task(self._push_discovery(message, CMD_DEL))
+
+    async def restore_app_messages(self, app: App, messages: list[Message]) -> None:
+        """Restore discovery messages of an app from a backup.
+
+        Home Assistant ties a config entry to the uuid of the discovery message
+        it came from, so the uuid has to survive a backup/restore to keep that
+        link intact. Messages are only restored for services without a live
+        message: an existing one already carries the uuid Home Assistant knows,
+        restoring on top of it would break the link instead of preserving it.
+
+        A restored message is not pushed to Home Assistant here. The service
+        behind it is not up at this point, and it may never come up if the app
+        is not started again. Instead it is marked as unannounced so that the
+        push happens once the app sends the message itself.
+        """
+        live_services = {message.service for message in self.messages_for_app(app.slug)}
+        restored = False
+
+        for message in messages:
+            if message.service in live_services:
+                continue
+            if message.service not in app.discovery:
+                _LOGGER.info(
+                    "Skipping discovery message for service %s, app %s does not provide it anymore",
+                    message.service,
+                    app.slug,
+                )
+                continue
+
+            self.message_obj[message.uuid] = message
+            self._unannounced.add(message.uuid)
+            restored = True
+            _LOGGER.info(
+                "Restored discovery %s for service %s from %s",
+                message.uuid,
+                message.service,
+                app.slug,
+            )
+
+        if restored:
+            await self.save()
 
     async def _push_discovery(self, message: Message, command: str) -> None:
         """Send a discovery request."""

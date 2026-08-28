@@ -1644,6 +1644,46 @@ async def test_restore_new_app(coresys: CoreSys, install_app_example: App):
 
 
 @pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
+async def test_restore_preserves_discovery_uuid(
+    coresys: CoreSys, install_app_example: App
+):
+    """Test a backup/restore round trip keeps the uuid of a discovery message.
+
+    Home Assistant uses the uuid of a discovery message as unique ID of the
+    config entry it creates from it, so a new uuid would leave the restored
+    config entry orphaned instead of updating it.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    install_app_example.data["discovery"] = ["mcp"]
+    with patch.object(HomeAssistantAPI, "check_api_state", return_value=False):
+        message = await coresys.discovery.send(
+            install_app_example, "mcp", {"url": "http://local-example:8099/mcp"}
+        )
+
+        backup: Backup = await coresys.backups.do_backup_partial(apps=["local_example"])
+
+        # Uninstall drops the discovery message, as a fresh system would not
+        # have it either
+        await coresys.apps.uninstall("local_example")
+        assert coresys.discovery.messages_for_app("local_example") == []
+
+        with (
+            patch.object(AppModel, "_validate_availability"),
+            patch.object(DockerApp, "attach"),
+        ):
+            assert await coresys.backups.do_restore_partial(
+                backup, apps=["local_example"]
+            )
+
+    assert coresys.discovery.messages_for_app("local_example") == [message]
+    restored = coresys.discovery.get(message.uuid)
+    assert restored.service == "mcp"
+    assert restored.config == {"url": "http://local-example:8099/mcp"}
+
+
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
 async def test_restore_app_image_missing(coresys: CoreSys, install_app_example: App):
     """Test restore when local image is missing installs from registry.
 
