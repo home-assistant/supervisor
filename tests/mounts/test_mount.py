@@ -7,7 +7,7 @@ import errno
 from pathlib import Path
 import stat
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from dbus_fast import DBusError, ErrorType
 import pytest
@@ -749,4 +749,55 @@ async def test_mount_fails_if_down(
             fstype="nfs",
             options="port=1234,softerr,timeo=100,retrans=2",
         )
+    ]
+
+
+async def test_unmount_failure_arms_trigger_without_aux(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test the re-arm falls back to the trigger alone.
+
+    Stopping the .mount is what failed, so its transient definition is
+    still loaded and systemd rejects it as an aux unit. Arming the
+    .automount on its own covers the path and fires that definition.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "share",
+        },
+    )
+
+    # Automount stops fine, stopping the .mount fails
+    systemd_service.response_stop_unit = [
+        "/org/freedesktop/systemd1/job/7623",
+        ERROR_FAILURE,
+    ]
+    # Re-creating the pair is rejected, arming the trigger alone works
+    systemd_service.response_start_transient_unit = [
+        ERROR_FAILURE,
+        "/org/freedesktop/systemd1/job/7623",
+    ]
+
+    with pytest.raises(MountUnmountError):
+        await mount.unmount()
+
+    assert [
+        (call[0], call[3]) for call in systemd_service.StartTransientUnit.calls
+    ] == [
+        (
+            "mnt-data-supervisor-mounts-test.automount",
+            [("mnt-data-supervisor-mounts-test.mount", ANY)],
+        ),
+        ("mnt-data-supervisor-mounts-test.automount", []),
     ]

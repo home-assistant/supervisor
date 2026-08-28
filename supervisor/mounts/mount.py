@@ -551,37 +551,7 @@ class Mount(CoreSysAttributes, ABC):
         # TimeoutIdleUSec stays at its default of never: kernel idle expiry
         # counts only the host namespace, so it would unmount shares from
         # under add-ons holding files open in their own namespace.
-        automount_properties = [
-            (
-                DBUS_ATTR_DESCRIPTION,
-                Variant("s", f"{self.description} (automount)"),
-            ),
-            (DBUS_ATTR_WHERE, Variant("s", self.where.as_posix())),
-        ]
-
-        try:
-            result = await self._run_systemd_job(
-                "start_transient_unit",
-                self.sys_dbus.systemd.start_transient_unit(
-                    self.automount_unit_name,
-                    StartUnitMode.FAIL,
-                    automount_properties,
-                    aux=[(self.unit_name, mount_properties)],
-                ),
-            )
-        except DBusError as err:
-            _LOGGER.error("Could not mount %s due to: %s", self.name, err)
-            raise MountSetupError(name=self.name) from err
-        # A failed start job means the trigger never armed and the path is
-        # a plain writable directory — a hard setup failure, distinct from
-        # the armed-but-unreachable MountActivationError the probe raises
-        if result != "done":
-            _LOGGER.error(
-                "Could not arm automount for %s (systemd job result: %s)",
-                self.name,
-                result,
-            )
-            raise MountSetupError(name=self.name)
+        await self._arm_automount(aux=[(self.unit_name, mount_properties)])
 
         if unit := await self._update_unit():
             await self._update_state(unit)
@@ -600,6 +570,47 @@ class Mount(CoreSysAttributes, ABC):
                 self.unit_name,
             )
             raise MountActivationError(name=self.name)
+
+    async def _arm_automount(
+        self, aux: list[tuple[str, list[tuple[str, Variant]]]] | None = None
+    ) -> None:
+        """Create the transient .automount, optionally with its .mount aux unit.
+
+        Without ``aux`` the trigger is armed against an already loaded
+        `.mount` definition, which systemd would reject as an aux unit
+        because transient creation requires a pristine one.
+        """
+        automount_properties = [
+            (
+                DBUS_ATTR_DESCRIPTION,
+                Variant("s", f"{self.description} (automount)"),
+            ),
+            (DBUS_ATTR_WHERE, Variant("s", self.where.as_posix())),
+        ]
+
+        try:
+            result = await self._run_systemd_job(
+                "start_transient_unit",
+                self.sys_dbus.systemd.start_transient_unit(
+                    self.automount_unit_name,
+                    StartUnitMode.FAIL,
+                    automount_properties,
+                    aux=aux,
+                ),
+            )
+        except DBusError as err:
+            _LOGGER.error("Could not mount %s due to: %s", self.name, err)
+            raise MountSetupError(name=self.name) from err
+        # A failed start job means the trigger never armed and the path is
+        # a plain writable directory — a hard setup failure, distinct from
+        # the armed-but-unreachable MountActivationError the probe raises
+        if result != "done":
+            _LOGGER.error(
+                "Could not arm automount for %s (systemd job result: %s)",
+                self.name,
+                result,
+            )
+            raise MountSetupError(name=self.name)
 
     async def unmount(self) -> None:
         """Unmount using systemd."""
@@ -691,7 +702,24 @@ class Mount(CoreSysAttributes, ABC):
 
         try:
             await self.mount()
+            return
+        except MountActivationError:
+            # Armed, the server just did not answer the probe
+            return
         except (MountError, OSError) as err:
+            _LOGGER.debug(
+                "Could not re-create the unit pair for %s, arming the trigger "
+                "against the existing mount unit instead: %s",
+                self.name,
+                err,
+            )
+
+        # The .mount definition is still loaded whenever stopping it is
+        # what failed, so the pair above is rejected. The trigger on its
+        # own covers the path and fires that surviving definition.
+        try:
+            await self._arm_automount()
+        except MountError as err:
             _LOGGER.warning(
                 "Could not re-arm automount for %s after a failed unmount, "
                 "its path is a local directory until the next reload: %s",

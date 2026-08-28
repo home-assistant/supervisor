@@ -40,7 +40,7 @@ class Systemd(DBusServiceMock):
         "/org/freedesktop/systemd1/job/7623"
     )
     response_restart_unit: str | DBusError = "/org/freedesktop/systemd1/job/7623"
-    response_start_transient_unit: str | DBusError = (
+    response_start_transient_unit: list[str | DBusError] | str | DBusError = (
         "/org/freedesktop/systemd1/job/7623"
     )
     mock_systemd_unit: SystemdUnit | None = None
@@ -780,12 +780,16 @@ class Systemd(DBusServiceMock):
         self, name: "s", mode: "s", properties: "a(sv)", aux: "a(sa(sv))"
     ) -> "o":
         """Start a transient service unit."""
-        if isinstance(self.response_start_transient_unit, DBusError):
-            raise self.response_start_transient_unit  # pylint: disable=raising-bad-type
+        if isinstance(self.response_start_transient_unit, list):
+            response = self.response_start_transient_unit.pop(0)
+        else:
+            response = self.response_start_transient_unit
+        if isinstance(response, DBusError):
+            raise response  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "active"
-        self._emit_job_removed(self.response_start_transient_unit, name)
-        return self.response_start_transient_unit
+        self._emit_job_removed(response, name)
+        return response
 
     @dbus_method()
     def ResetFailedUnit(self, name: "s") -> None:
