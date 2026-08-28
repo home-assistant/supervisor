@@ -8,8 +8,8 @@ from supervisor.exceptions import DockerTimeoutError
 
 
 async def test_supervisor_attach_get_timeout(coresys: CoreSys):
-    """Test DockerSupervisor.attach raises DockerTimeoutError when containers.get times out."""
-    coresys.docker.containers.get.side_effect = TimeoutError()
+    """Test DockerSupervisor.attach raises DockerTimeoutError when show times out."""
+    coresys.docker.containers.get.return_value.show.side_effect = TimeoutError()
     with pytest.raises(
         DockerTimeoutError, match="Timeout getting supervisor container"
     ):
@@ -19,8 +19,8 @@ async def test_supervisor_attach_get_timeout(coresys: CoreSys):
 
 
 async def test_supervisor_retag_get_timeout(coresys: CoreSys):
-    """Test DockerSupervisor.retag raises DockerTimeoutError when containers.get times out."""
-    coresys.docker.containers.get.side_effect = TimeoutError()
+    """Test DockerSupervisor.retag raises DockerTimeoutError when show times out."""
+    coresys.docker.containers.get.return_value.show.side_effect = TimeoutError()
     with pytest.raises(
         DockerTimeoutError, match="Timeout getting Supervisor container for retag"
     ):
@@ -31,6 +31,7 @@ async def test_supervisor_retag_tag_timeout(coresys: CoreSys):
     """Test DockerSupervisor.retag raises DockerTimeoutError when images.tag times out."""
     # Attach first to initialize metadata via the public API.
     coresys.docker.containers.get.return_value.show.return_value = {
+        "Id": "abc123",
         "ImageID": "sha256:abc123",
         "Image": "sha256:abc123",
         "Config": {
@@ -48,8 +49,8 @@ async def test_supervisor_retag_tag_timeout(coresys: CoreSys):
 
 
 async def test_supervisor_update_start_tag_get_timeout(coresys: CoreSys):
-    """Test update_start_tag raises DockerTimeoutError when containers.get times out."""
-    coresys.docker.containers.get.side_effect = TimeoutError()
+    """Test update_start_tag raises DockerTimeoutError when show times out."""
+    coresys.docker.containers.get.return_value.show.side_effect = TimeoutError()
     with pytest.raises(
         DockerTimeoutError, match="Timeout getting container to fix start tag"
     ):

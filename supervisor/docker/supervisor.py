@@ -51,8 +51,9 @@ class DockerSupervisor(DockerInterface):
     ) -> None:
         """Attach to running docker container."""
         try:
-            docker_container = await self.sys_docker.containers.get(self.name)
-            self._meta = await docker_container.show()
+            # container() builds the handle from the name with no I/O;
+            # show() below performs the actual inspect call.
+            self._meta = await self.sys_docker.containers.container(self.name).show()
         except TimeoutError as err:
             raise DockerTimeoutError(
                 "Timeout getting supervisor container metadata"
@@ -68,14 +69,16 @@ class DockerSupervisor(DockerInterface):
             self.sys_supervisor.version,
         )
 
+        container_id = self._meta["Id"]
+
         # If already attach
-        if docker_container.id in self.sys_docker.network.containers:
+        if container_id in self.sys_docker.network.containers:
             return
 
         # Attach to network
         _LOGGER.info("Connecting Supervisor to hassio-network")
         await self.sys_docker.network.attach_container(
-            docker_container.id,
+            container_id,
             self.name,
             alias=["supervisor"],
             ipv4=self.sys_docker.network.supervisor,
@@ -85,8 +88,11 @@ class DockerSupervisor(DockerInterface):
     async def retag(self) -> None:
         """Retag latest image to version."""
         try:
-            docker_container = await self.sys_docker.containers.get(self.name)
-            container_metadata = await docker_container.show()
+            # container() builds the handle from the name with no I/O;
+            # show() below performs the actual inspect call.
+            container_metadata = await self.sys_docker.containers.container(
+                self.name
+            ).show()
         except TimeoutError as err:
             raise DockerTimeoutError(
                 "Timeout getting Supervisor container for retag",
@@ -128,8 +134,11 @@ class DockerSupervisor(DockerInterface):
     async def update_start_tag(self, image: str, version: AwesomeVersion) -> None:
         """Update start tag to new version."""
         try:
-            docker_container = await self.sys_docker.containers.get(self.name)
-            container_metadata = await docker_container.show()
+            # container() builds the handle from the name with no I/O;
+            # show() below performs the actual inspect call.
+            container_metadata = await self.sys_docker.containers.container(
+                self.name
+            ).show()
         except TimeoutError as err:
             raise DockerTimeoutError(
                 "Timeout getting container to fix start tag", _LOGGER.error

@@ -872,8 +872,9 @@ class DockerAPI(CoreSysAttributes):
     ) -> bool:
         """Return True if docker container exists in good state and is built from expected image."""
         try:
-            docker_container = await self.containers.get(name)
-            container_metadata = await docker_container.show()
+            # container() builds the handle from the name with no I/O;
+            # show() below performs the actual inspect call.
+            container_metadata = await self.containers.container(name).show()
             docker_image = await self.images.inspect(f"{image}:{version}")
         except TimeoutError as err:
             raise DockerTimeoutError(
@@ -901,8 +902,10 @@ class DockerAPI(CoreSysAttributes):
         self, name: str, timeout: int, remove_container: bool = True
     ) -> None:
         """Stop/remove Docker container."""
+        # container() builds the handle from the name with no I/O; show()
+        # below performs the actual inspect call.
+        docker_container = self.containers.container(name)
         try:
-            docker_container = await self.containers.get(name)
             container_metadata = await docker_container.show()
         except TimeoutError as err:
             raise DockerTimeoutError(
@@ -1070,20 +1073,10 @@ class DockerAPI(CoreSysAttributes):
 
     async def container_run_inside(self, name: str, command: str) -> ExecReturn:
         """Execute a command inside Docker container."""
-        try:
-            docker_container = await self.containers.get(name)
-        except TimeoutError as err:
-            raise DockerTimeoutError(
-                f"Timeout getting container {name} to run command"
-            ) from err
-        except aiodocker.DockerError as err:
-            if err.status == HTTPStatus.NOT_FOUND:
-                raise DockerNotFound(
-                    f"Container {name} not found for running command", _LOGGER.warning
-                ) from None
-            raise DockerError(
-                f"Can't get container {name} to run command: {err!s}"
-            ) from err
+        # container() builds the handle from the name with no I/O; exec()
+        # below addresses it by name/id directly and will surface a
+        # not-found error itself.
+        docker_container = self.containers.container(name)
 
         # Execute - use detach=False to wait for completion and capture output
         try:
@@ -1112,6 +1105,10 @@ class DockerAPI(CoreSysAttributes):
                     _LOGGER.error,
                 )
         except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"Container {name} not found for running command", _LOGGER.warning
+                ) from None
             raise DockerError(
                 f"Can't run command in container {name}: {err!s}"
             ) from err

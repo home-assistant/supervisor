@@ -214,7 +214,7 @@ async def test_current_state(
 
 async def test_current_state_failures(coresys: CoreSys):
     """Test failure states for current state."""
-    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
         404, {"message": "does not exist"}
     )
     assert (
@@ -222,7 +222,7 @@ async def test_current_state_failures(coresys: CoreSys):
         == ContainerState.UNKNOWN
     )
 
-    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
         500, {"message": "fail"}
     )
     with pytest.raises(DockerAPIError):
@@ -231,7 +231,9 @@ async def test_current_state_failures(coresys: CoreSys):
 
 async def test_current_state_timeout(coresys: CoreSys):
     """Test timeout while reading container state raises DockerTimeoutError."""
-    coresys.docker.containers.get.side_effect = TimeoutError("timed out")
+    coresys.docker.containers.get.return_value.show.side_effect = TimeoutError(
+        "timed out"
+    )
 
     with pytest.raises(DockerTimeoutError, match="Timeout occurred"):
         await coresys.homeassistant.core.instance.current_state()
@@ -320,7 +322,7 @@ async def test_attach_existing_container(
 
 async def test_attach_container_failure(coresys: CoreSys):
     """Test attach fails to find container but finds image."""
-    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
         500, {"message": "fail"}
     )
     coresys.docker.images.inspect.return_value.setdefault("Config", {})["Image"] = (
@@ -340,7 +342,7 @@ async def test_attach_container_failure(coresys: CoreSys):
 
 async def test_attach_total_failure(coresys: CoreSys):
     """Test attach fails to find container or image."""
-    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
         500, {"message": "fail"}
     )
     coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
@@ -1129,8 +1131,8 @@ async def test_install_unknown_registry_rate_limit_raises_generic_exception(
 
 
 async def test_attach_container_get_timeout_falls_through_to_image(coresys: CoreSys):
-    """Test attach suppresses TimeoutError from containers.get and falls through to image inspect."""
-    coresys.docker.containers.get.side_effect = TimeoutError()
+    """Test attach suppresses TimeoutError from show and falls through to image inspect."""
+    coresys.docker.containers.get.return_value.show.side_effect = TimeoutError()
     coresys.docker.images.inspect.return_value.setdefault("Config", {})["Image"] = (
         "sha256:abc123"
     )
@@ -1141,7 +1143,7 @@ async def test_attach_container_get_timeout_falls_through_to_image(coresys: Core
 
 async def test_attach_fallback_image_inspect_timeout(coresys: CoreSys):
     """Test attach raises DockerTimeoutError when fallback image inspect times out."""
-    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
         500, {"message": "fail"}
     )
     coresys.docker.images.inspect.side_effect = TimeoutError()

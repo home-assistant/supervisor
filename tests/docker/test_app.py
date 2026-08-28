@@ -979,11 +979,12 @@ async def test_app_build_inspect_timeout(
 async def test_app_write_stdin_get_timeout(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
-    """Test write_stdin raises DockerTimeoutError when containers.get times out."""
+    """Test write_stdin raises DockerTimeoutError when the attach stream times out."""
     docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
-    coresys.docker.containers.get.side_effect = TimeoutError()
+    attach_stream = coresys.docker.containers.get.return_value.attach.return_value
+    attach_stream.write_in.side_effect = TimeoutError()
 
-    with pytest.raises(DockerTimeoutError, match="Timeout attaching to .* stdin"):
+    with pytest.raises(DockerTimeoutError, match="Timeout writing to .* stdin"):
         await docker_app.write_stdin(b"hello")
 
 

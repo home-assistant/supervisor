@@ -785,17 +785,19 @@ async def test_prune_networks_container_get_timeout(
 async def test_container_is_initialized_timeout(
     docker: DockerAPI, container: DockerContainer
 ):
-    """Test container_is_initialized raises DockerTimeoutError when get/show times out."""
-    docker.containers.get.side_effect = TimeoutError()
+    """Test container_is_initialized raises DockerTimeoutError when show times out."""
+    container.show.side_effect = TimeoutError()
     with pytest.raises(DockerTimeoutError, match="Timeout getting container"):
         await docker.container_is_initialized(
             "mycontainer", "myimage", AwesomeVersion("1.0")
         )
 
 
-async def test_stop_container_get_timeout(docker: DockerAPI):
-    """Test stop_container raises DockerTimeoutError when containers.get times out."""
-    docker.containers.get.side_effect = TimeoutError()
+async def test_stop_container_get_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test stop_container raises DockerTimeoutError when show times out."""
+    container.show.side_effect = TimeoutError()
     with pytest.raises(
         DockerTimeoutError, match="Timeout getting container .* for stopping"
     ):

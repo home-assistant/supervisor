@@ -413,8 +413,9 @@ class DockerInterface(JobGroup, ABC):
     async def _get_container(self) -> dict[str, Any] | None:
         """Get docker container, returns None if not found."""
         try:
-            container = await self.sys_docker.containers.get(self.name)
-            return await container.show()
+            # container() builds the handle from the name with no I/O;
+            # show() below performs the actual inspect call.
+            return await self.sys_docker.containers.container(self.name).show()
         except TimeoutError as err:
             raise DockerTimeoutError(
                 f"Timeout occurred while getting container information for {self.name}"
@@ -451,7 +452,9 @@ class DockerInterface(JobGroup, ABC):
         """Attach to running Docker container."""
         with suppress(aiodocker.DockerError, TimeoutError):
             if docker_container is DEFAULT:
-                docker_container = await self.sys_docker.containers.get(self.name)
+                # container() builds the handle from the name with no I/O;
+                # show() below performs the actual inspect call.
+                docker_container = self.sys_docker.containers.container(self.name)
             if isinstance(docker_container, DockerContainer):
                 self._meta = await docker_container.show()
                 self.sys_docker.monitor.watch_container(self._meta)
@@ -467,7 +470,7 @@ class DockerInterface(JobGroup, ABC):
                         DockerContainerStateEvent(
                             self.name,
                             state,
-                            docker_container.id,
+                            self._meta["Id"],
                             int(time()),
                             exit_code,
                         ),

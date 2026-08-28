@@ -711,7 +711,7 @@ async def test_backup_with_pre_post_command(
 
 @pytest.mark.parametrize(
     (
-        "container_get_side_effect",
+        "exec_side_effect",
         "exec_start_side_effect",
         "exec_inspect_side_effect",
         "exc_type_raised",
@@ -748,13 +748,13 @@ async def test_backup_with_pre_post_command(
 async def test_backup_with_pre_command_error(
     coresys: CoreSys,
     install_app_ssh: App,
-    container_get_side_effect: aiodocker.DockerError | None,
+    exec_side_effect: aiodocker.DockerError | None,
     exec_start_side_effect: aiodocker.DockerError | None,
     exec_inspect_side_effect: aiodocker.DockerError | list[dict[str, Any]] | None,
     exc_type_raised: type[HassioError],
 ) -> None:
     """Test backing up an app with error running pre command."""
-    coresys.docker.containers.get.side_effect = container_get_side_effect
+    coresys.docker.containers.get.return_value.exec.side_effect = exec_side_effect
     coresys.docker.containers.get.return_value.exec.return_value.start.side_effect = (
         exec_start_side_effect
     )
