@@ -1,5 +1,6 @@
 """Test Home Assistant OS functionality."""
 
+import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, PropertyMock, call, patch
 
@@ -454,3 +455,55 @@ async def test_config_sync_service_name(
         await coresys.os.config_sync()
 
     restart.assert_called_once_with(expected_service)
+
+
+@pytest.mark.usefixtures("os_available")
+async def test_ssh_authorized_keys_jobs_serialized(coresys: CoreSys):
+    """Test concurrent SSH key add and clear do not interleave.
+
+    Interleaved file and service operations could end with the service
+    state not matching the key state (e.g. a key configured but dropbear
+    stopped).
+    """
+    events: list[str] = []
+
+    def record(name: str):
+        async def _record(*args):
+            events.append(f"{name}-begin")
+            await asyncio.sleep(0.01)
+            events.append(f"{name}-end")
+
+        return _record
+
+    with (
+        patch.object(
+            type(coresys.dbus.agent.system), "add_ssh_auth_key", new=record("add-key")
+        ),
+        patch.object(
+            type(coresys.dbus.agent.system),
+            "clear_ssh_auth_keys",
+            new=record("clear-keys"),
+        ),
+        patch.object(
+            coresys.host.services, "start", new=AsyncMock(side_effect=record("start"))
+        ),
+        patch.object(
+            coresys.host.services, "stop", new=AsyncMock(side_effect=record("stop"))
+        ),
+    ):
+        await asyncio.gather(
+            coresys.os.add_ssh_authorized_key("ssh-ed25519 AAAA test@example.com"),
+            coresys.os.clear_ssh_authorized_keys(),
+        )
+
+    # Each operation's file change and service action must be contiguous
+    assert events == [
+        "add-key-begin",
+        "add-key-end",
+        "start-begin",
+        "start-end",
+        "clear-keys-begin",
+        "clear-keys-end",
+        "stop-begin",
+        "stop-end",
+    ]

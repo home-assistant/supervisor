@@ -255,12 +255,11 @@ class Systemd(DBusInterfaceProxy):
         properties: list[tuple[str, Variant]],
         aux: list[tuple[str, list[tuple[str, Variant]]]] | None = None,
     ) -> str:
-        """Start a transient unit, optionally creating aux companion units atomically.
+        """Start a transient unit which is released when stopped or on reboot.
 
-        Released when stopped or on reboot. Returns object path of the job.
-        Aux entries take the form `(unit_name, properties)` — used e.g. to
-        create a `.automount` alongside its `.mount` so the kernel autofs
-        layer triggers activation lazily.
+        ``aux`` allows auxiliary transient units (e.g. a paired ``.service``
+        for a ``.socket`` unit) to be defined atomically in the same
+        transaction as the primary unit. Returns object path of job.
         """
         return await self.connected_dbus.Manager.call(
             "start_transient_unit", unit, mode, properties, aux or []

@@ -314,6 +314,9 @@ class RestAPI(CoreSysAttributes):
                 web.get("/os/datadisk/list", api_os.list_data),
                 web.post("/os/datadisk/wipe", api_os.wipe_data),
                 web.post("/os/boot-slot", api_os.set_boot_slot),
+                web.get("/os/ssh/authorized_keys", api_os.ssh_authorized_keys_list),
+                web.post("/os/ssh/authorized_keys", api_os.ssh_authorized_keys_add),
+                web.delete("/os/ssh/authorized_keys", api_os.ssh_authorized_keys_clear),
             ]
         )
 
@@ -1071,6 +1074,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/docker/registries", api_docker.registries),
                 web.post("/docker/registries", api_docker.create_registry),
                 web.delete("/docker/registries/{hostname}", api_docker.remove_registry),
+                web.post("/docker/reset-storage", api_docker.reset_storage),
             ]
         )
 
