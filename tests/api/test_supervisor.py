@@ -602,12 +602,9 @@ async def test_supervisor_api_stats_failure(
 ):
     """Test supervisor stats failure."""
     api_client, prefix = api_client_with_prefix
-    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
-        500, {"message": "fail"}
-    )
 
     if prefix == "/v2":
-        # V2 always requests one-shot stats, which doesn't call containers.get
+        # V2 always requests one-shot stats, which doesn't call containers.container
         with patch.object(
             DockerAPI,
             "_query_one_shot_stats",
@@ -615,6 +612,9 @@ async def test_supervisor_api_stats_failure(
         ):
             resp = await api_client.get(f"{prefix}/supervisor/stats")
     else:
+        coresys.docker.containers.container.return_value.stats.side_effect = (
+            aiodocker.DockerError(500, {"message": "fail"})
+        )
         resp = await api_client.get(f"{prefix}/supervisor/stats")
 
     assert resp.status == 500
@@ -626,7 +626,7 @@ async def test_supervisor_api_stats_failure(
     assert body["error_key"] == "supervisor_unknown_error"
     if prefix != "/v2":
         assert (
-            "Could not inspect container 'hassio_supervisor' for stats: [500] {'message': 'fail'}"
+            "Can't read stats from hassio_supervisor: [500] {'message': 'fail'}"
             in caplog.text
         )
 

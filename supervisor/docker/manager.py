@@ -1036,61 +1036,37 @@ class DockerAPI(CoreSysAttributes):
         (no wait, no comparison window, and it doesn't matter whether the
         container is currently running).
         """
-        if one_shot:
-            try:
-                stats = await self._query_one_shot_stats(name)
-            except TimeoutError as err:
-                raise DockerStatsTimeoutError(_LOGGER.error, name=name) from err
-            except aiodocker.DockerError as err:
-                if err.status == HTTPStatus.NOT_FOUND:
-                    raise DockerContainerNotFoundError(
-                        _LOGGER.warning, name=name
-                    ) from None
-                _LOGGER.error("Can't read stats from %s: %s", name, err)
-                raise DockerStatsUnknownError(name=name) from err
-
-            if not stats:
-                _LOGGER.error("Docker returned no stats for %s", name)
-                raise DockerStatsUnknownError(name=name)
-
-            # Docker returns a stub response containing only the container's
-            # id/name (no cpu_stats/memory_stats/networks data) for a
-            # container that is stopped or restarting, instead of an error.
-            # online_cpus is only ever present while the container is
-            # running, making it a reliable way to detect that stub.
-            if "online_cpus" not in stats.get("cpu_stats", {}):
-                raise DockerContainerNotRunningError(_LOGGER.error, name=name)
-
-            return stats
-
+        stats: dict[str, Any] | None
         try:
-            docker_container = await self.containers.get(name)
-            container_metadata = await docker_container.show()
+            if one_shot:
+                stats = await self._query_one_shot_stats(name)
+            else:
+                # containers.container() builds a container handle from the
+                # name alone with no I/O, unlike containers.get(), which
+                # would inspect the container just to look up its id.
+                stats_list = await self.containers.container(name).stats(stream=False)
+                stats = stats_list[-1] if stats_list else None
         except TimeoutError as err:
             raise DockerStatsTimeoutError(_LOGGER.error, name=name) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerContainerNotFoundError(_LOGGER.warning, name=name) from None
-            _LOGGER.error("Could not inspect container '%s' for stats: %s", name, err)
-            raise DockerStatsUnknownError(name=name) from err
-
-        # container is not running
-        if container_metadata["State"]["Status"] != "running":
-            raise DockerContainerNotRunningError(_LOGGER.error, name=name)
-
-        try:
-            stats_list = await docker_container.stats(stream=False)
-        except TimeoutError as err:
-            raise DockerStatsTimeoutError(_LOGGER.error, name=name) from err
-        except aiodocker.DockerError as err:
             _LOGGER.error("Can't read stats from %s: %s", name, err)
             raise DockerStatsUnknownError(name=name) from err
 
-        last_stats = stats_list[-1] if stats_list else None
-        if not last_stats:
+        if not stats:
             _LOGGER.error("Docker returned no stats for %s", name)
             raise DockerStatsUnknownError(name=name)
-        return last_stats
+
+        # Docker returns a stub response containing only the container's
+        # id/name (no cpu_stats/memory_stats/networks data) for a
+        # container that is stopped or restarting, instead of an error.
+        # online_cpus is only ever present while the container is
+        # running, making it a reliable way to detect that stub.
+        if "online_cpus" not in stats.get("cpu_stats", {}):
+            raise DockerContainerNotRunningError(_LOGGER.error, name=name)
+
+        return stats
 
     async def container_run_inside(self, name: str, command: str) -> ExecReturn:
         """Execute a command inside Docker container."""
