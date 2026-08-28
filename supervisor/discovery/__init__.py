@@ -137,10 +137,15 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
         A message of the backup replaces the message of the same uuid, as the
         restore may bring back another version of the app which announces a
-        different config. A message for a service which already has a message
-        under a different uuid is dropped instead: that uuid is the one Home
-        Assistant knows the service by, taking it away would break the link
-        this is meant to keep.
+        different config.
+
+        A message for a service which already has a message under a different
+        uuid is dropped instead, the live message wins. Home Assistant knows
+        the service by the uuid of that message whenever its config entries
+        were not part of the restore, and when they were, its entry may be
+        left stale. Home Assistant cannot be kept in sync in every case
+        anyway, an app which is not part of the restore keeps its message
+        either way, so the app decides.
 
         A restored message is not pushed to Home Assistant here. The service
         behind it is not up at this point, and it may never come up if the app
