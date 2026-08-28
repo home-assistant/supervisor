@@ -1016,7 +1016,7 @@ async def test_query_one_shot_stats(docker: DockerAPI):
             return None
 
     query_mock = MagicMock(return_value=MockQueryCM())
-    docker.docker._query = query_mock
+    docker.docker._query = query_mock  # pylint: disable=protected-access
 
     result = await docker._query_one_shot_stats(  # pylint: disable=protected-access
         "mycontainer"
