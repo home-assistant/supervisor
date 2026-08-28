@@ -706,6 +706,17 @@ class Mount(CoreSysAttributes, ABC):
         except MountActivationError:
             # Armed, the server just did not answer the probe
             return
+        except MountInvalidError as err:
+            # Something wrote into the path while it was uncovered. Arming
+            # over that data would hide it: reconciliation sees a healthy
+            # trigger and the repair skips mount points. Leave the path as
+            # it is so the next reconcile offers to move the data away
+            _LOGGER.warning(
+                "Could not re-arm automount for %s after a failed unmount: %s",
+                self.name,
+                err,
+            )
+            return
         except (MountError, OSError) as err:
             _LOGGER.debug(
                 "Could not re-create the unit pair for %s, arming the trigger "

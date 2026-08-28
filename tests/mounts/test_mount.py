@@ -801,3 +801,46 @@ async def test_unmount_failure_arms_trigger_without_aux(
         ),
         ("mnt-data-supervisor-mounts-test.automount", []),
     ]
+
+
+async def test_unmount_failure_leaves_local_data_visible(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test data written while the path was uncovered is not armed over.
+
+    A trigger on top would hide it: reconciliation finds a healthy mount
+    and relocate_local_data() skips mount points, so the move-local-data
+    repair could never reach it.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "share",
+        },
+    )
+    mount.local_where.mkdir(parents=True)
+    (mount.local_where / "written_while_uncovered").touch()
+
+    # Automount stops fine, stopping the .mount fails
+    systemd_service.response_stop_unit = [
+        "/org/freedesktop/systemd1/job/7623",
+        ERROR_FAILURE,
+    ]
+
+    with pytest.raises(MountUnmountError):
+        await mount.unmount()
+
+    assert systemd_service.StartTransientUnit.calls == []
+    assert (mount.local_where / "written_while_uncovered").exists()
+    assert "Could not re-arm automount for test" in caplog.text
