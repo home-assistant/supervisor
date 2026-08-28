@@ -18,12 +18,12 @@ from supervisor.const import AppState, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
-from supervisor.docker.manager import CommandReturn
+from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HassioError
 from supervisor.store.repository import Repository
 
-from ..common import force_app_state
+from ..common import force_app_state, load_json_fixture
 from ..const import TEST_ADDON_SLUG
 
 
@@ -720,19 +720,51 @@ async def test_app_start_options_error(
 
 @pytest.mark.parametrize(("method", "action"), [("get", "stats"), ("post", "stdin")])
 @pytest.mark.usefixtures("install_app_example")
-async def test_app_not_running_error(
-    app_api_client_with_root: tuple[TestClient, str], method: str, action: str
-):
-    """Test app not running error for endpoints that require that."""
-    client, root = app_api_client_with_root
+async def test_app_not_running_error(api_client: TestClient, method: str, action: str):
+    """Test app not running error for endpoints that require that.
+
+    v2 stats always uses one-shot mode, which doesn't check whether the
+    container is running (see test_app_stats_v2_one_shot_ignores_not_running),
+    so this only covers v1 for the "stats" action.
+    """
     with patch.object(App, "with_stdin", new=PropertyMock(return_value=True)):
-        resp = await client.request(method, f"{root}/local_example/{action}")
+        resp = await api_client.request(method, f"/addons/local_example/{action}")
 
     assert resp.status == 400
     body = await resp.json()
     assert body["message"] == "App local_example is not running"
     assert body["error_key"] == "app_not_running_error"
     assert body["extra_fields"] == {"app": "local_example"}
+
+
+@pytest.mark.usefixtures("install_app_example")
+async def test_app_not_running_error_stdin_v2(api_client_v2: TestClient):
+    """Test app not running error for stdin on v2."""
+    with patch.object(App, "with_stdin", new=PropertyMock(return_value=True)):
+        resp = await api_client_v2.post("/v2/apps/local_example/stdin")
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "App local_example is not running"
+    assert body["error_key"] == "app_not_running_error"
+    assert body["extra_fields"] == {"app": "local_example"}
+
+
+@pytest.mark.usefixtures("install_app_example")
+async def test_app_stats_v2_one_shot_ignores_not_running(api_client_v2: TestClient):
+    """Test v2 app stats always uses one-shot mode, which doesn't require the container to be running."""
+    stats_fixture = load_json_fixture("container_stats.json")
+    del stats_fixture["precpu_stats"]
+
+    with patch.object(
+        DockerAPI, "_query_one_shot_stats", AsyncMock(return_value=stats_fixture)
+    ):
+        resp = await api_client_v2.get("/v2/apps/local_example/stats")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert "cpu_percent" not in result["data"]
+    assert result["data"]["cpu_usage"] == 190
 
 
 @pytest.mark.usefixtures("install_app_example")

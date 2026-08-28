@@ -1007,6 +1007,23 @@ class DockerAPI(CoreSysAttributes):
                 f"Can't grep logs from {name}: {err}", _LOGGER.warning
             ) from err
 
+    async def _query_one_shot_stats(self, name: str) -> dict[str, Any]:
+        """Query Docker directly for a one-shot container stats sample.
+
+        aiodocker has no native support for the "one-shot" query parameter
+        added in Docker API 1.41, so the request is made directly against the
+        same endpoint it uses internally. There's an open PR to add proper
+        support upstream: https://github.com/aio-libs/aiodocker/pull/1054.
+        Kept as a small, standalone wrapper so this reach into aiodocker's
+        protected internals is contained to a single spot, making it easy to
+        remove once that's available.
+        """
+        async with self.docker._query(  # pylint: disable=protected-access
+            f"containers/{name}/stats",
+            params={"stream": "0", "one-shot": "1"},
+        ) as response:
+            return await response.json(content_type=None)
+
     async def container_stats(
         self, name: str, *, one_shot: bool = False
     ) -> dict[str, Any]:
@@ -1021,14 +1038,7 @@ class DockerAPI(CoreSysAttributes):
         """
         if one_shot:
             try:
-                # aiodocker has no native support for the "one-shot" query
-                # parameter added in Docker API 1.41, so the request is made
-                # directly against the same endpoint it uses internally.
-                async with self.docker._query(  # pylint: disable=protected-access
-                    f"containers/{name}/stats",
-                    params={"stream": "0", "one-shot": "1"},
-                ) as response:
-                    stats = await response.json(content_type=None)
+                stats = await self._query_one_shot_stats(name)
             except TimeoutError as err:
                 raise DockerStatsTimeoutError(_LOGGER.error, name=name) from err
             except aiodocker.DockerError as err:
@@ -1067,11 +1077,11 @@ class DockerAPI(CoreSysAttributes):
             _LOGGER.error("Can't read stats from %s: %s", name, err)
             raise DockerStatsUnknownError(name=name) from err
 
-        stats = stats_list[-1] if stats_list else None
-        if not stats:
+        last_stats = stats_list[-1] if stats_list else None
+        if not last_stats:
             _LOGGER.error("Docker returned no stats for %s", name)
             raise DockerStatsUnknownError(name=name)
-        return stats
+        return last_stats
 
     async def container_run_inside(self, name: str, command: str) -> ExecReturn:
         """Execute a command inside Docker container."""

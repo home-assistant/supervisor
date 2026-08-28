@@ -154,11 +154,17 @@ class APIHomeAssistant(CoreSysAttributes):
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
+        """Return resource information for v2 contract (always one-shot)."""
+        stats = await self.sys_homeassistant.core.stats(one_shot=True)
+        return api_return_stats(stats, legacy=False)
+
+    @api_process
+    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         one_shot = ATTR_ONE_SHOT in request.query
         stats = await self.sys_homeassistant.core.stats(one_shot=one_shot)
 
-        return api_return_stats(stats)
+        return api_return_stats(stats, legacy=True)
 
     @api_process
     async def update(self, request: web.Request) -> dict[str, str] | None:

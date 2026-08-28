@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
@@ -14,6 +14,7 @@ from supervisor.const import DNS_SUFFIX, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import DockerError, HomeAssistantError
 from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import WSEvent
@@ -47,14 +48,29 @@ async def test_api_stats(
     api_client, root = core_api_client_with_root
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
-    container.stats = AsyncMock(
-        return_value=[load_json_fixture("container_stats.json")]
-    )
 
-    resp = await api_client.get(f"{root}/stats")
+    if root.startswith("/v2"):
+        # V2 always requests one-shot stats
+        stats_fixture = load_json_fixture("container_stats.json")
+        del stats_fixture["precpu_stats"]
+        with patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=stats_fixture),
+        ):
+            resp = await api_client.get(f"{root}/stats")
+    else:
+        container.stats = AsyncMock(
+            return_value=[load_json_fixture("container_stats.json")]
+        )
+        resp = await api_client.get(f"{root}/stats")
+
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["cpu_percent"] == 90.0
+    if root.startswith("/v2"):
+        assert "cpu_percent" not in result["data"]
+    else:
+        assert result["data"]["cpu_percent"] == 90.0
     assert result["data"]["cpu_usage"] == 190
     assert result["data"]["cpu_system_usage"] == 200
     assert result["data"]["online_cpus"] == 24
@@ -66,23 +82,25 @@ async def test_api_stats(
 async def test_api_stats_one_shot(
     core_api_client_with_root: tuple[TestClient, str],
     container: DockerContainer,
-    coresys: CoreSys,
 ):
-    """Test stats one-shot mode skips the calculated window."""
+    """Test stats one-shot mode skips the calculated window.
+
+    V1 opts in via the ``one_shot`` query string; v2 always requests
+    one-shot stats and has no query string option (see test_api_stats).
+    """
     api_client, root = core_api_client_with_root
+    if root.startswith("/v2"):
+        pytest.skip("v2 always uses one-shot; covered by test_api_stats")
+
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
 
     stats_fixture = load_json_fixture("container_stats.json")
     del stats_fixture["precpu_stats"]
-    query_response = AsyncMock()
-    query_response.json = AsyncMock(return_value=stats_fixture)
-    query_cm = MagicMock()
-    query_cm.__aenter__ = AsyncMock(return_value=query_response)
-    query_cm.__aexit__ = AsyncMock(return_value=False)
-    coresys.docker.docker._query = MagicMock(return_value=query_cm)
-
-    resp = await api_client.get(f"{root}/stats?one_shot")
+    with patch.object(
+        DockerAPI, "_query_one_shot_stats", AsyncMock(return_value=stats_fixture)
+    ):
+        resp = await api_client.get(f"{root}/stats?one_shot")
 
     assert resp.status == 200
     result = await resp.json()

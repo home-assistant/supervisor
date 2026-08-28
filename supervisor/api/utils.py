@@ -111,10 +111,15 @@ def json_loads(data: Any) -> dict[str, Any]:
         raise APIError("Invalid json") from err
 
 
-def api_return_stats(stats: DockerStats) -> dict[str, Any]:
-    """Return the standard API response dict for a DockerStats object."""
-    return {
-        ATTR_CPU_PERCENT: stats.cpu_percent,
+def api_return_stats(stats: DockerStats, *, legacy: bool) -> dict[str, Any]:
+    """Return the standard API response dict for a DockerStats object.
+
+    ``legacy`` selects the v1-compatible response model, which includes
+    ``cpu_percent`` (a windowed calculation that is ``None`` for a one-shot
+    sample). V2 always requests one-shot stats, so that field is dropped
+    from its response since it would never carry a meaningful value.
+    """
+    data = {
         ATTR_CPU_USAGE: stats.cpu_usage,
         ATTR_CPU_SYSTEM_USAGE: stats.cpu_system_usage,
         ATTR_ONLINE_CPUS: stats.online_cpus,
@@ -126,6 +131,10 @@ def api_return_stats(stats: DockerStats) -> dict[str, Any]:
         ATTR_BLK_READ: stats.blk_read,
         ATTR_BLK_WRITE: stats.blk_write,
     }
+    if legacy:
+        data[ATTR_CPU_PERCENT] = stats.cpu_percent
+
+    return data
 
 
 def api_process(method):

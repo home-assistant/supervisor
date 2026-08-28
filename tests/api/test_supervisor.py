@@ -14,6 +14,7 @@ import pytest
 from supervisor.const import CoreState, FeatureFlag
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
+from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import (
     HassioError,
     HostJournalGatewaydConnectionError,
@@ -566,14 +567,29 @@ async def test_api_supervisor_stats(
     api_client, prefix = api_client_with_prefix
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
-    container.stats = AsyncMock(
-        return_value=[load_json_fixture("container_stats.json")]
-    )
 
-    resp = await api_client.get(f"{prefix}/supervisor/stats")
+    if prefix == "/v2":
+        # V2 always requests one-shot stats
+        stats_fixture = load_json_fixture("container_stats.json")
+        del stats_fixture["precpu_stats"]
+        with patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=stats_fixture),
+        ):
+            resp = await api_client.get(f"{prefix}/supervisor/stats")
+    else:
+        container.stats = AsyncMock(
+            return_value=[load_json_fixture("container_stats.json")]
+        )
+        resp = await api_client.get(f"{prefix}/supervisor/stats")
+
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["cpu_percent"] == 90.0
+    if prefix == "/v2":
+        assert "cpu_percent" not in result["data"]
+    else:
+        assert result["data"]["cpu_percent"] == 90.0
     assert result["data"]["memory_usage"] == 59700000
     assert result["data"]["memory_limit"] == 4000000000
     assert result["data"]["memory_percent"] == 1.49
@@ -590,7 +606,17 @@ async def test_supervisor_api_stats_failure(
         500, {"message": "fail"}
     )
 
-    resp = await api_client.get(f"{prefix}/supervisor/stats")
+    if prefix == "/v2":
+        # V2 always requests one-shot stats, which doesn't call containers.get
+        with patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(side_effect=aiodocker.DockerError(500, {"message": "fail"})),
+        ):
+            resp = await api_client.get(f"{prefix}/supervisor/stats")
+    else:
+        resp = await api_client.get(f"{prefix}/supervisor/stats")
+
     assert resp.status == 500
     body = await resp.json()
     assert (
@@ -598,10 +624,11 @@ async def test_supervisor_api_stats_failure(
         == "An unknown error occurred with Supervisor. Check Supervisor logs for details"
     )
     assert body["error_key"] == "supervisor_unknown_error"
-    assert (
-        "Could not inspect container 'hassio_supervisor' for stats: [500] {'message': 'fail'}"
-        in caplog.text
-    )
+    if prefix != "/v2":
+        assert (
+            "Could not inspect container 'hassio_supervisor' for stats: [500] {'message': 'fail'}"
+            in caplog.text
+        )
 
 
 async def test_api_supervisor_info_feature_flags(

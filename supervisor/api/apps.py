@@ -446,13 +446,21 @@ class APIApps(CoreSysAttributes):
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
+        """Return resource information for v2 contract (always one-shot)."""
+        app = self.get_app_for_request(request)
+
+        stats: DockerStats = await app.stats(one_shot=True)
+        return api_return_stats(stats, legacy=False)
+
+    @api_process
+    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         app = self.get_app_for_request(request)
 
         one_shot = ATTR_ONE_SHOT in request.query
         stats: DockerStats = await app.stats(one_shot=one_shot)
 
-        return api_return_stats(stats)
+        return api_return_stats(stats, legacy=True)
 
     @api_process
     async def uninstall(self, request: web.Request) -> None:
