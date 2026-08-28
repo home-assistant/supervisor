@@ -596,7 +596,7 @@ async def test_reload_mount_healthy_skips_systemd(
     all_dbus_services: dict[str, DBusServiceMock],
     mount: Mount,
 ):
-    """A healthy mount (probe passes) triggers no systemd operations at all."""
+    """A healthy mount is never reloaded, restarted, stopped or re-created."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
     systemd_service.StartTransientUnit.calls.clear()

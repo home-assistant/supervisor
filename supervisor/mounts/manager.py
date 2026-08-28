@@ -39,11 +39,11 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class MountManager(FileConfiguration, CoreSysAttributes):
     """Mount manager for supervisor.
 
-    With the autofs-based design, the manager's job is small: load saved
-    mount configs at startup, create/remove transient `.mount` +
-    `.automount` units, and surface failures as resolution issues. The
-    kernel handles lazy activation, idle expiry, and transparent
-    reconnect — no periodic polling is needed.
+    Loads the saved mount configs at startup, creates and removes the
+    transient `.mount` + `.automount` unit pairs, and surfaces failures as
+    resolution issues. Activation and reconnect are left to the kernel;
+    the periodic reconcile only re-arms dead triggers and keeps the
+    reported state and the resolution issues in sync.
     """
 
     def __init__(self, coresys: CoreSys):
