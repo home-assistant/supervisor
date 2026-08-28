@@ -91,7 +91,11 @@ async def test_restore_app_messages_announced_by_app(
 async def test_restore_app_messages_keeps_live_message(
     coresys: CoreSys, app_with_discovery: App
 ):
-    """Test a live message wins, it already carries the uuid in use."""
+    """Test a live message under another uuid wins over the one of the backup.
+
+    Home Assistant knows the service by the uuid of the live message, so that
+    message stays, config included.
+    """
     live = await coresys.discovery.send(app_with_discovery, "mcp", dict(MCP_CONFIG))
     assert live.uuid != BACKUP_UUID
 
@@ -129,6 +133,82 @@ async def test_restore_app_messages_skips_dropped_service(
 
     assert coresys.discovery.get(BACKUP_UUID) is None
     assert "app local_ssh does not provide it anymore" in caplog.text
+
+
+async def test_restore_app_messages_restores_config(
+    coresys: CoreSys, app_with_discovery: App
+):
+    """Test the config of the backup replaces the config of the same message.
+
+    A restore can bring back another version of an app, which announces a
+    different config than the version it replaces. Home Assistant may pull the
+    messages before the restored app announces itself, so the message has to
+    hold the config of the app which is now installed.
+    """
+    old_config = {"url": "http://local-ssh:8099/mcp-v1"}
+    live = await coresys.discovery.send(app_with_discovery, "mcp", dict(MCP_CONFIG))
+
+    with patch.object(
+        type(coresys.discovery), "_push_discovery", new=AsyncMock()
+    ) as push:
+        await coresys.discovery.restore_app_messages(
+            app_with_discovery,
+            [
+                Message(
+                    app=app_with_discovery.slug,
+                    service="mcp",
+                    config=old_config,
+                    uuid=live.uuid,
+                )
+            ],
+        )
+        await asyncio.sleep(0)
+
+        assert coresys.discovery.get(live.uuid).config == old_config
+        push.assert_not_called()
+
+        # The restored config reaches Home Assistant when the app announces it
+        push.reset_mock()
+        await coresys.discovery.send(app_with_discovery, "mcp", dict(old_config))
+        await asyncio.sleep(0)
+
+    push.assert_called_once_with(live, CMD_NEW)
+    assert [
+        message.uuid
+        for message in coresys.discovery.messages_for_app(app_with_discovery.slug)
+    ] == [live.uuid]
+
+
+async def test_restore_app_messages_unchanged_config_is_noop(
+    coresys: CoreSys, app_with_discovery: App
+):
+    """Test restoring the message which is already there changes nothing.
+
+    Home Assistant knows this message with this config already, so there is
+    nothing to announce.
+    """
+    live = await coresys.discovery.send(app_with_discovery, "mcp", dict(MCP_CONFIG))
+
+    with patch.object(
+        type(coresys.discovery), "_push_discovery", new=AsyncMock()
+    ) as push:
+        await coresys.discovery.restore_app_messages(
+            app_with_discovery,
+            [
+                Message(
+                    app=app_with_discovery.slug,
+                    service="mcp",
+                    config=dict(MCP_CONFIG),
+                    uuid=live.uuid,
+                )
+            ],
+        )
+        # App announces itself again after the restore
+        await coresys.discovery.send(app_with_discovery, "mcp", dict(MCP_CONFIG))
+        await asyncio.sleep(0)
+
+    push.assert_not_called()
+    assert coresys.discovery.get(live.uuid).config == MCP_CONFIG
 
 
 async def test_restore_app_messages_skips_uuid_in_use(

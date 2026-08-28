@@ -1684,6 +1684,49 @@ async def test_restore_preserves_discovery_uuid(
 
 
 @pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
+async def test_restore_twice_keeps_single_discovery_message(
+    coresys: CoreSys, install_app_example: App
+):
+    """Test restoring the same backup twice does not duplicate a discovery message.
+
+    The second restore finds the message of the first one and leaves it alone,
+    as that message is the one Home Assistant already knows.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    install_app_example.data["discovery"] = ["mcp"]
+    with patch.object(HomeAssistantAPI, "check_api_state", return_value=False):
+        message = await coresys.discovery.send(
+            install_app_example, "mcp", {"url": "http://local-example:8099/mcp"}
+        )
+        backup: Backup = await coresys.backups.do_backup_partial(apps=["local_example"])
+        await coresys.apps.uninstall("local_example")
+
+        with (
+            patch.object(AppModel, "_validate_availability"),
+            patch.object(DockerApp, "attach"),
+        ):
+            assert await coresys.backups.do_restore_partial(
+                backup, apps=["local_example"]
+            )
+
+            # App announces itself again, as it does on every start
+            await coresys.discovery.send(
+                install_app_example, "mcp", {"url": "http://local-example:8099/mcp"}
+            )
+
+            assert await coresys.backups.do_restore_partial(
+                backup, apps=["local_example"]
+            )
+
+    assert [
+        restored.uuid
+        for restored in coresys.discovery.messages_for_app("local_example")
+    ] == [message.uuid]
+
+
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
 async def test_restore_app_image_missing(coresys: CoreSys, install_app_example: App):
     """Test restore when local image is missing installs from registry.
 
