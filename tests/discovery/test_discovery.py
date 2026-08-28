@@ -131,6 +131,67 @@ async def test_restore_app_messages_skips_dropped_service(
     assert "app local_ssh does not provide it anymore" in caplog.text
 
 
+async def test_restore_app_messages_skips_uuid_in_use(
+    coresys: CoreSys, app_with_discovery: App, caplog: pytest.LogCaptureFixture
+):
+    """Test a message does not overwrite the message another app owns.
+
+    Messages are keyed by uuid across all apps, so restoring a uuid which is
+    already taken would drop the message it collides with.
+    """
+    other = Message(app="core_mosquitto", service="mqtt", config={}, uuid=BACKUP_UUID)
+    coresys.discovery.message_obj[other.uuid] = other
+
+    await coresys.discovery.restore_app_messages(
+        app_with_discovery,
+        [
+            Message(
+                app=app_with_discovery.slug,
+                service="mcp",
+                config=MCP_CONFIG,
+                uuid=BACKUP_UUID,
+            )
+        ],
+    )
+
+    assert coresys.discovery.get(BACKUP_UUID) is other
+    assert coresys.discovery.messages_for_app(app_with_discovery.slug) == []
+    assert f"uuid {BACKUP_UUID} is already in use" in caplog.text
+
+
+async def test_restore_app_messages_service_only_once(
+    coresys: CoreSys, app_with_discovery: App
+):
+    """Test a service repeated in a backup only gets a single message.
+
+    Two messages for one service would both be handed to Home Assistant, and
+    only one of them can ever be updated or removed again, as send() and
+    remove() match on app and service.
+    """
+    await coresys.discovery.restore_app_messages(
+        app_with_discovery,
+        [
+            Message(
+                app=app_with_discovery.slug,
+                service="mcp",
+                config=MCP_CONFIG,
+                uuid=BACKUP_UUID,
+            ),
+            Message(
+                app=app_with_discovery.slug,
+                service="mcp",
+                config={"url": "http://local-ssh:9999/mcp"},
+                uuid="a1b2c3d4e5f60718293a4b5c6d7e8f90",
+            ),
+        ],
+    )
+
+    assert [
+        message.uuid
+        for message in coresys.discovery.messages_for_app(app_with_discovery.slug)
+    ] == [BACKUP_UUID]
+
+
 async def test_messages_for_app(coresys: CoreSys, app_with_discovery: App):
     """Test listing the messages of a single app."""
     message = await coresys.discovery.send(app_with_discovery, "mcp", dict(MCP_CONFIG))

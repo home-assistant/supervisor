@@ -142,11 +142,15 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         is not started again. Instead it is marked as unannounced so that the
         push happens once the app sends the message itself.
         """
-        live_services = {message.service for message in self.messages_for_app(app.slug)}
+        # Services which already have a message, grown while restoring so that
+        # a backup listing a service twice does not end up with two messages
+        known_services = {
+            message.service for message in self.messages_for_app(app.slug)
+        }
         restored = False
 
         for message in messages:
-            if message.service in live_services:
+            if message.service in known_services:
                 continue
             if message.service not in app.discovery:
                 _LOGGER.info(
@@ -155,9 +159,20 @@ class Discovery(CoreSysAttributes, FileConfiguration):
                     app.slug,
                 )
                 continue
+            if message.uuid in self.message_obj:
+                # Messages are keyed by uuid across all apps, so restoring this
+                # one would drop the message it collides with
+                _LOGGER.warning(
+                    "Skipping discovery message for service %s of app %s, uuid %s is already in use",
+                    message.service,
+                    app.slug,
+                    message.uuid,
+                )
+                continue
 
             self.message_obj[message.uuid] = message
             self._unannounced.add(message.uuid)
+            known_services.add(message.service)
             restored = True
             _LOGGER.info(
                 "Restored discovery %s for service %s from %s",
