@@ -768,6 +768,22 @@ async def test_app_stats_v2_one_shot_ignores_not_running(api_client_v2: TestClie
 
 
 @pytest.mark.usefixtures("install_app_example")
+async def test_app_stats_v1(api_client: TestClient, container: DockerContainer):
+    """Test v1 app stats returns a windowed sample including cpu_percent."""
+    container.show.return_value["State"]["Status"] = "running"
+    container.stats = AsyncMock(
+        return_value=[load_json_fixture("container_stats.json")]
+    )
+
+    resp = await api_client.get("/addons/local_example/stats")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["cpu_percent"] == 90.0
+    assert result["data"]["memory_usage"] == 59700000
+
+
+@pytest.mark.usefixtures("install_app_example")
 async def test_app_write_stdin_not_supported_error(
     app_api_client_with_root: tuple[TestClient, str],
 ):

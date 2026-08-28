@@ -1,4 +1,4 @@
-"""Test audio api."""
+"""Test observer api."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -6,20 +6,14 @@ from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
 
 from supervisor.docker.manager import DockerAPI
-from supervisor.host.const import LogFormatter
 
 from tests.common import load_json_fixture
 
 
-async def test_api_audio_logs(advanced_logs_tester) -> None:
-    """Test audio logs."""
-    await advanced_logs_tester("/audio", "hassio_audio", LogFormatter.VERBOSE)
-
-
-async def test_api_audio_stats(
+async def test_api_observer_stats(
     api_client_with_prefix: tuple[TestClient, str], container: DockerContainer
 ):
-    """Test audio stats."""
+    """Test observer stats."""
     api_client, prefix = api_client_with_prefix
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
@@ -32,12 +26,12 @@ async def test_api_audio_stats(
             "_query_one_shot_stats",
             AsyncMock(return_value=stats_fixture),
         ):
-            resp = await api_client.get(f"{prefix}/audio/stats")
+            resp = await api_client.get(f"{prefix}/observer/stats")
     else:
         container.stats = AsyncMock(
             return_value=[load_json_fixture("container_stats.json")]
         )
-        resp = await api_client.get(f"{prefix}/audio/stats")
+        resp = await api_client.get(f"{prefix}/observer/stats")
 
     assert resp.status == 200
     result = await resp.json()

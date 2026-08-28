@@ -987,6 +987,58 @@ async def test_container_stats_one_shot_not_running(docker: DockerAPI):
         await docker.container_stats("mycontainer", one_shot=True)
 
 
+async def test_container_stats_one_shot_empty_response(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsUnknownError when Docker returns nothing."""
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=None),
+        ),
+        pytest.raises(DockerStatsUnknownError, match="unknown error"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_empty_response(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerStatsUnknownError when Docker returns no samples."""
+    container.show.return_value["State"]["Status"] = "running"
+    container.stats = AsyncMock(return_value=[])
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_query_one_shot_stats(docker: DockerAPI):
+    """Test _query_one_shot_stats queries Docker directly for a one-shot sample."""
+    stats_payload = {"cpu_stats": {"online_cpus": 4}}
+
+    class MockResponse:
+        async def json(self, *, content_type=None):
+            return stats_payload
+
+    class MockQueryCM:
+        async def __aenter__(self):
+            return MockResponse()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    query_mock = MagicMock(return_value=MockQueryCM())
+    docker.docker._query = query_mock
+
+    result = await docker._query_one_shot_stats(  # pylint: disable=protected-access
+        "mycontainer"
+    )
+
+    assert result == stats_payload
+    query_mock.assert_called_once_with(
+        "containers/mycontainer/stats",
+        params={"stream": "0", "one-shot": "1"},
+    )
+
+
 async def test_container_run_inside_get_timeout(docker: DockerAPI):
     """Test container_run_inside raises DockerTimeoutError when containers.get times out."""
     docker.containers.get.side_effect = TimeoutError()

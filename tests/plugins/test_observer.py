@@ -1,12 +1,23 @@
 """Test observer plugin."""
 
 from http import HTTPStatus
+from unittest.mock import AsyncMock, patch
 
 import aiodocker
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import ObserverPortConflict
+from supervisor.docker.observer import DockerObserver
+from supervisor.exceptions import (
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
+    DockerError,
+    DockerStatsTimeoutError,
+    ObserverNotRunningError,
+    ObserverPortConflict,
+    ObserverStatsTimeoutError,
+    ObserverUnknownError,
+)
 
 
 @pytest.mark.parametrize(
@@ -35,3 +46,52 @@ async def test_observer_start_port_conflict(
         "Cannot start container hassio_observer because port 4357 is already in use"
         in caplog.text
     )
+
+
+async def test_stats_not_running(coresys: CoreSys):
+    """Test stats raises ObserverNotRunningError when the container isn't running."""
+    with (
+        patch.object(
+            DockerObserver,
+            "stats",
+            AsyncMock(
+                side_effect=DockerContainerNotRunningError(name="hassio_observer")
+            ),
+        ),
+        pytest.raises(ObserverNotRunningError),
+    ):
+        await coresys.plugins.observer.stats()
+
+    with (
+        patch.object(
+            DockerObserver,
+            "stats",
+            AsyncMock(side_effect=DockerContainerNotFoundError(name="hassio_observer")),
+        ),
+        pytest.raises(ObserverNotRunningError),
+    ):
+        await coresys.plugins.observer.stats()
+
+
+async def test_stats_timeout(coresys: CoreSys):
+    """Test stats raises ObserverStatsTimeoutError on timeout."""
+    with (
+        patch.object(
+            DockerObserver,
+            "stats",
+            AsyncMock(side_effect=DockerStatsTimeoutError(name="hassio_observer")),
+        ),
+        pytest.raises(ObserverStatsTimeoutError),
+    ):
+        await coresys.plugins.observer.stats()
+
+
+async def test_stats_unknown_error(coresys: CoreSys):
+    """Test stats raises ObserverUnknownError on an unexpected Docker error."""
+    with (
+        patch.object(
+            DockerObserver, "stats", AsyncMock(side_effect=DockerError("boom"))
+        ),
+        pytest.raises(ObserverUnknownError),
+    ):
+        await coresys.plugins.observer.stats()

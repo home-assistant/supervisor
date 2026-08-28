@@ -9,6 +9,15 @@ import pytest
 from supervisor.const import LogLevel
 from supervisor.coresys import CoreSys
 from supervisor.docker.audio import DockerAudio
+from supervisor.exceptions import (
+    AudioNotRunningError,
+    AudioStatsTimeoutError,
+    AudioUnknownError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
+    DockerError,
+    DockerStatsTimeoutError,
+)
 
 
 @pytest.fixture(name="docker_interface")
@@ -85,3 +94,48 @@ async def test_load_error(
         assert "Can't read pulse-client.tmpl" in caplog.text
         assert "Can't create default asound" in caplog.text
         assert coresys.core.healthy is False
+
+
+async def test_stats_not_running(coresys: CoreSys):
+    """Test stats raises AudioNotRunningError when the container isn't running."""
+    with (
+        patch.object(
+            DockerAudio,
+            "stats",
+            AsyncMock(side_effect=DockerContainerNotRunningError(name="hassio_audio")),
+        ),
+        pytest.raises(AudioNotRunningError),
+    ):
+        await coresys.plugins.audio.stats()
+
+    with (
+        patch.object(
+            DockerAudio,
+            "stats",
+            AsyncMock(side_effect=DockerContainerNotFoundError(name="hassio_audio")),
+        ),
+        pytest.raises(AudioNotRunningError),
+    ):
+        await coresys.plugins.audio.stats()
+
+
+async def test_stats_timeout(coresys: CoreSys):
+    """Test stats raises AudioStatsTimeoutError on timeout."""
+    with (
+        patch.object(
+            DockerAudio,
+            "stats",
+            AsyncMock(side_effect=DockerStatsTimeoutError(name="hassio_audio")),
+        ),
+        pytest.raises(AudioStatsTimeoutError),
+    ):
+        await coresys.plugins.audio.stats()
+
+
+async def test_stats_unknown_error(coresys: CoreSys):
+    """Test stats raises AudioUnknownError on an unexpected Docker error."""
+    with (
+        patch.object(DockerAudio, "stats", AsyncMock(side_effect=DockerError("boom"))),
+        pytest.raises(AudioUnknownError),
+    ):
+        await coresys.plugins.audio.stats()
