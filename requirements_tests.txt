@@ -10,6 +10,6 @@ pytest-timeout==2.4.0
 pytest-xdist==3.8.0
 pytest==9.1.1
 ruff==0.16.4
-time-machine==3.4.0
+time-machine==3.5.0
 types-pyyaml==6.0.12.20260815
 urllib3==2.7.0
