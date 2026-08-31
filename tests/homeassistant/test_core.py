@@ -594,7 +594,7 @@ async def test_start(
     coresys.docker.images.inspect.return_value = {"Id": "123"}
     coresys.docker.images.inspect.side_effect = image_exc
     container.id = "123"
-    container.show.side_effect = container_exc
+    container.stop.side_effect = container_exc
 
     with (
         patch.object(
@@ -616,7 +616,7 @@ async def test_start(
         assert run.call_args.kwargs["name"] == "homeassistant"
         assert run.call_args.kwargs["hostname"] == "homeassistant"
 
-    container.stop.assert_not_called()
+    container.stop.assert_called_once_with(t=260)
     assert container.delete.call_args_list == delete_calls
 
 
@@ -648,21 +648,13 @@ async def test_start_existing_container(coresys: CoreSys, container: DockerConta
 @pytest.mark.parametrize("exists", [True, False])
 async def test_stop(coresys: CoreSys, container: DockerContainer, exists: bool):
     """Test stopping Home Assistant."""
-    if exists:
-        container.show.return_value["State"]["Status"] = "running"
-        container.show.return_value["State"]["Running"] = True
-    else:
-        coresys.docker.containers.get.side_effect = aiodocker.DockerError(
-            404, {"message": "missing"}
-        )
+    if not exists:
+        container.stop.side_effect = aiodocker.DockerError(404, {"message": "missing"})
 
     await coresys.homeassistant.core.stop()
 
+    container.stop.assert_called_once_with(t=260)
     container.delete.assert_not_called()
-    if exists:
-        container.stop.assert_called_once_with(t=260)
-    else:
-        container.stop.assert_not_called()
 
 
 async def test_restart(coresys: CoreSys, container: DockerContainer):
