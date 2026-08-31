@@ -964,24 +964,21 @@ class DockerApp(DockerInterface):
     )
     async def write_stdin(self, data: bytes) -> None:
         """Write to app stdin."""
-        try:
-            # Load needed docker objects
-            container = await self.sys_docker.containers.get(self.name)
-            socket = container.attach(stdin=True)
-        except TimeoutError as err:
-            raise DockerTimeoutError(
-                f"Timeout attaching to {self.name} stdin", _LOGGER.error
-            ) from err
-        except aiodocker.DockerError as err:
-            raise DockerError(
-                f"Can't attach to {self.name} stdin: {err!s}", _LOGGER.error
-            ) from err
+        # container() builds the handle from the name with no I/O; attach()
+        # below addresses it by name/id directly.
+        container = self.sys_docker.containers.container(self.name)
+        socket = container.attach(stdin=True)
 
         try:
             await socket.write_in(data + b"\n")
             await socket.close()
-        # Seems to raise very generic exceptions like RuntimeError or AssertionError
-        # So we catch all exceptions and re-raise them as DockerError
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout writing to {self.name} stdin", _LOGGER.error
+            ) from err
+        # Seems to also raise very generic exceptions like RuntimeError or
+        # AssertionError, so we catch all remaining exceptions and re-raise
+        # them as DockerError
         except Exception as err:
             raise DockerError(
                 f"Can't write to {self.name} stdin: {err!s}", _LOGGER.error

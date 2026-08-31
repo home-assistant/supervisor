@@ -1,7 +1,5 @@
 """Test fixup core execute rebuild."""
 
-from collections.abc import Callable, Coroutine
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import aiodocker
@@ -16,23 +14,17 @@ from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.fixups.core_execute_rebuild import FixupCoreExecuteRebuild
 
 
-def make_mock_container_get(
-    status: str,
-) -> Callable[[str], Coroutine[Any, Any, DockerContainer]]:
-    """Make mock of container get."""
+def make_mock_container(status: str) -> DockerContainer:
+    """Make mock of container."""
     out = MagicMock(spec=DockerContainer)
     out.status = status
     out.show.return_value = {"State": {"Status": status, "ExitCode": 0}, "Mounts": []}
-
-    async def mock_container_get(name) -> DockerContainer:
-        return out
-
-    return mock_container_get
+    return out
 
 
 async def test_fixup(docker: DockerAPI, coresys: CoreSys):
     """Test fixup rebuilds core's container."""
-    docker.containers.get = make_mock_container_get("running")
+    docker.containers.container.return_value = make_mock_container("running")
 
     core_execute_rebuild = FixupCoreExecuteRebuild(coresys)
 
@@ -56,7 +48,7 @@ async def test_fixup_stopped_core(
 ):
     """Test fixup just removes HA's container when it is stopped."""
     caplog.clear()
-    docker.containers.get = make_mock_container_get("stopped")
+    docker.containers.container.return_value = make_mock_container("stopped")
     core_execute_rebuild = FixupCoreExecuteRebuild(coresys)
 
     coresys.resolution.create_issue(
@@ -70,7 +62,7 @@ async def test_fixup_stopped_core(
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
-    (await docker.containers.get("homeassistant")).delete.assert_called_once_with(
+    docker.containers.container("homeassistant").delete.assert_called_once_with(
         force=True, v=True
     )
     assert "Home Assistant is stopped" in caplog.text
@@ -81,7 +73,7 @@ async def test_fixup_unknown_core(
 ):
     """Test fixup does nothing if core's container has already been removed."""
     caplog.clear()
-    docker.containers.get.side_effect = aiodocker.DockerError(
+    docker.containers.container.return_value.show.side_effect = aiodocker.DockerError(
         404, {"message": "missing"}
     )
     core_execute_rebuild = FixupCoreExecuteRebuild(coresys)

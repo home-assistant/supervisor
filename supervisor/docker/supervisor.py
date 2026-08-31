@@ -8,7 +8,7 @@ import os
 import aiodocker
 from awesomeversion.awesomeversion import AwesomeVersion
 
-from ..exceptions import DockerError, DockerTimeoutError
+from ..exceptions import DockerError, DockerNotFound, DockerTimeoutError
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import PropagationMode
@@ -50,17 +50,11 @@ class DockerSupervisor(DockerInterface):
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
         """Attach to running docker container."""
-        try:
-            docker_container = await self.sys_docker.containers.get(self.name)
-            self._meta = await docker_container.show()
-        except TimeoutError as err:
-            raise DockerTimeoutError(
-                "Timeout getting supervisor container metadata"
-            ) from err
-        except aiodocker.DockerError as err:
-            raise DockerError(
-                f"Could not get supervisor container metadata: {err!s}"
-            ) from err
+        if not (container_metadata := await self._get_container()):
+            raise DockerNotFound(
+                f"Could not get supervisor container metadata for {self.name}"
+            )
+        self._meta = container_metadata
 
         _LOGGER.info(
             "Attaching to Supervisor %s with version %s",
@@ -68,14 +62,16 @@ class DockerSupervisor(DockerInterface):
             self.sys_supervisor.version,
         )
 
+        container_id = self._meta["Id"]
+
         # If already attach
-        if docker_container.id in self.sys_docker.network.containers:
+        if container_id in self.sys_docker.network.containers:
             return
 
         # Attach to network
         _LOGGER.info("Connecting Supervisor to hassio-network")
         await self.sys_docker.network.attach_container(
-            docker_container.id,
+            container_id,
             self.name,
             alias=["supervisor"],
             ipv4=self.sys_docker.network.supervisor,
@@ -84,18 +80,11 @@ class DockerSupervisor(DockerInterface):
     @Job(name="docker_supervisor_retag", concurrency=JobConcurrency.GROUP_QUEUE)
     async def retag(self) -> None:
         """Retag latest image to version."""
-        try:
-            docker_container = await self.sys_docker.containers.get(self.name)
-            container_metadata = await docker_container.show()
-        except TimeoutError as err:
-            raise DockerTimeoutError(
-                "Timeout getting Supervisor container for retag",
+        if not (container_metadata := await self._get_container()):
+            raise DockerNotFound(
+                f"Could not get Supervisor container {self.name} for retag",
                 _LOGGER.error,
-            ) from err
-        except aiodocker.DockerError as err:
-            raise DockerError(
-                f"Could not get Supervisor container for retag: {err}", _LOGGER.error
-            ) from err
+            )
 
         # See https://github.com/docker/docker-py/blob/df3f8e2abc5a03de482e37214dddef9e0cee1bb1/docker/models/containers.py#L41
         metadata_image = container_metadata.get("ImageID", container_metadata["Image"])
@@ -127,17 +116,10 @@ class DockerSupervisor(DockerInterface):
     )
     async def update_start_tag(self, image: str, version: AwesomeVersion) -> None:
         """Update start tag to new version."""
-        try:
-            docker_container = await self.sys_docker.containers.get(self.name)
-            container_metadata = await docker_container.show()
-        except TimeoutError as err:
-            raise DockerTimeoutError(
-                "Timeout getting container to fix start tag", _LOGGER.error
-            ) from err
-        except aiodocker.DockerError as err:
-            raise DockerError(
-                f"Can't get container to fix start tag: {err}", _LOGGER.error
-            ) from err
+        if not (container_metadata := await self._get_container()):
+            raise DockerNotFound(
+                f"Could not get container {self.name} to fix start tag", _LOGGER.error
+            )
 
         # See https://github.com/docker/docker-py/blob/df3f8e2abc5a03de482e37214dddef9e0cee1bb1/docker/models/containers.py#L41
         metadata_image = container_metadata.get("ImageID", container_metadata["Image"])

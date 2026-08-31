@@ -15,8 +15,23 @@ from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
 
+def _apply_container_mock(docker: DockerAPI, factory) -> None:
+    """Wire a container factory into both container() and get().
+
+    Plugins/core attach via containers.container(); DockerApp.attach() (used
+    by add-ons) calls containers.get() itself for legacy container-name
+    migration handling. Both need to return equivalent container mocks.
+    """
+    docker.containers.container = factory
+
+    async def _get(name):
+        return factory(name)
+
+    docker.containers.get = _get
+
+
 def _make_mock_container_get(bad_config_names: list[str], folder: str = "media"):
-    """Make mock of container get."""
+    """Make mock of container."""
     mount = {
         "Type": "bind",
         "Source": f"/mnt/data/supervisor/{folder}",
@@ -26,9 +41,10 @@ def _make_mock_container_get(bad_config_names: list[str], folder: str = "media")
         "Propagation": "rprivate",
     }
 
-    async def mock_container_get(name):
+    def mock_container(name):
         out = MagicMock(spec=DockerContainer)
         out.show.return_value = {
+            "Id": name,
             "State": {
                 "Status": "running",
                 "Running": True,
@@ -40,13 +56,13 @@ def _make_mock_container_get(bad_config_names: list[str], folder: str = "media")
 
         return out
 
-    return mock_container_get
+    return mock_container
 
 
 def _make_mock_container_get_with_volume_mount(
     bad_config_names: list[str], folder: str = "media"
 ):
-    """Make mock of container get with VOLUME mount (not managed by supervisor)."""
+    """Make mock of container with VOLUME mount (not managed by supervisor)."""
     # This simulates a Docker VOLUME mount with wrong propagation
     # but NOT created by supervisor configuration
     mount = {
@@ -58,9 +74,10 @@ def _make_mock_container_get_with_volume_mount(
         "Propagation": "rprivate",  # Wrong propagation, but not our mount
     }
 
-    async def mock_container_get(name):
+    def mock_container(name):
         out = MagicMock(spec=DockerContainer)
         out.show.return_value = {
+            "Id": name,
             "State": {
                 "Status": "running",
                 "Running": True,
@@ -72,7 +89,7 @@ def _make_mock_container_get_with_volume_mount(
 
         return out
 
-    return mock_container_get
+    return mock_container
 
 
 async def test_base(coresys: CoreSys):
@@ -86,8 +103,11 @@ async def test_base(coresys: CoreSys):
 @pytest.mark.usefixtures("install_app_ssh")
 async def test_check(docker: DockerAPI, coresys: CoreSys, folder: str):
     """Test check reports issue when containers have incorrect config."""
-    docker.containers.get = _make_mock_container_get(
-        ["homeassistant", "hassio_audio", "app_local_ssh"], folder
+    _apply_container_mock(
+        docker,
+        _make_mock_container_get(
+            ["homeassistant", "hassio_audio", "app_local_ssh"], folder
+        ),
     )
     # Use state used in setup()
     await coresys.core.set_state(CoreState.SETUP)
@@ -144,7 +164,7 @@ async def test_check(docker: DockerAPI, coresys: CoreSys, folder: str):
     )
 
     # IF config issue is resolved, all issues are removed except the main one. Which will be removed if check isn't approved
-    docker.containers.get = _make_mock_container_get([])
+    _apply_container_mock(docker, _make_mock_container_get([]))
     with patch.object(DockerInterface, "is_running", return_value=True):
         await coresys.plugins.load()
         await coresys.homeassistant.load()
@@ -173,8 +193,8 @@ async def test_app_volume_mount_not_flagged(
     ]  # No media/share
 
     # Mock container that has VOLUME mount to media/share with wrong propagation
-    docker.containers.get = _make_mock_container_get_with_volume_mount(
-        ["app_local_ssh"], folder
+    _apply_container_mock(
+        docker, _make_mock_container_get_with_volume_mount(["app_local_ssh"], folder)
     )
 
     await coresys.core.set_state(CoreState.SETUP)
@@ -228,9 +248,10 @@ async def test_app_configured_mount_still_flagged(
         "Propagation": "rprivate",  # Wrong propagation
     }
 
-    async def mock_container_get(name):
+    def mock_container(name):
         out = MagicMock(spec=DockerContainer)
         out.show.return_value = {
+            "Id": name,
             "State": {
                 "Status": "running",
                 "Running": True,
@@ -241,7 +262,7 @@ async def test_app_configured_mount_still_flagged(
             out.show.return_value["Mounts"].append(mount)
         return out
 
-    docker.containers.get = mock_container_get
+    _apply_container_mock(docker, mock_container)
 
     await coresys.core.set_state(CoreState.SETUP)
     with patch.object(DockerInterface, "is_running", return_value=True):
@@ -278,10 +299,11 @@ async def test_app_custom_target_path_flagged(
         {"type": mapping_type, "read_only": False, "path": custom_path},
     ]
 
-    async def mock_container_get(name: str) -> MagicMock:
-        """Mock container get with custom target path mount."""
+    def mock_container_get(name: str) -> MagicMock:
+        """Mock container with custom target path mount."""
         out = MagicMock(spec=DockerContainer)
         out.show.return_value = {
+            "Id": name,
             "State": {
                 "Status": "running",
                 "Running": True,
@@ -300,7 +322,7 @@ async def test_app_custom_target_path_flagged(
             out.show.return_value["Mounts"].append(mount)
         return out
 
-    docker.containers.get = mock_container_get
+    _apply_container_mock(docker, mock_container_get)
 
     await coresys.core.set_state(CoreState.SETUP)
     with patch.object(DockerInterface, "is_running", return_value=True):

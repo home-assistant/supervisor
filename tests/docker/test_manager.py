@@ -25,6 +25,7 @@ from supervisor.exceptions import (
     DockerContainerNotRunningError,
     DockerError,
     DockerNoSpaceOnDevice,
+    DockerNotFound,
     DockerRegistryRateLimitExceeded,
     DockerStatsTimeoutError,
     DockerStatsUnknownError,
@@ -324,9 +325,6 @@ async def test_stop_container_with_cidfile_cleanup(
     coresys: CoreSys, docker: DockerAPI, container: DockerContainer
 ):
     """Test container stop with cidfile cleanup."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
-
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
 
@@ -347,9 +345,6 @@ async def test_stop_container_without_removal_no_cidfile_cleanup(
     docker: DockerAPI, container: DockerContainer
 ):
     """Test container stop without removal doesn't clean up cidfile."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
-
     container_name = "test_container"
 
     # Mock the containers.get method and cidfile cleanup
@@ -370,9 +365,6 @@ async def test_cidfile_cleanup_handles_oserror(
     coresys: CoreSys, docker: DockerAPI, container: DockerContainer
 ):
     """Test that cidfile cleanup handles OSError gracefully."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
-
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
 
@@ -785,21 +777,45 @@ async def test_prune_networks_container_get_timeout(
 async def test_container_is_initialized_timeout(
     docker: DockerAPI, container: DockerContainer
 ):
-    """Test container_is_initialized raises DockerTimeoutError when get/show times out."""
-    docker.containers.get.side_effect = TimeoutError()
+    """Test container_is_initialized raises DockerTimeoutError when show times out."""
+    container.show.side_effect = TimeoutError()
     with pytest.raises(DockerTimeoutError, match="Timeout getting container"):
         await docker.container_is_initialized(
             "mycontainer", "myimage", AwesomeVersion("1.0")
         )
 
 
-async def test_stop_container_get_timeout(docker: DockerAPI):
-    """Test stop_container raises DockerTimeoutError when containers.get times out."""
-    docker.containers.get.side_effect = TimeoutError()
-    with pytest.raises(
-        DockerTimeoutError, match="Timeout getting container .* for stopping"
-    ):
+async def test_stop_container_get_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test stop_container raises DockerTimeoutError when stop times out."""
+    container.stop.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout stopping container"):
         await docker.stop_container("mycontainer", timeout=10)
+
+
+async def test_stop_container_not_found(docker: DockerAPI, container: DockerContainer):
+    """Test stop_container raises DockerNotFound when container doesn't exist."""
+    container.stop.side_effect = aiodocker.DockerError(404, {"message": "missing"})
+    with pytest.raises(DockerNotFound):
+        await docker.stop_container("mycontainer", timeout=10)
+
+    container.delete.assert_not_called()
+
+
+async def test_stop_container_already_stopped(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test stop_container treats a 304 (already stopped) as success, not an error."""
+    # Docker returns 304 when the container is already stopped. aiodocker only
+    # raises DockerError for 4xx/5xx responses, so this surfaces as a normal
+    # return from stop() rather than an exception.
+    container.stop.return_value = None
+
+    await docker.stop_container("mycontainer", timeout=10, remove_container=False)
+
+    container.stop.assert_called_once_with(t=10)
+    container.delete.assert_not_called()
 
 
 async def test_start_container_get_timeout(docker: DockerAPI):
@@ -1029,11 +1045,13 @@ async def test_query_one_shot_stats(docker: DockerAPI):
     )
 
 
-async def test_container_run_inside_get_timeout(docker: DockerAPI):
-    """Test container_run_inside raises DockerTimeoutError when containers.get times out."""
-    docker.containers.get.side_effect = TimeoutError()
+async def test_container_run_inside_get_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_run_inside raises DockerTimeoutError when exec times out."""
+    container.exec.side_effect = TimeoutError()
     with pytest.raises(
-        DockerTimeoutError, match="Timeout getting container .* to run command"
+        DockerTimeoutError, match="Timeout running command in container"
     ):
         await docker.container_run_inside("mycontainer", "echo hi")
 

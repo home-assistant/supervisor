@@ -1,8 +1,6 @@
 """Test fixup core execute rebuild."""
 
 import asyncio
-from collections.abc import Callable, Coroutine
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import aiodocker
@@ -17,24 +15,18 @@ from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.fixups.app_execute_rebuild import FixupAppExecuteRebuild
 
 
-def make_mock_container_get(
-    status: str,
-) -> Callable[[str], Coroutine[Any, Any, DockerContainer]]:
-    """Make mock of container get."""
+def make_mock_container(status: str) -> DockerContainer:
+    """Make mock of container."""
     out = MagicMock(spec=DockerContainer)
     out.status = status
     out.show.return_value = {"State": {"Status": status, "ExitCode": 0}, "Mounts": []}
-
-    async def mock_container_get(name) -> DockerContainer:
-        return out
-
-    return mock_container_get
+    return out
 
 
 @pytest.mark.usefixtures("install_app_ssh")
 async def test_fixup(docker: DockerAPI, coresys: CoreSys):
     """Test fixup rebuilds app's container."""
-    docker.containers.get = make_mock_container_get("running")
+    docker.containers.container.return_value = make_mock_container("running")
 
     app_execute_rebuild = FixupAppExecuteRebuild(coresys)
 
@@ -60,7 +52,7 @@ async def test_fixup_stopped_core(
 ):
     """Test fixup just removes app's container when it is stopped."""
     caplog.clear()
-    docker.containers.get = make_mock_container_get("stopped")
+    docker.containers.container.return_value = make_mock_container("stopped")
     app_execute_rebuild = FixupAppExecuteRebuild(coresys)
 
     coresys.resolution.create_issue(
@@ -75,7 +67,7 @@ async def test_fixup_stopped_core(
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
-    (await docker.containers.get("app_local_ssh")).delete.assert_called_once_with(
+    docker.containers.container("app_local_ssh").delete.assert_called_once_with(
         force=True, v=True
     )
     assert "App local_ssh is stopped" in caplog.text
@@ -87,7 +79,7 @@ async def test_fixup_unknown_core(
 ):
     """Test fixup does nothing if app's container has already been removed."""
     caplog.clear()
-    docker.containers.get.side_effect = aiodocker.DockerError(
+    docker.containers.container.return_value.show.side_effect = aiodocker.DockerError(
         404, {"message": "missing"}
     )
     app_execute_rebuild = FixupAppExecuteRebuild(coresys)
