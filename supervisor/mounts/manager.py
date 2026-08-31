@@ -3,15 +3,15 @@
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
-from dataclasses import dataclass, replace
+from dataclasses import replace
 import logging
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import Self
 
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
-from ..dbus.const import UnitActiveState
 from ..exceptions import (
+    MountActivationError,
     MountError,
     MountJobError,
     MountNotFound,
@@ -30,23 +30,21 @@ from .const import (
     FILE_CONFIG_MOUNTS,
     MountUsage,
 )
-from .mount import BindMount, Mount
+from .mount import Mount
 from .validate import SCHEMA_MOUNTS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
-class BoundMount:
-    """Mount bound to a directory in one of the shared volumes."""
-
-    mount: Mount
-    bind_mount: BindMount
-    emergency: bool
-
-
 class MountManager(FileConfiguration, CoreSysAttributes):
-    """Mount manager for supervisor."""
+    """Mount manager for supervisor.
+
+    Loads the saved mount configs at startup, creates and removes the
+    transient `.mount` + `.automount` unit pairs, and surfaces failures as
+    resolution issues. Activation and reconnect are left to the kernel;
+    the periodic reconcile only re-arms dead triggers and keeps the
+    reported state and the resolution issues in sync.
+    """
 
     def __init__(self, coresys: CoreSys):
         """Initialize object."""
@@ -56,7 +54,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         self.coresys: CoreSys = coresys
         self._mounts: dict[str, Mount] = {}
-        self._bound_mounts: dict[str, BoundMount] = {}
 
     async def load_config(self) -> Self:
         """Load config in executor."""
@@ -88,11 +85,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         return [mount for mount in self.mounts if mount.usage == MountUsage.SHARE]
 
     @property
-    def bound_mounts(self) -> list[BoundMount]:
-        """Return list of bound mounts and where else they have been bind mounted."""
-        return list(self._bound_mounts.values())
-
-    @property
     def default_backup_mount(self) -> Mount | None:
         """Get default backup mount if set."""
         if ATTR_DEFAULT_BACKUP_MOUNT not in self._data:
@@ -120,7 +112,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         return item.name in self._mounts
 
     async def load(self) -> None:
-        """Mount all saved mounts."""
+        """Set up transient mount units for all saved mounts."""
         if not self.mounts:
             return
 
@@ -133,42 +125,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         _LOGGER.info("Initializing all user-configured mounts")
         await self._mount_errors_to_issues(
             self.mounts.copy(), [mount.load() for mount in self.mounts]
-        )
-
-        # Bind all media mounts to directories in media. Bind failures used
-        # to be silently swallowed as fire-and-forget tasks — route them into
-        # resolution issues so the user learns about e.g. local data blocking
-        # the bind mount target.
-        if self.media_mounts:
-            await self._mount_errors_to_issues(
-                self.media_mounts,
-                [self._bind_media(mount) for mount in self.media_mounts],
-            )
-
-        # Bind all share mounts to directories in share
-        if self.share_mounts:
-            await self._mount_errors_to_issues(
-                self.share_mounts,
-                [self._bind_share(mount) for mount in self.share_mounts],
-            )
-
-    @Job(name="mount_manager_reload", conditions=[JobCondition.MOUNT_AVAILABLE])
-    async def reload(self) -> None:
-        """Update mounts info via dbus and reload failed mounts."""
-        if not self.mounts:
-            return
-
-        mounts = self.mounts.copy()
-        results = await asyncio.gather(
-            *[mount.update() for mount in mounts], return_exceptions=True
-        )
-
-        # Try to reload failed mounts and report issues if failure persists
-        failures = [
-            mount for mount, result in zip(mounts, results) if result is not True
-        ]
-        await self._mount_errors_to_issues(
-            failures, [self.reload_mount(mount.name) for mount in failures]
         )
 
     async def _mount_errors_to_issues(
@@ -236,17 +192,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         _LOGGER.info("Creating or updating mount: %s", mount.name)
         try:
             await mount.load()
-            if mount.usage == MountUsage.MEDIA:
-                await self._bind_media(mount)
-            elif mount.usage == MountUsage.SHARE:
-                await self._bind_share(mount)
         except MountError:
             # Roll back so a failed add/update does not leave a half-created
-            # mount behind: data mount active and listed, but without bind
-            # mount and never persisted to the configuration.
-            if bound_mount := self._bound_mounts.pop(mount.name, None):
-                with suppress(MountError):
-                    await bound_mount.bind_mount.unmount()
+            # mount behind: units active and the mount listed, but never
+            # persisted to the configuration.
             with suppress(MountError):
                 await mount.unmount()
             raise
@@ -264,10 +213,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         get unmounted before reuse.
         """
         paths = [mount.local_where]
-        if mount.usage == MountUsage.MEDIA:
-            paths.append(self.sys_config.path_media / mount.name)
-        elif mount.usage == MountUsage.SHARE:
-            paths.append(self.sys_config.path_share / mount.name)
 
         def check_conflict() -> None:
             for path in paths:
@@ -305,10 +250,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             )
 
         _LOGGER.info("Removing mount: %s", name)
-        if name in self._bound_mounts:
-            await self._bound_mounts[name].bind_mount.unmount()
-            del self._bound_mounts[name]
-
         mount = self._mounts[name]
         await mount.unmount()
         if not retain_entry:
@@ -319,13 +260,55 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         return mount
 
+    @Job(name="mount_manager_reload", conditions=[JobCondition.MOUNT_AVAILABLE])
+    async def reload(self) -> None:
+        """Reconcile mount triggers, state, and resolution issues.
+
+        Deliberately no reload/restart of established mounts — the kernel
+        recovers those on its own. This re-arms dead autofs triggers (so
+        the path never degrades to a plain writable directory), refreshes
+        the probe-based state that the API and backup locations report,
+        and syncs the mount failed issue in both directions.
+        """
+        if not self.mounts:
+            return
+
+        await asyncio.gather(
+            *[self._reconcile_mount(mount) for mount in self.mounts.copy()]
+        )
+
+    async def _reconcile_mount(self, mount: Mount) -> None:
+        """Reconcile a single mount's trigger, state, and issue."""
+        try:
+            await mount.repair_trigger()
+        except MountTargetNotEmptyError, MountTargetNotDirectoryError:
+            self._add_local_data_issue(mount)
+            return
+        except MountError as err:
+            _LOGGER.warning(
+                "Could not repair automount trigger for %s: %s", mount.name, err
+            )
+            self._add_failed_issue(mount)
+            return
+
+        if await mount.is_mounted():
+            mount.dismiss_failed_issue()
+        else:
+            self._add_failed_issue(mount)
+
     @Job(
         name="mount_manager_reload_mount",
         conditions=[JobCondition.MOUNT_AVAILABLE],
         on_condition=MountJobError,
     )
     async def reload_mount(self, name: str) -> None:
-        """Reload a mount to retry mounting with same config."""
+        """Probe a mount's health and surface the result.
+
+        Re-arms the trigger if it died, probes the path so the kernel
+        activates the mount, and updates the resolution issue from the
+        outcome. A healthy mount is left alone, autofs repeats that work
+        whenever something accesses the path.
+        """
         # Add mount name to job
         self.sys_jobs.current.reference = name
 
@@ -334,23 +317,57 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 f"Cannot reload '{name}', no mount exists with that name"
             )
 
-        _LOGGER.info("Reloading mount: %s", name)
-        await self._mounts[name].reload()
+        mount = self._mounts[name]
+        try:
+            await mount.repair_trigger()
+        except MountTargetNotEmptyError, MountTargetNotDirectoryError:
+            # Local data blocks re-creating the mount — offer moving it
+            self._add_local_data_issue(mount)
+            raise
+        except MountError:
+            self._add_failed_issue(mount)
+            raise
 
-        # Always re-create the bind mount into media/share. systemd adds an
-        # implicit Requires= dependency from the bind unit to the data mount
-        # unit (via RequiresMountsFor= on its What= path), so stopping or
-        # restarting a failed data mount tears down the bind mount as well —
-        # our BoundMount bookkeeping cannot know whether that happened.
-        if bound_mount := self._bound_mounts.get(name):
-            try:
-                await self._bind_mount(bound_mount.mount, bound_mount.bind_mount.where)
-            except MountTargetNotEmptyError, MountTargetNotDirectoryError:
-                # The reload above already dismissed the mount failed issue —
-                # re-add it so the repair does not vanish while media/share
-                # is still blocked by local data.
-                self._add_local_data_issue(bound_mount.mount)
-                raise
+        _LOGGER.info("Probing mount: %s", name)
+        if await mount.is_mounted():
+            mount.dismiss_failed_issue()
+            return
+
+        # A permanently dead session (e.g. the server was replaced) keeps
+        # the path mounted, so the trigger never re-fires. Stopping just
+        # the .mount makes systemd re-install the trigger — the path stays
+        # covered and the re-probe mounts fresh.
+        _LOGGER.info(
+            "Mount %s is unreachable, discarding its session for a fresh mount", name
+        )
+        try:
+            await mount.discard_session()
+        except MountError:
+            self._add_failed_issue(mount)
+            raise
+
+        if not await mount.is_mounted():
+            self._add_failed_issue(mount)
+            _LOGGER.error(
+                "Mount %s is not reachable. Check host logs for errors from "
+                "mount or systemd unit %s for details",
+                name,
+                mount.unit_name,
+            )
+            raise MountActivationError(name=name)
+
+        mount.dismiss_failed_issue()
+
+    def _add_failed_issue(self, mount: Mount) -> None:
+        """Surface a failed mount as resolution issue if not already there."""
+        if mount.failed_issue not in self.sys_resolution.issues:
+            self.sys_resolution.add_issue(
+                replace(mount.failed_issue),
+                suggestions=[
+                    SuggestionType.EXECUTE_RELOAD,
+                    SuggestionType.EXECUTE_REMOVE,
+                ],
+            )
 
     @Job(
         name="mount_manager_relocate_local_data",
@@ -358,14 +375,14 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         on_condition=MountJobError,
     )
     async def relocate_local_data(self, name: str) -> None:
-        """Move local data out of a mount's target directories, then remount.
+        """Move local data out of a mount's target directory, then remount.
 
-        Local data ends up in a mount's target directory when something
+        Local data ends up in the mount's target directory when something
         wrote into it while the mount was not in place (e.g. an add-on
-        recording to its media directory before network storage was set up
-        or after the bind mount was torn down). The data is moved to a
-        `<name>_local_recovery` folder in a user-accessible location
-        (media, share or local backup storage) instead of being deleted.
+        recording to its media directory before network storage was set
+        up). The data is moved to a `<name>_local_recovery` folder in a
+        user-accessible location (media, share or local backup storage)
+        instead of being deleted.
         """
         # Add mount name to job
         self.sys_jobs.current.reference = name
@@ -376,61 +393,48 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             )
         mount = self._mounts[name]
 
-        paths = [mount.local_where]
         if mount.usage == MountUsage.MEDIA:
             recovery_base = self.sys_config.path_media
-            paths.append(self.sys_config.path_media / name)
         elif mount.usage == MountUsage.SHARE:
             recovery_base = self.sys_config.path_share
-            paths.append(self.sys_config.path_share / name)
         else:
-            # Backup mounts have no bind mount and their data mount directory
-            # is not user-accessible — move the data to local backup storage,
+            # The data mount directory of backup mounts is not
+            # user-accessible — move the data to local backup storage,
             # which is reachable via the backup share and add-ons.
             recovery_base = self.sys_config.path_backup
 
-        def move_aside() -> list[tuple[Path, Path]]:
-            moved: list[tuple[Path, Path]] = []
-            recovery_dir: Path | None = None
-            for path in paths:
-                try:
-                    if path.is_mount() or not path.exists():
-                        continue
-                    if path.is_dir() and not any(path.iterdir()):
-                        continue
-                except OSError:
-                    continue
+        path = mount.local_where
 
-                # All local data blocking this mount goes to one recovery
-                # folder so the user finds it as a single fix. If more than
-                # one directory holds data, later ones become subfolders
-                # named after their parent (e.g. "mounts").
-                if recovery_dir is None:
-                    target = recovery_base / f"{name}_local_recovery"
-                    counter = 1
-                    while target.exists():
-                        counter += 1
-                        target = recovery_base / f"{name}_local_recovery_{counter}"
-                    recovery_dir = target
-                else:
-                    target = recovery_dir / path.parent.name
+        def move_aside() -> Path | None:
+            try:
+                if path.is_mount() or not path.exists():
+                    return None
+                if path.is_dir() and not any(path.iterdir()):
+                    return None
+            except OSError:
+                return None
 
-                path.rename(target)
-                # Keep the path present for consumers even if the remount
-                # below fails: an empty directory instead of a missing one
-                path.mkdir()
-                moved.append((path, target))
-            return moved
+            target = recovery_base / f"{name}_local_recovery"
+            counter = 1
+            while target.exists():
+                counter += 1
+                target = recovery_base / f"{name}_local_recovery_{counter}"
+
+            path.rename(target)
+            # Keep the path present for consumers even if the remount
+            # below fails: an empty directory instead of a missing one
+            path.mkdir()
+            return target
 
         try:
-            moved = await self.sys_run_in_executor(move_aside)
+            target = await self.sys_run_in_executor(move_aside)
         except OSError as err:
             self.sys_resolution.check_oserror(err)
             raise MountError(
                 f"Could not move local data for mount {name}: {err!s}", _LOGGER.error
             ) from err
 
-        for path, target in moved:
+        if target:
             _LOGGER.info(
                 "Moved local data blocking mount %s from %s to %s",
                 name,
@@ -438,10 +442,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 target.as_posix(),
             )
 
-        # With the local data out of the way, moving it again can no longer
-        # help. Drop the suggestion even if the remount below fails: the
-        # mount failed issue then remains with reload/remove, and detection
-        # re-adds the move suggestion if local data blocks the target again.
+        # Moving again cannot help now, so drop the suggestion even if the
+        # remount below fails. Detection re-adds it if local data blocks
+        # the target again.
         for suggestion in self.sys_resolution.suggestions:
             if (
                 suggestion.type == SuggestionType.MOVE_LOCAL_DATA
@@ -451,54 +454,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 self.sys_resolution.dismiss_suggestion(suggestion)
 
         await self.reload_mount(name)
-
-    async def _bind_media(self, mount: Mount) -> None:
-        """Bind a media mount to media directory."""
-        await self._bind_mount(mount, self.sys_config.path_extern_media / mount.name)
-
-    async def _bind_share(self, mount: Mount) -> None:
-        """Bind a share mount to share directory."""
-        await self._bind_mount(mount, self.sys_config.path_extern_share / mount.name)
-
-    async def _bind_mount(self, mount: Mount, where: PurePath) -> None:
-        """Bind mount to path, falling back on emergency if necessary.
-
-        If where is in supervisor's data path, this will handle the target directory and
-        translate to a host path prior to mounting. Otherwise it will use where as is.
-        """
-        if mount.name in self._bound_mounts:
-            await self._bound_mounts[mount.name].bind_mount.unmount()
-
-        emergency = mount.state != UnitActiveState.ACTIVE
-        if not emergency:
-            path = mount.where
-        else:
-            _LOGGER.warning(
-                "Mount %s failed to mount, mounting read-only fallback for %s",
-                mount.name,
-                where.as_posix(),
-            )
-            path = self.sys_config.path_emergency / mount.name
-
-            def emergency_mkdir():
-                if not path.exists():
-                    path.mkdir(mode=0o444)
-
-            await self.sys_run_in_executor(emergency_mkdir)
-            path = self.sys_config.local_to_extern_path(path)
-
-        self._bound_mounts[mount.name] = bound_mount = BoundMount(
-            mount=mount,
-            bind_mount=BindMount.create(
-                self.coresys,
-                name=f"{'emergency' if emergency else 'bind'}_{mount.name}",
-                path=path,
-                where=where,
-                read_only=emergency,
-            ),
-            emergency=emergency,
-        )
-        await bound_mount.bind_mount.load()
 
     async def save_data(self) -> None:
         """Store data to configuration file."""
@@ -518,11 +473,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             _LOGGER.info(
                 "Mount '%s' already exists, replacing with backup config", mount.name
             )
-            # Unmount existing if it's bound
-            if mount.name in self._bound_mounts:
-                await self._bound_mounts[mount.name].bind_mount.unmount()
-                del self._bound_mounts[mount.name]
-
             old_mount = self._mounts[mount.name]
             await old_mount.unmount()
 
@@ -541,12 +491,6 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         try:
             _LOGGER.info("Activating restored mount: %s", mount.name)
             await mount.load()
-
-            if mount.usage == MountUsage.MEDIA:
-                await self._bind_media(mount)
-            elif mount.usage == MountUsage.SHARE:
-                await self._bind_share(mount)
-
             _LOGGER.info("Mount %s activated successfully", mount.name)
         except MountError as err:
             _LOGGER.warning(

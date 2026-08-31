@@ -611,7 +611,6 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
     with patch.object(
         su_config.CoreConfig, "path_supervisor", new=PropertyMock(return_value=tmp_path)
     ):
-        coresys.config.path_emergency.mkdir()
         coresys.config.path_media.mkdir()
         coresys.config.path_mounts.mkdir()
         coresys.config.path_mounts_credentials.mkdir()

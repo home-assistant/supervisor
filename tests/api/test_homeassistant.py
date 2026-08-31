@@ -492,6 +492,7 @@ async def test_config_check(
                         "Source": "/mnt/data/supervisor/share",
                         "Target": "/share",
                         "ReadOnly": False,
+                        "BindOptions": {"Propagation": "rslave"},
                     },
                 ],
                 "Dns": [str(coresys.docker.network.dns)],

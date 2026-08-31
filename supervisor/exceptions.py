@@ -1716,6 +1716,56 @@ class MountError(APIError):
 class MountActivationError(MountError):
     """Raise on mount not reaching active state after mount/reload."""
 
+    error_key = "mount_activation_error"
+    message_template = (
+        "Mount {name} is not reachable. Check the Supervisor logs for details"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class MountSetupError(MountError):
+    """Raise when the systemd units of a mount could not be set up."""
+
+    error_key = "mount_setup_error"
+    message_template = (
+        "Could not set up mount {name}. Check the Supervisor logs for details"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class MountUnmountError(MountError):
+    """Raise when a mount could not be removed from the system."""
+
+    error_key = "mount_unmount_error"
+    message_template = "Could not unmount {name}. Check the Supervisor logs for details"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class MountReloadError(MountError):
+    """Raise when a mount could not be reloaded."""
+
+    error_key = "mount_reload_error"
+    message_template = (
+        "Could not reload mount {name}. Check the Supervisor logs for details"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
 
 class MountInvalidError(MountError):
     """Raise on invalid mount attempt."""

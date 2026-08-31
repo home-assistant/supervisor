@@ -40,10 +40,10 @@ RUN_UPDATE_OBSERVER = 43680
 
 RUN_RELOAD_APPS = 10800
 RUN_RELOAD_BACKUPS = 72000
+RUN_RELOAD_MOUNTS = 900
 RUN_RELOAD_HOST = 7600
 RUN_RELOAD_UPDATER = 86400  # 24h
 RUN_RELOAD_INGRESS = 930
-RUN_RELOAD_MOUNTS = 900
 
 RUN_WATCHDOG_HOMEASSISTANT_API = 120
 
@@ -83,8 +83,8 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self._reload_updater, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
-        self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
         self.sys_scheduler.register_task(self.sys_mounts.reload, RUN_RELOAD_MOUNTS)
+        self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
 
         # Watchdog
         self.sys_scheduler.register_task(

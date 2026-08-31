@@ -108,7 +108,7 @@ async def test_api_resolution_apply_suggestion_fixup_error(
 
     with patch(
         "supervisor.resolution.fixups.mount_execute_reload.FixupMountExecuteReload.process_fixup",
-        side_effect=MountActivationError("Test fixup failure"),
+        side_effect=MountActivationError(name="test"),
     ):
         resp = await api_client.post(
             f"{prefix}/resolution/suggestion/{suggestion.uuid}"
@@ -116,7 +116,11 @@ async def test_api_resolution_apply_suggestion_fixup_error(
 
     assert resp.status == 400
     body = await resp.json()
-    assert body["message"] == "Test fixup failure"
+    assert (
+        body["message"]
+        == "Mount test is not reachable. Check the Supervisor logs for details"
+    )
+    assert body["error_key"] == "mount_activation_error"
 
     assert issue in coresys.resolution.issues
     assert suggestion in coresys.resolution.suggestions

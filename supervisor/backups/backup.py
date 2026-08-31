@@ -57,6 +57,7 @@ from ..exceptions import (
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupPermissionError,
+    MountActivationError,
     MountError,
 )
 from ..homeassistant.const import LANDINGPAGE
@@ -768,18 +769,25 @@ class Backup(JobGroup):
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
 
-            # Bind mounts are constant during the backup, so resolve the set of
-            # paths to skip once instead of per file.
+            # Network mounts live directly under path_media / path_share.
+            # Recursing into them would archive the remote share and
+            # activate the trigger just to read files we discard anyway.
             excluded_paths = {
-                bound.bind_mount.local_where for bound in self.sys_mounts.bound_mounts
+                mount.local_where
+                for mount in (
+                    *self.sys_mounts.media_mounts,
+                    *self.sys_mounts.share_mounts,
+                )
             }
 
             def is_excluded_by_filter(item_arcpath: PurePath) -> bool:
-                """Filter out bind mounts in folders being backed up."""
+                """Skip network mount points when archiving local folders."""
                 full_path = origin_dir / item_arcpath.relative_to(".")
 
                 if full_path in excluded_paths:
-                    _LOGGER.debug("Ignoring %s because of bind mount", full_path)
+                    _LOGGER.debug(
+                        "Ignoring %s because it is a network mount", full_path
+                    )
                     return True
 
                 return False
@@ -872,23 +880,50 @@ class Backup(JobGroup):
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
 
-        # Unmount any mounts within folder
-        bind_mounts = [
-            bound.bind_mount
-            for bound in self.sys_mounts.bound_mounts
-            if bound.bind_mount.local_where
-            and bound.bind_mount.local_where.is_relative_to(origin_dir)
+        # Nested network mounts have to go first, otherwise the restore
+        # writes into the remote share instead of replacing the local
+        # mount-point directory. The finally below re-arms them.
+        nested_mounts = [
+            mount
+            for mount in (
+                *self.sys_mounts.media_mounts,
+                *self.sys_mounts.share_mounts,
+            )
+            if mount.local_where and mount.local_where.is_relative_to(origin_dir)
         ]
-        if bind_mounts:
-            await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
-
         try:
+            if nested_mounts:
+                # An unmount can fail halfway through (trigger disarmed, share
+                # still attached) — the finally re-arms whatever teardown was
+                # attempted, so the path never stays a plain writable directory
+                unmount_results = await asyncio.gather(
+                    *[mount.unmount() for mount in nested_mounts],
+                    return_exceptions=True,
+                )
+                for result in unmount_results:
+                    if isinstance(result, BaseException):
+                        raise result
+
             await self.sys_run_in_executor(_restore)
         finally:
-            if bind_mounts:
-                await asyncio.gather(
-                    *[bind_mount.mount() for bind_mount in bind_mounts]
+            if nested_mounts:
+                results = await asyncio.gather(
+                    *[mount.repair_trigger() for mount in nested_mounts],
+                    return_exceptions=True,
                 )
+                for mount, result in zip(nested_mounts, results):
+                    # An unreachable server leaves the trigger armed, so the
+                    # mount recovers on the next access and must not fail a
+                    # restore that succeeded. Anything else left the path
+                    # unprotected and has to surface.
+                    if isinstance(result, MountActivationError):
+                        _LOGGER.warning(
+                            "Could not verify mount %s after restore: %s",
+                            mount.name,
+                            result,
+                        )
+                    elif isinstance(result, BaseException):
+                        raise result
 
     @Job(name="backup_restore_folders", cleanup=False)
     async def restore_folders(self, folder_list: list[str]) -> bool:
