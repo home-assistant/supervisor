@@ -9,16 +9,9 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
-    ATTR_CPU_PERCENT,
     ATTR_HOST,
     ATTR_LOCALS,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
+    ATTR_ONE_SHOT,
     ATTR_SERVERS,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
@@ -28,7 +21,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import dns_server_list, version_tag
 from .const import ATTR_FALLBACK, ATTR_LLMNR, ATTR_MDNS
-from .utils import api_process, api_validate
+from .utils import api_process, api_return_stats, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -82,19 +75,17 @@ class APICoreDNS(CoreSysAttributes):
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information."""
-        stats = await self.sys_plugins.dns.stats()
+        """Return resource information for v2 contract (always one-shot)."""
+        stats = await self.sys_plugins.dns.stats(one_shot=True)
+        return api_return_stats(stats, legacy=False)
 
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+    @api_process
+    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return resource information."""
+        one_shot = ATTR_ONE_SHOT in request.query
+        stats = await self.sys_plugins.dns.stats(one_shot=one_shot)
+
+        return api_return_stats(stats, legacy=True)
 
     @api_process
     async def update(self, request: web.Request) -> None:

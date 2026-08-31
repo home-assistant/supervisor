@@ -34,12 +34,20 @@ from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AppFileReadError,
+    AppNotRunningError,
     AppPortConflict,
     AppPrePostBackupCommandReturnedError,
+    AppsError,
     AppsJobError,
+    AppStatsTimeoutError,
     AppUnknownError,
     AudioUpdateError,
+    DockerAPIError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
+    DockerError,
     DockerRegistryAuthError,
+    DockerStatsTimeoutError,
     HassioError,
 )
 from supervisor.hardware.helper import HwHelper
@@ -604,6 +612,29 @@ async def test_restart(coresys: CoreSys, install_app_ssh: App) -> None:
     await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await start_task
     assert install_app_ssh.state == AppState.STARTED
+
+
+@pytest.mark.parametrize(
+    ("docker_error", "expected_error"),
+    [
+        (DockerContainerNotFoundError(name="app_local_ssh"), AppNotRunningError),
+        (DockerContainerNotRunningError(name="app_local_ssh"), AppNotRunningError),
+        (DockerStatsTimeoutError(name="app_local_ssh"), AppStatsTimeoutError),
+        (DockerAPIError(), AppUnknownError),
+    ],
+)
+async def test_stats_failures(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    docker_error: DockerError,
+    expected_error: type[AppsError],
+) -> None:
+    """Test container stats errors are translated to app-flavored errors."""
+    with (
+        patch.object(DockerAPI, "container_stats", AsyncMock(side_effect=docker_error)),
+        pytest.raises(expected_error),
+    ):
+        await install_app_ssh.stats()
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])

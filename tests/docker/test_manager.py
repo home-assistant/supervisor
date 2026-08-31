@@ -21,9 +21,13 @@ from supervisor.docker.const import (
 )
 from supervisor.docker.manager import CommandReturn, DockerAPI, PullLogEntry
 from supervisor.exceptions import (
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerError,
     DockerNoSpaceOnDevice,
     DockerRegistryRateLimitExceeded,
+    DockerStatsTimeoutError,
+    DockerStatsUnknownError,
     DockerTimeoutError,
 )
 
@@ -832,11 +836,197 @@ async def test_container_logs_get_timeout(docker: DockerAPI):
         await docker.container_logs("mycontainer")
 
 
-async def test_container_stats_get_timeout(docker: DockerAPI):
-    """Test container_stats raises DockerTimeoutError when containers.get times out."""
-    docker.containers.get.side_effect = TimeoutError()
-    with pytest.raises(DockerTimeoutError, match="Timeout inspecting container"):
+async def test_container_stats_not_found(docker: DockerAPI):
+    """Test container_stats raises DockerContainerNotFoundError when container doesn't exist."""
+    docker.containers.container.return_value.stats.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "not found"}
+    )
+    with pytest.raises(DockerContainerNotFoundError, match="not found"):
         await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_not_running(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerContainerNotRunningError when stopped.
+
+    Docker returns a stub response containing only id/name (no online_cpus in
+    cpu_stats) for a stopped or restarting container instead of an error, same
+    as in one-shot mode.
+    """
+    stub_response = {
+        "id": "abc123",
+        "name": "/mycontainer",
+        "cpu_stats": {"cpu_usage": {"total_usage": 0}},
+        "memory_stats": {},
+    }
+    container.stats = AsyncMock(return_value=[stub_response])
+    with pytest.raises(DockerContainerNotRunningError, match="is not running"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_timeout(docker: DockerAPI, container: DockerContainer):
+    """Test container_stats raises DockerStatsTimeoutError when the stats call times out."""
+    container.stats.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerStatsTimeoutError, match="Timed out getting stats for container"
+    ):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_unknown_error(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerStatsUnknownError on unexpected stats error."""
+    container.stats.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "boom"}
+    )
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_one_shot(docker: DockerAPI, container: DockerContainer):
+    """Test container_stats requests an immediate, un-windowed sample without inspecting the container."""
+    stats_payload = {"cpu_stats": {"cpu_usage": {"total_usage": 123}, "online_cpus": 4}}
+    docker.containers.get.reset_mock()
+    docker.containers.container.reset_mock()
+    container.show.reset_mock()
+
+    with patch.object(
+        DockerAPI,
+        "_query_one_shot_stats",
+        AsyncMock(return_value=stats_payload),
+    ) as query_one_shot_stats:
+        result = await docker.container_stats("mycontainer", one_shot=True)
+
+    assert result == stats_payload
+    query_one_shot_stats.assert_called_once_with("mycontainer")
+    docker.containers.get.assert_not_called()
+    docker.containers.container.assert_not_called()
+    container.show.assert_not_called()
+    container.stats.assert_not_called()
+
+
+async def test_container_stats_one_shot_timeout(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsTimeoutError on timeout."""
+    with (
+        patch.object(
+            DockerAPI, "_query_one_shot_stats", AsyncMock(side_effect=TimeoutError())
+        ),
+        pytest.raises(
+            DockerStatsTimeoutError, match="Timed out getting stats for container"
+        ),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_not_found(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerContainerNotFoundError when container doesn't exist."""
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(
+                side_effect=aiodocker.DockerError(
+                    HTTPStatus.NOT_FOUND, {"message": "gone"}
+                )
+            ),
+        ),
+        pytest.raises(DockerContainerNotFoundError, match="not found"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_unknown_error(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsUnknownError on unexpected error."""
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(
+                side_effect=aiodocker.DockerError(
+                    HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "boom"}
+                )
+            ),
+        ),
+        pytest.raises(DockerStatsUnknownError, match="unknown error"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_not_running(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerContainerNotRunningError for a stopped container.
+
+    Docker returns a stub response containing only id/name (no online_cpus in
+    cpu_stats, no memory_stats.usage, no networks) instead of an error for a
+    stopped or restarting container, even in one-shot mode.
+    """
+    stub_response = {
+        "id": "abc123",
+        "name": "/mycontainer",
+        "cpu_stats": {"cpu_usage": {"total_usage": 0}},
+        "memory_stats": {},
+    }
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=stub_response),
+        ),
+        pytest.raises(DockerContainerNotRunningError, match="is not running"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_empty_response(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsUnknownError when Docker returns nothing."""
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=None),
+        ),
+        pytest.raises(DockerStatsUnknownError, match="unknown error"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_empty_response(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerStatsUnknownError when Docker returns no samples."""
+    container.stats = AsyncMock(return_value=[])
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_query_one_shot_stats(docker: DockerAPI):
+    """Test _query_one_shot_stats queries Docker directly for a one-shot sample."""
+    stats_payload = {"cpu_stats": {"online_cpus": 4}}
+
+    class MockResponse:
+        async def json(self, *, content_type=None):
+            return stats_payload
+
+    class MockQueryCM:
+        async def __aenter__(self):
+            return MockResponse()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    query_mock = MagicMock(return_value=MockQueryCM())
+    docker.docker._query = query_mock  # pylint: disable=protected-access
+
+    result = await docker._query_one_shot_stats(  # pylint: disable=protected-access
+        "mycontainer"
+    )
+
+    assert result == stats_payload
+    query_mock.assert_called_once_with(
+        "containers/mycontainer/stats",
+        params={"stream": "0", "one-shot": "1"},
+    )
 
 
 async def test_container_run_inside_get_timeout(docker: DockerAPI):

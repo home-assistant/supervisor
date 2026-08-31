@@ -14,6 +14,17 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
+    ATTR_BLK_READ,
+    ATTR_BLK_WRITE,
+    ATTR_CPU_PERCENT,
+    ATTR_CPU_SYSTEM_USAGE,
+    ATTR_CPU_USAGE,
+    ATTR_MEMORY_LIMIT,
+    ATTR_MEMORY_PERCENT,
+    ATTR_MEMORY_USAGE,
+    ATTR_NETWORK_RX,
+    ATTR_NETWORK_TX,
+    ATTR_ONLINE_CPUS,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
     JSON_DATA,
@@ -27,6 +38,7 @@ from ..const import (
     RESULT_OK,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.stats import DockerStats
 from ..exceptions import APIError, HassioError
 from ..jobs import JobSchedulerOptions, SupervisorJob
 from ..utils import get_message_from_exception_chain
@@ -97,6 +109,32 @@ def json_loads(data: Any) -> dict[str, Any]:
         return json_loads_util(data)
     except json.JSONDecodeError as err:
         raise APIError("Invalid json") from err
+
+
+def api_return_stats(stats: DockerStats, *, legacy: bool) -> dict[str, Any]:
+    """Return the standard API response dict for a DockerStats object.
+
+    ``legacy`` selects the v1-compatible response model, which includes
+    ``cpu_percent`` (a windowed calculation that is ``None`` for a one-shot
+    sample). V2 always requests one-shot stats, so that field is dropped
+    from its response since it would never carry a meaningful value.
+    """
+    data = {
+        ATTR_CPU_USAGE: stats.cpu_usage,
+        ATTR_CPU_SYSTEM_USAGE: stats.cpu_system_usage,
+        ATTR_ONLINE_CPUS: stats.online_cpus,
+        ATTR_MEMORY_USAGE: stats.memory_usage,
+        ATTR_MEMORY_LIMIT: stats.memory_limit,
+        ATTR_MEMORY_PERCENT: stats.memory_percent,
+        ATTR_NETWORK_RX: stats.network_rx,
+        ATTR_NETWORK_TX: stats.network_tx,
+        ATTR_BLK_READ: stats.blk_read,
+        ATTR_BLK_WRITE: stats.blk_write,
+    }
+    if legacy:
+        data[ATTR_CPU_PERCENT] = stats.cpu_percent
+
+    return data
 
 
 def api_process(method):

@@ -23,11 +23,17 @@ from ..docker.homeassistant import HASS_DOCKER_NAME, DockerHomeAssistant
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerError,
+    DockerStatsTimeoutError,
     HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
+    HomeAssistantNotRunningError,
     HomeAssistantStartupTimeout,
+    HomeAssistantStatsTimeoutError,
+    HomeAssistantUnknownError,
     HomeAssistantUpdateAlreadyInstalledError,
     HomeAssistantUpdateError,
     HomeAssistantUpdateImageError,
@@ -537,12 +543,19 @@ class HomeAssistantCore(JobGroup):
             await self.instance.stop()
         await self.start()
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of Home Assistant."""
         try:
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise HomeAssistantNotRunningError(_LOGGER.warning) from err
+        except DockerStatsTimeoutError as err:
+            raise HomeAssistantStatsTimeoutError(_LOGGER.error) from err
         except DockerError as err:
-            raise HomeAssistantError from err
+            _LOGGER.error(
+                "Could not get stats of container for Home Assistant: %s", err
+            )
+            raise HomeAssistantUnknownError from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

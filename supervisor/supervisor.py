@@ -23,9 +23,11 @@ from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
 from .exceptions import (
     DockerError,
+    DockerStatsTimeoutError,
     HostAppArmorError,
     SupervisorAppArmorError,
     SupervisorJobError,
+    SupervisorStatsTimeoutError,
     SupervisorUnknownError,
     SupervisorUpdateError,
 )
@@ -270,11 +272,14 @@ class Supervisor(CoreSysAttributes):
         """
         return self.instance.logs()
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of Supervisor."""
         try:
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except DockerStatsTimeoutError as err:
+            raise SupervisorStatsTimeoutError(_LOGGER.error) from err
         except DockerError as err:
+            _LOGGER.error("Could not get stats of container for Supervisor: %s", err)
             raise SupervisorUnknownError from err
 
     async def repair(self):

@@ -13,19 +13,12 @@ from ..const import (
     ATTR_ACTIVE,
     ATTR_APPLICATION,
     ATTR_AUDIO,
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
     ATTR_CARD,
-    ATTR_CPU_PERCENT,
     ATTR_HOST,
     ATTR_INDEX,
     ATTR_INPUT,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
     ATTR_NAME,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
+    ATTR_ONE_SHOT,
     ATTR_OUTPUT,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
@@ -36,7 +29,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..host.sound import StreamType
 from ..validate import version_tag
-from .utils import api_process, api_validate
+from .utils import api_process, api_return_stats, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -87,19 +80,17 @@ class APIAudio(CoreSysAttributes):
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information."""
-        stats = await self.sys_plugins.audio.stats()
+        """Return resource information for v2 contract (always one-shot)."""
+        stats = await self.sys_plugins.audio.stats(one_shot=True)
+        return api_return_stats(stats, legacy=False)
 
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+    @api_process
+    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return resource information."""
+        one_shot = ATTR_ONE_SHOT in request.query
+        stats = await self.sys_plugins.audio.stats(one_shot=one_shot)
+
+        return api_return_stats(stats, legacy=True)
 
     @api_process
     async def update(self, request: web.Request) -> None:

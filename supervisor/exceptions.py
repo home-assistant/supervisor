@@ -234,6 +234,35 @@ class HomeAssistantJobError(HomeAssistantError, JobException):
     """Raise on Home Assistant job error."""
 
 
+class HomeAssistantNotRunningError(HomeAssistantError, APIError):
+    """Raise when Home Assistant is not running."""
+
+    error_key = "homeassistant_not_running_error"
+    message_template = "Home Assistant is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class HomeAssistantStatsTimeoutError(HomeAssistantError, APIInternalServerError):
+    """Raise when fetching stats for Home Assistant times out."""
+
+    error_key = "homeassistant_stats_timeout_error"
+    message_template = "Timed out getting stats for Home Assistant"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class HomeAssistantUnknownError(HomeAssistantError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs getting stats for Home Assistant."""
+
+    error_key = "homeassistant_unknown_error"
+    message_template = "An unknown error occurred with Home Assistant"
+
+
 # Supervisor
 
 
@@ -254,6 +283,17 @@ class SupervisorUnknownError(SupervisorError, APIUnknownSupervisorError):
 
     error_key = "supervisor_unknown_error"
     message_template = "An unknown error occurred with Supervisor"
+
+
+class SupervisorStatsTimeoutError(SupervisorError, APIInternalServerError):
+    """Raise when fetching stats for Supervisor times out."""
+
+    error_key = "supervisor_stats_timeout_error"
+    message_template = "Timed out getting stats for Supervisor"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
 
 
 class SupervisorJobError(SupervisorError, JobException):
@@ -313,6 +353,35 @@ class CliJobError(CliError, PluginJobError):
     """Raise on job error with cli plugin."""
 
 
+class CliNotRunningError(CliError, APIError):
+    """Raise when the HA cli plugin is not running."""
+
+    error_key = "cli_not_running_error"
+    message_template = "HA cli is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class CliStatsTimeoutError(CliError, APIInternalServerError):
+    """Raise when fetching stats for the HA cli plugin times out."""
+
+    error_key = "cli_stats_timeout_error"
+    message_template = "Timed out getting stats for HA cli"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class CliUnknownError(CliError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs getting stats for the HA cli plugin."""
+
+    error_key = "cli_unknown_error"
+    message_template = "An unknown error occurred with HA cli"
+
+
 # Observer
 
 
@@ -340,6 +409,35 @@ class ObserverPortConflict(ObserverError, APIError):
         super().__init__(None, logger)
 
 
+class ObserverNotRunningError(ObserverError, APIError):
+    """Raise when Observer is not running."""
+
+    error_key = "observer_not_running_error"
+    message_template = "Observer is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class ObserverStatsTimeoutError(ObserverError, APIInternalServerError):
+    """Raise when fetching stats for Observer times out."""
+
+    error_key = "observer_stats_timeout_error"
+    message_template = "Timed out getting stats for Observer"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class ObserverUnknownError(ObserverError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs getting stats for Observer."""
+
+    error_key = "observer_unknown_error"
+    message_template = "An unknown error occurred with Observer"
+
+
 # Multicast
 
 
@@ -353,6 +451,35 @@ class MulticastUpdateError(MulticastError):
 
 class MulticastJobError(MulticastError, PluginJobError):
     """Raise on job error with multicast plugin."""
+
+
+class MulticastNotRunningError(MulticastError, APIError):
+    """Raise when Multicast is not running."""
+
+    error_key = "multicast_not_running_error"
+    message_template = "Multicast is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class MulticastStatsTimeoutError(MulticastError, APIInternalServerError):
+    """Raise when fetching stats for Multicast times out."""
+
+    error_key = "multicast_stats_timeout_error"
+    message_template = "Timed out getting stats for Multicast"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class MulticastUnknownError(MulticastError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs getting stats for Multicast."""
+
+    error_key = "multicast_unknown_error"
+    message_template = "An unknown error occurred with Multicast"
 
 
 # DNS
@@ -370,6 +497,35 @@ class CoreDNSJobError(CoreDNSError, PluginJobError):
     """Raise on job error with dns plugin."""
 
 
+class CoreDNSNotRunningError(CoreDNSError, APIError):
+    """Raise when CoreDNS is not running."""
+
+    error_key = "coredns_not_running_error"
+    message_template = "CoreDNS is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class CoreDNSStatsTimeoutError(CoreDNSError, APIInternalServerError):
+    """Raise when fetching stats for CoreDNS times out."""
+
+    error_key = "coredns_stats_timeout_error"
+    message_template = "Timed out getting stats for CoreDNS"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class CoreDNSUnknownError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs getting stats for CoreDNS."""
+
+    error_key = "coredns_unknown_error"
+    message_template = "An unknown error occurred with CoreDNS"
+
+
 # Audio
 
 
@@ -383,6 +539,35 @@ class AudioUpdateError(AudioError):
 
 class AudioJobError(AudioError, PluginJobError):
     """Raise on job error with audio plugin."""
+
+
+class AudioNotRunningError(AudioError, APIError):
+    """Raise when Audio is not running."""
+
+    error_key = "audio_not_running_error"
+    message_template = "Audio is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class AudioStatsTimeoutError(AudioError, APIInternalServerError):
+    """Raise when fetching stats for Audio times out."""
+
+    error_key = "audio_stats_timeout_error"
+    message_template = "Timed out getting stats for Audio"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class AudioUnknownError(AudioError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs getting stats for Audio."""
+
+    error_key = "audio_unknown_error"
+    message_template = "An unknown error occurred with Audio"
 
 
 # Apps
@@ -521,6 +706,19 @@ class AppNotRunningError(AppsError, APIError):
 
     error_key = "app_not_running_error"
     message_template = "App {app} is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"app": app}
+        super().__init__(None, logger)
+
+
+class AppStatsTimeoutError(AppsError, APIError):
+    """Raise when fetching stats for an app times out."""
+
+    status = 500
+    error_key = "app_stats_timeout_error"
+    message_template = "Timed out getting stats for app {app}"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
@@ -1091,6 +1289,59 @@ class DockerTrustError(DockerError):
 
 class DockerNotFound(DockerError):
     """Docker object don't Exists."""
+
+
+class DockerContainerNotFoundError(DockerNotFound, APINotFound):
+    """Raise when a referenced container could not be found."""
+
+    error_key = "docker_container_not_found_error"
+    message_template = "Container {name} not found"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class DockerContainerNotRunningError(DockerError, APIError):
+    """Raise when an action requires a container to be running but it isn't."""
+
+    error_key = "docker_container_not_running_error"
+    message_template = "Container {name} is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class DockerStatsError(DockerError):
+    """Base error interacting with container stats."""
+
+
+class DockerStatsTimeoutError(DockerStatsError, APIError):
+    """Raise when fetching stats for a container times out."""
+
+    status = 500
+    error_key = "docker_stats_timeout_error"
+    message_template = "Timed out getting stats for container {name}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name}
+        super().__init__(None, logger)
+
+
+class DockerStatsUnknownError(DockerStatsError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs getting stats for a container."""
+
+    error_key = "docker_stats_unknown_error"
+    message_template = "An unknown error occurred getting stats for container {name}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name}
+        super().__init__(logger)
 
 
 class DockerNoSpaceOnDevice(DockerError):

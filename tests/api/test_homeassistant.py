@@ -14,6 +14,7 @@ from supervisor.const import DNS_SUFFIX, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import DockerError, HomeAssistantError
 from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import WSEvent
@@ -47,17 +48,67 @@ async def test_api_stats(
     api_client, root = core_api_client_with_root
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
-    container.stats = AsyncMock(
-        return_value=[load_json_fixture("container_stats.json")]
-    )
 
-    resp = await api_client.get(f"{root}/stats")
+    if root.startswith("/v2"):
+        # V2 always requests one-shot stats
+        stats_fixture = load_json_fixture("container_stats.json")
+        del stats_fixture["precpu_stats"]
+        with patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=stats_fixture),
+        ):
+            resp = await api_client.get(f"{root}/stats")
+    else:
+        container.stats = AsyncMock(
+            return_value=[load_json_fixture("container_stats.json")]
+        )
+        resp = await api_client.get(f"{root}/stats")
+
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["cpu_percent"] == 90.0
+    if root.startswith("/v2"):
+        assert "cpu_percent" not in result["data"]
+    else:
+        assert result["data"]["cpu_percent"] == 90.0
+    assert result["data"]["cpu_usage"] == 190
+    assert result["data"]["cpu_system_usage"] == 200
+    assert result["data"]["online_cpus"] == 24
     assert result["data"]["memory_usage"] == 59700000
     assert result["data"]["memory_limit"] == 4000000000
     assert result["data"]["memory_percent"] == 1.49
+
+
+async def test_api_stats_one_shot(
+    core_api_client_with_root: tuple[TestClient, str],
+    container: DockerContainer,
+):
+    """Test stats one-shot mode skips the calculated window.
+
+    V1 opts in via the ``one_shot`` query string; v2 always requests
+    one-shot stats and has no query string option (see test_api_stats).
+    """
+    api_client, root = core_api_client_with_root
+    if root.startswith("/v2"):
+        pytest.skip("v2 always uses one-shot; covered by test_api_stats")
+
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+
+    stats_fixture = load_json_fixture("container_stats.json")
+    del stats_fixture["precpu_stats"]
+    with patch.object(
+        DockerAPI, "_query_one_shot_stats", AsyncMock(return_value=stats_fixture)
+    ):
+        resp = await api_client.get(f"{root}/stats?one_shot")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["cpu_percent"] is None
+    assert result["data"]["cpu_usage"] == 190
+    assert result["data"]["cpu_system_usage"] == 200
+    assert result["data"]["online_cpus"] == 24
+    container.stats.assert_not_called()
 
 
 async def test_api_set_options(core_api_client_with_root: tuple[TestClient, str]):
