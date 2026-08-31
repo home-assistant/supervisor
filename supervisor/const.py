@@ -542,6 +542,7 @@ class HostFeature(StrEnum):
     HASSOS = "hassos"
     HOSTNAME = "hostname"
     NETWORK = "network"
+    NTP = "ntp"
     REBOOT = "reboot"
     SERVICES = "services"
     SHUTDOWN = "shutdown"

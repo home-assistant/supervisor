@@ -51,6 +51,7 @@ from supervisor.const import (
     CpuArch,
 )
 from supervisor.coresys import CoreSys
+from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import HostLogError
@@ -442,6 +443,7 @@ async def fixture_os_agent_services(
             "agent_datadisk": None,
             "agent_swap": None,
             "agent_system": None,
+            "agent_timesyncd": None,
             "agent_boards": None,
             "agent_boards_rpi_firmware": None,
             "agent_boards_yellow": None,
@@ -929,6 +931,18 @@ async def capture_message() -> Mock:
         patch("supervisor.utils.sentry.sentry_sdk.capture_message") as capture_message,
     ):
         yield capture_message
+
+
+@pytest.fixture
+async def os_agent_version(request: pytest.FixtureRequest) -> None:
+    """Mock OS Agent version."""
+    version = (
+        AwesomeVersion(request.param)
+        if hasattr(request, "param")
+        else AwesomeVersion("1.9.0")
+    )
+    with patch.object(OSAgent, "version", new=PropertyMock(return_value=version)):
+        yield
 
 
 @pytest.fixture

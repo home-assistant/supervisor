@@ -71,6 +71,7 @@ async def test_dbus_osagent_connect_error(
         "agent_datadisk": None,
         "agent_swap": None,
         "agent_system": None,
+        "agent_timesyncd": None,
         "agent_boards": None,
         "agent_boards_yellow": None,
     }

@@ -35,6 +35,7 @@ from .middleware.security import SecurityMiddleware
 from .mounts import APIMounts
 from .multicast import APIMulticast
 from .network import APINetwork
+from .ntp import APINTP
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
@@ -134,6 +135,7 @@ class RestAPI(CoreSysAttributes):
             self._register_mounts(app)
             self._register_multicast(app)
             self._register_network(app)
+            self._register_ntp(app)
             self._register_observer(app)
             self._register_os(app)
             self._register_proxy(app)
@@ -295,6 +297,18 @@ class RestAPI(CoreSysAttributes):
                     "/network/interface/{interface}/vlan/{vlan}",
                     api_network.create_vlan,
                 ),
+            ]
+        )
+
+    def _register_ntp(self, app: web.Application) -> None:
+        """Register NTP functions."""
+        api_ntp = APINTP()
+        api_ntp.coresys = self.coresys
+
+        app.add_routes(
+            [
+                web.get("/ntp/info", api_ntp.info),
+                web.post("/ntp/options", api_ntp.options),
             ]
         )
 

@@ -7,6 +7,7 @@ from awesomeversion import AwesomeVersion
 
 from ..const import HostFeature
 from ..coresys import CoreSysAttributes
+from ..dbus.const import StartUnitMode
 from ..exceptions import (
     DBusInvalidArgsError,
     HostInvalidHostnameError,
@@ -20,6 +21,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # tearing down. On older releases Supervisor stops Core, apps and plugins
 # in-process before requesting the reboot/power off instead.
 HAOS_GRACEFUL_SHUTDOWN_MIN_VERSION = AwesomeVersion("18.0.dev20260527")
+
+TIMESYNCD_UNIT = "systemd-timesyncd.service"
 
 
 class SystemControl(CoreSysAttributes):
@@ -38,6 +41,12 @@ class SystemControl(CoreSysAttributes):
         if flag == HostFeature.HOSTNAME and self.sys_dbus.hostname.is_connected:
             return
         if flag == HostFeature.TIMEDATE and self.sys_dbus.timedate.is_connected:
+            return
+        if (
+            flag == HostFeature.NTP
+            and self.sys_dbus.agent.timesyncd.is_connected
+            and self.sys_dbus.systemd.is_connected
+        ):
             return
 
         raise HostNotSupportedError(
@@ -129,4 +138,36 @@ class SystemControl(CoreSysAttributes):
             _LOGGER.warning(
                 "Skipping persistent timezone setting, OS %s is older than 16.2",
                 self.sys_os.version,
+            )
+
+    async def set_ntp_servers(
+        self,
+        *,
+        servers: list[str] | None = None,
+        fallback_servers: list[str] | None = None,
+    ) -> None:
+        """Set host NTP servers and restart timesyncd when changed."""
+        self._check_dbus(HostFeature.NTP)
+
+        restart_required = False
+
+        if servers is not None and servers != self.sys_dbus.agent.timesyncd.ntp_servers:
+            _LOGGER.info("Setting NTP servers: %s", servers)
+            await self.sys_dbus.agent.timesyncd.set_ntp_servers(servers)
+            restart_required = True
+
+        if (
+            fallback_servers is not None
+            and fallback_servers != self.sys_dbus.agent.timesyncd.fallback_ntp_servers
+        ):
+            _LOGGER.info("Setting fallback NTP servers: %s", fallback_servers)
+            await self.sys_dbus.agent.timesyncd.set_fallback_ntp_servers(
+                fallback_servers
+            )
+            restart_required = True
+
+        if restart_required:
+            await self.sys_dbus.agent.timesyncd.update()
+            await self.sys_dbus.systemd.restart_unit(
+                TIMESYNCD_UNIT, StartUnitMode.REPLACE
             )
