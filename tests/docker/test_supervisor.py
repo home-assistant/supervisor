@@ -1,18 +1,30 @@
 """Test Supervisor Docker container timeout handling."""
 
+from http import HTTPStatus
+
+import aiodocker
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import DockerTimeoutError
+from supervisor.exceptions import DockerNotFound, DockerTimeoutError
 
 
 async def test_supervisor_attach_get_timeout(coresys: CoreSys):
     """Test DockerSupervisor.attach raises DockerTimeoutError when show times out."""
     coresys.docker.containers.get.return_value.show.side_effect = TimeoutError()
-    with pytest.raises(
-        DockerTimeoutError, match="Timeout getting supervisor container"
-    ):
+    with pytest.raises(DockerTimeoutError, match="Timeout occurred"):
+        await coresys.supervisor.instance.attach(
+            coresys.supervisor.version or AwesomeVersion("2025.1.0")
+        )
+
+
+async def test_supervisor_attach_not_found(coresys: CoreSys):
+    """Test DockerSupervisor.attach raises DockerNotFound when container is missing."""
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+    with pytest.raises(DockerNotFound):
         await coresys.supervisor.instance.attach(
             coresys.supervisor.version or AwesomeVersion("2025.1.0")
         )
@@ -21,9 +33,16 @@ async def test_supervisor_attach_get_timeout(coresys: CoreSys):
 async def test_supervisor_retag_get_timeout(coresys: CoreSys):
     """Test DockerSupervisor.retag raises DockerTimeoutError when show times out."""
     coresys.docker.containers.get.return_value.show.side_effect = TimeoutError()
-    with pytest.raises(
-        DockerTimeoutError, match="Timeout getting Supervisor container for retag"
-    ):
+    with pytest.raises(DockerTimeoutError, match="Timeout occurred"):
+        await coresys.supervisor.instance.retag()
+
+
+async def test_supervisor_retag_not_found(coresys: CoreSys):
+    """Test DockerSupervisor.retag raises DockerNotFound when container is missing."""
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+    with pytest.raises(DockerNotFound):
         await coresys.supervisor.instance.retag()
 
 
@@ -51,9 +70,19 @@ async def test_supervisor_retag_tag_timeout(coresys: CoreSys):
 async def test_supervisor_update_start_tag_get_timeout(coresys: CoreSys):
     """Test update_start_tag raises DockerTimeoutError when show times out."""
     coresys.docker.containers.get.return_value.show.side_effect = TimeoutError()
-    with pytest.raises(
-        DockerTimeoutError, match="Timeout getting container to fix start tag"
-    ):
+    with pytest.raises(DockerTimeoutError, match="Timeout occurred"):
+        await coresys.supervisor.instance.update_start_tag(
+            "ghcr.io/home-assistant/amd64-hassio-supervisor",
+            AwesomeVersion("2025.1.0"),
+        )
+
+
+async def test_supervisor_update_start_tag_not_found(coresys: CoreSys):
+    """Test update_start_tag raises DockerNotFound when container is missing."""
+    coresys.docker.containers.get.return_value.show.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+    with pytest.raises(DockerNotFound):
         await coresys.supervisor.instance.update_start_tag(
             "ghcr.io/home-assistant/amd64-hassio-supervisor",
             AwesomeVersion("2025.1.0"),
