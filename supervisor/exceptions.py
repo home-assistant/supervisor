@@ -1825,18 +1825,6 @@ class MountNotFound(MountError, APINotFound):
         super().__init__(message, logger)
 
 
-class MountUsageNotActiveError(MountError):
-    """Raise when storage usage is requested for a mount that is not active."""
-
-    error_key = "mount_usage_not_active_error"
-    message_template = "Mount {name} is not active, cannot report storage usage"
-
-    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"name": name}
-        super().__init__(None, logger)
-
-
 class MountUsageNotMountedError(MountError):
     """Raise when a mount's path turns out to no longer be mounted.
 

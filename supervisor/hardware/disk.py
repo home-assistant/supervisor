@@ -90,11 +90,13 @@ class HwDisk(CoreSysAttributes):
     def disk_usage_for_mount(self, path: Path) -> tuple[int, int, int] | None:
         """Return (total, used, free) in bytes for a mount path, or None if not mounted.
 
-        Must be run in executor. statvfs succeeds on a ghost mount — a systemd
-        unit still reported active whose path is no longer actually mounted — by
-        returning the underlying filesystem's numbers, so only the device
-        boundary check tells the mount's own figures apart from the host disk's.
-        Mirrors `_probe_network_mount` in mounts/mount.py; keep the two agreeing.
+        Must be run in executor. The statvfs doubles as the trigger: it walks
+        with LOOKUP_AUTOMOUNT, so it activates a dormant automount and raises if
+        the mount cannot be activated. It still succeeds on a path whose trigger
+        is gone and which reverted to a plain directory, returning the
+        underlying filesystem's numbers, so only the device boundary check tells
+        this mount's figures apart from the host disk's. Same pairing as
+        `_probe_network_mount` in mounts/mount.py; keep the two agreeing.
         """
         usage = shutil.disk_usage(path)
         if path.stat().st_dev == path.parent.stat().st_dev:

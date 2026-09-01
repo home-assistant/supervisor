@@ -37,14 +37,12 @@ from ..const import (
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
-from ..dbus.const import UnitActiveState
 from ..exceptions import (
     APIDBMigrationInProgress,
     APIError,
     HostContainerLogEpochError,
     HostLogError,
     MountNotFound,
-    MountUsageNotActiveError,
     MountUsageNotMountedError,
     MountUsageReadError,
     MountUsageTimeoutError,
@@ -471,8 +469,10 @@ class APIHost(CoreSysAttributes):
             raise MountNotFound(name=name)
 
         mount = self.sys_mounts.get(name)
-        if mount.state != UnitActiveState.ACTIVE:
-            raise MountUsageNotActiveError(name=name)
+        # Deliberately not gated on the mount's cached state: that is only as
+        # fresh as the last reconcile probe, 15 minutes apart, so gating it
+        # withheld usage from healthy mounts. The probe below activates a
+        # dormant automount, which makes it the authority.
 
         max_depth = self._requested_max_depth(request, DISK_USAGE_MAX_DEPTH_MOUNT)
         # All depths below 2 give totals only; normalize so concurrent callers
@@ -568,10 +568,11 @@ class APIHost(CoreSysAttributes):
             raise MountUsageReadError(name=mount.name, reason=str(err)) from err
 
         if usage is None:
-            # Ghost mount: systemd still reports the unit active, but the path
-            # no longer crosses a filesystem boundary, so statvfs was reading
-            # the host's data disk and would report its numbers under the
-            # mount's name.
+            # The statvfs above would have triggered a dormant automount, so a
+            # path that still does not cross a filesystem boundary is one whose
+            # trigger is gone and which reverted to a plain directory. Reading
+            # it would report the host data disk's numbers under this mount's
+            # name.
             raise MountUsageNotMountedError(name=mount.name)
 
         total, _, free = usage
