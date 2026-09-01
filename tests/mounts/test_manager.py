@@ -21,7 +21,7 @@ from supervisor.exceptions import (
     MountTargetNotEmptyError,
 )
 from supervisor.mounts.manager import MountManager
-from supervisor.mounts.mount import Mount
+from supervisor.mounts.mount import DiskMount, Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
@@ -29,6 +29,9 @@ from tests.common import mock_dbus_services, mount_start_transient_unit_call
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
+from tests.dbus_service_mocks.udisks2_manager import (
+    UDisks2Manager as UDisks2ManagerService,
+)
 
 ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
 BACKUP_TEST_DATA = {
@@ -51,6 +54,37 @@ SHARE_TEST_DATA = {
     "usage": "share",
     "server": "share.local",
     "path": "/share",
+}
+
+DISK_UUID = "d2f4a6c8-3b5e-4079-8a1c-6e9d2f4b7a30"
+BACKUP_TEST_DATA = {
+    "name": "backup_test",
+    "type": "cifs",
+    "usage": "backup",
+    "server": "backup.local",
+    "share": "backups",
+}
+MEDIA_TEST_DATA = {
+    "name": "media_test",
+    "type": "nfs",
+    "usage": "media",
+    "server": "media.local",
+    "path": "/media",
+}
+SHARE_TEST_DATA = {
+    "name": "share_test",
+    "type": "nfs",
+    "usage": "share",
+    "server": "share.local",
+    "path": "/share",
+}
+
+DISK_TEST_DATA = {
+    "name": "disk_test",
+    "type": "disk",
+    "usage": "media",
+    "uuid": DISK_UUID,
+    "filesystem": "ext4",
 }
 
 
@@ -303,7 +337,7 @@ async def test_load_adopted_mount_probe_failure_creates_issue(
     # Both units exist and the .automount is active (mock defaults), but
     # the server does not answer the probe.
     with patch(
-        "supervisor.mounts.mount._probe_network_mount",
+        "supervisor.mounts.mount._probe_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         await coresys.mounts.load()
@@ -626,7 +660,7 @@ async def test_reload_mount_probe_failure_surfaces_resolution_issue(
 
     with (
         patch(
-            "supervisor.mounts.mount._probe_network_mount",
+            "supervisor.mounts.mount._probe_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),
@@ -657,7 +691,7 @@ async def test_reload_mount_escalates_to_session_discard(
 
     with (
         patch(
-            "supervisor.mounts.mount._probe_network_mount",
+            "supervisor.mounts.mount._probe_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),
@@ -1111,7 +1145,7 @@ async def test_reload_reconciles_issue_creation(
     assert mount.failed_issue not in coresys.resolution.issues
 
     with patch(
-        "supervisor.mounts.mount._probe_network_mount",
+        "supervisor.mounts.mount._probe_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         await coresys.mounts.reload()
@@ -1156,3 +1190,247 @@ async def test_reload_reconciles_trigger_repair_failure(
         suggestion.type
         for suggestion in coresys.resolution.suggestions_for_issue(mount.failed_issue)
     } == expected_suggestions
+
+
+async def test_load_disk_mount(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test mount manager loading a persisted disk mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.ResolveDevice.calls.clear()
+
+    disk_test = Mount.from_dict(coresys, DISK_TEST_DATA)
+    # pylint: disable=protected-access
+    coresys.mounts._mounts = {"disk_test": disk_test}
+    # pylint: enable=protected-access
+    assert coresys.mounts.media_mounts == [disk_test]
+
+    assert disk_test.state is None
+    assert not disk_test.local_where.exists()
+    assert not any(coresys.config.path_media.iterdir())
+
+    systemd_service.response_get_unit = {
+        "mnt-data-supervisor-media-disk_test.mount": [
+            ERROR_NO_UNIT,
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ],
+        "mnt-data-supervisor-media-disk_test.automount": [ERROR_NO_UNIT],
+        "mnt-data-supervisor-mounts-disk_test.mount": [ERROR_NO_UNIT],
+    }
+    await coresys.mounts.load()
+
+    assert disk_test.state == UnitActiveState.ACTIVE
+    assert disk_test.local_where.is_dir()
+    assert (coresys.config.path_media / "disk_test").is_dir()
+
+    # Mounting needed no resolution; the single call is the presence probe
+    assert len(udisks2_manager_service.ResolveDevice.calls) == 1
+
+    assert systemd_service.StartTransientUnit.calls == [
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-media-disk_test.automount",
+            mount_unit="mnt-data-supervisor-media-disk_test.mount",
+            where="/mnt/data/supervisor/media/disk_test",
+            description="Supervisor disk mount: disk_test",
+            what="/mnt/data/supervisor/.mounts_devices/disk_test",
+            fstype="ext4",
+            options=None,
+        )
+    ]
+
+
+async def test_disk_mount_failed_during_load(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    dbus_session_bus: MessageBus,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test a disk absent at boot raises the existing failed-mount issue."""
+    await mock_dbus_services(
+        {"systemd_unit": "/org/freedesktop/systemd1/unit/tmp_test"}, dbus_session_bus
+    )
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    disk_test = Mount.from_dict(coresys, DISK_TEST_DATA)
+    # pylint: disable=protected-access
+    coresys.mounts._mounts = {"disk_test": disk_test}
+    # pylint: enable=protected-access
+
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []
+
+    systemd_service.response_get_unit = {
+        "mnt-data-supervisor-media-disk_test.mount": [
+            ERROR_NO_UNIT,
+            "/org/freedesktop/systemd1/unit/tmp_test",
+        ],
+        "mnt-data-supervisor-media-disk_test.automount": [ERROR_NO_UNIT],
+        "mnt-data-supervisor-mounts-disk_test.mount": [ERROR_NO_UNIT],
+    }
+    with patch(
+        "supervisor.mounts.mount._probe_mount",
+        side_effect=OSError(errno.ENODEV, "No such device"),
+    ):
+        await coresys.mounts.load()
+
+    assert disk_test.state == UnitActiveState.INACTIVE
+    assert (
+        Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="disk_test")
+        in coresys.resolution.issues
+    )
+    assert (
+        Suggestion(
+            SuggestionType.EXECUTE_RELOAD, ContextType.MOUNT, reference="disk_test"
+        )
+        in coresys.resolution.suggestions
+    )
+    assert (
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.MOUNT, reference="disk_test"
+        )
+        in coresys.resolution.suggestions
+    )
+
+
+async def test_restore_disk_mount_resolves_and_guards(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test a restored disk mount is re-resolved, re-checked, and then mounts."""
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    udisks2_manager_service.ResolveDevice.calls.clear()
+    udisks2_manager_service.resolved_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sdc1"
+    ]
+
+    backed_up = Mount.from_dict(coresys, DISK_TEST_DATA).to_dict(skip_secrets=False)
+    assert backed_up == DISK_TEST_DATA | {"read_only": False}
+    assert backed_up["filesystem"] == "ext4"
+
+    restored = Mount.from_dict(coresys, backed_up)
+    assert isinstance(restored, DiskMount)
+
+    activate = await coresys.mounts.restore_mount(restored)
+
+    # Dropped so the guard cannot be skipped on activation
+    assert restored.filesystem is None
+    assert restored.uuid == DISK_UUID
+
+    await activate
+
+    assert coresys.mounts.get("disk_test") is restored
+    assert restored.state == UnitActiveState.ACTIVE
+    assert restored.filesystem == "ext4"
+    # One resolve for restore, one for the presence probe
+    assert len(udisks2_manager_service.ResolveDevice.calls) == 2
+
+
+async def test_restore_disk_mount_rejects_protected_device(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test a crafted backup cannot mount a system disk by naming its UUID."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    # sda1 is hassos-data-old
+    udisks2_manager_service.resolved_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sda1"
+    ]
+
+    restored = Mount.from_dict(
+        coresys,
+        {
+            "name": "disk_test",
+            "type": "disk",
+            "usage": "media",
+            "uuid": "b82b23cb-0c47-4bbb-acf5-2a2afa8894a2",
+            "filesystem": "ext4",
+            "read_only": False,
+        },
+    )
+
+    activate = await coresys.mounts.restore_mount(restored)
+    await activate
+
+    # Activation reports failure rather than raising; nothing was mounted
+    assert restored.state is None
+    assert systemd_service.StartTransientUnit.calls == []
+    assert "is a system device and cannot be mounted" in caplog.text
+
+
+async def test_restore_disk_mount_missing_device_retains_and_retries(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test restoring a mount whose disk is absent keeps it for a later retry."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    udisks2_manager_service.ResolveDevice.calls.clear()
+    udisks2_manager_service.resolved_devices = []
+
+    restored = Mount.from_dict(coresys, DISK_TEST_DATA)
+    activate = await coresys.mounts.restore_mount(restored)
+    await activate
+
+    # Retained and still unresolved for a later retry
+    assert coresys.mounts.get("disk_test") is restored
+    assert restored.filesystem is None
+    assert restored.state is None
+    # Device absent: resolution failed, nothing mounted
+    assert len(udisks2_manager_service.ResolveDevice.calls) == 1
+    assert coresys.resolution.issues == []
+
+    # Reload retries resolution and raises the failed-mount issue
+    systemd_service.response_get_unit = ERROR_NO_UNIT
+    systemd_service.response_reload_or_restart_unit = ERROR_NO_UNIT
+
+    await coresys.mounts.reload()
+
+    # Reload retried resolution and failed again
+    assert len(udisks2_manager_service.ResolveDevice.calls) == 2
+    assert (
+        Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="disk_test")
+        in coresys.resolution.issues
+    )
+    assert (
+        Suggestion(
+            SuggestionType.EXECUTE_RELOAD, ContextType.MOUNT, reference="disk_test"
+        )
+        in coresys.resolution.suggestions
+    )
+    assert (
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.MOUNT, reference="disk_test"
+        )
+        in coresys.resolution.suggestions
+    )

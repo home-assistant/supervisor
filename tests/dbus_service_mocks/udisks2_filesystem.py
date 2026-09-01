@@ -53,6 +53,9 @@ FIXTURES: dict[str, FilesystemFixture] = {
     "/org/freedesktop/UDisks2/block_devices/sdb1": FilesystemFixture(
         MountPoints=[b"/mnt/data/supervisor/media/ext\x00"], Size=67108864
     ),
+    "/org/freedesktop/UDisks2/block_devices/sdc1": FilesystemFixture(
+        MountPoints=[], Size=2000397795328
+    ),
     "/org/freedesktop/UDisks2/block_devices/zram1": FilesystemFixture(
         MountPoints=[b"/var"], Size=0
     ),

@@ -6,7 +6,7 @@ from contextlib import suppress
 from dataclasses import replace
 import logging
 from pathlib import Path
-from typing import Self
+from typing import Self, cast
 
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
@@ -28,9 +28,10 @@ from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
     FILE_CONFIG_MOUNTS,
+    MountType,
     MountUsage,
 )
-from .mount import Mount
+from .mount import DiskMount, Mount
 from .validate import SCHEMA_MOUNTS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -475,6 +476,11 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             )
             old_mount = self._mounts[mount.name]
             await old_mount.unmount()
+
+        # A backup is from another host, so drop the resolved filesystem and
+        # re-resolve on activation. That re-runs the mountable-device guard.
+        if mount.type == MountType.DISK:
+            cast(DiskMount, mount).forget_resolved_device()
 
         self._mounts[mount.name] = mount
         return self.sys_create_task(self._activate_restored_mount(mount))

@@ -895,7 +895,7 @@ async def test_backup_to_down_mount_error(coresys: CoreSys, mock_is_mount: Magic
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     with patch(
-        "supervisor.mounts.mount._probe_network_mount",
+        "supervisor.mounts.mount._probe_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         with pytest.raises(BackupMountDownError):
@@ -1007,7 +1007,7 @@ async def test_backup_to_default_mount_down_error(
 
     with (
         patch(
-            "supervisor.mounts.mount._probe_network_mount",
+            "supervisor.mounts.mount._probe_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(BackupMountDownError),

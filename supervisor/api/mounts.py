@@ -5,19 +5,86 @@ from typing import Any, cast
 from aiohttp import web
 import voluptuous as vol
 
-from ..const import ATTR_NAME, ATTR_STATE
+from ..const import (
+    ATTR_ID,
+    ATTR_NAME,
+    ATTR_SERIAL,
+    ATTR_SIZE,
+    ATTR_STATE,
+    ATTR_TYPE,
+    ATTR_UUID,
+)
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APINotFound
-from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, MountUsage
-from ..mounts.mount import Mount
-from ..mounts.validate import SCHEMA_MOUNT_CONFIG, MountData
-from .const import ATTR_MOUNTS, ATTR_USER_PATH
+from ..dbus.const import DBUS_OBJECT_BASE
+from ..dbus.udisks2.block import UDisks2Block
+from ..exceptions import APIError, APINotFound, DBusObjectError, MountInvalidError
+from ..mounts.const import (
+    ATTR_DEFAULT_BACKUP_MOUNT,
+    ATTR_FILESYSTEM,
+    ATTR_READ_ONLY,
+    MountType,
+    MountUsage,
+)
+from ..mounts.disks import validate_block_for_mount
+from ..mounts.mount import Mount, disk_mount_uuids
+from ..mounts.validate import (
+    SCHEMA_BASE_MOUNT_CONFIG,
+    SCHEMA_MOUNT_CIFS,
+    SCHEMA_MOUNT_NFS,
+    MountData,
+    usage_specific_validation,
+)
+from .const import (
+    ATTR_CANDIDATES,
+    ATTR_CONNECTION_BUS,
+    ATTR_DEVICE,
+    ATTR_DRIVE,
+    ATTR_EJECTABLE,
+    ATTR_LABEL,
+    ATTR_MODEL,
+    ATTR_MOUNTS,
+    ATTR_REMOVABLE,
+    ATTR_USER_PATH,
+    ATTR_VENDOR,
+)
 from .utils import api_process, api_validate
 
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_DEFAULT_BACKUP_MOUNT): vol.Maybe(str),
     }
+)
+
+
+def _device_identifier_required(config: dict[str, Any]) -> dict[str, Any]:
+    """Require at least one of device and uuid for a disk mount."""
+    if not config.get(ATTR_DEVICE) and not config.get(ATTR_UUID):
+        raise vol.Invalid("Disk mounts require either device or uuid")
+
+    return config
+
+
+# API input only; persisted mounts use mounts/validate.py. Both identifiers
+# may be supplied so a candidates entry can be posted back: uuid drives
+# resolution and device is checked for agreement. filesystem is omitted so
+# UDisks2 resolution always runs the mountable-device guard; REMOVE_EXTRA
+# drops a value echoed from GET /mounts.
+_SCHEMA_MOUNT_DISK = vol.All(
+    SCHEMA_BASE_MOUNT_CONFIG.extend(
+        {
+            vol.Required(ATTR_TYPE): vol.All(
+                MountType.DISK.value, vol.Coerce(MountType)
+            ),
+            vol.Optional(ATTR_DEVICE): str,
+            vol.Optional(ATTR_UUID): str,
+        }
+    ),
+    _device_identifier_required,
+)
+
+SCHEMA_MOUNT_CONFIG = vol.All(
+    vol.Any(SCHEMA_MOUNT_CIFS, SCHEMA_MOUNT_NFS, _SCHEMA_MOUNT_DISK),
+    usage_specific_validation,
 )
 
 
@@ -48,6 +115,66 @@ class APIMounts(CoreSysAttributes):
                 }
                 for mount in self.sys_mounts.mounts
             ],
+        }
+
+    @api_process
+    async def candidates(self, request: web.Request) -> dict[str, Any]:
+        """Return local block devices that could be used as a disk mount."""
+        # No UDisks2: nothing to list.
+        if not self.sys_dbus.udisks2.is_connected:
+            return {ATTR_CANDIDATES: []}
+
+        # Refresh so a disk plugged in moments ago shows up.
+        await self.sys_dbus.udisks2.update()
+
+        used_uuids = disk_mount_uuids(self.sys_mounts.mounts)
+        candidates: list[dict[str, Any]] = []
+        for block in self.sys_dbus.udisks2.block_devices:
+            try:
+                validate_block_for_mount(self.coresys, block, used_uuids=used_uuids)
+            except MountInvalidError:
+                # Same guard as create, so the two cannot disagree.
+                continue
+
+            candidates.append(self._candidate_to_dict(block))
+
+        return {ATTR_CANDIDATES: candidates}
+
+    def _candidate_to_dict(self, block: UDisks2Block) -> dict[str, Any]:
+        """Return API representation of a mount candidate."""
+        return {
+            ATTR_TYPE: MountType.DISK,
+            ATTR_DEVICE: block.device.as_posix(),
+            ATTR_UUID: block.id_uuid,
+            ATTR_LABEL: block.id_label,
+            ATTR_FILESYSTEM: block.id_type,
+            ATTR_SIZE: block.size,
+            ATTR_READ_ONLY: block.read_only,
+            ATTR_DRIVE: self._drive_to_dict(block),
+        }
+
+    def _drive_to_dict(self, block: UDisks2Block) -> dict[str, Any] | None:
+        """Return API representation of the drive a candidate belongs to.
+
+        Returns None if the drive disappeared between enumeration and lookup.
+        """
+        if not block.drive or block.drive == DBUS_OBJECT_BASE:
+            return None
+
+        try:
+            drive = self.sys_dbus.udisks2.get_drive(block.drive)
+        except DBusObjectError:
+            return None
+
+        return {
+            ATTR_VENDOR: drive.vendor,
+            ATTR_MODEL: drive.model,
+            ATTR_SERIAL: drive.serial,
+            ATTR_ID: drive.id,
+            ATTR_SIZE: drive.size,
+            ATTR_CONNECTION_BUS: drive.connection_bus,
+            ATTR_REMOVABLE: drive.removable,
+            ATTR_EJECTABLE: drive.ejectable,
         }
 
     @api_process

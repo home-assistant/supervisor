@@ -10,6 +10,7 @@ import logging
 import os
 from pathlib import Path, PurePath
 import time
+from typing import cast
 
 from dbus_fast import Variant
 from voluptuous import Coerce
@@ -30,12 +31,19 @@ from ..dbus.const import (
     UnitActiveState,
 )
 from ..dbus.systemd import SystemdUnit, job_removed_filter
+from ..dbus.udisks2.data import DeviceSpecification
 from ..docker.const import PATH_MEDIA, PATH_SHARE
 from ..exceptions import (
     DBusError,
+    DBusNotConnectedError,
     DBusSystemdNoSuchUnit,
     MountActivationError,
+    MountDeviceMismatchError,
+    MountDeviceNotFoundError,
+    MountDeviceReadOnlyError,
+    MountDisksNotSupportedError,
     MountError,
+    MountFilesystemNotSupportedError,
     MountInvalidError,
     MountReloadError,
     MountSetupError,
@@ -46,14 +54,21 @@ from ..exceptions import (
 from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
 from ..utils.sentry import async_capture_exception
-from .const import MountCifsVersion, MountType, MountUsage
+from .const import (
+    KERNEL_FILESYSTEM_MAP,
+    SUPPORTED_LOCAL_FILESYSTEMS,
+    MountCifsVersion,
+    MountType,
+    MountUsage,
+)
+from .disks import validate_block_for_mount
 from .validate import MountData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def _probe_network_mount(path: Path) -> bool:
-    """Verify `path` is a live mount on a reachable server.
+def _probe_mount(path: Path) -> bool:
+    """Verify `path` is a live mount, reachable if it is remote.
 
     Run inside an executor — both syscalls share one thread and
     benefit from the kernel's warm session state on a real mount.
@@ -132,6 +147,8 @@ class Mount(CoreSysAttributes, ABC):
             return CIFSMount(coresys, data)
         if type_ == MountType.NFS:
             return NFSMount(coresys, data)
+        if type_ == MountType.DISK:
+            return DiskMount(coresys, data)
         raise MountInvalidError(f"Unsupported mount type: {type_}", _LOGGER.error)
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
@@ -171,14 +188,37 @@ class Mount(CoreSysAttributes, ABC):
         """What to mount."""
 
     @property
-    @abstractmethod
     def where(self) -> PurePath:
-        """Where to mount (on host)."""
+        """Where to mount (on host).
+
+        Media and share mounts live directly under the container-facing
+        media/share dirs — containers see them via the parent-dir RSLAVE
+        bind and the autofs trigger sits inside the propagated namespace.
+        Backup mounts have no container-facing path; they stay under
+        path_extern_mounts/.
+        """
+        match self.usage:
+            case MountUsage.MEDIA:
+                return self.sys_config.path_extern_media / self.name
+            case MountUsage.SHARE:
+                return self.sys_config.path_extern_share / self.name
+            case _:
+                return self.sys_config.path_extern_mounts / self.name
 
     @property
     def options(self) -> list[str]:
         """List of options to use to mount."""
         return ["ro"] if self.read_only else []
+
+    @property
+    def fs_type(self) -> str:
+        """Filesystem type for the systemd unit.
+
+        The mount type doubles as the kernel filesystem name for network
+        mounts, but not for a local disk, where the name UDisks2 probes is
+        not always the name of the driver that mounts it.
+        """
+        return self.type.value
 
     @property
     def description(self) -> str:
@@ -230,8 +270,67 @@ class Mount(CoreSysAttributes, ABC):
         return self._failed_issue
 
     async def is_mounted(self) -> bool:
-        """Return true if successfully mounted and available."""
-        return self.state == UnitActiveState.ACTIVE
+        """Return true if the mount is reachable.
+
+        Under autofs the underlying `.mount` is dormant until first
+        access, so systemd state alone is meaningless for "is this
+        usable"; we have to actually access the path. statvfs triggers
+        a dormant automount (the statfs syscall walks with
+        LOOKUP_AUTOMOUNT) and, for a network mount, forces an RPC for
+        both NFS and CIFS, so the kernel must reach the server or fail
+        with ETIMEDOUT / EHOSTDOWN / ECONNABORTED / ENODEV.
+
+        A local filesystem answers statvfs without touching its
+        device, so for a disk this confirms only that the trigger
+        works and something is mounted — DiskMount adds the presence
+        check that catches a disk pulled while mounted.
+
+        After a successful probe we update `self._state` to ACTIVE
+        so the API surface reports "active" for healthy mounts. A
+        failed probe sets it to INACTIVE.
+
+        No asyncio timeout — the kernel-side bound is authoritative,
+        and adding one would only orphan the executor thread on a
+        stuck syscall without unblocking it.
+        """
+        local_where = self.local_where
+        _LOGGER.debug("Probing mount %s at %s", self.name, local_where)
+        start = time.monotonic()
+        try:
+            is_real_mount = await self.sys_run_in_executor(_probe_mount, local_where)
+        except OSError as err:
+            if err.errno == errno.ELOOP:
+                # The kernel returns ELOOP when a process loops on an
+                # autofs trigger whose activation cannot propagate into
+                # its mount namespace — a mount propagation
+                # misconfiguration, not a server problem.
+                _LOGGER.error(
+                    "Probe of mount %s failed with ELOOP — the automount "
+                    "cannot propagate into this mount namespace. Check "
+                    "mount propagation configuration",
+                    self.name,
+                )
+            _LOGGER.debug(
+                "Probe of mount %s failed after %.2fs: %s",
+                self.name,
+                time.monotonic() - start,
+                err,
+            )
+            self._state = UnitActiveState.INACTIVE
+            return False
+        elapsed = time.monotonic() - start
+        if not is_real_mount:
+            _LOGGER.debug(
+                "Probe of mount %s succeeded but %s is not a mount point (%.2fs)",
+                self.name,
+                local_where,
+                elapsed,
+            )
+            self._state = UnitActiveState.INACTIVE
+            return False
+        _LOGGER.debug("Probe of mount %s succeeded in %.2fs", self.name, elapsed)
+        self._state = UnitActiveState.ACTIVE
+        return True
 
     def __eq__(self, other: object) -> bool:
         """Return true if mounts are the same."""
@@ -531,7 +630,7 @@ class Mount(CoreSysAttributes, ABC):
             else []
         )
         mount_properties = options + [
-            (DBUS_ATTR_TYPE, Variant("s", self.type)),
+            (DBUS_ATTR_TYPE, Variant("s", self.fs_type)),
             (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
             (DBUS_ATTR_WHAT, Variant("s", self.what)),
             (DBUS_ATTR_TIMEOUT_USEC, Variant("t", MOUNT_UNIT_TIMEOUT_USEC)),
@@ -808,90 +907,12 @@ class NetworkMount(Mount, ABC):
         return self._data.get("port")
 
     @property
-    def where(self) -> PurePath:
-        """Where to mount.
-
-        Media and share mounts live directly under the container-facing
-        media/share dirs — containers see them via the parent-dir RSLAVE
-        bind and the autofs trigger sits inside the propagated
-        namespace. Backup mounts have no container-facing path; they
-        stay under path_extern_mounts/.
-        """
-        match self.usage:
-            case MountUsage.MEDIA:
-                return self.sys_config.path_extern_media / self.name
-            case MountUsage.SHARE:
-                return self.sys_config.path_extern_share / self.name
-            case _:
-                return self.sys_config.path_extern_mounts / self.name
-
-    @property
     def options(self) -> list[str]:
         """Options to use to mount."""
         options = super().options
         if self.port:
             options.append(f"port={self.port}")
         return options
-
-    async def is_mounted(self) -> bool:
-        """Return true if the mount is reachable.
-
-        Under autofs the underlying `.mount` is dormant until first
-        access, so systemd state alone is meaningless for "is the
-        share usable"; we have to actually access the path. statvfs
-        both triggers a dormant automount (the statfs syscall walks
-        with LOOKUP_AUTOMOUNT) and forces an RPC for both NFS and
-        CIFS, so the kernel must reach the server or fail with
-        ETIMEDOUT / EHOSTDOWN / ECONNABORTED / ENODEV.
-
-        After a successful probe we update `self._state` to ACTIVE
-        so the API surface reports "active" for healthy mounts. A
-        failed probe sets it to INACTIVE.
-
-        No asyncio timeout — the kernel-side bound is authoritative,
-        and adding one would only orphan the executor thread on a
-        stuck syscall without unblocking it.
-        """
-        local_where = self.local_where
-        _LOGGER.debug("Probing mount %s at %s", self.name, local_where)
-        start = time.monotonic()
-        try:
-            is_real_mount = await self.sys_run_in_executor(
-                _probe_network_mount, local_where
-            )
-        except OSError as err:
-            if err.errno == errno.ELOOP:
-                # The kernel returns ELOOP when a process loops on an
-                # autofs trigger whose activation cannot propagate into
-                # its mount namespace — a mount propagation
-                # misconfiguration, not a server problem.
-                _LOGGER.error(
-                    "Probe of mount %s failed with ELOOP — the automount "
-                    "cannot propagate into this mount namespace. Check "
-                    "mount propagation configuration",
-                    self.name,
-                )
-            _LOGGER.debug(
-                "Probe of mount %s failed after %.2fs: %s",
-                self.name,
-                time.monotonic() - start,
-                err,
-            )
-            self._state = UnitActiveState.INACTIVE
-            return False
-        elapsed = time.monotonic() - start
-        if not is_real_mount:
-            _LOGGER.debug(
-                "Probe of mount %s succeeded but %s is not a mount point (%.2fs)",
-                self.name,
-                local_where,
-                elapsed,
-            )
-            self._state = UnitActiveState.INACTIVE
-            return False
-        _LOGGER.debug("Probe of mount %s succeeded in %.2fs", self.name, elapsed)
-        self._state = UnitActiveState.ACTIVE
-        return True
 
 
 class CIFSMount(NetworkMount):
@@ -1014,3 +1035,236 @@ class NFSMount(NetworkMount):
     def options(self) -> list[str]:
         """Options to use to mount."""
         return super().options + ["softerr", "timeo=100", "retrans=2"]
+
+
+class DiskMount(Mount):
+    """A local disk mount.
+
+    Sibling of NetworkMount, not a subclass: no server or protocol. It still
+    uses an autofs pair, so an unplugged disk remounts on the next access.
+    """
+
+    def to_dict(self, *, skip_secrets: bool = True) -> MountData:
+        """Return dictionary representation."""
+        out = MountData(**super().to_dict())
+        if self.uuid is not None:
+            out["uuid"] = self.uuid
+        if self.filesystem is not None:
+            out["filesystem"] = self.filesystem
+        return out
+
+    @property
+    def device(self) -> str | None:
+        """Get device path, only set as API input before it is resolved."""
+        return self._data.get("device")
+
+    @property
+    def uuid(self) -> str | None:
+        """Get filesystem UUID of the device to mount."""
+        return self._data.get("uuid")
+
+    @property
+    def filesystem(self) -> str | None:
+        """Get filesystem as probed by UDisks2 (e.g. "ntfs", never "ntfs3")."""
+        return self._data.get("filesystem")
+
+    @property
+    def fs_type(self) -> str:
+        """Kernel filesystem name for the systemd unit."""
+        if (filesystem := self.filesystem) is None:
+            raise MountInvalidError(
+                f"Mount {self.name} has no resolved filesystem to mount with",
+                _LOGGER.error,
+            )
+        return KERNEL_FILESYSTEM_MAP.get(filesystem, filesystem)
+
+    @property
+    def path_device_link(self) -> Path:
+        """Path to the device link, as seen by Supervisor."""
+        return self.sys_config.path_mounts_devices / self.name
+
+    @property
+    def what(self) -> str:
+        """What to mount.
+
+        A Supervisor-owned link to the by-uuid node, not that node itself.
+        systemd adds Requires= on the device unit when What= starts with /dev/,
+        and an absent disk then stalls every access for DefaultDeviceTimeoutSec
+        (90 s, no failure cache). Unit timeouts do not cover that wait. A path
+        outside /dev has no device dependency, so mount(8) fails immediately
+        while the disk is away. Do not point What= at the by-uuid path.
+        """
+        return self.sys_config.path_extern_mounts_devices.joinpath(self.name).as_posix()
+
+    def _write_device_link(self) -> None:
+        """Point the device link at the resolved device. Must run in executor."""
+        target = Path(f"/dev/disk/by-uuid/{self.uuid}")
+        link = self.path_device_link
+        if link.is_symlink() and link.readlink() == target:
+            return
+        link.unlink(missing_ok=True)
+        link.symlink_to(target)
+
+    async def is_mounted(self) -> bool:
+        """Return true if the disk is mounted and still attached.
+
+        statvfs is cached for a local filesystem, so a pulled disk still looks
+        healthy. UDisks2 presence is what distinguishes the two.
+        """
+        if not await super().is_mounted():
+            return False
+
+        if not await self._device_attached():
+            _LOGGER.debug("Mount %s is mounted but its device is gone", self.name)
+            self._state = UnitActiveState.INACTIVE
+            return False
+
+        return True
+
+    async def _device_attached(self) -> bool:
+        """Return whether the resolved device is still present.
+
+        True when UDisks2 cannot be asked: an unavailable service is not a
+        missing disk.
+        """
+        if self.uuid is None or not self.sys_dbus.udisks2.is_connected:
+            return True
+
+        try:
+            devices = await self.sys_dbus.udisks2.resolve_device(
+                DeviceSpecification(uuid=self.uuid)
+            )
+        except DBusError, DBusNotConnectedError:
+            return True
+
+        return bool(devices)
+
+    def forget_resolved_device(self) -> None:
+        """Drop the resolved filesystem so the next mount resolves again.
+
+        Resolution runs the mountable-device guard. Call this for untrusted
+        data (a restored backup) so the device is re-checked. The UUID is kept.
+        """
+        if "filesystem" in self._data:
+            del self._data["filesystem"]
+
+    async def load(self) -> None:
+        """Initialize object."""
+        # Write the device link before the base class adopts or arms units.
+        await self._ensure_resolved()
+        await self.sys_run_in_executor(self._write_device_link)
+        await super().load()
+
+    async def mount(self) -> None:
+        """Mount using systemd."""
+        await self._ensure_resolved()
+        await self.sys_run_in_executor(self._write_device_link)
+        await super().mount()
+
+    async def unmount(self) -> None:
+        """Unmount using systemd."""
+        await super().unmount()
+        await self.sys_run_in_executor(self.path_device_link.unlink, missing_ok=True)
+
+    async def _ensure_resolved(self) -> None:
+        """Resolve the device unless it is already known.
+
+        A persisted mount already has UUID and filesystem, so a reboot needs no
+        UDisks2 round trip.
+        """
+        if self.filesystem is None:
+            await self._resolve_device()
+
+        # Re-check the allowlist for mounts that skipped resolve (hand-edited
+        # mounts.json, or a backup from a supervisor with a wider allowlist).
+        # Failing here costs this one mount; rejecting it in the file schema
+        # would reset every mount.
+        if self.filesystem not in SUPPORTED_LOCAL_FILESYSTEMS:
+            raise MountFilesystemNotSupportedError(_LOGGER.error, device=self.what)
+
+    async def _resolve_device(self) -> None:
+        """Resolve the configured device into a UUID and filesystem.
+
+        Deferred to mount time, like CIFS credentials: it needs a live host.
+        """
+        # Without UDisks2 there is no way to resolve a device. Catch this
+        # before resolve_device raises DBusNotConnectedError as a 500.
+        if not self.sys_dbus.udisks2.is_connected:
+            raise MountDisksNotSupportedError(_LOGGER.error)
+
+        # uuid is persisted, so it drives resolution. A device supplied with
+        # it is checked for agreement afterwards.
+        if self.uuid is not None:
+            reference = self.uuid
+            devspec = DeviceSpecification(uuid=self.uuid)
+        elif self.device is not None:
+            reference = self.device
+            devspec = DeviceSpecification(path=Path(self.device))
+        else:
+            # Validation requires one of the two; this is a hand-built mount.
+            raise MountInvalidError(
+                f"Mount {self.name} has neither a device nor a UUID to resolve",
+                _LOGGER.error,
+            )
+
+        try:
+            devices = await self.sys_dbus.udisks2.resolve_device(devspec)
+        except DBusNotConnectedError as err:
+            # UDisks2 may have disconnected since the check above.
+            # DBusNotConnectedError is not a DBusError.
+            raise MountDisksNotSupportedError(_LOGGER.error) from err
+        except DBusError as err:
+            raise MountError(
+                f"Could not resolve device for mount {self.name} due to: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+        if not devices:
+            raise MountDeviceNotFoundError(_LOGGER.error, reference=reference)
+
+        if len(devices) > 1:
+            raise MountInvalidError(
+                f"{reference} matches {len(devices)} devices, cannot tell which "
+                f"one to mount for {self.name}",
+                _LOGGER.error,
+            )
+
+        block = devices[0]
+
+        # Both identifiers supplied but they no longer agree.
+        if (
+            self.uuid is not None
+            and self.device is not None
+            and block.device.as_posix() != self.device
+        ):
+            raise MountDeviceMismatchError(
+                _LOGGER.error, device=self.device, uuid=self.uuid
+            )
+
+        validate_block_for_mount(
+            self.coresys,
+            block,
+            used_uuids=disk_mount_uuids(self.sys_mounts.mounts, exclude=self.name),
+        )
+
+        # Do not silently downgrade a writable request on a read-only device.
+        if block.read_only and not self.read_only:
+            raise MountDeviceReadOnlyError(
+                _LOGGER.error, device=block.device.as_posix()
+            )
+
+        self._data["uuid"] = block.id_uuid
+        self._data["filesystem"] = block.id_type
+        # device was input only; persist the UUID.
+        self._data.pop("device", None)
+
+
+def disk_mount_uuids(mounts: list[Mount], *, exclude: str | None = None) -> set[str]:
+    """Return filesystem UUIDs already claimed by configured disk mounts."""
+    return {
+        uuid
+        for mount in mounts
+        if mount.type == MountType.DISK
+        and (uuid := cast(DiskMount, mount).uuid)
+        and mount.name != exclude
+    }
