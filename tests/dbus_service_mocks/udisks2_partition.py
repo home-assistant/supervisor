@@ -93,6 +93,18 @@ FIXTURES: dict[str, PartitionFixture] = {
         IsContainer=False,
         IsContained=False,
     ),
+    "/org/freedesktop/UDisks2/block_devices/sdc1": PartitionFixture(
+        Number=1,
+        Type="0fc63daf-8483-4772-8e79-3d69d8477de4",
+        Flags=0,
+        Offset=1048576,
+        Size=2000397795328,
+        Name="",
+        UUID="9c4f2b7e-1d3a-4f8b-9e2c-5a7d1b3f6e88",
+        Table="/org/freedesktop/UDisks2/block_devices/sdc",
+        IsContainer=False,
+        IsContained=False,
+    ),
 }
 
 

@@ -96,7 +96,7 @@ async def test_fixup_error_after_reload(
     # the issue cleanup is skipped.
     with (
         patch(
-            "supervisor.mounts.mount._probe_network_mount",
+            "supervisor.mounts.mount._probe_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),

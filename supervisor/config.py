@@ -53,6 +53,7 @@ AUDIO_DATA = PurePath("audio")
 MEDIA_DATA = PurePath("media")
 MOUNTS_FOLDER = PurePath("mounts")
 MOUNTS_CREDENTIALS = PurePath(".mounts_credentials")
+MOUNTS_DEVICES = PurePath(".mounts_devices")
 APP_CONFIGS = PurePath("app_configs")
 CORE_BACKUP_DATA = PurePath("core/backup")
 CID_FILES = PurePath("cid_files")
@@ -396,6 +397,16 @@ class CoreConfig(FileConfiguration):
     def path_extern_mounts_credentials(self) -> PurePath:
         """Return mounts credentials path external for Docker."""
         return self.path_extern_supervisor / MOUNTS_CREDENTIALS
+
+    @property
+    def path_mounts_devices(self) -> Path:
+        """Return mounts device links folder."""
+        return self.path_supervisor / MOUNTS_DEVICES
+
+    @property
+    def path_extern_mounts_devices(self) -> PurePath:
+        """Return mounts device links path external for Docker."""
+        return self.path_extern_supervisor / MOUNTS_DEVICES
 
     @property
     def path_extern_media(self) -> PurePath:

@@ -11,11 +11,13 @@ from ..const import (
     ATTR_PORT,
     ATTR_TYPE,
     ATTR_USERNAME,
+    ATTR_UUID,
     ATTR_VERSION,
 )
 from ..validate import network_port
 from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
+    ATTR_FILESYSTEM,
     ATTR_MOUNTS,
     ATTR_PATH,
     ATTR_READ_ONLY,
@@ -47,11 +49,12 @@ VALIDATE_NAME = vol.Match(RE_MOUNT_NAME)
 VALIDATE_SERVER = vol.Match(RE_PATH_PART)
 VALIDATE_SHARE = vol.Match(RE_PATH_PART)
 
-_SCHEMA_BASE_MOUNT_CONFIG = vol.Schema(
+SCHEMA_BASE_MOUNT_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): VALIDATE_NAME,
         vol.Required(ATTR_TYPE): vol.All(
-            vol.In([MountType.CIFS.value, MountType.NFS.value]), vol.Coerce(MountType)
+            vol.In([MountType.CIFS.value, MountType.DISK.value, MountType.NFS.value]),
+            vol.Coerce(MountType),
         ),
         vol.Required(ATTR_USAGE): vol.Coerce(MountUsage),
         vol.Optional(ATTR_READ_ONLY, default=False): vol.Boolean(),
@@ -59,7 +62,7 @@ _SCHEMA_BASE_MOUNT_CONFIG = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
-_SCHEMA_MOUNT_NETWORK = _SCHEMA_BASE_MOUNT_CONFIG.extend(
+_SCHEMA_MOUNT_NETWORK = SCHEMA_BASE_MOUNT_CONFIG.extend(
     {
         vol.Required(ATTR_SERVER): VALIDATE_SERVER,
         vol.Optional(ATTR_PORT): network_port,
@@ -85,13 +88,28 @@ SCHEMA_MOUNT_NFS = _SCHEMA_MOUNT_NETWORK.extend(
     }
 )
 
-SCHEMA_MOUNT_CONFIG = vol.All(
-    vol.Any(SCHEMA_MOUNT_CIFS, SCHEMA_MOUNT_NFS), usage_specific_validation
+# Persisted disk mounts always carry the uuid they were resolved to; `device`
+# is API input only and never written out. `filesystem` stays optional: a
+# mount restored from a backup is saved unresolved (it re-resolves on
+# activation), and requiring the field here would invalidate the whole file,
+# which resets every configured mount. An unsupported persisted value is
+# rejected at mount time instead, costing only that one mount.
+_SCHEMA_MOUNT_DISK_PERSISTED = SCHEMA_BASE_MOUNT_CONFIG.extend(
+    {
+        vol.Required(ATTR_TYPE): vol.All(MountType.DISK.value, vol.Coerce(MountType)),
+        vol.Required(ATTR_UUID): str,
+        vol.Optional(ATTR_FILESYSTEM): str,
+    }
+)
+
+_SCHEMA_MOUNT_CONFIG_PERSISTED = vol.All(
+    vol.Any(SCHEMA_MOUNT_CIFS, SCHEMA_MOUNT_NFS, _SCHEMA_MOUNT_DISK_PERSISTED),
+    usage_specific_validation,
 )
 
 SCHEMA_MOUNTS_CONFIG = vol.Schema(
     {
-        vol.Required(ATTR_MOUNTS, default=[]): [SCHEMA_MOUNT_CONFIG],
+        vol.Required(ATTR_MOUNTS, default=[]): [_SCHEMA_MOUNT_CONFIG_PERSISTED],
         vol.Optional(ATTR_DEFAULT_BACKUP_MOUNT): vol.Maybe(str),
     }
 )
@@ -117,3 +135,10 @@ class MountData(TypedDict):
 
     # NFS and Bind fields
     path: NotRequired[str]
+
+    # Disk fields. `device` is accepted as input and dropped once resolved;
+    # only `uuid` and `filesystem` are persisted, and `filesystem` is never
+    # accepted from an API caller.
+    device: NotRequired[str]
+    uuid: NotRequired[str]
+    filesystem: NotRequired[str]
