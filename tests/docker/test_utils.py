@@ -134,8 +134,19 @@ def test_split_image_tag(image_ref: str, expected: tuple[str, str | None]):
     [
         (500, CORRUPT_CONTAINER_MESSAGE, True),
         (500, f"[500] {CORRUPT_CONTAINER_MESSAGE}", True),
-        (500, "RWLayer of container tooshort is unexpectedly nil", False),
+        # Docker phrases the message differently per call site: with the
+        # container name instead of its id, with reversed word order on the
+        # containerd image store, or bare on Windows.
+        (500, "RWLayer of container /addon_ssh is unexpectedly nil", True),
+        (500, "RWLayer is unexpectedly nil for container 1b56493ca170", True),
+        (500, "RWLayer is unexpectedly nil", True),
         (500, "stat /mnt/data/docker/overlay2/abc: no such file or directory", False),
+        (
+            500,
+            "error creating overlay mount to /mnt/data/docker/overlay2/abc/merged: "
+            "no such file or directory",
+            False,
+        ),
         (404, CORRUPT_CONTAINER_MESSAGE, False),
     ],
 )

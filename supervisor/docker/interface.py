@@ -429,11 +429,12 @@ class DockerInterface(JobGroup, ABC):
             if err.status == HTTPStatus.NOT_FOUND:
                 return None
             if is_corrupt_container_error(err):
-                # The container record survived an unclean shutdown but its RW
-                # layer did not, so nothing can be done with it besides removal.
-                # Report it as missing: recovery paths then recreate the
-                # container, with stop_container's force delete removing the
-                # broken record without inspecting it first.
+                # The container's RW layer failed to load when the daemon
+                # restored its state, leaving the record unusable for this
+                # daemon's lifetime. Report it as missing: since Supervisor
+                # can recreate any of its containers, recovery paths then
+                # recreate this one, with stop_container's force delete
+                # removing the broken record without inspecting it first.
                 _LOGGER.warning(
                     "Container %s storage metadata is corrupt, "
                     "treating the container as missing: %s",

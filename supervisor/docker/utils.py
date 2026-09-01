@@ -30,10 +30,12 @@ IMAGE_DOMAIN_REGEX = re.compile(
 # restored its state at startup, e.g. because an unclean shutdown corrupted
 # the storage metadata. Docker >= 29.4 keeps such containers registered so
 # they can still be removed (https://github.com/moby/moby/pull/51724), but
-# inspecting or starting them fails with 500 and this message.
-CORRUPT_CONTAINER_REGEX = re.compile(
-    r"RWLayer of container [0-9a-f]{64} is unexpectedly nil"
-)
+# inspecting them fails with 500 and this message — except with the
+# containerd image store, where the inspect succeeds and the error only
+# surfaces on start/restart. Docker phrases the message differently per
+# call site (container id or name, word order), hence the loose pattern;
+# "unexpectedly nil" appears nowhere else in Docker.
+CORRUPT_CONTAINER_REGEX = re.compile(r"RWLayer.*unexpectedly nil")
 
 
 def is_corrupt_container_error(err: aiodocker.DockerError) -> bool:

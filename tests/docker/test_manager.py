@@ -859,6 +859,24 @@ async def test_start_container_corrupt_container(docker: DockerAPI):
         await docker.start_container("mycontainer")
 
 
+async def test_start_container_corrupt_at_start(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test start_container removes a container that turns out corrupt on start.
+
+    With the containerd image store the inspect of a corrupt container
+    succeeds and the error only surfaces from the start call itself.
+    """
+    docker.coresys.run_in_executor = AsyncMock()
+    container.start.side_effect = aiodocker.DockerError(
+        500, "RWLayer of container 1b56493ca170 is unexpectedly nil"
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.start_container("mycontainer")
+
+    container.delete.assert_called_once_with(force=True, v=True)
+
+
 async def test_restart_container_get_timeout(docker: DockerAPI):
     """Test restart_container raises DockerTimeoutError when containers.get times out."""
     docker.containers.get.side_effect = TimeoutError()
@@ -875,6 +893,24 @@ async def test_restart_container_corrupt_container(docker: DockerAPI):
     )
     with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
         await docker.restart_container("mycontainer", timeout=10)
+
+
+async def test_restart_container_corrupt_at_restart(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test restart_container removes a container that turns out corrupt on restart.
+
+    With the containerd image store the inspect of a corrupt container
+    succeeds and the error only surfaces from the restart call itself.
+    """
+    docker.coresys.run_in_executor = AsyncMock()
+    container.restart.side_effect = aiodocker.DockerError(
+        500, "RWLayer is unexpectedly nil for container 1b56493ca170"
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.restart_container("mycontainer", timeout=10)
+
+    container.delete.assert_called_once_with(force=True, v=True)
 
 
 async def test_container_logs_get_timeout(docker: DockerAPI):

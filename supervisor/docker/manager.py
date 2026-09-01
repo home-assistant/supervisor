@@ -933,13 +933,17 @@ class DockerAPI(CoreSysAttributes):
             ) from err
 
         if remove_container:
-            with suppress(aiodocker.DockerError):
-                _LOGGER.info("Cleaning %s application", name)
-                await docker_container.delete(force=True, v=True)
+            _LOGGER.info("Cleaning %s application", name)
+            await self._remove_container_record(name)
 
-            cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
-            with suppress(OSError):
-                await self.sys_run_in_executor(cidfile_path.unlink, missing_ok=True)
+    async def _remove_container_record(self, name: str) -> None:
+        """Force remove a container and its cid file without inspecting it."""
+        with suppress(aiodocker.DockerError):
+            await self.containers.container(name).delete(force=True, v=True)
+
+        cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
+        with suppress(OSError):
+            await self.sys_run_in_executor(cidfile_path.unlink, missing_ok=True)
 
     async def start_container(self, name: str) -> None:
         """Start Docker container."""
@@ -970,6 +974,16 @@ class DockerAPI(CoreSysAttributes):
         except TimeoutError as err:
             raise DockerTimeoutError(f"Timeout starting {name}", _LOGGER.error) from err
         except aiodocker.DockerError as err:
+            if is_corrupt_container_error(err):
+                # With the containerd image store a corrupt container inspects
+                # fine and only fails here; remove the broken record so the
+                # next start recreates the container.
+                await self._remove_container_record(name)
+                raise DockerNotFound(
+                    f"Container {name} storage metadata is corrupt, removed the "
+                    "container so the next start recreates it",
+                    _LOGGER.warning,
+                ) from err
             raise DockerError(f"Can't start {name}: {err}", _LOGGER.error) from err
 
     async def restart_container(self, name: str, timeout: int) -> None:
@@ -1000,6 +1014,16 @@ class DockerAPI(CoreSysAttributes):
         try:
             await container.restart(t=timeout)
         except aiodocker.DockerError as err:
+            if is_corrupt_container_error(err):
+                # With the containerd image store a corrupt container inspects
+                # fine and only fails here; remove the broken record so the
+                # next start recreates the container.
+                await self._remove_container_record(name)
+                raise DockerNotFound(
+                    f"Container {name} storage metadata is corrupt, removed the "
+                    "container so the next start recreates it",
+                    _LOGGER.warning,
+                ) from err
             raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
 
     async def container_logs(self, name: str, tail: int = 100) -> list[str]:
