@@ -978,13 +978,7 @@ async def test_api_mounts_candidates(
     all_dbus_services: dict[str, DBusServiceMock],
     sdc_candidate: DBusServiceMock,
 ):
-    """Test only the unmounted user disk is offered as a mount candidate.
-
-    Every other block device on the mock host is excluded for its own
-    reason: no filesystem (loop0, mmcblk1, mmcblk1p2, sda, sdb, sdc, zram1),
-    hinted as a system device (mmcblk1p1, mmcblk1p3), labelled as a previous
-    data disk (sda1), or already mounted (sdb1).
-    """
+    """Test only the unmounted user disk is offered as a mount candidate."""
     api_client, prefix = api_client_with_prefix
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
@@ -995,7 +989,7 @@ async def test_api_mounts_candidates(
     result = await resp.json()
 
     assert result["result"] == "ok"
-    # Re-read from the host first, so a disk plugged in moments ago shows up
+    # Re-read from the host first so a newly plugged disk shows up
     assert len(udisks2_manager_service.GetBlockDevices.calls) == 1
 
     assert result["data"]["candidates"] == [
@@ -1031,11 +1025,7 @@ async def test_api_candidates_entry_posts_back_as_mount(
     sdc_candidate: DBusServiceMock,
     mock_is_mount,
 ):
-    """Test a candidates entry plus a name is directly accepted by POST /mounts.
-
-    The entry carries type, device, uuid and more; extra fields are dropped,
-    both identifiers are accepted together, and resolution goes by uuid.
-    """
+    """Test a candidates entry plus a name is accepted by POST /mounts."""
     api_client, prefix = api_client_with_prefix
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
@@ -1076,16 +1066,12 @@ async def test_api_create_disk_mount_device_uuid_mismatch(
     mount_propagation,
     sdc_candidate: DBusServiceMock,
 ):
-    """Test disagreeing identifiers are refused, not silently resolved.
-
-    Resolution goes by uuid; a device supplied alongside that no longer
-    carries that uuid means the caller is working from stale information.
-    """
+    """Test disagreeing identifiers are refused, not silently resolved."""
     api_client, prefix = api_client_with_prefix
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
     ]
-    # uuid resolves to sdc1, but the caller claims it lives at sdb1
+    # uuid resolves to sdc1; caller claims sdb1
     udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
 
     resp = await api_client.post(
@@ -1112,11 +1098,7 @@ async def test_api_create_disk_mount_device_uuid_mismatch(
 async def test_api_mounts_candidates_without_udisks2(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
-    """Test candidates come back empty, not as an error, without UDisks2.
-
-    A supervised install may have no UDisks2 at all. There is then nothing to
-    offer, which is an answer rather than a failure.
-    """
+    """Test candidates come back empty, not as an error, without UDisks2."""
     api_client, prefix = api_client_with_prefix
 
     with patch.object(
@@ -1137,11 +1119,7 @@ async def test_api_mounts_candidates_drive_lookup_fails(
     coresys: CoreSys,
     sdc_candidate: DBusServiceMock,
 ):
-    """Test a candidate is still listed when its drive cannot be read.
-
-    The drive object can vanish between enumeration and lookup if the disk is
-    unplugged mid-request, which must not fail the whole listing.
-    """
+    """Test a candidate is still listed when its drive cannot be read."""
     api_client, prefix = api_client_with_prefix
 
     with patch.object(
@@ -1207,8 +1185,7 @@ async def test_api_create_disk_mount_by_device(
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
 
-    # The device path was only ever an input: what comes back is the stable
-    # pair the mount is actually persisted and re-mounted by.
+    # Device path is input only; response has uuid and filesystem
     assert result["data"]["mounts"] == [
         {
             "name": "media_test",
@@ -1314,12 +1291,7 @@ async def test_api_create_disk_mount_cannot_skip_guards_with_filesystem(
     path_extern,
     mount_propagation,
 ):
-    """Test a caller cannot skip the guards by supplying filesystem themselves.
-
-    Resolution is what runs the guard. If an API caller could pin `filesystem`,
-    resolution would be skipped and every rail reduced to a hint for the picker
-    UI — letting the OS data disk be mounted into /media.
-    """
+    """Test a caller cannot skip the guards by supplying filesystem themselves."""
     api_client, prefix = api_client_with_prefix
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
@@ -1334,7 +1306,7 @@ async def test_api_create_disk_mount_cannot_skip_guards_with_filesystem(
             "name": "media_test",
             "type": "disk",
             "usage": "media",
-            # sda1 is hassos-data-old, excluded by the label rail
+            # sda1 is hassos-data-old
             "uuid": "b82b23cb-0c47-4bbb-acf5-2a2afa8894a2",
             "filesystem": "ext4",
         },
@@ -1377,7 +1349,7 @@ async def test_api_update_disk_mount_cannot_skip_guards_with_filesystem(
     )
     assert (await resp.json())["result"] == "ok"
 
-    # Now try to repoint that mount at the OS data disk with a pinned filesystem
+    # Repoint at the OS data disk with a pinned filesystem
     udisks2_manager_service.resolved_devices = [
         "/org/freedesktop/UDisks2/block_devices/sda1"
     ]
@@ -1396,7 +1368,7 @@ async def test_api_update_disk_mount_cannot_skip_guards_with_filesystem(
     assert result["result"] == "error"
     assert result["error_key"] == "mount_device_protected_error"
 
-    # Still pointing at the user's own disk, not repointed at the data disk
+    # Still pointing at the user's disk, not the data disk
     resp = await api_client.get(f"{prefix}/mounts")
     mounts = (await resp.json())["data"]["mounts"]
     assert len(mounts) == 1
@@ -1410,12 +1382,7 @@ async def test_api_create_disk_mount_without_udisks2(
     path_extern,
     mount_propagation,
 ):
-    """Test creating a disk mount without UDisks2 is a clean 400, not a 500.
-
-    `resolve_device` raises DBusNotConnectedError, which is a
-    HostNotSupportedError rather than a DBusError — so without an explicit
-    check it would escape as an unexpected server error.
-    """
+    """Test creating a disk mount without UDisks2 is a clean 400, not a 500."""
     api_client, prefix = api_client_with_prefix
 
     with patch.object(
@@ -1451,11 +1418,7 @@ async def test_api_create_disk_mount_rejects_system_disk(
     path_extern,
     mount_propagation,
 ):
-    """Test a disk excluded from candidates cannot be mounted by naming it.
-
-    The candidates list and the create path share one guard, so a device
-    hidden from the list is refused rather than quietly accepted.
-    """
+    """Test a disk excluded from candidates cannot be mounted by naming it."""
     api_client, prefix = api_client_with_prefix
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"

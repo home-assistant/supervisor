@@ -477,11 +477,8 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             old_mount = self._mounts[mount.name]
             await old_mount.unmount()
 
-        # A backup is data from outside this host, so a disk mount out of one
-        # is not taken at its word. Forgetting the resolved filesystem makes
-        # activation resolve the device again, which is what runs the
-        # mountable-device guard - otherwise a crafted backup could name the
-        # UUID of a system disk and have it mounted unchecked.
+        # A backup is from another host, so drop the resolved filesystem and
+        # re-resolve on activation. That re-runs the mountable-device guard.
         if mount.type == MountType.DISK:
             cast(DiskMount, mount).forget_resolved_device()
 

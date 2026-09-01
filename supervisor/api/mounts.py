@@ -64,12 +64,11 @@ def _device_identifier_required(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-# API input only; a persisted disk mount is validated in mounts/validate.py.
-# Both identifiers may be supplied together so a candidates entry can be
-# posted back as-is: resolution goes by uuid and the device is checked for
-# agreement. `filesystem` is deliberately not accepted - resolving through
-# UDisks2 is what runs the mountable-device guard, and REMOVE_EXTRA on the
-# base schema drops the value a client echoes back from GET /mounts.
+# API input only; persisted mounts use mounts/validate.py. Both identifiers
+# may be supplied so a candidates entry can be posted back: uuid drives
+# resolution and device is checked for agreement. filesystem is omitted so
+# UDisks2 resolution always runs the mountable-device guard; REMOVE_EXTRA
+# drops a value echoed from GET /mounts.
 _SCHEMA_MOUNT_DISK = vol.All(
     SCHEMA_BASE_MOUNT_CONFIG.extend(
         {
@@ -121,12 +120,11 @@ class APIMounts(CoreSysAttributes):
     @api_process
     async def candidates(self, request: web.Request) -> dict[str, Any]:
         """Return local block devices that could be used as a disk mount."""
-        # A host without UDisks2 has nothing to offer and cannot be asked.
+        # No UDisks2: nothing to list.
         if not self.sys_dbus.udisks2.is_connected:
             return {ATTR_CANDIDATES: []}
 
-        # Refresh first so a disk plugged in moments ago shows up, the same
-        # way data disk migration re-reads before it enumerates.
+        # Refresh so a disk plugged in moments ago shows up.
         await self.sys_dbus.udisks2.update()
 
         used_uuids = disk_mount_uuids(self.sys_mounts.mounts)
@@ -135,8 +133,7 @@ class APIMounts(CoreSysAttributes):
             try:
                 validate_block_for_mount(self.coresys, block, used_uuids=used_uuids)
             except MountInvalidError:
-                # Same guard the create path uses, so the two can never
-                # disagree about what is mountable.
+                # Same guard as create, so the two cannot disagree.
                 continue
 
             candidates.append(self._candidate_to_dict(block))
@@ -159,8 +156,7 @@ class APIMounts(CoreSysAttributes):
     def _drive_to_dict(self, block: UDisks2Block) -> dict[str, Any] | None:
         """Return API representation of the drive a candidate belongs to.
 
-        Tolerant of a missing drive: a drive object can disappear between
-        enumeration and lookup on a disk being unplugged.
+        Returns None if the drive disappeared between enumeration and lookup.
         """
         if not block.drive or block.drive == DBUS_OBJECT_BASE:
             return None

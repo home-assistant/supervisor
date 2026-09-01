@@ -26,11 +26,7 @@ SDC1_UUID = "d2f4a6c8-3b5e-4079-8a1c-6e9d2f4b7a30"
 
 @pytest.mark.usefixtures("sdc_candidate")
 async def test_guard_allows_unmounted_usb_partition(coresys: CoreSys):
-    """Test a plain unmounted ext4 partition on a USB drive passes every guard.
-
-    sdc1 is a user's own partition, not one of Home Assistant OS's: no system
-    hint, no hassos label, no data disk partition name, and nothing mounted.
-    """
+    """Test a plain unmounted USB partition passes the guard."""
     block = coresys.dbus.udisks2.get_block_device(SDC1_PATH)
 
     validate_block_for_mount(coresys, block, used_uuids=set())
@@ -91,13 +87,9 @@ async def test_guard_rejects_hidden_device(
 async def test_guard_rejects_hassos_label(
     coresys: CoreSys, sdc_candidate: DBusServiceMock
 ):
-    """Test a disk carrying a Home Assistant OS filesystem label is not offered.
+    """Test a disk with a Home Assistant OS filesystem label is not offered.
 
-    This guard carries its own weight: a previous data disk is labelled
-    hassos-data-old and reports HintSystem=False, so on a plain USB partition
-    nothing else would exclude it. Tested here on sdc1 rather than sda1
-    because sda1 is also caught by the external data disk partition name
-    behind this check.
+    hassos-data-old reports HintSystem=False, so nothing else would exclude it.
     """
     sdc_candidate.fixture = replace(sdc_candidate.fixture, IdLabel="hassos-data-old")
     await coresys.dbus.udisks2.update()
@@ -124,12 +116,7 @@ async def test_guard_allows_every_supported_filesystem(
 
 
 async def test_supported_filesystems_are_enumerated_by_tests():
-    """Test the allowlist and the cases above cannot drift apart.
-
-    The guard is what keeps a disk the kernel cannot mount, or one that is
-    not the user's to mount, out of the candidates list, so widening it is a
-    deliberate act that should not pass unnoticed.
-    """
+    """Test the allowlist matches the parametrized cases above."""
     enumerated_above = {
         "btrfs",
         "exfat",
@@ -147,11 +134,7 @@ async def test_supported_filesystems_are_enumerated_by_tests():
 async def test_guard_rejects_unsupported_filesystem(
     coresys: CoreSys, sdc_candidate: DBusServiceMock
 ):
-    """Test a filesystem the kernel cannot mount is rejected.
-
-    Note this is deliberately independent of UDisks2's SupportedFilesystems,
-    which reports what the host can format rather than what it can mount.
-    """
+    """Test a filesystem the kernel cannot mount is rejected."""
     sdc_candidate.fixture = replace(sdc_candidate.fixture, IdType="reiserfs")
     await coresys.dbus.udisks2.update()
 
@@ -187,11 +170,7 @@ async def test_guard_rejects_external_data_disk_partition(
     coresys: CoreSys,
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ):
-    """Test a partition named for an external data disk is rejected.
-
-    sda1 is normally caught by its hassos filesystem label, so the label is
-    relabelled here to isolate the partition name guard behind it.
-    """
+    """Test a partition named for an external data disk is rejected."""
     sda1_block = udisks2_services["udisks2_block"][SDA1_PATH]
     sda1_block.fixture = replace(sda1_block.fixture, IdLabel="Photos")
     await coresys.dbus.udisks2.update()
@@ -221,10 +200,7 @@ async def test_guard_rejects_current_data_disk(coresys: CoreSys):
 
 @pytest.mark.usefixtures("sdc_candidate")
 async def test_guard_without_os_agent(coresys: CoreSys):
-    """Test the data disk guard is skipped where OS-Agent is absent.
-
-    A supervised install has no managed data disk to protect.
-    """
+    """Test the data disk guard is skipped when OS-Agent is absent."""
     block = coresys.dbus.udisks2.get_block_device(SDC1_PATH)
 
     with patch.object(

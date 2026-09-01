@@ -1040,10 +1040,8 @@ class NFSMount(NetworkMount):
 class DiskMount(Mount):
     """A local disk mount.
 
-    A sibling of NetworkMount rather than a subclass: there is no server, no
-    port and no protocol negotiation. What it shares is the autofs pairing,
-    which is what lets a disk that was unplugged mount itself again on the
-    next access.
+    Sibling of NetworkMount, not a subclass: no server or protocol. It still
+    uses an autofs pair, so an unplugged disk remounts on the next access.
     """
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
@@ -1089,19 +1087,12 @@ class DiskMount(Mount):
     def what(self) -> str:
         """What to mount.
 
-        A link we own, pointing at the by-uuid device node, rather than that
-        node directly. systemd derives a `Requires=` on the backing device
-        unit whenever `What=` starts with /dev/, and while the disk is absent
-        that dependency stalls every access for DefaultDeviceTimeoutSec — 90 s
-        by default, measured, per access, with no failure caching. Nothing
-        settable on the unit shortens it: the unit's own TimeoutUSec does not
-        cover the dependency wait, JobTimeoutUSec is not settable,
-        JobRunningTimeoutUSec has no effect, `What=UUID=` resolves to the same
-        device unit, and Assert/Condition directives are evaluated only after
-        dependencies are satisfied. Pointing outside /dev creates no device
-        dependency, so mount(8) resolves the link itself and fails in
-        milliseconds while the disk is away, and mounts normally once it is
-        back. Do not "simplify" this to the by-uuid path.
+        A Supervisor-owned link to the by-uuid node, not that node itself.
+        systemd adds Requires= on the device unit when What= starts with /dev/,
+        and an absent disk then stalls every access for DefaultDeviceTimeoutSec
+        (90 s, no failure cache). Unit timeouts do not cover that wait. A path
+        outside /dev has no device dependency, so mount(8) fails immediately
+        while the disk is away. Do not point What= at the by-uuid path.
         """
         return self.sys_config.path_extern_mounts_devices.joinpath(self.name).as_posix()
 
@@ -1117,9 +1108,8 @@ class DiskMount(Mount):
     async def is_mounted(self) -> bool:
         """Return true if the disk is mounted and still attached.
 
-        statvfs answers from cache for a local filesystem, so a disk pulled
-        while mounted keeps reporting a healthy mount. Only asking UDisks2
-        whether the device is still there tells the two apart.
+        statvfs is cached for a local filesystem, so a pulled disk still looks
+        healthy. UDisks2 presence is what distinguishes the two.
         """
         if not await super().is_mounted():
             return False
@@ -1134,8 +1124,8 @@ class DiskMount(Mount):
     async def _device_attached(self) -> bool:
         """Return whether the resolved device is still present.
 
-        Answers true when UDisks2 cannot be asked: an unavailable service is
-        not evidence that the disk went away.
+        True when UDisks2 cannot be asked: an unavailable service is not a
+        missing disk.
         """
         if self.uuid is None or not self.sys_dbus.udisks2.is_connected:
             return True
@@ -1152,19 +1142,15 @@ class DiskMount(Mount):
     def forget_resolved_device(self) -> None:
         """Drop the resolved filesystem so the next mount resolves again.
 
-        Resolving is what runs the mountable-device guard, and a mount that
-        already knows its filesystem skips both. Calling this marks a mount as
-        coming from data we do not trust — a restored backup — so it is
-        re-checked instead of taken at its word. The UUID is kept, since that
-        is what the device is resolved by.
+        Resolution runs the mountable-device guard. Call this for untrusted
+        data (a restored backup) so the device is re-checked. The UUID is kept.
         """
         if "filesystem" in self._data:
             del self._data["filesystem"]
 
     async def load(self) -> None:
         """Initialize object."""
-        # Before the base class adopts or arms anything: the unit's What= is
-        # the device link, which has to exist and be current first.
+        # Write the device link before the base class adopts or arms units.
         await self._ensure_resolved()
         await self.sys_run_in_executor(self._write_device_link)
         await super().load()
@@ -1183,38 +1169,31 @@ class DiskMount(Mount):
     async def _ensure_resolved(self) -> None:
         """Resolve the device unless it is already known.
 
-        A persisted mount comes back with its UUID and filesystem, so a
-        reboot needs no UDisks2 round trip.
+        A persisted mount already has UUID and filesystem, so a reboot needs no
+        UDisks2 round trip.
         """
         if self.filesystem is None:
             await self._resolve_device()
 
-        # Re-check the allowlist for a mount that did not just resolve. Such a
-        # mount skipped the guard: mounts.json may have been edited by hand, or
-        # restored from a backup taken on a supervisor with a wider allowlist.
-        # Failing here costs this one mount, whereas rejecting the value in the
-        # file schema would invalidate the whole file and reset every mount.
+        # Re-check the allowlist for mounts that skipped resolve (hand-edited
+        # mounts.json, or a backup from a supervisor with a wider allowlist).
+        # Failing here costs this one mount; rejecting it in the file schema
+        # would reset every mount.
         if self.filesystem not in SUPPORTED_LOCAL_FILESYSTEMS:
             raise MountFilesystemNotSupportedError(_LOGGER.error, device=self.what)
 
     async def _resolve_device(self) -> None:
         """Resolve the configured device into a UUID and filesystem.
 
-        Deferred to mount time for the same reason CIFSMount writes its
-        credentials file there: it needs a live host, so it cannot happen
-        during validation.
+        Deferred to mount time, like CIFS credentials: it needs a live host.
         """
-        # UDisks2 is how a device is resolved at all, so without it there is no
-        # way to mount a local disk. Checked up front because `resolve_device`
-        # would otherwise raise DBusNotConnectedError, which is not a DBusError
-        # and would surface as an unexpected server error rather than a clear
-        # "not supported here".
+        # Without UDisks2 there is no way to resolve a device. Catch this
+        # before resolve_device raises DBusNotConnectedError as a 500.
         if not self.sys_dbus.udisks2.is_connected:
             raise MountDisksNotSupportedError(_LOGGER.error)
 
-        # A candidates entry can be posted back carrying both identifiers.
-        # The uuid is what gets persisted, so it drives resolution; a device
-        # supplied alongside is verified for agreement afterwards.
+        # uuid is persisted, so it drives resolution. A device supplied with
+        # it is checked for agreement afterwards.
         if self.uuid is not None:
             reference = self.uuid
             devspec = DeviceSpecification(uuid=self.uuid)
@@ -1222,8 +1201,7 @@ class DiskMount(Mount):
             reference = self.device
             devspec = DeviceSpecification(path=Path(self.device))
         else:
-            # Validation requires one of the two, so this only happens for a
-            # mount built in code or from a hand-edited configuration.
+            # Validation requires one of the two; this is a hand-built mount.
             raise MountInvalidError(
                 f"Mount {self.name} has neither a device nor a UUID to resolve",
                 _LOGGER.error,
@@ -1232,9 +1210,8 @@ class DiskMount(Mount):
         try:
             devices = await self.sys_dbus.udisks2.resolve_device(devspec)
         except DBusNotConnectedError as err:
-            # Belt and braces: UDisks2 could disconnect between the check above
-            # and the call. DBusNotConnectedError is not a DBusError, so it
-            # needs catching separately or it escapes as an unexpected error.
+            # UDisks2 may have disconnected since the check above.
+            # DBusNotConnectedError is not a DBusError.
             raise MountDisksNotSupportedError(_LOGGER.error) from err
         except DBusError as err:
             raise MountError(
@@ -1254,9 +1231,7 @@ class DiskMount(Mount):
 
         block = devices[0]
 
-        # Both identifiers were supplied but no longer agree, e.g. a stale
-        # candidates entry after the device was re-enumerated. Refuse rather
-        # than silently prefer one of them.
+        # Both identifiers supplied but they no longer agree.
         if (
             self.uuid is not None
             and self.device is not None
@@ -1272,8 +1247,7 @@ class DiskMount(Mount):
             used_uuids=disk_mount_uuids(self.sys_mounts.mounts, exclude=self.name),
         )
 
-        # No silent coercion: someone asking for a writable mount on a
-        # read-only device should be told, not quietly given read-only.
+        # Do not silently downgrade a writable request on a read-only device.
         if block.read_only and not self.read_only:
             raise MountDeviceReadOnlyError(
                 _LOGGER.error, device=block.device.as_posix()
@@ -1281,8 +1255,7 @@ class DiskMount(Mount):
 
         self._data["uuid"] = block.id_uuid
         self._data["filesystem"] = block.id_type
-        # The device path was only ever an input convenience; the UUID is what
-        # gets persisted and re-resolved.
+        # device was input only; persist the UUID.
         self._data.pop("device", None)
 
 
