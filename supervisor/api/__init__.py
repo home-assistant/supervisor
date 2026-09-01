@@ -35,7 +35,6 @@ from .middleware.security import SecurityMiddleware
 from .mounts import APIMounts
 from .multicast import APIMulticast
 from .network import APINetwork
-from .ntp import APINTP
 from .observer import APIObserver
 from .os import APIOS
 from .proxy import APIProxy
@@ -45,6 +44,7 @@ from .security import APISecurity
 from .services import APIServices
 from .store import APIStore
 from .supervisor import APISupervisor
+from .time import APITime
 from .utils import api_process, api_process_raw
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -135,7 +135,6 @@ class RestAPI(CoreSysAttributes):
             self._register_mounts(app)
             self._register_multicast(app)
             self._register_network(app)
-            self._register_ntp(app)
             self._register_observer(app)
             self._register_os(app)
             self._register_proxy(app)
@@ -145,6 +144,7 @@ class RestAPI(CoreSysAttributes):
             self._register_services(app)
             self._register_store(app)
             self._register_supervisor(app)
+            self._register_time(app)
 
         if static_resource_configs:
 
@@ -300,15 +300,15 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
-    def _register_ntp(self, app: web.Application) -> None:
-        """Register NTP functions."""
-        api_ntp = APINTP()
-        api_ntp.coresys = self.coresys
+    def _register_time(self, app: web.Application) -> None:
+        """Register time and date functions."""
+        api_time = APITime()
+        api_time.coresys = self.coresys
 
         app.add_routes(
             [
-                web.get("/ntp/info", api_ntp.info),
-                web.post("/ntp/options", api_ntp.options),
+                web.get("/time/info", api_time.info),
+                web.post("/time/options", api_time.options),
             ]
         )
 

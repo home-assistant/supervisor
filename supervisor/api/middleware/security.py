@@ -150,7 +150,6 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
             r"|/mounts.*"
             r"|/multicast/.+"
             r"|/network/.+"
-            r"|/ntp/.+"
             r"|/observer/.+"
             r"|/os/(?!datadisk/wipe|ssh/authorized_keys).+"
             r"|/refresh_updates"
@@ -159,6 +158,7 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
             r"|/snapshots.*"
             r"|/store.*"
             r"|/supervisor/.+"
+            r"|/time/.+"
             r")$"
         ),
         ROLE_ADMIN: re.compile(r".*"),
@@ -232,7 +232,6 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
             r"|/mounts.*"
             r"|/multicast/.+"
             r"|/network/.+"
-            r"|/ntp/.+"
             r"|/observer/.+"
             r"|/os/(?!datadisk/wipe|ssh/authorized_keys).+"
             r"|/reload_updates"
@@ -240,6 +239,7 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
             r"|/security/.+"
             r"|/store.*"
             r"|/supervisor/.+"
+            r"|/time/.+"
             r")$"
         ),
         ROLE_ADMIN: re.compile(r".*"),

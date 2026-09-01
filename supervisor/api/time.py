@@ -1,4 +1,4 @@
-"""REST API for NTP configuration."""
+"""REST API for time and date configuration."""
 
 import asyncio
 import re
@@ -26,8 +26,8 @@ SCHEMA_OPTIONS = vol.Schema(
 )
 
 
-class APINTP(CoreSysAttributes):
-    """Handle REST API for NTP configuration."""
+class APITime(CoreSysAttributes):
+    """Handle REST API for time and date configuration."""
 
     def _check_available(self) -> None:
         """Check if OS Agent Timesyncd configuration is available."""

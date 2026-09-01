@@ -1,4 +1,4 @@
-"""Test NTP API."""
+"""Test time API."""
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -15,11 +15,11 @@ NTP_OS_AGENT_VERSION = "1.13.0"
 
 @pytest.mark.parametrize("os_agent_version", [NTP_OS_AGENT_VERSION], indirect=True)
 @pytest.mark.usefixtures("os_available", "os_agent_version")
-async def test_api_ntp_info(api_client_with_prefix: tuple[TestClient, str]):
-    """Test NTP info API."""
+async def test_api_time_info(api_client_with_prefix: tuple[TestClient, str]):
+    """Test time info API."""
     api_client, prefix = api_client_with_prefix
 
-    resp = await api_client.get(f"{prefix}/ntp/info")
+    resp = await api_client.get(f"{prefix}/time/info")
 
     assert resp.status == 200
     result = await resp.json()
@@ -31,12 +31,12 @@ async def test_api_ntp_info(api_client_with_prefix: tuple[TestClient, str]):
 
 @pytest.mark.parametrize("os_agent_version", [NTP_OS_AGENT_VERSION], indirect=True)
 @pytest.mark.usefixtures("os_available", "os_agent_version")
-async def test_api_ntp_options(
+async def test_api_time_options(
     api_client_with_prefix: tuple[TestClient, str],
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
     coresys: CoreSys,
 ):
-    """Test NTP options API."""
+    """Test time options API."""
     api_client, prefix = api_client_with_prefix
     systemd_service: SystemdService = all_dbus_services["systemd"]
     timesyncd_service: TimesyncdService = all_dbus_services["agent_timesyncd"]
@@ -44,7 +44,7 @@ async def test_api_ntp_options(
 
     # Post new set of servers and verify timesyncd is updated and restarted
     resp = await api_client.post(
-        f"{prefix}/ntp/options",
+        f"{prefix}/time/options",
         json={
             "servers": ["pool.ntp.org", "time.cloudflare.com"],
             "fallback_servers": [],
@@ -65,7 +65,7 @@ async def test_api_ntp_options(
     # No-op post with the same set of servers
     systemd_service.RestartUnit.calls.clear()
     resp = await api_client.post(
-        f"{prefix}/ntp/options",
+        f"{prefix}/time/options",
         json={
             "servers": ["pool.ntp.org", "time.cloudflare.com"],
             "fallback_servers": [],
@@ -78,17 +78,17 @@ async def test_api_ntp_options(
 
 @pytest.mark.parametrize("os_agent_version", [NTP_OS_AGENT_VERSION], indirect=True)
 @pytest.mark.usefixtures("os_available", "os_agent_version")
-async def test_api_ntp_options_partial(
+async def test_api_time_options_partial(
     api_client_with_prefix: tuple[TestClient, str],
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
     coresys: CoreSys,
 ):
-    """Test NTP options API leaves omitted fields untouched."""
+    """Test time options API leaves omitted fields untouched."""
     api_client, prefix = api_client_with_prefix
     timesyncd_service: TimesyncdService = all_dbus_services["agent_timesyncd"]
 
     resp = await api_client.post(
-        f"{prefix}/ntp/options", json={"servers": ["pool.ntp.org"]}
+        f"{prefix}/time/options", json={"servers": ["pool.ntp.org"]}
     )
 
     assert resp.status == 200
@@ -108,60 +108,60 @@ async def test_api_ntp_options_partial(
         {"servers": ["pool.ntp.org\n"]},
     ],
 )
-async def test_api_ntp_options_invalid(
+async def test_api_time_options_invalid(
     api_client_with_prefix: tuple[TestClient, str], payload: dict[str, list[str]]
 ):
-    """Test NTP options API validation."""
+    """Test time options API validation."""
     api_client, prefix = api_client_with_prefix
 
-    resp = await api_client.post(f"{prefix}/ntp/options", json=payload)
+    resp = await api_client.post(f"{prefix}/time/options", json=payload)
 
     assert resp.status == 400
 
 
 @pytest.mark.parametrize("os_agent_version", [NTP_OS_AGENT_VERSION], indirect=True)
 @pytest.mark.usefixtures("os_available", "os_agent_version")
-async def test_api_ntp_not_available(
+async def test_api_time_not_available(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
-    """Test NTP API when OS Agent Timesyncd is not available."""
+    """Test time API when OS Agent Timesyncd is not available."""
     api_client, prefix = api_client_with_prefix
     coresys.dbus.agent.timesyncd.disconnect()
 
-    resp = await api_client.get(f"{prefix}/ntp/info")
+    resp = await api_client.get(f"{prefix}/time/info")
     assert resp.status == 404
 
     resp = await api_client.post(
-        f"{prefix}/ntp/options", json={"servers": ["pool.ntp.org"]}
+        f"{prefix}/time/options", json={"servers": ["pool.ntp.org"]}
     )
     assert resp.status == 404
 
 
 @pytest.mark.parametrize("os_agent_version", ["1.12.0"], indirect=True)
 @pytest.mark.usefixtures("os_available", "os_agent_version")
-async def test_api_ntp_old_os_agent(api_client_with_prefix: tuple[TestClient, str]):
-    """Test NTP API when OS Agent is too old to write the drop-in."""
+async def test_api_time_old_os_agent(api_client_with_prefix: tuple[TestClient, str]):
+    """Test time API when OS Agent is too old to write the drop-in."""
     api_client, prefix = api_client_with_prefix
 
-    resp = await api_client.get(f"{prefix}/ntp/info")
+    resp = await api_client.get(f"{prefix}/time/info")
     assert resp.status == 404
 
     resp = await api_client.post(
-        f"{prefix}/ntp/options", json={"servers": ["pool.ntp.org"]}
+        f"{prefix}/time/options", json={"servers": ["pool.ntp.org"]}
     )
     assert resp.status == 404
 
 
 @pytest.mark.parametrize("os_agent_version", [NTP_OS_AGENT_VERSION], indirect=True)
 @pytest.mark.usefixtures("os_agent_version")
-async def test_api_ntp_supervised(api_client_with_prefix: tuple[TestClient, str]):
-    """Test NTP API is unavailable without Home Assistant OS."""
+async def test_api_time_supervised(api_client_with_prefix: tuple[TestClient, str]):
+    """Test time API is unavailable without Home Assistant OS."""
     api_client, prefix = api_client_with_prefix
 
-    resp = await api_client.get(f"{prefix}/ntp/info")
+    resp = await api_client.get(f"{prefix}/time/info")
     assert resp.status == 404
 
     resp = await api_client.post(
-        f"{prefix}/ntp/options", json={"servers": ["pool.ntp.org"]}
+        f"{prefix}/time/options", json={"servers": ["pool.ntp.org"]}
     )
     assert resp.status == 404
