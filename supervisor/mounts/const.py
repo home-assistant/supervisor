@@ -17,18 +17,13 @@ ATTR_USAGE = "usage"
 
 # Filesystems a local disk may be mounted with.
 #
-# Deliberately not `UDisks2Manager.supported_filesystems`: that property
-# reflects which filesystems the host has userspace tooling for (mkfs,
-# fsck), which is neither necessary nor sufficient for mounting one. The
-# HAOS kernel has ext4 and vfat built in and ships ntfs3, exfat and btrfs
-# as modules, so this is the set we can actually hand to systemd. ext2 and
-# ext3 are probed as distinct types but mounted by the same ext4 driver.
+# Not UDisks2Manager.supported_filesystems — that is mkfs/fsck tooling, not
+# mount support. This is the set the HAOS kernel can actually mount: ext4
+# and vfat built in, ntfs3/exfat/btrfs as modules. ext2/ext3 probe as their
+# own types but use the ext4 driver.
 #
-# f2fs needs HAOS 18.3 or newer, which builds it on every board. On an
-# older OS the mount fails with a plain mount error and starts working
-# after the OS update, the same non-guarantee that already applies to
-# Supervised installations, whose kernel is not ours to promise anything
-# about.
+# f2fs needs HAOS 18.3+. On an older OS the mount fails until the OS is
+# updated, same as Supervised installs whose kernel we do not control.
 SUPPORTED_LOCAL_FILESYSTEMS = {
     "btrfs",
     "exfat",
@@ -40,22 +35,18 @@ SUPPORTED_LOCAL_FILESYSTEMS = {
     "vfat",
 }
 
-# UDisks2/blkid report the probed signature, which is not always the name of
-# the kernel driver that mounts it: the "ntfs" signature is mounted by the
-# in-tree ntfs3 driver, and ext2/ext3 are both handled by ext4. Everything
-# else, f2fs included, is probed under the same name its driver uses and
-# needs no entry here. Only the systemd unit's Type= is translated — the
-# probed value is what gets persisted and reported back over the API.
+# UDisks2/blkid report the on-disk signature, which is not always the kernel
+# driver name. Only Type= on the systemd unit is translated; the probed value
+# is persisted and returned by the API.
 KERNEL_FILESYSTEM_MAP = {"ext2": "ext4", "ext3": "ext4", "ntfs": "ntfs3"}
 
 # Filesystem labels starting with this prefix belong to Home Assistant OS
-# itself (hassos-data, hassos-data-old, hassos-boot, ...) and must never be
-# offered as a user mount, regardless of what the system hints say.
+# (hassos-data, hassos-data-old, hassos-boot, ...) and must not be offered
+# as a user mount.
 HASSOS_LABEL_PREFIX = "hassos"
 
-# UDisks2 Block.IdUsage value marking a device as holding a mountable
-# filesystem, as opposed to swap, a LUKS container, a RAID member or a
-# partition table.
+# UDisks2 Block.IdUsage for a mountable filesystem (not swap, LUKS, RAID, or
+# a partition table).
 ID_USAGE_FILESYSTEM = "filesystem"
 
 

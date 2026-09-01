@@ -112,7 +112,7 @@ async def test_invalid_nfs():
 
 async def test_valid_disk_mounts():
     """Test valid disk mounts."""
-    # A device path is how a user picks a disk to begin with
+    # Device path is how a user first picks a disk
     assert SCHEMA_MOUNT_CONFIG(
         {
             "name": "disk_by_device",
@@ -122,7 +122,7 @@ async def test_valid_disk_mounts():
         }
     )
 
-    # A uuid identifies a disk that has been resolved before
+    # uuid identifies a disk that has already been resolved
     assert SCHEMA_MOUNT_CONFIG(
         {
             "name": "disk_by_uuid",
@@ -134,11 +134,10 @@ async def test_valid_disk_mounts():
 
 
 async def test_api_disk_mount_cannot_set_filesystem():
-    """Test the API schema does not let a caller supply filesystem.
+    """Test the API schema drops a caller-supplied filesystem.
 
-    Resolving the device is what runs the mountable-device guard, and a mount
-    only resolves when it does not already know its filesystem. Accepting one
-    here would skip resolution and so skip every guard rail.
+    Resolution runs the mountable-device guard; accepting filesystem here
+    would skip it.
     """
     config = SCHEMA_MOUNT_CONFIG(
         {
@@ -150,8 +149,7 @@ async def test_api_disk_mount_cannot_set_filesystem():
         }
     )
 
-    # Dropped rather than rejected, so that reading a mount from GET /mounts
-    # and writing it back with PUT keeps working
+    # Dropped rather than rejected so GET /mounts then PUT still works
     assert "filesystem" not in config
 
 
@@ -177,9 +175,7 @@ async def test_mounts_config_keeps_persisted_filesystem():
 async def test_mounts_config_tolerates_unsupported_filesystem():
     """Test an unsupported persisted filesystem does not invalidate the file.
 
-    FileConfiguration resets invalid configuration to default, so rejecting the
-    value here would discard every configured mount, network ones included. It
-    is rejected at mount time instead, costing only that one mount.
+    Invalid configuration would reset every mount; reject at mount time instead.
     """
     config = SCHEMA_MOUNTS_CONFIG(
         {
@@ -210,8 +206,7 @@ async def test_invalid_disk():
     """Test invalid disk mounts."""
     base = {"name": "test", "usage": "media", "type": "disk"}
 
-    # Both identifiers together are valid, so a candidates entry can be
-    # posted back as-is
+    # Both identifiers together are valid so a candidates entry can be posted back
     assert SCHEMA_MOUNT_CONFIG(
         base
         | {
@@ -236,7 +231,7 @@ async def test_mounts_config_requires_uuid():
     with pytest.raises(Invalid):
         SCHEMA_MOUNTS_CONFIG({"mounts": [base]})
 
-    # device is API input only and cannot stand in for the uuid
+    # device is API input only and cannot stand in for uuid
     with pytest.raises(Invalid):
         SCHEMA_MOUNTS_CONFIG({"mounts": [base | {"device": "/dev/sdc1"}]})
 
