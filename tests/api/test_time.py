@@ -24,8 +24,10 @@ async def test_api_time_info(api_client_with_prefix: tuple[TestClient, str]):
     assert resp.status == 200
     result = await resp.json()
     assert result["data"] == {
-        "servers": ["time.cloudflare.com"],
-        "fallback_servers": ["time.google.com"],
+        "config": {
+            "servers": ["time.cloudflare.com"],
+            "fallback_servers": ["time.google.com"],
+        }
     }
 
 

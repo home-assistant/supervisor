@@ -7,7 +7,7 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
-from ..const import ATTR_SERVERS
+from ..const import ATTR_CONFIG, ATTR_SERVERS
 from ..coresys import CoreSysAttributes
 from ..exceptions import APINotFound
 from ..host.const import HostFeature
@@ -42,8 +42,10 @@ class APITime(CoreSysAttributes):
         self._check_available()
 
         return {
-            ATTR_SERVERS: self.sys_dbus.agent.timesyncd.ntp_servers,
-            ATTR_FALLBACK_SERVERS: self.sys_dbus.agent.timesyncd.fallback_ntp_servers,
+            ATTR_CONFIG: {
+                ATTR_SERVERS: self.sys_dbus.agent.timesyncd.ntp_servers,
+                ATTR_FALLBACK_SERVERS: self.sys_dbus.agent.timesyncd.fallback_ntp_servers,
+            }
         }
 
     @api_process
