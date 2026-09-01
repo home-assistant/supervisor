@@ -897,10 +897,9 @@ async def test_disk_mount(
     assert mount.device is None
     assert mount.uuid == DISK_UUID
     assert mount.filesystem == "ext4"
-    # What= deliberately sits outside /dev, so systemd creates no dependency
-    # on the backing device unit — see DiskMount.what
+    # What= sits outside /dev so systemd creates no device-unit dependency
     assert mount.what == "/mnt/data/supervisor/.mounts_devices/test"
-    # A media mount lives under the container-facing media dir, like a share
+    # A media mount lives under the container-facing media dir
     assert mount.where == PurePath("/mnt/data/supervisor/media/test")
     assert mount.local_where == tmp_supervisor_data / "media" / "test"
     # A local disk brings no mount options of its own
@@ -916,13 +915,11 @@ async def test_disk_mount(
     assert mount.local_where.exists()
     assert mount.local_where.is_dir()
 
-    # The device link is what the unit mounts, and it points at the by-uuid
-    # node the mount was resolved to
+    # The unit mounts this link, which points at the resolved by-uuid node
     assert mount.path_device_link.is_symlink()
     assert mount.path_device_link.readlink() == Path(f"/dev/disk/by-uuid/{DISK_UUID}")
 
-    # Already knows its filesystem, so mounting needs no UDisks2 round trip.
-    # The single call is the probe confirming the disk is still attached.
+    # Already knows its filesystem; the single call is the presence probe
     assert len(udisks2_manager_service.ResolveDevice.calls) == 1
 
     assert systemd_service.StartTransientUnit.calls == [
@@ -940,8 +937,7 @@ async def test_disk_mount(
     systemd_unit_service.active_state = ["active", "inactive"]
     await mount.unmount()
 
-    # The link is ours, so it goes when the mount does. is_symlink() rather
-    # than exists(), which follows the link to a device node no test host has.
+    # Unlink the link we created. is_symlink() does not follow it.
     assert not mount.path_device_link.is_symlink()
 
 
@@ -984,12 +980,7 @@ async def test_disk_mount_ntfs_uses_kernel_driver(
     path_extern,
     mock_is_mount,
 ):
-    """Test the probed ntfs signature is handed to systemd as ntfs3.
-
-    UDisks2 reports the on-disk signature; the kernel driver that mounts it
-    has a different name. Only the unit is translated — what gets persisted
-    and reported back stays the probed value.
-    """
+    """Test the probed ntfs signature is handed to systemd as ntfs3."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StartTransientUnit.calls.clear()
 
@@ -1033,12 +1024,7 @@ async def test_disk_mount_fs_type_mapping(
     expected_unit_type: str,
     mock_is_mount,
 ):
-    """Test every supported filesystem maps to the driver that mounts it.
-
-    UDisks2 reports the on-disk signature. ext2 and ext3 are both mounted by
-    the ext4 driver and ntfs by ntfs3; the rest are named the same either way.
-    The probed value is always what gets persisted and reported.
-    """
+    """Test every supported filesystem maps to the driver that mounts it."""
     mount: DiskMount = Mount.from_dict(
         coresys, DISK_TEST_DATA | {"filesystem": probed_filesystem}
     )
@@ -1055,12 +1041,7 @@ async def test_disk_mount_persisted_unsupported_filesystem(
     path_extern,
     mock_is_mount,
 ):
-    """Test a persisted filesystem outside the allowlist is refused at mount time.
-
-    A mount loaded from configuration skips the candidate guard, so the
-    allowlist is re-checked here. mounts.json may have been hand-edited, or
-    restored from a backup taken on a supervisor that allowed more types.
-    """
+    """Test a persisted filesystem outside the allowlist is refused at mount time."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
@@ -1075,7 +1056,7 @@ async def test_disk_mount_persisted_unsupported_filesystem(
     with pytest.raises(MountFilesystemNotSupportedError):
         await mount.mount()
 
-    # Never handed to systemd, and no attempt to re-resolve it either
+    # Never handed to systemd, and not re-resolved
     assert systemd_service.StartTransientUnit.calls == []
     assert udisks2_manager_service.ResolveDevice.calls == []
 
@@ -1087,11 +1068,7 @@ async def test_disk_mount_without_udisks2(
     path_extern,
     mock_is_mount,
 ):
-    """Test a host without UDisks2 reports a clear unsupported error.
-
-    `resolve_device` would otherwise raise DBusNotConnectedError, which is not
-    a DBusError and would escape as an unexpected server error.
-    """
+    """Test a host without UDisks2 reports a clear unsupported error."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StartTransientUnit.calls.clear()
 
@@ -1142,13 +1119,10 @@ async def test_disk_mount_resolves_device_on_create(
 
     await mount.mount()
 
-    # One call resolves the device; the second is the probe confirming the
-    # disk is still attached, which statvfs alone cannot tell for a local fs
+    # One call resolves the device; the second is the presence probe
     assert len(udisks2_manager_service.ResolveDevice.calls) == 2
 
-    # The volatile device path is traded for stable identifiers and dropped,
-    # so coming back after a reboot does not depend on the kernel handing out
-    # /dev/sdc1 again.
+    # Device path is dropped; UUID and filesystem are what get persisted
     assert mount.uuid == DISK_UUID
     assert mount.filesystem == "ext4"
     assert mount.device is None
@@ -1178,10 +1152,8 @@ async def test_disk_mount_resolves_when_adopting_existing_unit(
 ):
     """Test a disk mount still resolves when it adopts an existing unit.
 
-    `load()` only mounts when there is no unit for the path yet. Resolving
-    from `mount()` alone would leave a mount that adopted a live unit with no
-    uuid — and `to_dict` would then persist a mount that cannot be loaded
-    back, because the schema requires an identifier.
+    load() only mounts when there is no unit yet. Resolve in load so a
+    persisted mount always has a uuid.
     """
     systemd_service: SystemdService = all_dbus_services["systemd"]
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
@@ -1196,14 +1168,13 @@ async def test_disk_mount_resolves_when_adopting_existing_unit(
         {"name": "test", "usage": "media", "type": "disk", "device": "/dev/sdc1"},
     )
 
-    # The default mock reports an already active unit for this path
+    # Default mock reports an already active unit for this path
     await mount.load()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert systemd_service.StartTransientUnit.calls == []
 
-    # One call resolves the device; the second is the probe confirming the
-    # disk is still attached, which statvfs alone cannot tell for a local fs
+    # One call resolves the device; the second is the presence probe
     assert len(udisks2_manager_service.ResolveDevice.calls) == 2
     assert mount.uuid == DISK_UUID
     assert mount.filesystem == "ext4"
@@ -1244,11 +1215,7 @@ async def test_disk_mount_without_identifier(
     path_extern,
     mock_is_mount,
 ):
-    """Test a disk mount with neither a device nor a UUID fails cleanly.
-
-    Validation requires one of the two, so this only arises for a mount built
-    in code or read back from a hand-edited configuration.
-    """
+    """Test a disk mount with neither a device nor a UUID fails cleanly."""
     mount = DiskMount(
         coresys,
         {"name": "test", "type": "disk", "usage": "media", "read_only": False},
@@ -1376,7 +1343,7 @@ async def test_disk_mount_rejects_system_device(
         "udisks2_manager"
     ]
     systemd_service.StartTransientUnit.calls.clear()
-    # sda1 is a previous data disk, excluded from candidates by its label
+    # sda1 is a previous data disk, excluded by its label
     udisks2_manager_service.resolved_devices = [
         "/org/freedesktop/UDisks2/block_devices/sda1"
     ]
@@ -1401,12 +1368,8 @@ async def test_disk_mount_device_link_avoids_device_dependency(
 ):
     """Test the unit mounts a link outside /dev, not the by-uuid node itself.
 
-    systemd derives a Requires= on the backing device unit whenever What=
-    starts with /dev/, and while the disk is absent that dependency stalls
-    every access for DefaultDeviceTimeoutSec — 90 s by default, per access,
-    with nothing settable on the unit able to shorten it. Keeping What=
-    outside /dev is what avoids that, so it is worth pinning: an innocent
-    "simplification" back to the by-uuid path silently restores the stall.
+    A What= under /dev makes systemd wait DefaultDeviceTimeoutSec (90 s) for
+    an absent device. Keep What= outside /dev so that does not happen.
     """
     mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
 
@@ -1415,7 +1378,7 @@ async def test_disk_mount_device_link_avoids_device_dependency(
 
     await mount.mount()
 
-    # The link is what resolves to the device, so the mount still goes by UUID
+    # Link still resolves to the by-uuid node
     assert mount.path_device_link.readlink() == Path(f"/dev/disk/by-uuid/{DISK_UUID}")
 
 
@@ -1428,11 +1391,8 @@ async def test_disk_mount_reports_inactive_when_device_detached(
 ):
     """Test a disk pulled while mounted is not reported active.
 
-    statvfs answers from cache for a local filesystem, so the probe alone
-    cannot tell a healthy disk from one yanked out of its port — it succeeds
-    either way. Asking UDisks2 whether the device is still there is what
-    makes the difference, and without it a removed disk would keep reporting
-    a healthy mount indefinitely.
+    statvfs is cached for a local filesystem, so only a UDisks2 presence
+    check can tell a healthy disk from one that was unplugged.
     """
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
@@ -1441,7 +1401,7 @@ async def test_disk_mount_reports_inactive_when_device_detached(
     await mount.mount()
     assert mount.state == UnitActiveState.ACTIVE
 
-    # The probe still succeeds; only the device has gone
+    # Probe still succeeds; only the device is gone
     udisks2_manager_service.resolved_devices = []
 
     assert await mount.is_mounted() is False
@@ -1455,19 +1415,14 @@ async def test_disk_mount_stays_active_when_udisks2_unavailable(
     path_extern,
     mock_is_mount,
 ):
-    """Test an unavailable UDisks2 is not treated as a missing disk.
-
-    The presence check is an extra source of bad news, not a new dependency:
-    if it cannot be asked, the probe's verdict stands.
-    """
+    """Test an unavailable UDisks2 is not treated as a missing disk."""
     mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
     await mount.mount()
 
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
     ]
-    # Nothing to answer with, so only the guard keeps this from reading as
-    # "the disk is gone"
+    # Empty resolve would look like a missing disk without the is_connected guard
     udisks2_manager_service.resolved_devices = []
 
     with patch.object(

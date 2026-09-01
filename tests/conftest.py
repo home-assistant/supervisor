@@ -459,12 +459,11 @@ async def fixture_sdc_candidate(
 ) -> DBusServiceMock:
     """Make the unmounted sdc1 disk visible to UDisks2 enumeration.
 
-    sdc/sdc1 are mocked but deliberately left out of the manager's default
-    block device list, so tests that assert over the full set of disks and
-    drives keep seeing an unchanged host. Request this fixture to opt in.
+    sdc/sdc1 are mocked but omitted from the manager's default block list so
+    other tests still see an unchanged host. Request this fixture to opt in.
 
-    Returns the sdc1 block service: mutate `.fixture` and call
-    `coresys.dbus.udisks2.update()` again to re-read the changed properties.
+    Returns the sdc1 block service; mutate `.fixture` and call
+    `coresys.dbus.udisks2.update()` to re-read changed properties.
     """
     udisks2_manager = udisks2_services["udisks2_manager"]
     udisks2_manager.block_devices = udisks2_manager.block_devices + [
