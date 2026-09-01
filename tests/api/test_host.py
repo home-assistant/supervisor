@@ -1254,13 +1254,7 @@ async def test_disk_usage_api_probes_regardless_of_cached_state(
     coresys: CoreSys,
     stale_state: UnitActiveState | None,
 ):
-    """Test usage is reported whenever the probe succeeds, whatever state says.
-
-    The cached state is only as fresh as the last reconcile probe, 15 minutes
-    apart, so gating on it withheld usage from healthy mounts for up to that
-    long after a server came back. The probe activates a dormant automount and
-    is the authority.
-    """
+    """Test usage comes from the probe, not cached mount state."""
     api_client, prefix = api_client_with_prefix
     _register_mount(coresys, "media_test", stale_state)
 
@@ -1324,13 +1318,7 @@ async def test_disk_usage_api_mount_unreachable(
 async def test_disk_usage_api_ghost_mount(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
-    """Test a path whose trigger is gone is reported unreadable, not misreported.
-
-    The probe's statvfs activates a dormant automount, so a path that still
-    does not cross a filesystem boundary has lost its trigger and reverted to
-    a plain directory. statvfs then returns the host data disk's numbers, and
-    serving those under the mount's name would be a plausible-looking lie.
-    """
+    """Test a vanished mount is an error, not host-disk numbers."""
     api_client, prefix = api_client_with_prefix
 
     with (

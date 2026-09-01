@@ -1826,11 +1826,10 @@ class MountNotFound(MountError, APINotFound):
 
 
 class MountUsageNotMountedError(MountError):
-    """Raise when a mount's path turns out to no longer be mounted.
+    """Raise when a mount's path is no longer a mount point.
 
-    The ghost mount case: systemd still reports the unit active, but the path
-    no longer crosses a filesystem boundary, so any numbers read from it would
-    be the host disk's, not the mount's.
+    The probe would already have activated a dormant automount, so this is a
+    plain directory. Numbers from it would be the host disk's, not the mount's.
     """
 
     error_key = "mount_usage_not_mounted_error"

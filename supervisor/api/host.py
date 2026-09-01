@@ -469,10 +469,8 @@ class APIHost(CoreSysAttributes):
             raise MountNotFound(name=name)
 
         mount = self.sys_mounts.get(name)
-        # Deliberately not gated on the mount's cached state: that is only as
-        # fresh as the last reconcile probe, 15 minutes apart, so gating it
-        # withheld usage from healthy mounts. The probe below activates a
-        # dormant automount, which makes it the authority.
+        # Don't use cached mount state — it can be 15 minutes stale.
+        # The probe below activates a dormant automount if needed.
 
         max_depth = self._requested_max_depth(request, DISK_USAGE_MAX_DEPTH_MOUNT)
         # All depths below 2 give totals only; normalize so concurrent callers
@@ -568,11 +566,9 @@ class APIHost(CoreSysAttributes):
             raise MountUsageReadError(name=mount.name, reason=str(err)) from err
 
         if usage is None:
-            # The statvfs above would have triggered a dormant automount, so a
-            # path that still does not cross a filesystem boundary is one whose
-            # trigger is gone and which reverted to a plain directory. Reading
-            # it would report the host data disk's numbers under this mount's
-            # name.
+            # Not a mount point. The probe would already have activated a
+            # dormant automount, so this is a plain directory — don't report
+            # the host data disk's numbers as this mount.
             raise MountUsageNotMountedError(name=mount.name)
 
         total, _, free = usage
