@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 import errno
-from pathlib import Path
+from pathlib import Path, PurePath
 import stat
 from typing import Any
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 from dbus_fast import DBusError, ErrorType
 import pytest
@@ -15,21 +16,42 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import (
+    DBusError as SupervisorDBusError,
     MountActivationError,
+    MountDeviceNotFoundError,
+    MountDeviceReadOnlyError,
+    MountDisksNotSupportedError,
+    MountError,
+    MountFilesystemNotSupportedError,
     MountInvalidError,
     MountSetupError,
     MountUnmountError,
 )
 from supervisor.mounts.const import MountCifsVersion, MountType, MountUsage
-from supervisor.mounts.mount import CIFSMount, Mount, NFSMount
+from supervisor.mounts.mount import CIFSMount, DiskMount, Mount, NFSMount
 
 from tests.common import mount_start_transient_unit_call
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
+from tests.dbus_service_mocks.udisks2_manager import (
+    UDisks2Manager as UDisks2ManagerService,
+)
 
 ERROR_FAILURE = DBusError(ErrorType.FAILED, "error")
 ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
+
+SDB1_OBJECT_PATH = "/org/freedesktop/UDisks2/block_devices/sdb1"
+SDC1_OBJECT_PATH = "/org/freedesktop/UDisks2/block_devices/sdc1"
+DISK_UUID = "d2f4a6c8-3b5e-4079-8a1c-6e9d2f4b7a30"
+DISK_TEST_DATA = {
+    "name": "test",
+    "usage": "media",
+    "type": "disk",
+    "uuid": DISK_UUID,
+    "filesystem": "ext4",
+    "read_only": False,
+}
 
 
 @pytest.mark.parametrize(
@@ -448,7 +470,7 @@ async def test_load_adopted_mount_probe_failure(
     # same as on a fresh mount.
     with (
         patch(
-            "supervisor.mounts.mount._probe_network_mount",
+            "supervisor.mounts.mount._probe_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),
@@ -539,7 +561,7 @@ async def test_mount_failure(
     systemd_unit_service.active_state = "active"
     with (
         patch(
-            "supervisor.mounts.mount._probe_network_mount",
+            "supervisor.mounts.mount._probe_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),
@@ -636,7 +658,7 @@ async def test_unmount_failure(
         ERROR_FAILURE,
     ]
     with (
-        patch("supervisor.mounts.mount._probe_network_mount", return_value=True),
+        patch("supervisor.mounts.mount._probe_mount", return_value=True),
         pytest.raises(MountUnmountError),
     ):
         await mount.unmount()
@@ -725,7 +747,7 @@ async def test_mount_fails_if_down(
 
     with (
         patch(
-            "supervisor.mounts.mount._probe_network_mount",
+            "supervisor.mounts.mount._probe_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),
@@ -844,3 +866,614 @@ async def test_unmount_failure_leaves_local_data_visible(
     assert systemd_service.StartTransientUnit.calls == []
     assert (mount.local_where / "written_while_uncovered").exists()
     assert "Could not re-arm automount for test" in caplog.text
+
+
+async def test_disk_mount(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a disk mount restored from persisted configuration."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.ResolveDevice.calls.clear()
+
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+
+    assert isinstance(mount, DiskMount)
+    assert mount.name == "test"
+    assert mount.type == MountType.DISK
+    assert mount.usage == MountUsage.MEDIA
+    assert mount.read_only is False
+    assert mount.state is None
+    assert mount.unit is None
+
+    assert mount.device is None
+    assert mount.uuid == DISK_UUID
+    assert mount.filesystem == "ext4"
+    # What= deliberately sits outside /dev, so systemd creates no dependency
+    # on the backing device unit — see DiskMount.what
+    assert mount.what == "/mnt/data/supervisor/.mounts_devices/test"
+    # A media mount lives under the container-facing media dir, like a share
+    assert mount.where == PurePath("/mnt/data/supervisor/media/test")
+    assert mount.local_where == tmp_supervisor_data / "media" / "test"
+    # A local disk brings no mount options of its own
+    assert mount.options == []
+    assert mount.fs_type == "ext4"
+
+    assert not mount.local_where.exists()
+    assert mount.to_dict() == DISK_TEST_DATA
+
+    await mount.mount()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount.local_where.exists()
+    assert mount.local_where.is_dir()
+
+    # The device link is what the unit mounts, and it points at the by-uuid
+    # node the mount was resolved to
+    assert mount.path_device_link.is_symlink()
+    assert mount.path_device_link.readlink() == Path(f"/dev/disk/by-uuid/{DISK_UUID}")
+
+    # Already knows its filesystem, so mounting needs no UDisks2 round trip.
+    # The single call is the probe confirming the disk is still attached.
+    assert len(udisks2_manager_service.ResolveDevice.calls) == 1
+
+    assert systemd_service.StartTransientUnit.calls == [
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-media-test.automount",
+            mount_unit="mnt-data-supervisor-media-test.mount",
+            where="/mnt/data/supervisor/media/test",
+            description="Supervisor disk mount: test",
+            what="/mnt/data/supervisor/.mounts_devices/test",
+            fstype="ext4",
+            options=None,
+        )
+    ]
+
+    systemd_unit_service.active_state = ["active", "inactive"]
+    await mount.unmount()
+
+    # The link is ours, so it goes when the mount does. is_symlink() rather
+    # than exists(), which follows the link to a device node no test host has.
+    assert not mount.path_device_link.is_symlink()
+
+
+async def test_disk_mount_read_only(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a read-only disk mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA | {"read_only": True})
+
+    assert mount.read_only is True
+    assert mount.options == ["ro"]
+
+    await mount.mount()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert systemd_service.StartTransientUnit.calls == [
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-media-test.automount",
+            mount_unit="mnt-data-supervisor-media-test.mount",
+            where="/mnt/data/supervisor/media/test",
+            description="Supervisor disk mount: test",
+            what="/mnt/data/supervisor/.mounts_devices/test",
+            fstype="ext4",
+            options="ro",
+        )
+    ]
+
+
+async def test_disk_mount_ntfs_uses_kernel_driver(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test the probed ntfs signature is handed to systemd as ntfs3.
+
+    UDisks2 reports the on-disk signature; the kernel driver that mounts it
+    has a different name. Only the unit is translated — what gets persisted
+    and reported back stays the probed value.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA | {"filesystem": "ntfs"})
+
+    assert mount.filesystem == "ntfs"
+    assert mount.fs_type == "ntfs3"
+    assert mount.to_dict()["filesystem"] == "ntfs"
+
+    await mount.mount()
+
+    assert systemd_service.StartTransientUnit.calls == [
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-media-test.automount",
+            mount_unit="mnt-data-supervisor-media-test.mount",
+            where="/mnt/data/supervisor/media/test",
+            description="Supervisor disk mount: test",
+            what="/mnt/data/supervisor/.mounts_devices/test",
+            fstype="ntfs3",
+            options=None,
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("probed_filesystem", "expected_unit_type"),
+    [
+        ("ext2", "ext4"),
+        ("ext3", "ext4"),
+        ("ext4", "ext4"),
+        ("f2fs", "f2fs"),
+        ("ntfs", "ntfs3"),
+        ("vfat", "vfat"),
+        ("exfat", "exfat"),
+        ("btrfs", "btrfs"),
+    ],
+)
+async def test_disk_mount_fs_type_mapping(
+    coresys: CoreSys,
+    probed_filesystem: str,
+    expected_unit_type: str,
+    mock_is_mount,
+):
+    """Test every supported filesystem maps to the driver that mounts it.
+
+    UDisks2 reports the on-disk signature. ext2 and ext3 are both mounted by
+    the ext4 driver and ntfs by ntfs3; the rest are named the same either way.
+    The probed value is always what gets persisted and reported.
+    """
+    mount: DiskMount = Mount.from_dict(
+        coresys, DISK_TEST_DATA | {"filesystem": probed_filesystem}
+    )
+
+    assert mount.filesystem == probed_filesystem
+    assert mount.fs_type == expected_unit_type
+    assert mount.to_dict()["filesystem"] == probed_filesystem
+
+
+async def test_disk_mount_persisted_unsupported_filesystem(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a persisted filesystem outside the allowlist is refused at mount time.
+
+    A mount loaded from configuration skips the candidate guard, so the
+    allowlist is re-checked here. mounts.json may have been hand-edited, or
+    restored from a backup taken on a supervisor that allowed more types.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.ResolveDevice.calls.clear()
+
+    mount: DiskMount = Mount.from_dict(
+        coresys, DISK_TEST_DATA | {"filesystem": "reiserfs"}
+    )
+
+    with pytest.raises(MountFilesystemNotSupportedError):
+        await mount.mount()
+
+    # Never handed to systemd, and no attempt to re-resolve it either
+    assert systemd_service.StartTransientUnit.calls == []
+    assert udisks2_manager_service.ResolveDevice.calls == []
+
+
+async def test_disk_mount_without_udisks2(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a host without UDisks2 reports a clear unsupported error.
+
+    `resolve_device` would otherwise raise DBusNotConnectedError, which is not
+    a DBusError and would escape as an unexpected server error.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test", "usage": "media", "type": "disk", "device": "/dev/sdc1"},
+    )
+
+    with (
+        patch.object(
+            type(coresys.dbus.udisks2),
+            "is_connected",
+            new_callable=PropertyMock,
+            return_value=False,
+        ),
+        pytest.raises(MountDisksNotSupportedError),
+    ):
+        await mount.mount()
+
+    assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_disk_mount_resolves_device_on_create(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    sdc_candidate: DBusServiceMock,
+    mock_is_mount,
+):
+    """Test creating a disk mount by device path resolves and persists the UUID."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.ResolveDevice.calls.clear()
+    udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test", "usage": "media", "type": "disk", "device": "/dev/sdc1"},
+    )
+
+    assert mount.device == "/dev/sdc1"
+    assert mount.uuid is None
+    assert mount.filesystem is None
+
+    await mount.mount()
+
+    # One call resolves the device; the second is the probe confirming the
+    # disk is still attached, which statvfs alone cannot tell for a local fs
+    assert len(udisks2_manager_service.ResolveDevice.calls) == 2
+
+    # The volatile device path is traded for stable identifiers and dropped,
+    # so coming back after a reboot does not depend on the kernel handing out
+    # /dev/sdc1 again.
+    assert mount.uuid == DISK_UUID
+    assert mount.filesystem == "ext4"
+    assert mount.device is None
+    assert "device" not in mount.to_dict()
+    assert mount.what == "/mnt/data/supervisor/.mounts_devices/test"
+
+    assert systemd_service.StartTransientUnit.calls == [
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-media-test.automount",
+            mount_unit="mnt-data-supervisor-media-test.mount",
+            where="/mnt/data/supervisor/media/test",
+            description="Supervisor disk mount: test",
+            what="/mnt/data/supervisor/.mounts_devices/test",
+            fstype="ext4",
+            options=None,
+        )
+    ]
+
+
+async def test_disk_mount_resolves_when_adopting_existing_unit(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    sdc_candidate: DBusServiceMock,
+    mock_is_mount,
+):
+    """Test a disk mount still resolves when it adopts an existing unit.
+
+    `load()` only mounts when there is no unit for the path yet. Resolving
+    from `mount()` alone would leave a mount that adopted a live unit with no
+    uuid — and `to_dict` would then persist a mount that cannot be loaded
+    back, because the schema requires an identifier.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.ResolveDevice.calls.clear()
+    udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test", "usage": "media", "type": "disk", "device": "/dev/sdc1"},
+    )
+
+    # The default mock reports an already active unit for this path
+    await mount.load()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert systemd_service.StartTransientUnit.calls == []
+
+    # One call resolves the device; the second is the probe confirming the
+    # disk is still attached, which statvfs alone cannot tell for a local fs
+    assert len(udisks2_manager_service.ResolveDevice.calls) == 2
+    assert mount.uuid == DISK_UUID
+    assert mount.filesystem == "ext4"
+    assert mount.device is None
+    assert "uuid" in mount.to_dict()
+
+
+async def test_disk_mount_device_not_found(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test mounting a disk that is not present fails before touching systemd."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.resolved_devices = []
+
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test", "usage": "media", "type": "disk", "device": "/dev/sdz9"},
+    )
+
+    with pytest.raises(MountDeviceNotFoundError):
+        await mount.mount()
+
+    assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_disk_mount_without_identifier(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a disk mount with neither a device nor a UUID fails cleanly.
+
+    Validation requires one of the two, so this only arises for a mount built
+    in code or read back from a hand-edited configuration.
+    """
+    mount = DiskMount(
+        coresys,
+        {"name": "test", "type": "disk", "usage": "media", "read_only": False},
+    )
+
+    # Nothing to hand systemd as Type= until the device is resolved
+    with pytest.raises(MountInvalidError, match="no resolved filesystem"):
+        _ = mount.fs_type
+
+    with pytest.raises(MountInvalidError, match="neither a device nor a UUID"):
+        await mount.mount()
+
+
+async def test_disk_mount_resolve_dbus_error(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a UDisks2 failure while resolving is reported as a mount error."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test", "usage": "media", "type": "disk", "device": "/dev/sdc1"},
+    )
+
+    with (
+        patch.object(
+            coresys.dbus.udisks2,
+            "resolve_device",
+            side_effect=SupervisorDBusError("no reply"),
+        ),
+        pytest.raises(MountError, match="Could not resolve device for mount test"),
+    ):
+        await mount.mount()
+
+    assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_disk_mount_ambiguous_device(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    sdc_candidate: DBusServiceMock,
+    mock_is_mount,
+):
+    """Test a UUID matching several devices is refused rather than guessed at."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH, SDB1_OBJECT_PATH]
+
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test", "usage": "media", "type": "disk", "uuid": DISK_UUID},
+    )
+
+    with pytest.raises(MountInvalidError, match="matches 2 devices"):
+        await mount.mount()
+
+    assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_disk_mount_write_protected(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    sdc_candidate: DBusServiceMock,
+    mock_is_mount,
+):
+    """Test a write-protected disk is not silently downgraded to read-only."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+    sdc_candidate.fixture = replace(sdc_candidate.fixture, ReadOnly=True)
+
+    writable: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test_rw", "usage": "media", "type": "disk", "device": "/dev/sdc1"},
+    )
+
+    with pytest.raises(MountDeviceReadOnlyError):
+        await writable.mount()
+
+    assert systemd_service.StartTransientUnit.calls == []
+
+    # Asking for read-only explicitly is accepted
+    read_only: DiskMount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test_ro",
+            "usage": "media",
+            "type": "disk",
+            "device": "/dev/sdc1",
+            "read_only": True,
+        },
+    )
+
+    await read_only.mount()
+
+    assert read_only.state == UnitActiveState.ACTIVE
+    assert len(systemd_service.StartTransientUnit.calls) == 1
+
+
+async def test_disk_mount_rejects_system_device(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test creating a mount runs the same guard the candidate list uses."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StartTransientUnit.calls.clear()
+    # sda1 is a previous data disk, excluded from candidates by its label
+    udisks2_manager_service.resolved_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sda1"
+    ]
+
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "test", "usage": "media", "type": "disk", "device": "/dev/sda1"},
+    )
+
+    with pytest.raises(MountInvalidError):
+        await mount.mount()
+
+    assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_disk_mount_device_link_avoids_device_dependency(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test the unit mounts a link outside /dev, not the by-uuid node itself.
+
+    systemd derives a Requires= on the backing device unit whenever What=
+    starts with /dev/, and while the disk is absent that dependency stalls
+    every access for DefaultDeviceTimeoutSec — 90 s by default, per access,
+    with nothing settable on the unit able to shorten it. Keeping What=
+    outside /dev is what avoids that, so it is worth pinning: an innocent
+    "simplification" back to the by-uuid path silently restores the stall.
+    """
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+
+    assert not mount.what.startswith("/dev/")
+    assert mount.what == "/mnt/data/supervisor/.mounts_devices/test"
+
+    await mount.mount()
+
+    # The link is what resolves to the device, so the mount still goes by UUID
+    assert mount.path_device_link.readlink() == Path(f"/dev/disk/by-uuid/{DISK_UUID}")
+
+
+async def test_disk_mount_reports_inactive_when_device_detached(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a disk pulled while mounted is not reported active.
+
+    statvfs answers from cache for a local filesystem, so the probe alone
+    cannot tell a healthy disk from one yanked out of its port — it succeeds
+    either way. Asking UDisks2 whether the device is still there is what
+    makes the difference, and without it a removed disk would keep reporting
+    a healthy mount indefinitely.
+    """
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    await mount.mount()
+    assert mount.state == UnitActiveState.ACTIVE
+
+    # The probe still succeeds; only the device has gone
+    udisks2_manager_service.resolved_devices = []
+
+    assert await mount.is_mounted() is False
+    assert mount.state == UnitActiveState.INACTIVE
+
+
+async def test_disk_mount_stays_active_when_udisks2_unavailable(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test an unavailable UDisks2 is not treated as a missing disk.
+
+    The presence check is an extra source of bad news, not a new dependency:
+    if it cannot be asked, the probe's verdict stands.
+    """
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    await mount.mount()
+
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    # Nothing to answer with, so only the guard keeps this from reading as
+    # "the disk is gone"
+    udisks2_manager_service.resolved_devices = []
+
+    with patch.object(
+        type(coresys.dbus.udisks2), "is_connected", new_callable=PropertyMock
+    ) as is_connected:
+        is_connected.return_value = False
+        assert await mount.is_mounted() is True
+
+    assert mount.state == UnitActiveState.ACTIVE

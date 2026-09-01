@@ -94,7 +94,7 @@ class HwDisk(CoreSysAttributes):
         unit still reported active whose path is no longer actually mounted — by
         returning the underlying filesystem's numbers, so only the device
         boundary check tells the mount's own figures apart from the host disk's.
-        Mirrors `_probe_network_mount` in mounts/mount.py; keep the two agreeing.
+        Mirrors `_probe_mount` in mounts/mount.py; keep the two agreeing.
         """
         usage = shutil.disk_usage(path)
         if path.stat().st_dev == path.parent.stat().st_dev:

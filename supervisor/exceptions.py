@@ -1802,6 +1802,121 @@ class MountTargetNotEmptyError(MountInvalidError):
         super().__init__(None, logger)
 
 
+class MountDeviceNotFoundError(MountInvalidError):
+    """Raise when no block device matches the requested device or UUID."""
+
+    error_key = "mount_device_not_found_error"
+    message_template = "No disk found matching {reference}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, reference: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"reference": reference}
+        super().__init__(None, logger)
+
+
+class MountFilesystemNotSupportedError(MountInvalidError):
+    """Raise when a device does not hold a filesystem that can be mounted."""
+
+    error_key = "mount_filesystem_not_supported_error"
+    message_template = "{device} does not have a filesystem that can be mounted"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, device: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"device": device}
+        super().__init__(None, logger)
+
+
+class MountDeviceMismatchError(MountInvalidError):
+    """Raise when a supplied device path does not carry the supplied UUID."""
+
+    error_key = "mount_device_mismatch_error"
+    message_template = "Device {device} does not have filesystem UUID {uuid}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        device: str,
+        uuid: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"device": device, "uuid": uuid}
+        super().__init__(None, logger)
+
+
+class MountDeviceInUseError(MountInvalidError):
+    """Raise when a device is already mounted or used by another mount."""
+
+    error_key = "mount_device_in_use_error"
+    message_template = "{device} is already in use"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, device: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"device": device}
+        super().__init__(None, logger)
+
+
+class MountDeviceProtectedError(MountInvalidError):
+    """Raise when a device belongs to the system and must not be mounted."""
+
+    error_key = "mount_device_protected_error"
+    message_template = "{device} is a system device and cannot be mounted"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, device: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"device": device}
+        super().__init__(None, logger)
+
+
+class MountDeviceReadOnlyError(MountInvalidError):
+    """Raise when a write-protected device is requested as writable."""
+
+    error_key = "mount_device_read_only_error"
+    message_template = (
+        "{device} is write-protected and can only be mounted as read-only"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, device: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"device": device}
+        super().__init__(None, logger)
+
+
+class MountDeviceMissingUUIDError(MountInvalidError):
+    """Raise when a device holds a filesystem but reports no UUID."""
+
+    error_key = "mount_device_missing_uuid_error"
+    message_template = "{device} has no filesystem UUID and cannot be mounted"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, device: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"device": device}
+        super().__init__(None, logger)
+
+
+class MountDisksNotSupportedError(MountInvalidError):
+    """Raise when the host cannot mount local disks at all."""
+
+    error_key = "mount_disks_not_supported_error"
+    message_template = "Local disk mounts are not supported on this host"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Initialize exception."""
+        super().__init__(None, logger)
+
+
 class MountNotFound(MountError, APINotFound):
     """Raise on mount not found."""
 
