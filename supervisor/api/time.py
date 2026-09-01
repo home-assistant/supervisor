@@ -14,7 +14,7 @@ from ..host.const import HostFeature
 from .const import ATTR_FALLBACK_SERVERS
 from .utils import api_process, api_validate
 
-RE_NTP_SERVER = re.compile(r"^[^\s#]+\Z")
+RE_NTP_SERVER = re.compile(r"^[a-zA-Z0-9._:%-]+\Z")
 
 NTP_SERVER = vol.All(str, vol.Match(RE_NTP_SERVER))
 

@@ -108,6 +108,8 @@ async def test_api_time_options_partial(
         {"servers": ["pool ntp.org"]},
         {"fallback_servers": ["time.google.com # comment"]},
         {"servers": ["pool.ntp.org\n"]},
+        {"servers": ["pool.ntp.org\x00"]},
+        {"fallback_servers": ["[::1]"]},
     ],
 )
 async def test_api_time_options_invalid(
