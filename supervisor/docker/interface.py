@@ -56,7 +56,12 @@ from .manager import CommandReturn, ExecReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
 from .pull_progress import ImagePullProgress
 from .stats import DockerStats
-from .utils import get_registry_from_image, split_docker_domain, split_image_tag
+from .utils import (
+    get_registry_from_image,
+    is_corrupt_container_error,
+    split_docker_domain,
+    split_image_tag,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -422,6 +427,19 @@ class DockerInterface(JobGroup, ABC):
             ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
+                return None
+            if is_corrupt_container_error(err):
+                # The container record survived an unclean shutdown but its RW
+                # layer did not, so nothing can be done with it besides removal.
+                # Report it as missing: recovery paths then recreate the
+                # container, with stop_container's force delete removing the
+                # broken record without inspecting it first.
+                _LOGGER.warning(
+                    "Container %s storage metadata is corrupt, "
+                    "treating the container as missing: %s",
+                    self.name,
+                    err,
+                )
                 return None
             raise DockerAPIError(
                 f"Docker API error occurred while getting container information: {err!s}"

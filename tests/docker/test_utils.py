@@ -1,13 +1,21 @@
 """Test Docker utilities."""
 
+import aiodocker
 import pytest
 
 from supervisor.docker.const import DOCKER_HUB
 from supervisor.docker.utils import (
     get_registry_from_image,
+    is_corrupt_container_error,
     is_registry_domain,
     split_docker_domain,
     split_image_tag,
+)
+
+CORRUPT_CONTAINER_MESSAGE = (
+    "RWLayer of container "
+    "1b56493ca170514364e10113038a16e9d207cb16a229be55ed6139649a39ca4e "
+    "is unexpectedly nil"
 )
 
 
@@ -119,3 +127,20 @@ def test_is_registry_domain(domain: str, valid: bool):
 def test_split_image_tag(image_ref: str, expected: tuple[str, str | None]):
     """Test splitting an image reference into image name and tag."""
     assert split_image_tag(image_ref) == expected
+
+
+@pytest.mark.parametrize(
+    ("status", "message", "expected"),
+    [
+        (500, CORRUPT_CONTAINER_MESSAGE, True),
+        (500, f"[500] {CORRUPT_CONTAINER_MESSAGE}", True),
+        (500, "RWLayer of container tooshort is unexpectedly nil", False),
+        (500, "stat /mnt/data/docker/overlay2/abc: no such file or directory", False),
+        (404, CORRUPT_CONTAINER_MESSAGE, False),
+    ],
+)
+def test_is_corrupt_container_error(status: int, message: str, expected: bool):
+    """Test detection of Docker's corrupt container error."""
+    assert (
+        is_corrupt_container_error(aiodocker.DockerError(status, message)) == expected
+    )

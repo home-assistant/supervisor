@@ -64,7 +64,7 @@ from .const import (
 from .manifest import RegistryManifestFetcher
 from .monitor import DockerMonitor
 from .network import DockerNetwork
-from .utils import get_registry_from_image
+from .utils import get_registry_from_image, is_corrupt_container_error
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -884,6 +884,14 @@ class DockerAPI(CoreSysAttributes):
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 return False
+            if is_corrupt_container_error(err):
+                _LOGGER.warning(
+                    "Container %s storage metadata is corrupt, "
+                    "treating the container as missing: %s",
+                    name,
+                    err,
+                )
+                return False
             raise DockerError(
                 f"Could not get container {name} or image {image}:{version} to check state: {err!s}",
                 _LOGGER.error,
@@ -946,6 +954,12 @@ class DockerAPI(CoreSysAttributes):
                 raise DockerNotFound(
                     f"{name} not found for starting up", _LOGGER.error
                 ) from None
+            if is_corrupt_container_error(err):
+                raise DockerNotFound(
+                    f"Container {name} storage metadata is corrupt, "
+                    "treating the container as missing",
+                    _LOGGER.warning,
+                ) from err
             raise DockerError(
                 f"Could not get {name} for starting up", _LOGGER.error
             ) from err
@@ -972,6 +986,12 @@ class DockerAPI(CoreSysAttributes):
                 raise DockerNotFound(
                     f"Container {name} not found for restarting", _LOGGER.warning
                 ) from None
+            if is_corrupt_container_error(err):
+                raise DockerNotFound(
+                    f"Container {name} storage metadata is corrupt, "
+                    "treating the container as missing",
+                    _LOGGER.warning,
+                ) from err
             raise DockerError(
                 f"Could not get container {name} for restarting: {err!s}", _LOGGER.error
             ) from err
@@ -995,6 +1015,12 @@ class DockerAPI(CoreSysAttributes):
                 raise DockerNotFound(
                     f"Container {name} not found for logs", _LOGGER.warning
                 ) from None
+            if is_corrupt_container_error(err):
+                raise DockerNotFound(
+                    f"Container {name} storage metadata is corrupt, "
+                    "treating the container as missing",
+                    _LOGGER.warning,
+                ) from err
             raise DockerError(
                 f"Could not get container {name} for logs: {err!s}", _LOGGER.error
             ) from err
