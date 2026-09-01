@@ -88,12 +88,10 @@ SCHEMA_MOUNT_NFS = _SCHEMA_MOUNT_NETWORK.extend(
     }
 )
 
-# Persisted disk mounts always carry the uuid they were resolved to; `device`
-# is API input only and never written out. `filesystem` stays optional: a
-# mount restored from a backup is saved unresolved (it re-resolves on
-# activation), and requiring the field here would invalidate the whole file,
-# which resets every configured mount. An unsupported persisted value is
-# rejected at mount time instead, costing only that one mount.
+# Persisted disk mounts require uuid. device is API input only.
+# filesystem is optional: a restored backup is saved unresolved and
+# re-resolves on activation. Requiring it here would invalidate the whole
+# file and reset every mount. Unsupported values are rejected at mount time.
 _SCHEMA_MOUNT_DISK_PERSISTED = SCHEMA_BASE_MOUNT_CONFIG.extend(
     {
         vol.Required(ATTR_TYPE): vol.All(MountType.DISK.value, vol.Coerce(MountType)),
@@ -136,9 +134,8 @@ class MountData(TypedDict):
     # NFS and Bind fields
     path: NotRequired[str]
 
-    # Disk fields. `device` is accepted as input and dropped once resolved;
-    # only `uuid` and `filesystem` are persisted, and `filesystem` is never
-    # accepted from an API caller.
+    # Disk fields. device is input-only and dropped once resolved.
+    # filesystem is persisted, never accepted from the API.
     device: NotRequired[str]
     uuid: NotRequired[str]
     filesystem: NotRequired[str]
