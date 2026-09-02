@@ -17,7 +17,7 @@ from supervisor.dbus.network.setting import (
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.exceptions import HostNetworkError, HostNotSupportedError
 from supervisor.homeassistant.const import WSEvent, WSType
-from supervisor.host.const import WifiMode
+from supervisor.host.const import MulticastDnsMode, WifiMode
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_active_connection import (
@@ -564,6 +564,30 @@ async def test_apply_changes_v2_non_destructive_disable(
     assert connection_settings_service.Update.calls
     updated_settings = connection_settings_service.Update.calls[-1][0]
     assert updated_settings["connection"]["autoconnect"] == Variant("b", False)
+
+
+async def test_apply_changes_v2_non_destructive_disable_preserves_full_config(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
+):
+    """Test v2 disable persists the full submitted document, not just autoconnect (R1+R3)."""
+    await coresys.host.network.load()
+    connection_settings_service.Update.calls.clear()
+
+    interface = coresys.host.network.get("eth0")
+    # eth0's stored profile defaults to mdns/llmnr ANNOUNCE (see SETTINGS_1_FIXTURE).
+    # Change it as part of the same disable request to prove it isn't discarded.
+    interface.mdns = MulticastDnsMode.OFF
+    interface.enabled = False
+
+    await coresys.host.network.apply_changes_v2(interface)
+
+    assert connection_settings_service.Update.calls
+    updated_settings = connection_settings_service.Update.calls[-1][0]
+    assert updated_settings["connection"]["autoconnect"] == Variant("b", False)
+    assert updated_settings["connection"]["mdns"] == Variant("i", 0)
 
 
 async def test_apply_changes_v2_reenable_reuses_profile(

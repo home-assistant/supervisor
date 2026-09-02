@@ -271,9 +271,10 @@ def get_connection_from_interface(
             CONF_ATTR_VLAN_PARENT: Variant("s", parent),
         }
     elif interface.type == InterfaceType.WIRELESS:
+        mode = interface.wifi.mode.value if interface.wifi else "infrastructure"
         wireless = {
             CONF_ATTR_802_WIRELESS_ASSIGNED_MAC: Variant("s", "preserve"),
-            CONF_ATTR_802_WIRELESS_MODE: Variant("s", "infrastructure"),
+            CONF_ATTR_802_WIRELESS_MODE: Variant("s", mode),
             CONF_ATTR_802_WIRELESS_POWERSAVE: Variant("i", 0),
         }
         if interface.wifi and interface.wifi.ssid:
@@ -306,5 +307,13 @@ def get_connection_from_interface(
                     "s", interface.wifi.psk
                 )
             conn[CONF_ATTR_802_WIRELESS_SECURITY] = wireless_security
+        else:
+            # No security requested: explicitly clear any previously stored
+            # 802-11-wireless-security section instead of leaving it
+            # untouched. `NetworkSetting.update()` only merges sections that
+            # are present, so an old WPA/WEP section (and its PSK) would
+            # otherwise survive a switch to open auth. An empty dict here
+            # tells it to remove the section instead of merging it.
+            conn[CONF_ATTR_802_WIRELESS_SECURITY] = {}
 
     return conn

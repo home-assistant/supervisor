@@ -440,12 +440,17 @@ def test_map_nm_wifi_with_signal():
     mock_interface.wireless = Mock()
     mock_interface.wireless.active = Mock()
     mock_interface.wireless.active.strength = 75
+    mock_interface.wireless.active.ssid = "ConnectedAP"
     mock_interface.interface_name = "wlan0"
 
     result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert result.signal == 75
+    # `active_ssid` reflects the actually-connected AP, distinct from `ssid`
+    # (the stored profile's desired SSID), even when they differ.
+    assert result.active_ssid == "ConnectedAP"
+    assert result.ssid == "TestSSID"
 
 
 def test_map_nm_wifi_without_signal():
@@ -465,6 +470,7 @@ def test_map_nm_wifi_without_signal():
 
     assert result is not None
     assert result.signal is None
+    assert result.active_ssid is None
 
 
 def test_map_nm_wifi_wireless_no_active_ap():
@@ -485,6 +491,7 @@ def test_map_nm_wifi_wireless_no_active_ap():
 
     assert result is not None
     assert result.signal is None
+    assert result.active_ssid is None
 
 
 def test_map_nm_wifi_no_wireless_settings():

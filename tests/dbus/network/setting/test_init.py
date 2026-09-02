@@ -9,7 +9,7 @@ import pytest
 
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
-from supervisor.dbus.network.setting import NetworkSetting
+from supervisor.dbus.network.setting import NetworkSetting, _merge_settings_attribute
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.host.configuration import Ip6Setting
 from supervisor.host.const import InterfaceMethod
@@ -123,6 +123,24 @@ async def test_ethernet_update(
     # Applying the same settings again does not change the profile
     assert await dbus_interface.settings.update(conn) is False
     assert len(connection_settings_service.Update.calls) == 2
+
+
+def test_merge_settings_attribute_empty_dict_clears_attribute():
+    """Test an empty dict for an attribute removes it instead of no-op merging."""
+    base_settings = {"802-11-wireless-security": {"key-mgmt": Variant("s", "wpa-psk")}}
+    _merge_settings_attribute(
+        base_settings, {"802-11-wireless-security": {}}, "802-11-wireless-security"
+    )
+    assert "802-11-wireless-security" not in base_settings
+
+
+def test_merge_settings_attribute_absent_leaves_base_untouched():
+    """Test omitting an attribute from new_settings leaves the base as-is."""
+    base_settings = {"802-11-wireless-security": {"key-mgmt": Variant("s", "wpa-psk")}}
+    _merge_settings_attribute(base_settings, {}, "802-11-wireless-security")
+    assert base_settings["802-11-wireless-security"] == {
+        "key-mgmt": Variant("s", "wpa-psk")
+    }
 
 
 async def test_ipv6_disabled_is_link_local(

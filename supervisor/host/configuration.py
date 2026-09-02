@@ -86,6 +86,10 @@ class WifiConfig:
     auth: AuthMethod
     psk: str | None
     signal: int | None
+    # SSID of the currently connected access point, from the device's active
+    # connection rather than the stored profile - unlike `ssid` above, this
+    # reflects observed state and is `None` when not actually connected.
+    active_ssid: str | None = None
 
 
 @dataclass(slots=True)
@@ -383,11 +387,16 @@ class Interface:
         if settings.wireless and settings.wireless.mode:
             mode = WifiMode(settings.wireless.mode)
 
-        # Signal
+        # Signal and SSID of the currently connected access point (observed
+        # state) - distinct from `ssid` above, which is the stored profile's
+        # desired SSID and may not match what's actually connected (or
+        # anything, if not connected at all).
         if inet.wireless and inet.wireless.active:
             signal = inet.wireless.active.strength
+            active_ssid = inet.wireless.active.ssid
         else:
             signal = None
+            active_ssid = None
 
         return WifiConfig(
             mode=mode,
@@ -395,6 +404,7 @@ class Interface:
             auth=auth,
             psk=psk,
             signal=signal,
+            active_ssid=active_ssid,
         )
 
     @staticmethod
