@@ -48,3 +48,8 @@ class NetworkManagerSettings(DBusInterface):
     async def reload_connections(self) -> bool:
         """Reload all local connection files."""
         return await self.connected_dbus.Settings.call("reload_connections")
+
+    @dbus_connected
+    async def list_connections(self) -> list[str]:
+        """Return a list of object paths for all stored connection profiles."""
+        return await self.connected_dbus.Settings.call("list_connections")

@@ -202,6 +202,8 @@ def get_connection_from_interface(
     network_manager: NetworkManager,
     name: str | None = None,
     uuid: str | None = None,
+    *,
+    autoconnect: bool = True,
 ) -> dict[str, dict[str, Variant]]:
     """Generate message argument for network interface update."""
     # Simple input check to ensure it is safe to cast this for type checker
@@ -233,7 +235,7 @@ def get_connection_from_interface(
             CONF_ATTR_CONNECTION_TYPE: Variant("s", iftype),
             CONF_ATTR_CONNECTION_LLMNR: Variant("i", int(llmnr)),
             CONF_ATTR_CONNECTION_MDNS: Variant("i", int(mdns)),
-            CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", True),
+            CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", autoconnect),
         },
     }
 

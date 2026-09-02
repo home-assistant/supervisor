@@ -278,27 +278,48 @@ class RestAPI(CoreSysAttributes):
         api_network = APINetwork()
         api_network.coresys = self.coresys
 
-        app.add_routes(
-            [
-                web.get("/network/info", api_network.info),
-                web.post("/network/reload", api_network.reload),
-                web.get(
-                    "/network/interface/{interface}/info", api_network.interface_info
-                ),
-                web.post(
-                    "/network/interface/{interface}/update",
-                    api_network.interface_update,
-                ),
-                web.get(
-                    "/network/interface/{interface}/accesspoints",
-                    api_network.scan_accesspoints,
-                ),
-                web.post(
-                    "/network/interface/{interface}/vlan/{vlan}",
-                    api_network.create_vlan,
-                ),
-            ]
-        )
+        if app is self.versions[AppVersion.V1]:
+            app.add_routes(
+                [
+                    web.get("/network/info", api_network.info),
+                    web.post("/network/reload", api_network.reload),
+                    web.get(
+                        "/network/interface/{interface}/info",
+                        api_network.interface_info,
+                    ),
+                    web.post(
+                        "/network/interface/{interface}/update",
+                        api_network.interface_update,
+                    ),
+                    web.get(
+                        "/network/interface/{interface}/accesspoints",
+                        api_network.scan_accesspoints,
+                    ),
+                    web.post(
+                        "/network/interface/{interface}/vlan/{vlan}",
+                        api_network.create_vlan,
+                    ),
+                ]
+            )
+
+        if app is self.versions[AppVersion.V2]:
+            app.add_routes(
+                [
+                    web.get("/network/info", api_network.info_v2),
+                    web.post("/network/reload", api_network.reload),
+                    web.get(
+                        "/network/interfaces/{name}", api_network.interface_info_v2
+                    ),
+                    web.put(
+                        "/network/interfaces/{name}/config",
+                        api_network.update_config_v2,
+                    ),
+                    web.get(
+                        "/network/interfaces/{interface}/accesspoints",
+                        api_network.scan_accesspoints,
+                    ),
+                ]
+            )
 
     def _register_time(self, app: web.Application) -> None:
         """Register time and date functions."""

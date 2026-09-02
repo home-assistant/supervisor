@@ -297,7 +297,7 @@ def test_map_nm_wifi_non_wireless_interface():
     mock_interface.type = DeviceType.ETHERNET
     mock_interface.settings = Mock()
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
     assert result is None
 
 
@@ -308,7 +308,7 @@ def test_map_nm_wifi_no_settings():
     mock_interface.type = DeviceType.WIRELESS
     mock_interface.settings = None
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
     assert result is None
 
 
@@ -325,7 +325,7 @@ def test_map_nm_wifi_open_authentication():
     mock_interface.wireless = None
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert isinstance(result, WifiConfig)
@@ -351,7 +351,7 @@ def test_map_nm_wifi_wep_authentication():
     mock_interface.wireless = None
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert isinstance(result, WifiConfig)
@@ -375,7 +375,7 @@ def test_map_nm_wifi_wpa_psk_authentication():
     mock_interface.wireless = None
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert isinstance(result, WifiConfig)
@@ -396,7 +396,7 @@ def test_map_nm_wifi_unsupported_authentication():
     mock_interface.settings.wireless.ssid = "EnterpriseNetwork"
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is None
 
@@ -421,7 +421,7 @@ def test_map_nm_wifi_different_modes():
         mock_interface.wireless = None
         mock_interface.interface_name = "wlan0"
 
-        result = Interface._map_nm_wifi(mock_interface)
+        result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
         assert result is not None
         assert result.mode == expected_mode
@@ -442,7 +442,7 @@ def test_map_nm_wifi_with_signal():
     mock_interface.wireless.active.strength = 75
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert result.signal == 75
@@ -461,7 +461,7 @@ def test_map_nm_wifi_without_signal():
     mock_interface.wireless = None
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert result.signal is None
@@ -481,7 +481,7 @@ def test_map_nm_wifi_wireless_no_active_ap():
     mock_interface.wireless.active = None
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert result.signal is None
@@ -498,7 +498,7 @@ def test_map_nm_wifi_no_wireless_settings():
     mock_interface.wireless = None
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert result.ssid == ""
@@ -518,7 +518,7 @@ def test_map_nm_wifi_no_wireless_mode():
     mock_interface.wireless = None
     mock_interface.interface_name = "wlan0"
 
-    result = Interface._map_nm_wifi(mock_interface)
+    result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
     assert result is not None
     assert result.mode == WifiMode.INFRASTRUCTURE  # Default mode

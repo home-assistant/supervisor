@@ -54,6 +54,16 @@ async def fixture_device_eth0_service(
     ]
 
 
+@pytest.fixture(name="device_wlan0_service")
+async def fixture_device_wlan0_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> DeviceService:
+    """Return mock device wlan0 service."""
+    return network_manager_services["network_device"][
+        "/org/freedesktop/NetworkManager/Devices/3"
+    ]
+
+
 async def test_load(
     coresys: CoreSys,
     network_manager_service: NetworkManagerService,
@@ -443,3 +453,119 @@ async def test_host_connectivity_disabled(
         }
     )
     assert "connectivity_check" not in coresys.resolution.unsupported
+
+
+async def test_get_with_config_down_interface_has_profile(
+    coresys: CoreSys,
+    device_eth0_service: DeviceService,
+):
+    """Test config stays visible for a down interface with a matching stored profile (R2)."""
+    await coresys.host.network.load()
+
+    device_eth0_service.emit_properties_changed({"ActiveConnection": "/"})
+    await device_eth0_service.ping()
+    assert coresys.host.network.get("eth0").connected is False
+
+    resolved = await coresys.host.network.get_with_config("eth0")
+
+    assert resolved.has_profile is True
+    assert resolved.enabled is True
+    assert resolved.interface.connected is False
+    assert resolved.interface.ipv4setting is not None
+    assert resolved.interface.ipv4setting.method == InterfaceMethod.AUTO
+
+
+async def test_get_with_config_down_interface_no_profile(
+    coresys: CoreSys,
+):
+    """Test config resolves to no profile for a down interface with no matching stored profile."""
+    await coresys.host.network.load()
+
+    # wlan0 is disconnected by default and has no matching stored connection
+    assert coresys.host.network.get("wlan0").connected is False
+
+    resolved = await coresys.host.network.get_with_config("wlan0")
+
+    assert resolved.has_profile is False
+
+
+async def test_interfaces_with_config(
+    coresys: CoreSys,
+    device_eth0_service: DeviceService,
+):
+    """Test interfaces_with_config resolves config for every interface."""
+    await coresys.host.network.load()
+
+    device_eth0_service.emit_properties_changed({"ActiveConnection": "/"})
+    await device_eth0_service.ping()
+
+    resolved_by_name = {
+        resolved.interface.name: resolved
+        for resolved in await coresys.host.network.interfaces_with_config()
+    }
+
+    assert resolved_by_name["eth0"].has_profile is True
+    assert resolved_by_name["wlan0"].has_profile is False
+
+
+async def test_apply_changes_v2_non_destructive_disable(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
+):
+    """Test v2 disable deactivates and clears autoconnect instead of deleting the profile (R5)."""
+    await coresys.host.network.load()
+    network_manager_service.DeactivateConnection.calls.clear()
+    connection_settings_service.Delete.calls.clear()
+    connection_settings_service.Update.calls.clear()
+
+    interface = coresys.host.network.get("eth0")
+    interface.enabled = False
+
+    await coresys.host.network.apply_changes_v2(interface)
+
+    assert connection_settings_service.Delete.calls == []
+    assert network_manager_service.DeactivateConnection.calls == [
+        ("/org/freedesktop/NetworkManager/ActiveConnection/1",)
+    ]
+    assert connection_settings_service.Update.calls
+    updated_settings = connection_settings_service.Update.calls[-1][0]
+    assert updated_settings["connection"]["autoconnect"] == Variant("b", False)
+
+
+async def test_apply_changes_v2_reenable_reuses_profile(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
+):
+    """Test re-enabling after a non-destructive disable reuses the profile (R2+R5)."""
+    await coresys.host.network.load()
+
+    # Disable non-destructively
+    interface = coresys.host.network.get("eth0")
+    interface.enabled = False
+    await coresys.host.network.apply_changes_v2(interface)
+
+    # Simulate NetworkManager deactivating the device as a result
+    device_eth0_service.emit_properties_changed({"ActiveConnection": "/"})
+    await device_eth0_service.ping()
+
+    resolved = await coresys.host.network.get_with_config("eth0")
+    assert resolved.has_profile is True
+    assert resolved.enabled is False
+
+    network_manager_service.AddAndActivateConnection.calls.clear()
+    network_manager_service.ActivateConnection.calls.clear()
+
+    resolved.interface.enabled = True
+    await coresys.host.network.apply_changes_v2(resolved.interface)
+
+    # No new connection profile is created, the existing one is reused/reactivated
+    assert network_manager_service.AddAndActivateConnection.calls == []
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls

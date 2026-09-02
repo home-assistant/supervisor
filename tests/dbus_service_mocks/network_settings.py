@@ -49,7 +49,7 @@ class Settings(DBusServiceMock):
     @dbus_method()
     def ListConnections(self) -> "ao":
         """Do ListConnections method."""
-        return self.Connections()
+        return self.Connections
 
     @dbus_method()
     def GetConnectionByUuid(self, uuid: "s") -> "o":
