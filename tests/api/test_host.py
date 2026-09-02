@@ -88,6 +88,7 @@ async def test_api_host_features(
     coresys.host.sys_dbus.agent.is_connected = False
     coresys.host.sys_dbus.resolved.is_connected = False
     coresys.host.sys_dbus.udisks2.is_connected = False
+    coresys.host.sys_dbus.agent.timesyncd.is_connected = False
 
     resp = await api_client.get(f"{prefix}/host/info")
     result = await resp.json()
@@ -98,6 +99,7 @@ async def test_api_host_features(
     assert "hostname" not in result["data"]["features"]
     assert "timedate" not in result["data"]["features"]
     assert "os_agent" not in result["data"]["features"]
+    assert "ntp" not in result["data"]["features"]
     assert "resolved" not in result["data"]["features"]
     assert "disk" not in result["data"]["features"]
 
@@ -144,6 +146,36 @@ async def test_api_host_features(
     resp = await api_client.get(f"{prefix}/host/info")
     result = await resp.json()
     assert "disk" in result["data"]["features"]
+
+
+@pytest.mark.parametrize("os_agent_version", ["1.13.0"], indirect=True)
+@pytest.mark.usefixtures("os_available", "os_agent_version")
+async def test_api_host_features_os(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys_disk_info: CoreSys,
+    dbus_is_connected,
+):
+    """Test host info features with OS available."""
+    api_client, prefix = api_client_with_prefix
+    coresys = coresys_disk_info
+
+    coresys.host.sys_dbus.agent.timesyncd.is_connected = False
+
+    resp = await api_client.get(f"{prefix}/host/info")
+    result = await resp.json()
+    assert "ntp" not in result["data"]["features"]
+
+    coresys.host.sys_dbus.agent.timesyncd.is_connected = True
+    coresys.host.supported_features.cache_clear()
+    resp = await api_client.get(f"{prefix}/host/info")
+    result = await resp.json()
+    assert "ntp" in result["data"]["features"]
+
+    coresys.host.sys_dbus.systemd.is_connected = False
+    coresys.host.supported_features.cache_clear()
+    resp = await api_client.get(f"{prefix}/host/info")
+    result = await resp.json()
+    assert "ntp" not in result["data"]["features"]
 
 
 async def test_api_llmnr_mdns_info(
