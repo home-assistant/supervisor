@@ -126,6 +126,43 @@ async def test_add_and_activate_connection(
     ]
 
 
+async def test_deactivate_connection(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
+    """Test deactivate connection."""
+    network_manager_service.DeactivateConnection.calls.clear()
+
+    await network_manager.deactivate_connection(
+        "/org/freedesktop/NetworkManager/ActiveConnection/1"
+    )
+
+    assert network_manager_service.DeactivateConnection.calls == [
+        ("/org/freedesktop/NetworkManager/ActiveConnection/1",)
+    ]
+
+
+async def test_find_connection_settings(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
+    """Test finding stored connection settings for a device via enumeration."""
+    inet = network_manager.get(TEST_INTERFACE_ETH_NAME)
+
+    settings = await network_manager.find_connection_settings(inet)
+
+    assert settings is not None
+    assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
+    settings.shutdown()
+
+
+async def test_find_connection_settings_no_match(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
+    """Test finding stored connection settings when none match the device."""
+    inet = network_manager.get(TEST_INTERFACE_WLAN_NAME)
+
+    assert await network_manager.find_connection_settings(inet) is None
+
+
 async def test_removed_devices_disconnect(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):

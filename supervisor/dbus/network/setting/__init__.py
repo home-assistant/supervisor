@@ -255,6 +255,9 @@ class NetworkSetting(DBusInterface):
                 llmnr=data[CONF_ATTR_CONNECTION].get(
                     CONF_ATTR_CONNECTION_LLMNR, MulticastDnsValue.DEFAULT.value
                 ),
+                autoconnect=data[CONF_ATTR_CONNECTION].get(
+                    CONF_ATTR_CONNECTION_AUTOCONNECT, True
+                ),
             )
 
         if CONF_ATTR_802_ETHERNET in data:
@@ -334,3 +337,24 @@ class NetworkSetting(DBusInterface):
             self._match = MatchProperties(
                 data[CONF_ATTR_MATCH].get(CONF_ATTR_MATCH_PATH)
             )
+
+
+def connection_matches_device(
+    setting: NetworkSetting, *, interface_name: str, path: str
+) -> bool:
+    """Return true if setting's match/interface-name identifies the given device.
+
+    Only covers the plain ethernet/wireless identity check (match by udev
+    path, falling back to interface name) shared between
+    `Interface.equals_dbus_interface()` and the stored-connection enumeration
+    lookup in `NetworkManager.find_connection_settings()`. VLAN matching (by
+    id/parent) and device-type compatibility are intentionally not part of
+    this helper, they stay call-site specific.
+    """
+    if setting.match and setting.match.path:
+        return setting.match.path == [path]
+
+    return (
+        setting.connection is not None
+        and setting.connection.interface_name == interface_name
+    )

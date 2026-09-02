@@ -33,7 +33,7 @@ from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .dns import NetworkManagerDNS
 from .interface import NetworkInterface
-from .setting import NetworkSetting
+from .setting import NetworkSetting, connection_matches_device
 from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -114,6 +114,13 @@ class NetworkManager(DBusInterfaceProxy):
         return active_con
 
     @dbus_connected
+    async def deactivate_connection(self, active_connection_object: str) -> None:
+        """Deactivate an active connection without removing its settings."""
+        await self.connected_dbus.call(
+            "deactivate_connection", active_connection_object
+        )
+
+    @dbus_connected
     async def add_and_activate_connection(
         self, settings: Any, device_object: str
     ) -> tuple[NetworkSetting, NetworkConnection]:
@@ -129,6 +136,44 @@ class NetworkManager(DBusInterfaceProxy):
         await active_con.connect(self.connected_dbus.bus)
         # Settings were provided so settings will not be None here or call would've failed
         return cast(NetworkSetting, active_con.settings), active_con
+
+    @dbus_connected
+    async def find_connection_settings(
+        self, inet: NetworkInterface
+    ) -> NetworkSetting | None:
+        """Find stored connection settings for a device, independent of activation.
+
+        Enumerates all stored NetworkManager connection profiles and returns the
+        first one whose match/interface-name identifies this device. This keeps
+        configuration visible/editable even when the device has no active
+        connection (e.g. cable unplugged, wrong wifi password). Best-effort: if
+        multiple stored profiles match, the first one found wins.
+
+        Matching is device-type agnostic (see `connection_matches_device()`).
+        Callers that don't support VLAN devices yet (currently the v2 API) are
+        responsible for filtering those out themselves - this is a temporary
+        restriction expected to be lifted in a subsequent PR, so it's kept out
+        of this shared lookup to avoid spreading it across layers.
+        """
+        for object_path in await self.settings.list_connections():
+            setting = NetworkSetting(object_path)
+            try:
+                await setting.connect(self.connected_dbus.bus)
+            except DBusError:
+                _LOGGER.debug(
+                    "Could not connect to connection settings %s, skipping",
+                    object_path,
+                )
+                continue
+
+            if connection_matches_device(
+                setting, interface_name=inet.interface_name, path=inet.path
+            ):
+                return setting
+
+            setting.shutdown()
+
+        return None
 
     @dbus_connected
     async def check_connectivity(self, *, force: bool = False) -> ConnectivityState:

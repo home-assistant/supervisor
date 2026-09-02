@@ -26,6 +26,9 @@ from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting import (
     CONF_ATTR_802_WIRELESS_SECURITY,
     CONF_ATTR_802_WIRELESS_SECURITY_PSK,
+    CONF_ATTR_CONNECTION,
+    CONF_ATTR_CONNECTION_AUTOCONNECT,
+    NetworkSetting,
 )
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
@@ -40,7 +43,7 @@ from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
 from ..utils.sentry import async_capture_exception
-from .configuration import AccessPoint, Interface
+from .configuration import AccessPoint, Interface, ResolvedInterface
 from .const import InterfaceMethod, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -133,6 +136,51 @@ class NetworkManager(CoreSysAttributes):
             raise HostNetworkNotFound
 
         return Interface.from_dbus_interface(self.sys_dbus.network.get(inet_name))
+
+    async def get_with_config(self, inet_name: str) -> ResolvedInterface:
+        """Return interface from interface name, resolving config independent of activation.
+
+        Unlike `get()`, this also looks up a stored connection profile (via
+        `NetworkManager.find_connection_settings()`) when the interface has no
+        active connection, so its configuration stays visible while the
+        device is down (unplugged, wrong wifi password, etc). Used by the v2
+        API.
+        """
+        if inet_name not in self.sys_dbus.network:
+            raise HostNetworkNotFound
+
+        inet = self.sys_dbus.network.get(inet_name)
+        resolved_settings = inet.settings
+        temp_settings: NetworkSetting | None = None
+        if not resolved_settings:
+            resolved_settings = (
+                temp_settings
+            ) = await self.sys_dbus.network.find_connection_settings(inet)
+
+        interface = Interface.from_dbus_interface(
+            inet, resolved_settings=resolved_settings
+        )
+
+        enabled = True
+        if resolved_settings and resolved_settings.connection:
+            enabled = resolved_settings.connection.autoconnect is not False
+
+        if temp_settings:
+            temp_settings.shutdown()
+
+        return ResolvedInterface(
+            interface, has_profile=resolved_settings is not None, enabled=enabled
+        )
+
+    async def interfaces_with_config(self) -> list[ResolvedInterface]:
+        """Return all interfaces, resolving config independent of activation for each.
+
+        See `get_with_config()`. Used by the v2 API.
+        """
+        return [
+            await self.get_with_config(inet.interface_name)
+            for inet in self.sys_dbus.network.interfaces
+        ]
 
     @Job(
         name="network_manager_load",
@@ -300,9 +348,26 @@ class NetworkManager(CoreSysAttributes):
         return True
 
     async def apply_changes(
-        self, interface: Interface, *, update_only: bool = False
+        self,
+        interface: Interface,
+        *,
+        update_only: bool = False,
+        resolved_settings: NetworkSetting | None = None,
+        destructive_disable: bool = True,
     ) -> None:
-        """Apply Interface changes to host."""
+        """Apply Interface changes to host.
+
+        `resolved_settings` allows updating an existing stored connection
+        profile even when the interface currently has no active connection
+        (see `NetworkManager.find_connection_settings()`). When omitted, only
+        an active connection (`inet.settings`) is treated as existing
+        configuration to update - unchanged v1 behavior.
+
+        `destructive_disable` controls what happens when disabling the
+        interface: True (default, v1 behavior) deletes any stored connection
+        profile. False deactivates the active connection (if any) and clears
+        autoconnect on the stored profile instead of deleting it.
+        """
         try:
             inet = self.sys_dbus.network.get(interface.name)
         except NetworkInterfaceNotFound as err:
@@ -314,24 +379,25 @@ class NetworkManager(CoreSysAttributes):
             ) from err
 
         con: NetworkConnection | None = None
+        existing_settings = inet.settings or resolved_settings
 
         # Update exist configuration
         if (
-            inet.settings
-            and inet.settings.connection
-            and interface.equals_dbus_interface(inet)
+            existing_settings
+            and existing_settings.connection
+            and interface.matches_settings(inet, existing_settings)
             and interface.enabled
         ):
             _LOGGER.debug("Updating existing configuration for %s", interface.name)
             settings = get_connection_from_interface(
                 interface,
                 self.sys_dbus.network,
-                name=inet.settings.connection.id,
-                uuid=inet.settings.connection.uuid,
+                name=existing_settings.connection.id,
+                uuid=existing_settings.connection.uuid,
             )
 
             try:
-                settings_changed = await inet.settings.update(settings)
+                settings_changed = await existing_settings.update(settings)
                 if not await self._apply_settings_in_place(
                     inet,
                     interface,
@@ -343,7 +409,7 @@ class NetworkManager(CoreSysAttributes):
                         "Activating connection for interface %s", interface.name
                     )
                     con = activated = await self.sys_dbus.network.activate_connection(
-                        inet.settings.object_path, inet.object_path
+                        existing_settings.object_path, inet.object_path
                     )
                     _LOGGER.debug(
                         "activate_connection returns %s",
@@ -388,11 +454,24 @@ class NetworkManager(CoreSysAttributes):
 
         # Remove config from interface
         elif not interface.enabled:
-            if not inet.settings:
+            if not existing_settings:
                 _LOGGER.debug("Interface %s is already disabled.", interface.name)
                 return
             try:
-                await inet.settings.delete()
+                if destructive_disable:
+                    await existing_settings.delete()
+                else:
+                    if inet.connection:
+                        await self.sys_dbus.network.deactivate_connection(
+                            inet.connection.object_path
+                        )
+                    await existing_settings.update(
+                        {
+                            CONF_ATTR_CONNECTION: {
+                                CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", False)
+                            }
+                        }
+                    )
             except DBusError as err:
                 raise HostNetworkError(
                     f"Can't disable interface {interface.name}: {err}", _LOGGER.error
@@ -425,6 +504,41 @@ class NetworkManager(CoreSysAttributes):
 
         # update_only means not done by user so don't force a check afterwards
         await self.update(force_connectivity_check=not update_only)
+
+    async def apply_changes_v2(self, interface: Interface) -> None:
+        """Apply v2 Interface changes, resolving an existing profile independent of activation.
+
+        Thin wrapper around `apply_changes()`: looks up a stored connection
+        profile via `NetworkManager.find_connection_settings()` when the
+        interface has no active connection, so a PUT can update/reactivate
+        that profile instead of creating a duplicate one (R2), then cleans up
+        the temporary D-Bus object it created for the lookup (if any). Always
+        disables non-destructively (R5) - the v2 API never deletes a stored
+        connection profile, unlike v1's default `apply_changes()` behavior.
+        """
+        try:
+            inet = self.sys_dbus.network.get(interface.name)
+        except NetworkInterfaceNotFound:
+            inet = None
+
+        resolved_settings: NetworkSetting | None = None
+        temp_settings: NetworkSetting | None = None
+        if inet:
+            resolved_settings = inet.settings
+            if not resolved_settings:
+                resolved_settings = (
+                    temp_settings
+                ) = await self.sys_dbus.network.find_connection_settings(inet)
+
+        try:
+            await self.apply_changes(
+                interface,
+                resolved_settings=resolved_settings,
+                destructive_disable=False,
+            )
+        finally:
+            if temp_settings:
+                temp_settings.shutdown()
 
     async def scan_wifi(self, interface: Interface) -> list[AccessPoint]:
         """Scan on Interface for AccessPoint."""

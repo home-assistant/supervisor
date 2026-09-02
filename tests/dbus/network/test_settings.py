@@ -64,3 +64,19 @@ async def test_dbus_network_settings_connect_error(
     settings = NetworkManagerSettings()
     await settings.connect(dbus_session_bus)
     assert "No Network Manager Settings support on the host" in caplog.text
+
+
+async def test_list_connections(
+    settings_service: SettingsService, dbus_session_bus: MessageBus
+):
+    """Test listing stored connection profiles."""
+    settings = NetworkManagerSettings()
+
+    with pytest.raises(DBusNotConnectedError):
+        await settings.list_connections()
+
+    await settings.connect(dbus_session_bus)
+
+    assert await settings.list_connections() == [
+        "/org/freedesktop/NetworkManager/Settings/1"
+    ]
