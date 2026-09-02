@@ -296,6 +296,42 @@ async def test_api_network_update_config_v2_wifi(
     assert settings["802-11-wireless-security"]["psk"] == Variant("s", "myWifiPassword")
 
 
+async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
+    api_client_v2: TestClient,
+):
+    """Test the read-only `psk_set` marker from GET can be echoed back on PUT (R1).
+
+    GET never returns the actual `psk`, only whether one is set (`psk_set`).
+    A client that fetches a config and PUTs it back unchanged must not be
+    rejected by schema validation just because it includes this read-only
+    marker.
+    """
+    resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}")
+    result = await resp.json()
+    config = result["data"]["config"] or {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+    }
+    config["enabled"] = True
+    # Simulates a client echoing back a GET response for an existing WPA
+    # profile: `psk_set` is present (read-only marker) but the actual `psk`
+    # is not, since GET never returns it.
+    config["wifi"] = {
+        "mode": "infrastructure",
+        "ssid": "MY_TEST",
+        "auth": "wpa-psk",
+        "psk_set": True,
+    }
+
+    resp = await api_client_v2.put(
+        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+    )
+    assert resp.status == 200, await resp.text()
+
+
 async def test_api_network_update_config_v2_mdns_llmnr(
     api_client_v2: TestClient,
     connection_settings_service: ConnectionSettingsService,

@@ -85,16 +85,28 @@ def _merge_settings_attribute(
     *,
     ignore_current_value: list[str] | None = None,
 ) -> None:
-    """Merge settings attribute if present."""
-    if attribute in new_settings:
-        if attribute in base_settings:
-            if ignore_current_value:
-                for field in ignore_current_value:
-                    base_settings[attribute].pop(field, None)
+    """Merge settings attribute if present.
 
-            base_settings[attribute].update(new_settings[attribute])
-        else:
-            base_settings[attribute] = new_settings[attribute]
+    An empty dict for `attribute` in `new_settings` explicitly removes it
+    from `base_settings` instead of being merged in as a no-op, letting a
+    caller clear an entire section it doesn't otherwise own (e.g. wireless
+    security when switching an interface to open auth).
+    """
+    if attribute not in new_settings:
+        return
+
+    if not new_settings[attribute]:
+        base_settings.pop(attribute, None)
+        return
+
+    if attribute in base_settings:
+        if ignore_current_value:
+            for field in ignore_current_value:
+                base_settings[attribute].pop(field, None)
+
+        base_settings[attribute].update(new_settings[attribute])
+    else:
+        base_settings[attribute] = new_settings[attribute]
 
 
 class NetworkSetting(DBusInterface):

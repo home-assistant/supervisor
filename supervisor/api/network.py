@@ -178,6 +178,9 @@ _SCHEMA_WIFI_CONFIG_V2 = vol.All(
             vol.Required(ATTR_SSID): str,
             vol.Required(ATTR_AUTH): vol.Coerce(AuthMethod),
             vol.Optional(ATTR_PSK): str,
+            # Read-only marker returned by GET, accepted (and ignored) here so
+            # an unchanged `config` round-trips through PUT (R1).
+            vol.Optional(ATTR_PSK_SET): vol.Boolean(),
         }
     ),
     _validate_wifi_config_v2,
@@ -292,7 +295,7 @@ def interface_state_struct(interface: Interface) -> dict[str, Any]:
         if interface.ipv6
         else None,
         ATTR_WIFI: {
-            ATTR_SSID: interface.wifi.ssid,
+            ATTR_SSID: interface.wifi.active_ssid,
             ATTR_SIGNAL: interface.wifi.signal,
         }
         if interface.wifi

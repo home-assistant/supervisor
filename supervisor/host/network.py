@@ -26,8 +26,6 @@ from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting import (
     CONF_ATTR_802_WIRELESS_SECURITY,
     CONF_ATTR_802_WIRELESS_SECURITY_PSK,
-    CONF_ATTR_CONNECTION,
-    CONF_ATTR_CONNECTION_AUTOCONNECT,
     NetworkSetting,
 )
 from ..dbus.network.setting.generate import get_connection_from_interface
@@ -456,18 +454,23 @@ class NetworkManager(CoreSysAttributes):
             return
 
         _LOGGER.info("Deactivating interface %s", interface.name)
+        # Caller only takes this path once it's confirmed `existing_settings.connection`
+        # is set (see `apply_changes`).
+        assert existing_settings.connection is not None
+        settings = get_connection_from_interface(
+            interface,
+            self.sys_dbus.network,
+            name=existing_settings.connection.id,
+            uuid=existing_settings.connection.uuid,
+            autoconnect=False,
+        )
+
         try:
             if inet.connection:
                 await self.sys_dbus.network.deactivate_connection(
                     inet.connection.object_path
                 )
-            await existing_settings.update(
-                {
-                    CONF_ATTR_CONNECTION: {
-                        CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", False)
-                    }
-                }
-            )
+            await existing_settings.update(settings)
         except DBusError as err:
             _LOGGER.error("Can't deactivate interface %s: %s", interface.name, err)
             raise HostNetworkDeactivateConfigError(interface=interface.name) from err
