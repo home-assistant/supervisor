@@ -64,7 +64,7 @@ async def test_api_time_options(
         ("systemd-timesyncd.service", "replace")
     ]
 
-    # No-op post with the same set of servers
+    # Posting the same set of servers again still restarts timesyncd
     systemd_service.RestartUnit.calls.clear()
     resp = await api_client.post(
         f"{prefix}/time/options",
@@ -73,6 +73,15 @@ async def test_api_time_options(
             "fallback_servers": [],
         },
     )
+
+    assert resp.status == 200
+    assert systemd_service.RestartUnit.calls == [
+        ("systemd-timesyncd.service", "replace")
+    ]
+
+    # Empty post leaves config untouched and does not restart
+    systemd_service.RestartUnit.calls.clear()
+    resp = await api_client.post(f"{prefix}/time/options", json={})
 
     assert resp.status == 200
     assert systemd_service.RestartUnit.calls == []

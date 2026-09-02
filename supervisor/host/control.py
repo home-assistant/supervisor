@@ -146,28 +146,20 @@ class SystemControl(CoreSysAttributes):
         servers: list[str] | None = None,
         fallback_servers: list[str] | None = None,
     ) -> None:
-        """Set host NTP servers and restart timesyncd when changed."""
+        """Set host NTP servers and restart timesyncd."""
         self._check_dbus(HostFeature.NTP)
 
-        restart_required = False
+        if servers is None and fallback_servers is None:
+            return
 
-        if servers is not None and servers != self.sys_dbus.agent.timesyncd.ntp_servers:
+        if servers is not None:
             _LOGGER.info("Setting NTP servers: %s", servers)
             await self.sys_dbus.agent.timesyncd.set_ntp_servers(servers)
-            restart_required = True
 
-        if (
-            fallback_servers is not None
-            and fallback_servers != self.sys_dbus.agent.timesyncd.fallback_ntp_servers
-        ):
+        if fallback_servers is not None:
             _LOGGER.info("Setting fallback NTP servers: %s", fallback_servers)
             await self.sys_dbus.agent.timesyncd.set_fallback_ntp_servers(
                 fallback_servers
             )
-            restart_required = True
 
-        if restart_required:
-            await self.sys_dbus.agent.timesyncd.update()
-            await self.sys_dbus.systemd.restart_unit(
-                TIMESYNCD_UNIT, StartUnitMode.REPLACE
-            )
+        await self.sys_dbus.systemd.restart_unit(TIMESYNCD_UNIT, StartUnitMode.REPLACE)
