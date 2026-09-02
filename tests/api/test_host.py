@@ -171,6 +171,12 @@ async def test_api_host_features_os(
     result = await resp.json()
     assert "ntp" in result["data"]["features"]
 
+    coresys.host.sys_dbus.systemd.is_connected = False
+    coresys.host.supported_features.cache_clear()
+    resp = await api_client.get(f"{prefix}/host/info")
+    result = await resp.json()
+    assert "ntp" not in result["data"]["features"]
+
 
 async def test_api_llmnr_mdns_info(
     api_client_with_prefix: tuple[TestClient, str], coresys_disk_info: CoreSys

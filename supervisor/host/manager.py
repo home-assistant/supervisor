@@ -139,6 +139,7 @@ class HostManager(CoreSysAttributes):
         if (
             self.sys_os.available
             and self.sys_dbus.agent.timesyncd.is_connected
+            and self.sys_dbus.systemd.is_connected
             and self.sys_dbus.agent.version >= NTP_MIN_OS_AGENT_VERSION
         ):
             features.append(HostFeature.NTP)
