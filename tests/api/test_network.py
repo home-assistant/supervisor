@@ -279,8 +279,9 @@ async def test_api_network_interface_update_wifi_error(
     assert result["result"] == "error"
     assert (
         result["message"]
-        == "Can't create config and activate wlan0: A 'wireless' setting with a valid SSID is required if no AP path was given."
+        == "Can't create config and activate wlan0. Check Supervisor logs for details"
     )
+    assert result["error_key"] == "host_network_create_config_error"
 
 
 async def test_api_network_interface_update_mdns(

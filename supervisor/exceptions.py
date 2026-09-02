@@ -1009,6 +1009,133 @@ class HostNetworkNotFound(HostError):
     """Return if host interface is not found."""
 
 
+class HostNetworkInterfaceUpdateError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when a requested network interface update cannot be resolved."""
+
+    error_key = "host_network_interface_update_error"
+    message_template = "Requested Network interface update is not possible"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(logger)
+
+
+class HostNetworkInterfaceUpdateNotFoundError(HostNetworkNotFound, APINotFound):
+    """Raise when an update-only request targets a missing or disabled interface."""
+
+    error_key = "host_network_interface_update_not_found_error"
+    message_template = (
+        "Requested to update interface {interface} which does not exist or is disabled"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(None, logger)
+
+
+class HostNetworkUpdateConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when updating an existing stored connection profile fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_update_config_error"
+    message_template = "Can't update config on {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkCreateConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when creating and activating a new connection profile fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_create_config_error"
+    message_template = "Can't create config and activate {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkDeleteConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when deleting a stored connection profile fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_delete_config_error"
+    message_template = "Can't delete configuration for interface {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkDeactivateConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when deactivating a connection or clearing its autoconnect flag fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_deactivate_config_error"
+    message_template = "Can't deactivate interface {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkActivationFailedError(HostNetworkError, APIError):
+    """Raise when a connection deactivates instead of reaching an activated state."""
+
+    error_key = "host_network_activation_failed_error"
+    message_template = "Activating connection failed, check connection settings."
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class HostNetworkActivationTimeoutError(HostNetworkError, APIError):
+    """Raise when a connection doesn't reach a terminal state before the timeout."""
+
+    error_key = "host_network_activation_timeout_error"
+    message_template = (
+        "Timed out waiting for connection to activate, check connection settings."
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
 class HostLogError(HostError):
     """Internal error with host log."""
 

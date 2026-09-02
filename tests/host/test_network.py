@@ -15,7 +15,7 @@ from supervisor.dbus.network.setting import (
     CONF_ATTR_802_WIRELESS_SECURITY_PSK,
 )
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
-from supervisor.exceptions import HostNotSupportedError
+from supervisor.exceptions import HostNetworkError, HostNotSupportedError
 from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.host.const import WifiMode
 
@@ -276,6 +276,38 @@ async def test_apply_changes_with_psk_reactivates(
         await coresys.host.network.apply_changes(interface)
 
     assert device_eth0_service.Reapply.calls == []
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+
+
+async def test_apply_changes_activation_timeout(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    active_connection_service: ActiveConnectionService,
+):
+    """Test apply_changes times out instead of hanging if activation never completes."""
+    await coresys.host.network.load()
+    network_manager_service.ActivateConnection.calls.clear()
+
+    # Simulate NetworkManager getting stuck activating and never reaching a
+    # terminal state (ACTIVATED/DEACTIVATED), which would otherwise hang
+    # apply_changes indefinitely (see `_wait_for_activation`). The fixture is
+    # module-level shared state, so it must be restored afterwards to avoid
+    # bleeding into other tests.
+    original_state = active_connection_service.fixture.state
+    active_connection_service.fixture.state = 1  # ACTIVATING
+    try:
+        with (
+            patch("supervisor.host.network.CONNECTION_ACTIVATION_TIMEOUT", 0.1),
+            pytest.raises(HostNetworkError, match="Timed out waiting"),
+        ):
+            await coresys.host.network.apply_changes(coresys.host.network.get("eth0"))
+    finally:
+        active_connection_service.fixture.state = original_state
+
     assert (
         "/org/freedesktop/NetworkManager/Settings/1",
         "/org/freedesktop/NetworkManager/Devices/1",
