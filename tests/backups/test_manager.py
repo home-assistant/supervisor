@@ -21,6 +21,7 @@ from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AppState, CoreState
 from supervisor.coresys import CoreSys
+from supervisor.discovery import CMD_DEL, Discovery
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
@@ -1724,6 +1725,62 @@ async def test_restore_twice_keeps_single_discovery_message(
         restored.uuid
         for restored in coresys.discovery.messages_for_app("local_example")
     ] == [message.uuid]
+
+
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
+async def test_full_restore_replaces_discovery_of_other_installation(
+    coresys: CoreSys, install_app_example: App
+):
+    """Test a full restore brings back the discovery uuid of the backup.
+
+    The app is in the backup and installed already, so the restore keeps it
+    installed and replaces its data. The uuid identifies that data, so the
+    message the app announced in the meantime is retracted and the one of the
+    backup takes its place.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0")
+    coresys.homeassistant.core.start = AsyncMock(return_value=None)
+    coresys.homeassistant.core.stop = AsyncMock(return_value=None)
+    coresys.homeassistant.core.update = AsyncMock(return_value=None)
+    coresys.homeassistant.core.restart = AsyncMock(return_value=None)
+    coresys.homeassistant.core.is_running = AsyncMock(return_value=True)
+
+    install_app_example.data["discovery"] = ["mcp"]
+    install_app_example.path_data.mkdir(parents=True, exist_ok=True)
+    config = {"url": "http://local-example:8099/mcp"}
+
+    with patch.object(HomeAssistantAPI, "check_api_state", return_value=False):
+        backup_message = await coresys.discovery.send(
+            install_app_example, "mcp", dict(config)
+        )
+        backup: Backup = await coresys.backups.do_backup_full()
+
+        # The app got reinstalled since, so it announces itself under a new uuid
+        await coresys.discovery.remove(backup_message)
+        live_message = await coresys.discovery.send(
+            install_app_example, "mcp", dict(config)
+        )
+        assert live_message.uuid != backup_message.uuid
+
+        with (
+            patch.object(AppModel, "_validate_availability"),
+            patch.object(DockerApp, "attach"),
+            patch.object(
+                Discovery, "_push_discovery", new=AsyncMock()
+            ) as push_discovery,
+        ):
+            assert await coresys.backups.do_restore_full(backup)
+            await asyncio.sleep(0)
+
+    assert "local_example" in coresys.apps.local
+    assert [
+        message.uuid for message in coresys.discovery.messages_for_app("local_example")
+    ] == [backup_message.uuid]
+    # Home Assistant is told to drop the entry of the replaced installation, the
+    # restored message is announced by the app once it runs
+    push_discovery.assert_called_once_with(live_message, CMD_DEL)
 
 
 @pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")

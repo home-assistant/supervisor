@@ -7,7 +7,7 @@ import pytest
 
 from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
-from supervisor.discovery import CMD_NEW, Message
+from supervisor.discovery import CMD_DEL, CMD_NEW, Message
 
 BACKUP_UUID = "e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3"
 MCP_CONFIG = {"url": "http://local-ssh:8099/mcp"}
@@ -88,31 +88,50 @@ async def test_restore_app_messages_announced_by_app(
     ] == [BACKUP_UUID]
 
 
-async def test_restore_app_messages_keeps_live_message(
+async def test_restore_app_messages_replaces_other_installation(
     coresys: CoreSys, app_with_discovery: App
 ):
-    """Test a live message under another uuid wins over the one of the backup.
+    """Test the message of the backup replaces a live one under another uuid.
 
-    Home Assistant knows the service by the uuid of the live message, so that
-    message stays, config included.
+    The uuid identifies an installation of the app. The restore replaces the
+    data of the app, so a live message under another uuid belongs to an
+    installation which is gone. It is retracted like on an uninstall, so that
+    Home Assistant drops its config entry, and the app announces the restored
+    message under the uuid of the backup once it runs.
     """
     live = await coresys.discovery.send(app_with_discovery, "mcp", dict(MCP_CONFIG))
     assert live.uuid != BACKUP_UUID
-
-    await coresys.discovery.restore_app_messages(
-        app_with_discovery,
-        [
-            Message(
-                app=app_with_discovery.slug,
-                service="mcp",
-                config={"url": "http://local-ssh:9999/mcp"},
-                uuid=BACKUP_UUID,
-            )
-        ],
+    restored = Message(
+        app=app_with_discovery.slug,
+        service="mcp",
+        config={"url": "http://local-ssh:9999/mcp"},
+        uuid=BACKUP_UUID,
     )
 
-    assert coresys.discovery.get(BACKUP_UUID) is None
-    assert coresys.discovery.messages_for_app(app_with_discovery.slug) == [live]
+    with patch.object(
+        type(coresys.discovery), "_push_discovery", new=AsyncMock()
+    ) as push:
+        await coresys.discovery.restore_app_messages(app_with_discovery, [restored])
+        await asyncio.sleep(0)
+
+        # Only the retraction reaches Home Assistant at this point
+        push.assert_called_once_with(live, CMD_DEL)
+        assert coresys.discovery.get(live.uuid) is None
+        assert coresys.discovery.get(BACKUP_UUID) == restored
+
+        # The app announces itself, under the uuid of the backup
+        push.reset_mock()
+        resent = await coresys.discovery.send(
+            app_with_discovery, "mcp", {"url": "http://local-ssh:9999/mcp"}
+        )
+        await asyncio.sleep(0)
+
+    assert resent.uuid == BACKUP_UUID
+    push.assert_called_once_with(restored, CMD_NEW)
+    assert [
+        message.uuid
+        for message in coresys.discovery.messages_for_app(app_with_discovery.slug)
+    ] == [BACKUP_UUID]
 
 
 async def test_restore_app_messages_skips_dropped_service(
@@ -270,6 +289,7 @@ async def test_restore_app_messages_service_only_once(
         message.uuid
         for message in coresys.discovery.messages_for_app(app_with_discovery.slug)
     ] == [BACKUP_UUID]
+    assert coresys.discovery.get(BACKUP_UUID).config == MCP_CONFIG
 
 
 async def test_messages_for_app(coresys: CoreSys, app_with_discovery: App):

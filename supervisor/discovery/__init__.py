@@ -132,34 +132,30 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         """Restore discovery messages of an app from a backup.
 
         Home Assistant ties a config entry to the uuid of the discovery message
-        it came from, so the uuid has to survive a backup/restore to keep that
-        link intact.
+        it came from. The uuid identifies an installation of the app, it stays
+        the same for as long as the data of the app does, and a restore brings
+        that data back, so the uuid of the backup comes with it.
 
-        A message of the backup replaces the message of the same uuid, as the
-        restore may bring back another version of the app which announces a
-        different config.
-
-        A message for a service which already has a message under a different
-        uuid is dropped instead, the live message wins. Home Assistant knows
-        the service by the uuid of that message whenever its config entries
-        were not part of the restore, and when they were, its entry may be
-        left stale. Home Assistant cannot be kept in sync in every case
-        anyway, an app which is not part of the restore keeps its message
-        either way, so the app decides.
+        A live message under the same uuid is the same installation, only its
+        config is taken from the backup, as the restore may bring back another
+        version of the app which announces a different config. A live message
+        under another uuid belongs to an installation which the restore just
+        replaced. It is retracted as an uninstall would, so that Home Assistant
+        drops its config entry, and the message of the backup takes its place.
 
         A restored message is not pushed to Home Assistant here. The service
         behind it is not up at this point, and it may never come up if the app
         is not started again. Instead it is marked as unannounced so that the
         push happens once the app sends the message itself.
         """
-        # Message per service, grown while restoring so that a backup listing a
-        # service twice does not end up with two messages for it
-        known = {
-            message.service: message for message in self.messages_for_app(app.slug)
-        }
+        live = {message.service: message for message in self.messages_for_app(app.slug)}
+        # Services restored so far, a backup listing a service twice keeps the first
+        seen: set[str] = set()
         restored = False
 
         for message in messages:
+            if message.service in seen:
+                continue
             if message.service not in app.discovery:
                 _LOGGER.info(
                     "Skipping discovery message for service %s, app %s does not provide it anymore",
@@ -168,30 +164,30 @@ class Discovery(CoreSysAttributes, FileConfiguration):
                 )
                 continue
 
-            if (exists_msg := known.get(message.service)) is not None:
-                if exists_msg.uuid != message.uuid:
+            if (live_msg := live.get(message.service)) is not None:
+                if live_msg.uuid == message.uuid:
+                    seen.add(message.service)
+                    if live_msg.config == message.config:
+                        continue
+                    live_msg.config = message.config
+                    self._unannounced.add(live_msg.uuid)
+                    restored = True
                     _LOGGER.info(
-                        "Keeping discovery %s for service %s of app %s, it replaces %s of the backup",
-                        exists_msg.uuid,
+                        "Restored config of discovery %s for service %s from %s",
+                        live_msg.uuid,
                         message.service,
                         app.slug,
-                        message.uuid,
                     )
                     continue
-                if exists_msg.config == message.config:
-                    continue
 
-                # Same message, but the backup was taken with another config
-                exists_msg.config = message.config
-                self._unannounced.add(exists_msg.uuid)
-                restored = True
                 _LOGGER.info(
-                    "Restored config of discovery %s for service %s from %s",
-                    exists_msg.uuid,
+                    "Retracting discovery %s for service %s from %s, the restore replaces it with %s",
+                    live_msg.uuid,
                     message.service,
                     app.slug,
+                    message.uuid,
                 )
-                continue
+                await self.remove(live_msg)
 
             if message.uuid in self.message_obj:
                 # Messages are keyed by uuid across all apps, so restoring this
@@ -206,7 +202,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
             self.message_obj[message.uuid] = message
             self._unannounced.add(message.uuid)
-            known[message.service] = message
+            seen.add(message.service)
             restored = True
             _LOGGER.info(
                 "Restored discovery %s for service %s from %s",
