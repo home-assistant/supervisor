@@ -39,8 +39,15 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.stats import DockerStats
-from ..exceptions import APIError, HassioError
+from ..exceptions import (
+    APIError,
+    APISystemNotReadyError,
+    HassioError,
+    JobConditionException,
+)
 from ..jobs import JobSchedulerOptions, SupervisorJob
+from ..jobs.const import JobCondition
+from ..jobs.decorator import Job
 from ..utils import get_message_from_exception_chain
 from ..utils.json import json_dumps, json_loads as json_loads_util
 from ..utils.sentry import async_capture_exception
@@ -181,6 +188,41 @@ def require_home_assistant(method):
         request: Request = args[0]
         if request[REQUEST_FROM] != coresys.homeassistant:
             raise HTTPUnauthorized
+        return await method(api, *args, **kwargs)
+
+    return wrap_api
+
+
+def require_running_system(method):
+    """Reject the API call unless Supervisor has fully started and is not frozen.
+
+    Supervisor boots apps and Home Assistant Core in a specific order, and
+    replays a similarly ordered sequence while restoring a backup (during
+    which it is in the freeze state). Starting, restarting, rebuilding or
+    updating something via the API while one of those sequences is still in
+    progress risks running it out of order, or blocking a scheduled start
+    from that sequence outright via job concurrency (see #7189). This does
+    not affect the internal calls Supervisor itself makes as part of those
+    sequences, only ones coming from the API.
+
+    This uses Job.check_conditions() directly instead of the @Job(...)
+    decorator on purpose: @Job() creates and tracks a full SupervisorJob
+    (job history, concurrency/throttle handling, ...) for the call it wraps,
+    and requires the wrapped object to be a JobGroup to use group-level
+    concurrency. The API view classes here are a separate layer from the
+    CoreSysAttributes business-logic classes (App, HomeAssistantCore, ...)
+    that already have their own @Job-decorated methods with that tracking;
+    wrapping the API handler in a second @Job would just create a duplicate,
+    misleading job entry for the same logical operation. check_conditions()
+    runs only the condition check, with none of that overhead.
+    """
+
+    async def wrap_api(api: CoreSysAttributes, *args, **kwargs) -> Any:
+        """Check system state then return API information."""
+        try:
+            await Job.check_conditions(api, {JobCondition.RUNNING}, method.__qualname__)
+        except JobConditionException as err:
+            raise APISystemNotReadyError from err
         return await method(api, *args, **kwargs)
 
     return wrap_api

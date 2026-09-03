@@ -33,7 +33,13 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIDBMigrationInProgress, APIError
 from ..validate import docker_image, network_port, version_tag
 from .const import ATTR_BACKGROUND, ATTR_FORCE, ATTR_SAFE_MODE
-from .utils import api_process, api_return_stats, api_validate, background_task
+from .utils import (
+    api_process,
+    api_return_stats,
+    api_validate,
+    background_task,
+    require_running_system,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -167,6 +173,7 @@ class APIHomeAssistant(CoreSysAttributes):
         return api_return_stats(stats, legacy=True)
 
     @api_process
+    @require_running_system
     async def update(self, request: web.Request) -> dict[str, str] | None:
         """Update Home Assistant."""
         body = await api_validate(SCHEMA_UPDATE, request)
@@ -194,11 +201,13 @@ class APIHomeAssistant(CoreSysAttributes):
         return await asyncio.shield(self.sys_homeassistant.core.stop())
 
     @api_process
+    @require_running_system
     def start(self, request: web.Request) -> Awaitable[None]:
         """Start Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.core.start())
 
     @api_process
+    @require_running_system
     async def restart(self, request: web.Request) -> None:
         """Restart Home Assistant."""
         body = await api_validate(SCHEMA_RESTART, request)
@@ -209,6 +218,7 @@ class APIHomeAssistant(CoreSysAttributes):
         )
 
     @api_process
+    @require_running_system
     async def rebuild(self, request: web.Request) -> None:
         """Rebuild Home Assistant."""
         body = await api_validate(SCHEMA_RESTART, request)

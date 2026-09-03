@@ -131,6 +131,26 @@ class APIUnknownSupervisorError(APIError):
         super().__init__(None, logger, job_id=job_id)
 
 
+class APISystemNotReadyError(APIError):
+    """Raise when an API call is rejected because Supervisor has not fully started.
+
+    Used by require_running_system to reject start/restart/rebuild/update
+    calls made while Supervisor's boot or backup-restore sequences are still
+    in progress (see #7189), instead of letting the internal
+    JobConditionException (meant for job/log consumers) bubble up as-is.
+    """
+
+    error_key = "system_not_ready_error"
+    message_template = (
+        "Supervisor has not fully started yet, please try again once startup "
+        "has completed"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
 # JobManager
 
 
