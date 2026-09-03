@@ -2,9 +2,16 @@
 
 from enum import StrEnum
 
+from awesomeversion import AwesomeVersion
+
 PARAM_BOOT_ID = "_BOOT_ID"
 PARAM_FOLLOW = "follow"
 PARAM_SYSLOG_IDENTIFIER = "SYSLOG_IDENTIFIER"
+
+# Writing NTP settings needs the timesyncd drop-in support of this OS Agent
+# release. Older agents write /etc/systemd/timesyncd.conf and fail on the
+# read-only /etc. HAOS 18.3.dev20260830 is the first build shipping it.
+NTP_MIN_OS_AGENT_VERSION = AwesomeVersion("1.13.0")
 
 
 class InterfaceMethod(StrEnum):
@@ -67,6 +74,7 @@ class HostFeature(StrEnum):
     JOURNAL = "journal"
     MOUNT = "mount"
     NETWORK = "network"
+    NTP = "ntp"
     OS_AGENT = "os_agent"
     REBOOT = "reboot"
     RESOLVED = "resolved"

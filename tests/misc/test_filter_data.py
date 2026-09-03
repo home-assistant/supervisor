@@ -153,6 +153,7 @@ async def test_not_started(coresys):
         filtered["contexts"]["docker"]["storage_driver"] == coresys.docker.info.storage
     )
     assert filtered["contexts"]["host"]["machine"] == coresys.machine
+    assert filtered["tags"]["storage_driver"] == coresys.docker.info.storage
 
 
 async def test_defaults(coresys):
@@ -164,6 +165,7 @@ async def test_defaults(coresys):
         filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert filtered["tags"]["installation_type"] == "supervised"
+    assert filtered["tags"]["storage_driver"] == coresys.docker.info.storage
     assert filtered["contexts"]["host"]["arch"] == "amd64"
     assert filtered["contexts"]["host"]["machine"] == "qemux86-64"
     assert filtered["contexts"]["versions"]["supervisor"] == AwesomeVersion(

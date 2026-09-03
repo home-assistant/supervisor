@@ -88,6 +88,7 @@ async def test_api_host_features(
     coresys.host.sys_dbus.agent.is_connected = False
     coresys.host.sys_dbus.resolved.is_connected = False
     coresys.host.sys_dbus.udisks2.is_connected = False
+    coresys.host.sys_dbus.agent.timesyncd.is_connected = False
 
     resp = await api_client.get(f"{prefix}/host/info")
     result = await resp.json()
@@ -98,6 +99,7 @@ async def test_api_host_features(
     assert "hostname" not in result["data"]["features"]
     assert "timedate" not in result["data"]["features"]
     assert "os_agent" not in result["data"]["features"]
+    assert "ntp" not in result["data"]["features"]
     assert "resolved" not in result["data"]["features"]
     assert "disk" not in result["data"]["features"]
 
@@ -144,6 +146,36 @@ async def test_api_host_features(
     resp = await api_client.get(f"{prefix}/host/info")
     result = await resp.json()
     assert "disk" in result["data"]["features"]
+
+
+@pytest.mark.parametrize("os_agent_version", ["1.13.0"], indirect=True)
+@pytest.mark.usefixtures("os_available", "os_agent_version")
+async def test_api_host_features_os(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys_disk_info: CoreSys,
+    dbus_is_connected,
+):
+    """Test host info features with OS available."""
+    api_client, prefix = api_client_with_prefix
+    coresys = coresys_disk_info
+
+    coresys.host.sys_dbus.agent.timesyncd.is_connected = False
+
+    resp = await api_client.get(f"{prefix}/host/info")
+    result = await resp.json()
+    assert "ntp" not in result["data"]["features"]
+
+    coresys.host.sys_dbus.agent.timesyncd.is_connected = True
+    coresys.host.supported_features.cache_clear()
+    resp = await api_client.get(f"{prefix}/host/info")
+    result = await resp.json()
+    assert "ntp" in result["data"]["features"]
+
+    coresys.host.sys_dbus.systemd.is_connected = False
+    coresys.host.supported_features.cache_clear()
+    resp = await api_client.get(f"{prefix}/host/info")
+    result = await resp.json()
+    assert "ntp" not in result["data"]["features"]
 
 
 async def test_api_llmnr_mdns_info(
@@ -1051,7 +1083,9 @@ async def test_set_hostname_invalid_returns_400(
     assert body["extra_fields"] == {"hostname": "bad name"}
 
 
-def _register_mount(coresys: CoreSys, name: str, state: UnitActiveState) -> Mount:
+def _register_mount(
+    coresys: CoreSys, name: str, state: UnitActiveState | None
+) -> Mount:
     """Register a CIFS mount with the manager in the given systemd state."""
     mount = Mount.from_dict(
         coresys,
@@ -1242,22 +1276,28 @@ async def test_disk_usage_api_unknown_mount(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-async def test_disk_usage_api_inactive_mount(
-    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+@pytest.mark.parametrize(
+    "stale_state",
+    [UnitActiveState.INACTIVE, UnitActiveState.FAILED, None],
+    ids=["dormant-trigger", "last-probe-failed", "state-unknown"],
+)
+async def test_disk_usage_api_probes_regardless_of_cached_state(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    stale_state: UnitActiveState | None,
 ):
-    """Test a mount that is not active cannot report usage."""
+    """Test usage comes from the probe, not cached mount state."""
     api_client, prefix = api_client_with_prefix
-    _register_mount(coresys, "media_test", UnitActiveState.FAILED)
+    _register_mount(coresys, "media_test", stale_state)
 
     with patch.object(coresys.hardware.disk, "disk_usage_for_mount") as mock_disk_usage:
+        mock_disk_usage.return_value = (2000000000, 999, 800000000)
         resp = await api_client.get(f"{prefix}/host/disks/media_test/usage")
 
-    assert resp.status == 400
+    assert resp.status == 200
     result = await resp.json()
-    assert result["error_key"] == "mount_usage_not_active_error"
-    assert result["extra_fields"] == {"name": "media_test"}
-    # Rejected before any probe is attempted
-    mock_disk_usage.assert_not_called()
+    assert result["data"]["used_bytes"] == 1200000000
+    mock_disk_usage.assert_called_once()
 
 
 @pytest.mark.usefixtures("active_mount")
@@ -1310,12 +1350,7 @@ async def test_disk_usage_api_mount_unreachable(
 async def test_disk_usage_api_ghost_mount(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
-    """Test a ghost mount is reported unreadable, not misreported.
-
-    systemd can still report a unit active after the path stopped being a
-    mount point; statvfs then silently returns the host data disk's numbers.
-    Serving those under the mount's name would be a plausible-looking lie.
-    """
+    """Test a vanished mount is an error, not host-disk numbers."""
     api_client, prefix = api_client_with_prefix
 
     with (

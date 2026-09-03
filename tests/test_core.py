@@ -12,11 +12,7 @@ from dbus_fast import DBusError, ErrorType, Variant
 import pytest
 
 from supervisor.const import AppStartup, CoreState
-from supervisor.core import (
-    _PORT_RESERVE_SERVICE,
-    _PORT_RESERVE_UNIT,
-    _format_bind_address,
-)
+from supervisor.core import _format_bind_address
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import DBUS_ERR_SYSTEMD_NO_SUCH_UNIT
 from supervisor.exceptions import (
@@ -543,7 +539,7 @@ async def test_start_reserves_core_port(
     # A transient socket unit must be created listening on every address
     assert len(systemd_service.StartTransientUnit.calls) == 1
     unit_name, mode, properties, aux = systemd_service.StartTransientUnit.calls[0]
-    assert unit_name == _PORT_RESERVE_UNIT
+    assert unit_name == "homeassistant-core-port-reserve.socket"
     assert mode == "replace"
     listen_property = next(value for key, value in properties if key == "Listen")
     assert listen_property == Variant(
@@ -558,14 +554,20 @@ async def test_start_reserves_core_port(
     # first incoming connection during boot would tear the reservation down
     assert len(aux) == 1
     service_name, service_properties = aux[0]
-    assert service_name == _PORT_RESERVE_SERVICE
+    assert service_name == "homeassistant-core-port-reserve.service"
     service_properties_dict = dict(service_properties)
     assert service_properties_dict["Type"] == Variant("s", "oneshot")
     assert service_properties_dict["RemainAfterExit"] == Variant("b", True)
 
     # Reservation must be released before Core starts
-    assert (_PORT_RESERVE_UNIT, "replace") in systemd_service.StopUnit.calls
-    assert (_PORT_RESERVE_SERVICE, "replace") in systemd_service.StopUnit.calls
+    assert (
+        "homeassistant-core-port-reserve.socket",
+        "replace",
+    ) in systemd_service.StopUnit.calls
+    assert (
+        "homeassistant-core-port-reserve.service",
+        "replace",
+    ) in systemd_service.StopUnit.calls
 
     # Core must have started
     coresys.homeassistant.core.start.assert_awaited_once()
@@ -732,7 +734,10 @@ async def test_start_cleans_up_stale_active_unit_before_reserving(
     await coresys.core.start()
 
     # The stale unit must have been stopped before the new one was started
-    assert (_PORT_RESERVE_UNIT, "replace") in systemd_service.StopUnit.calls
+    assert (
+        "homeassistant-core-port-reserve.socket",
+        "replace",
+    ) in systemd_service.StopUnit.calls
     assert len(systemd_service.StartTransientUnit.calls) == 1
     # It cleanly reached INACTIVE, so there was nothing to reset
     assert systemd_service.ResetFailedUnit.calls == []
@@ -762,8 +767,13 @@ async def test_release_core_port_resets_failed_unit(
     result = await coresys.core._release_core_port()
 
     assert result is False
-    assert (_PORT_RESERVE_UNIT, "replace") in systemd_service.StopUnit.calls
-    assert (_PORT_RESERVE_UNIT,) in systemd_service.ResetFailedUnit.calls
+    assert (
+        "homeassistant-core-port-reserve.socket",
+        "replace",
+    ) in systemd_service.StopUnit.calls
+    assert (
+        "homeassistant-core-port-reserve.socket",
+    ) in systemd_service.ResetFailedUnit.calls
 
 
 async def test_release_core_port_confirms_success_when_unit_goes_inactive(
