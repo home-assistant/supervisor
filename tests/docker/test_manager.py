@@ -32,10 +32,11 @@ from supervisor.exceptions import (
     DockerTimeoutError,
 )
 
+CORRUPT_CONTAINER_ID = (
+    "1b56493ca170514364e10113038a16e9d207cb16a229be55ed6139649a39ca4e"
+)
 CORRUPT_CONTAINER_MESSAGE = (
-    "RWLayer of container "
-    "1b56493ca170514364e10113038a16e9d207cb16a229be55ed6139649a39ca4e "
-    "is unexpectedly nil"
+    f"RWLayer of container {CORRUPT_CONTAINER_ID} is unexpectedly nil"
 )
 
 
@@ -800,6 +801,9 @@ async def test_container_is_initialized_corrupt_container(
         "mycontainer", "myimage", AwesomeVersion("1.0")
     )
 
+    # Read path: reported missing, nothing is removed here
+    container.delete.assert_not_called()
+
 
 async def test_stop_container_get_timeout(
     docker: DockerAPI, container: DockerContainer
@@ -858,6 +862,8 @@ async def test_start_container_corrupt_container(docker: DockerAPI):
     with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
         await docker.start_container("mycontainer")
 
+    docker.containers.container.return_value.delete.assert_not_called()
+
 
 async def test_start_container_corrupt_at_start(
     docker: DockerAPI, container: DockerContainer
@@ -868,9 +874,7 @@ async def test_start_container_corrupt_at_start(
     succeeds and the error only surfaces from the start call itself.
     """
     docker.coresys.run_in_executor = AsyncMock()
-    container.start.side_effect = aiodocker.DockerError(
-        500, "RWLayer of container 1b56493ca170 is unexpectedly nil"
-    )
+    container.start.side_effect = aiodocker.DockerError(500, CORRUPT_CONTAINER_MESSAGE)
     with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
         await docker.start_container("mycontainer")
 
@@ -905,7 +909,7 @@ async def test_restart_container_corrupt_at_restart(
     """
     docker.coresys.run_in_executor = AsyncMock()
     container.restart.side_effect = aiodocker.DockerError(
-        500, "RWLayer is unexpectedly nil for container 1b56493ca170"
+        500, "RWLayer is unexpectedly nil for container " + CORRUPT_CONTAINER_ID
     )
     with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
         await docker.restart_container("mycontainer", timeout=10)
