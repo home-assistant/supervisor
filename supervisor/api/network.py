@@ -127,8 +127,20 @@ def _validate_ip_config_v2(schema_key: str):
                 f"{schema_key}: at least one address is required when method is static"
             )
 
-        if config.get(ATTR_GATEWAY) and not addresses:
-            raise vol.Invalid(f"{schema_key}: gateway requires at least one address")
+        if config[ATTR_METHOD] != InterfaceMethod.STATIC and (
+            addresses or config.get(ATTR_GATEWAY)
+        ):
+            # Not supported/configurable via Supervisor today - an externally
+            # managed profile with a non-static method plus manual
+            # addresses/gateway isn't something we can round-trip (only
+            # `static` is serialized back out), see #7110. This also
+            # supersedes (and subsumes) the old "gateway requires an
+            # address" check below: with `static` required for either field
+            # to be set at all, and `static` itself requiring a non-empty
+            # `addresses`, a gateway can no longer be supplied without one.
+            raise vol.Invalid(
+                f"{schema_key}: addresses and gateway are only supported when method is static"
+            )
 
         return config
 
@@ -175,7 +187,7 @@ _SCHEMA_WIFI_CONFIG_V2 = vol.All(
     vol.Schema(
         {
             vol.Required(ATTR_MODE): vol.Coerce(WifiMode),
-            vol.Required(ATTR_SSID): str,
+            vol.Required(ATTR_SSID): vol.All(str, vol.Length(min=1)),
             vol.Required(ATTR_AUTH): vol.Coerce(AuthMethod),
             vol.Optional(ATTR_PSK): str,
             # Read-only marker returned by GET, accepted (and ignored) here so
@@ -479,6 +491,20 @@ class APINetwork(CoreSysAttributes):
         interface = resolved.interface
 
         body = await api_validate(SCHEMA_CONFIG_V2, request)
+
+        if not resolved.has_profile and not body[ATTR_ENABLED]:
+            # No stored connection profile exists for this interface at all
+            # (GET reports `config: null`), and this PUT wouldn't create one
+            # since disabling never activates a new connection - it would
+            # just report success while leaving `config: null` unchanged,
+            # breaking the full-document replace contract. Creating a
+            # profile that starts out disabled isn't a feature we need to
+            # support, so reject this combination as an explicit exception
+            # to round-tripping for now; revisit with `config_source` (#7110).
+            raise APIError(
+                f"Interface {interface.name} has no existing configuration; "
+                "it cannot be replaced with a disabled one"
+            )
 
         if interface.type == InterfaceType.WIRELESS and body.get(ATTR_WIFI) is None:
             raise APIError(

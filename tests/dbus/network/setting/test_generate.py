@@ -148,6 +148,13 @@ async def test_generate_from_wireless(network_manager: NetworkManager):
     # dict) rather than merely absent, so a switch away from WPA/WEP on an
     # existing profile removes the stale section instead of leaving it be.
     assert connection_payload["802-11-wireless-security"] == {}
+    # The `802-11-wireless.security` reference property (which points at the
+    # `802-11-wireless-security` section by name) must also be explicitly
+    # cleared. `NetworkSetting.update()` merges the `802-11-wireless` section
+    # rather than replacing it, so a stale reference left over from a prior
+    # WPA/WEP profile would otherwise survive a switch to open auth and
+    # point at a now-removed section.
+    assert connection_payload["802-11-wireless"]["security"].value == ""
 
 
 async def test_generate_from_wireless_mode_and_security(
