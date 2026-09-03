@@ -56,7 +56,12 @@ from .manager import CommandReturn, ExecReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
 from .pull_progress import ImagePullProgress
 from .stats import DockerStats
-from .utils import get_registry_from_image, split_docker_domain, split_image_tag
+from .utils import (
+    get_registry_from_image,
+    is_corrupt_container_error,
+    split_docker_domain,
+    split_image_tag,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -422,6 +427,20 @@ class DockerInterface(JobGroup, ABC):
             ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
+                return None
+            if is_corrupt_container_error(err):
+                # The container's RW layer failed to load when the daemon
+                # restored its state, leaving the record unusable for this
+                # daemon's lifetime. Report it as missing: since Supervisor
+                # can recreate any of its containers, recovery paths then
+                # recreate this one, removing the broken record along the way
+                # in the job-locked stop/start paths.
+                _LOGGER.warning(
+                    "Container %s storage metadata is corrupt, "
+                    "treating the container as missing: %s",
+                    self.name,
+                    err,
+                )
                 return None
             raise DockerAPIError(
                 f"Docker API error occurred while getting container information: {err!s}"

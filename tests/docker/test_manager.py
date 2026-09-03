@@ -32,6 +32,13 @@ from supervisor.exceptions import (
     DockerTimeoutError,
 )
 
+CORRUPT_CONTAINER_ID = (
+    "1b56493ca170514364e10113038a16e9d207cb16a229be55ed6139649a39ca4e"
+)
+CORRUPT_CONTAINER_MESSAGE = (
+    f"RWLayer of container {CORRUPT_CONTAINER_ID} is unexpectedly nil"
+)
+
 
 async def test_run_command_success(docker: DockerAPI, container: DockerContainer):
     """Test successful command execution."""
@@ -785,6 +792,19 @@ async def test_container_is_initialized_timeout(
         )
 
 
+async def test_container_is_initialized_corrupt_container(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_is_initialized treats a corrupt container as missing."""
+    container.show.side_effect = aiodocker.DockerError(500, CORRUPT_CONTAINER_MESSAGE)
+    assert not await docker.container_is_initialized(
+        "mycontainer", "myimage", AwesomeVersion("1.0")
+    )
+
+    # Read path: reported missing, nothing is removed here
+    container.delete.assert_not_called()
+
+
 async def test_stop_container_get_timeout(
     docker: DockerAPI, container: DockerContainer
 ):
@@ -834,6 +854,33 @@ async def test_start_container_start_timeout(
         await docker.start_container("mycontainer")
 
 
+async def test_start_container_corrupt_container(docker: DockerAPI):
+    """Test start_container treats a corrupt container as missing."""
+    docker.containers.get.side_effect = aiodocker.DockerError(
+        500, CORRUPT_CONTAINER_MESSAGE
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.start_container("mycontainer")
+
+    docker.containers.container.return_value.delete.assert_not_called()
+
+
+async def test_start_container_corrupt_at_start(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test start_container removes a container that turns out corrupt on start.
+
+    With the containerd image store the inspect of a corrupt container
+    succeeds and the error only surfaces from the start call itself.
+    """
+    docker.coresys.run_in_executor = AsyncMock()
+    container.start.side_effect = aiodocker.DockerError(500, CORRUPT_CONTAINER_MESSAGE)
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.start_container("mycontainer")
+
+    container.delete.assert_called_once_with(force=True, v=True)
+
+
 async def test_restart_container_get_timeout(docker: DockerAPI):
     """Test restart_container raises DockerTimeoutError when containers.get times out."""
     docker.containers.get.side_effect = TimeoutError()
@@ -843,12 +890,48 @@ async def test_restart_container_get_timeout(docker: DockerAPI):
         await docker.restart_container("mycontainer", timeout=10)
 
 
+async def test_restart_container_corrupt_container(docker: DockerAPI):
+    """Test restart_container treats a corrupt container as missing."""
+    docker.containers.get.side_effect = aiodocker.DockerError(
+        500, CORRUPT_CONTAINER_MESSAGE
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.restart_container("mycontainer", timeout=10)
+
+
+async def test_restart_container_corrupt_at_restart(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test restart_container removes a container that turns out corrupt on restart.
+
+    With the containerd image store the inspect of a corrupt container
+    succeeds and the error only surfaces from the restart call itself.
+    """
+    docker.coresys.run_in_executor = AsyncMock()
+    container.restart.side_effect = aiodocker.DockerError(
+        500, "RWLayer is unexpectedly nil for container " + CORRUPT_CONTAINER_ID
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.restart_container("mycontainer", timeout=10)
+
+    container.delete.assert_called_once_with(force=True, v=True)
+
+
 async def test_container_logs_get_timeout(docker: DockerAPI):
     """Test container_logs raises DockerTimeoutError when containers.get times out."""
     docker.containers.get.side_effect = TimeoutError()
     with pytest.raises(
         DockerTimeoutError, match="Timeout getting container .* for logs"
     ):
+        await docker.container_logs("mycontainer")
+
+
+async def test_container_logs_corrupt_container(docker: DockerAPI):
+    """Test container_logs treats a corrupt container as missing."""
+    docker.containers.get.side_effect = aiodocker.DockerError(
+        500, CORRUPT_CONTAINER_MESSAGE
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
         await docker.container_logs("mycontainer")
 
 

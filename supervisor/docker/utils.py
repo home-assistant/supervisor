@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 import re
+
+import aiodocker
 
 from .const import DOCKER_HUB
 
@@ -22,6 +25,24 @@ IMAGE_DOMAIN_REGEX = re.compile(
     rf"(?:{_DOMAIN_NAME_COMPONENT}(?:\.{_DOMAIN_NAME_COMPONENT})*|{_IPV6_ADDRESS})"
     r"(?::[0-9]+)?"
 )
+
+# Error for a container whose RW layer could not be loaded when the daemon
+# restored its state at startup, e.g. because an unclean shutdown corrupted
+# the storage metadata. Docker >= 29.4 keeps such containers registered so
+# they can still be removed (https://github.com/moby/moby/pull/51724), but
+# inspecting them fails with 500 and this message — except with the
+# containerd image store, where the inspect succeeds and the error only
+# surfaces on start/restart. Docker phrases the message differently per
+# call site (container id or name, word order), hence the loose pattern;
+# "unexpectedly nil" appears nowhere else in Docker.
+CORRUPT_CONTAINER_REGEX = re.compile(r"RWLayer.*unexpectedly nil")
+
+
+def is_corrupt_container_error(err: aiodocker.DockerError) -> bool:
+    """Return True if the error is an operation on a corrupt container."""
+    return err.status == HTTPStatus.INTERNAL_SERVER_ERROR and bool(
+        CORRUPT_CONTAINER_REGEX.search(str(err))
+    )
 
 
 def split_docker_domain(image_ref: str) -> tuple[str | None, str]:
