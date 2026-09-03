@@ -315,5 +315,11 @@ def get_connection_from_interface(
             # otherwise survive a switch to open auth. An empty dict here
             # tells it to remove the section instead of merging it.
             conn[CONF_ATTR_802_WIRELESS_SECURITY] = {}
+            # Also clear the `802-11-wireless.security` reference property.
+            # `NetworkSetting.update()` merges (rather than replaces) the
+            # `802-11-wireless` section, so a stale reference pointing at
+            # the now-removed security section would otherwise survive and
+            # NetworkManager can reject the resulting profile as invalid.
+            wireless["security"] = Variant("s", "")
 
     return conn

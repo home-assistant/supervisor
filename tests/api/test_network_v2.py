@@ -143,7 +143,11 @@ async def test_api_network_update_config_v2_round_trip(api_client_v2: TestClient
         ),
         (
             {"method": "auto", "gateway": "192.168.2.1", "addresses": []},
-            "gateway requires at least one address",
+            "addresses and gateway are only supported when method is static",
+        ),
+        (
+            {"method": "auto", "addresses": ["192.168.2.148/24"]},
+            "addresses and gateway are only supported when method is static",
         ),
     ],
 )
@@ -192,6 +196,37 @@ async def test_api_network_update_config_v2_psk_without_wpa(
     assert "psk is only valid when auth is wpa-psk" in result["message"]
 
 
+async def test_api_network_update_config_v2_empty_ssid(
+    api_client_v2: TestClient,
+):
+    """Test v2 config PUT rejects an empty ssid.
+
+    An empty ssid passes through to NetworkManager as if no ssid was set at
+    all (the generator only sets the property for a truthy ssid), which is
+    rejected at activation time with a confusing error rather than an
+    immediate 400 - so reject it up front instead.
+    """
+    resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}")
+    result = await resp.json()
+    config = result["data"]["config"] or {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+    }
+    config["wifi"] = {
+        "mode": "infrastructure",
+        "ssid": "",
+        "auth": "open",
+    }
+
+    resp = await api_client_v2.put(
+        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+    )
+    assert resp.status == 400
+
+
 @pytest.mark.parametrize(
     ("interface_name", "wifi_override", "message_snippet"),
     [
@@ -224,6 +259,10 @@ async def test_api_network_update_config_v2_wifi_type_mismatch(
         "mdns": "default",
         "llmnr": "default",
     }
+    # The fixture's stored ipv4 config has leftover addresses/gateway despite
+    # an `auto` method, which isn't itself under test here (and is now
+    # rejected on PUT, see `test_api_network_update_config_v2_invalid_ipv4`).
+    config["ipv4"] = {"method": "auto"}
     config["wifi"] = wifi_override
 
     resp = await api_client_v2.put(
@@ -242,6 +281,10 @@ async def test_api_network_update_config_v2_disable_non_destructive(
     resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_ETH_NAME}")
     result = await resp.json()
     config = result["data"]["config"]
+    # The fixture's stored ipv4 config has leftover addresses/gateway despite
+    # an `auto` method, which isn't itself under test here (and is now
+    # rejected on PUT, see `test_api_network_update_config_v2_invalid_ipv4`).
+    config["ipv4"] = {"method": "auto"}
     config["enabled"] = False
 
     resp = await api_client_v2.put(
@@ -251,6 +294,40 @@ async def test_api_network_update_config_v2_disable_non_destructive(
     result = await resp.json()
     assert result["data"]["config"]["enabled"] is False
     assert result["data"]["config"] is not None
+
+
+async def test_api_network_update_config_v2_disable_without_profile(
+    api_client_v2: TestClient,
+):
+    """Test disabling via v2 config PUT is rejected when there's no stored profile.
+
+    Unlike a PUT that would create a new (enabled) profile, a disabled one
+    can never be activated, so it wouldn't actually get persisted - silently
+    accepting it would leave `config: null` unchanged, breaking the
+    full-document replace contract (R5). This is an explicit exception to
+    round-tripping for now, see #7110.
+    """
+    resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}")
+    result = await resp.json()
+    assert result["data"]["config"] is None
+
+    config = {
+        "enabled": False,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+        "wifi": {
+            "mode": "infrastructure",
+            "ssid": "test",
+            "auth": "open",
+        },
+    }
+
+    resp = await api_client_v2.put(
+        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+    )
+    assert resp.status == 400
 
 
 async def test_api_network_update_config_v2_wifi(
@@ -345,6 +422,10 @@ async def test_api_network_update_config_v2_mdns_llmnr(
     resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_ETH_NAME}")
     result = await resp.json()
     config = result["data"]["config"]
+    # The fixture's stored ipv4 config has leftover addresses/gateway despite
+    # an `auto` method, which isn't itself under test here (and is now
+    # rejected on PUT, see `test_api_network_update_config_v2_invalid_ipv4`).
+    config["ipv4"] = {"method": "auto"}
     config["mdns"] = "resolve"
     config["llmnr"] = "off"
 
