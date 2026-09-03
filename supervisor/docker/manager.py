@@ -937,7 +937,11 @@ class DockerAPI(CoreSysAttributes):
             await self._remove_container_record(name)
 
     async def _remove_container_record(self, name: str) -> None:
-        """Force remove a container and its cid file without inspecting it."""
+        """Force remove a container and its cid file without inspecting it.
+
+        Only safe under the container's job lock (stop/start/restart), where
+        no concurrent lifecycle operation can have recreated the name.
+        """
         with suppress(aiodocker.DockerError):
             await self.containers.container(name).delete(force=True, v=True)
 

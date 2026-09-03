@@ -433,8 +433,8 @@ class DockerInterface(JobGroup, ABC):
                 # restored its state, leaving the record unusable for this
                 # daemon's lifetime. Report it as missing: since Supervisor
                 # can recreate any of its containers, recovery paths then
-                # recreate this one, with stop_container's force delete
-                # removing the broken record without inspecting it first.
+                # recreate this one, removing the broken record along the way
+                # in the job-locked stop/start paths.
                 _LOGGER.warning(
                     "Container %s storage metadata is corrupt, "
                     "treating the container as missing: %s",

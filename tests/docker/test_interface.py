@@ -250,6 +250,9 @@ async def test_corrupt_container_treated_as_missing(
     assert not await coresys.homeassistant.core.instance.is_running()
     assert "storage metadata is corrupt" in caplog.text
 
+    # Read path: reported missing, nothing is removed here
+    coresys.docker.containers.get.return_value.delete.assert_not_called()
+
 
 async def test_current_state_timeout(coresys: CoreSys):
     """Test timeout while reading container state raises DockerTimeoutError."""
