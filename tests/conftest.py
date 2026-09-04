@@ -16,7 +16,7 @@ from aiodocker.execs import Exec
 from aiodocker.networks import DockerNetwork, DockerNetworks
 from aiodocker.system import DockerSystem
 from aiodocker.volumes import DockerVolumes
-from aiohttp import ClientSession, web
+from aiohttp import ClientSession, web, web_app as aiohttp_web_app
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from blockbuster import BlockBuster, BlockBusterFunction
@@ -108,6 +108,28 @@ def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
     blockbuster.activate()
     yield blockbuster
     blockbuster.deactivate()
+
+
+@pytest.fixture(autouse=True)
+def _clear_aiohttp_middleware_cache() -> Generator[None]:
+    """Clear aiohttp's process-wide middleware-build cache after each test.
+
+    ``aiohttp.web_app._build_middlewares`` is memoized via a module-level
+    ``functools.lru_cache(maxsize=1024)`` (``_cached_build_middleware``)
+    keyed on the route handler and the chain of ``Application`` instances
+    involved. This test suite builds a fresh ``RestAPI``/``web.Application``
+    (with route handlers bound to a fresh ``CoreSys``) for nearly every
+    test, so each test populates new cache entries that are never reused by
+    later tests. Left uncleared, up to 1024 stale entries accumulate over a
+    full test run, each one pinning an entire ``CoreSys`` object graph
+    (docker mocks, D-Bus proxies, aiohttp routes, etc.) in memory - causing
+    steady memory growth that can OOM long/full suite runs. Use ``getattr``
+    defensively since this reaches into an aiohttp private implementation
+    detail that could change/disappear in a future aiohttp release.
+    """
+    yield
+    if cache := getattr(aiohttp_web_app, "_cached_build_middleware", None):
+        cache.cache_clear()
 
 
 @pytest.fixture
