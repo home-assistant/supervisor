@@ -281,11 +281,11 @@ class RestAPI(CoreSysAttributes):
         if app is self.versions[AppVersion.V1]:
             app.add_routes(
                 [
-                    web.get("/network/info", api_network.info),
+                    web.get("/network/info", api_network.info_v1),
                     web.post("/network/reload", api_network.reload),
                     web.get(
                         "/network/interface/{interface}/info",
-                        api_network.interface_info,
+                        api_network.interface_info_v1,
                     ),
                     web.post(
                         "/network/interface/{interface}/update",
@@ -305,14 +305,12 @@ class RestAPI(CoreSysAttributes):
         if app is self.versions[AppVersion.V2]:
             app.add_routes(
                 [
-                    web.get("/network/info", api_network.info_v2),
+                    web.get("/network/info", api_network.info),
                     web.post("/network/reload", api_network.reload),
-                    web.get(
-                        "/network/interfaces/{name}", api_network.interface_info_v2
-                    ),
+                    web.get("/network/interfaces/{name}", api_network.interface_info),
                     web.put(
                         "/network/interfaces/{name}/config",
-                        api_network.update_config_v2,
+                        api_network.update_config,
                     ),
                     web.get(
                         "/network/interfaces/{interface}/accesspoints",

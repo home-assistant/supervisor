@@ -256,7 +256,7 @@ def vlan_struct(config: VlanConfig) -> dict[str, Any]:
     }
 
 
-def interface_struct(interface: Interface) -> dict[str, Any]:
+def interface_struct_v1(interface: Interface) -> dict[str, Any]:
     """Return a dict with information of a interface to be used in th API."""
     return {
         ATTR_INTERFACE: interface.name,
@@ -373,7 +373,7 @@ def interface_config_struct(resolved: ResolvedInterface) -> dict[str, Any] | Non
     }
 
 
-def interface_struct_v2(resolved: ResolvedInterface) -> dict[str, Any]:
+def interface_struct(resolved: ResolvedInterface) -> dict[str, Any]:
     """Return a dict with information of an interface for the v2 API."""
     interface = resolved.interface
     return {
@@ -418,11 +418,11 @@ class APINetwork(CoreSysAttributes):
         raise APINotFound(f"Interface {name} does not exist") from None
 
     @api_process
-    async def info(self, _: web.Request) -> dict[str, Any]:
+    async def info_v1(self, _: web.Request) -> dict[str, Any]:
         """Return network information."""
         return {
             ATTR_INTERFACES: [
-                interface_struct(interface)
+                interface_struct_v1(interface)
                 for interface in self.sys_host.network.interfaces
             ],
             ATTR_DOCKER: {
@@ -436,13 +436,13 @@ class APINetwork(CoreSysAttributes):
         }
 
     @api_process
-    async def interface_info(self, request: web.Request) -> dict[str, Any]:
+    async def interface_info_v1(self, request: web.Request) -> dict[str, Any]:
         """Return network information for a interface."""
         interface = self._get_interface(request.match_info[ATTR_INTERFACE])
 
-        return interface_struct(interface)
+        return interface_struct_v1(interface)
 
-    async def _get_resolved_interface_v2(self, name: str) -> ResolvedInterface:
+    async def _get_resolved_interface(self, name: str) -> ResolvedInterface:
         """Get a resolved interface (state+config) by name for the v2 API.
 
         Unlike `_get_interface()`, this does not support the `default` alias
@@ -459,11 +459,11 @@ class APINetwork(CoreSysAttributes):
         return resolved
 
     @api_process
-    async def info_v2(self, _: web.Request) -> dict[str, Any]:
+    async def info(self, _: web.Request) -> dict[str, Any]:
         """Return network information (v2)."""
         return {
             ATTR_INTERFACES: [
-                interface_struct_v2(resolved)
+                interface_struct(resolved)
                 for resolved in await self.sys_host.network.interfaces_with_config()
                 if resolved.interface.type != InterfaceType.VLAN
             ],
@@ -478,16 +478,16 @@ class APINetwork(CoreSysAttributes):
         }
 
     @api_process
-    async def interface_info_v2(self, request: web.Request) -> dict[str, Any]:
+    async def interface_info(self, request: web.Request) -> dict[str, Any]:
         """Return network information for an interface (v2)."""
-        resolved = await self._get_resolved_interface_v2(request.match_info[ATTR_NAME])
+        resolved = await self._get_resolved_interface(request.match_info[ATTR_NAME])
 
-        return interface_struct_v2(resolved)
+        return interface_struct(resolved)
 
     @api_process
-    async def update_config_v2(self, request: web.Request) -> dict[str, Any]:
+    async def update_config(self, request: web.Request) -> dict[str, Any]:
         """Replace the desired configuration of an interface (v2)."""
-        resolved = await self._get_resolved_interface_v2(request.match_info[ATTR_NAME])
+        resolved = await self._get_resolved_interface(request.match_info[ATTR_NAME])
         interface = resolved.interface
 
         body = await api_validate(SCHEMA_CONFIG_V2, request)
@@ -552,7 +552,7 @@ class APINetwork(CoreSysAttributes):
         await asyncio.shield(self.sys_host.network.apply_changes_v2(interface))
 
         updated = await self.sys_host.network.get_with_config(interface.name)
-        return interface_struct_v2(updated)
+        return interface_struct(updated)
 
     @api_process
     async def interface_update(self, request: web.Request) -> None:
