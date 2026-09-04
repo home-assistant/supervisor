@@ -16,6 +16,7 @@ from ..dbus.const import (
 )
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
+from ..dbus.network.setting import NetworkSetting, connection_matches_device
 from .const import (
     AuthMethod,
     InterfaceAddrGenMode,
@@ -85,6 +86,10 @@ class WifiConfig:
     auth: AuthMethod
     psk: str | None
     signal: int | None
+    # SSID of the currently connected access point, from the device's active
+    # connection rather than the stored profile - unlike `ssid` above, this
+    # reflects observed state and is `None` when not actually connected.
+    active_ssid: str | None = None
 
 
 @dataclass(slots=True)
@@ -125,16 +130,28 @@ class Interface:
         if not inet.settings:
             return False
 
+        return self.matches_settings(inet, inet.settings)
+
+    def matches_settings(
+        self, inet: NetworkInterface, settings: NetworkSetting
+    ) -> bool:
+        """Return true if given settings represent this interface.
+
+        Unlike `equals_dbus_interface()`, this does not require `settings` to
+        come from an active connection (`inet.settings`), so it can also be
+        used against settings resolved independent of activation (see
+        `NetworkManager.find_connection_settings()`).
+        """
         # Special handling for VLAN interfaces
         if self.type == InterfaceType.VLAN and inet.type == DeviceType.VLAN:
             if not self.vlan:
                 raise RuntimeError("VLAN information missing")
 
-            if inet.settings.vlan:
+            if settings.vlan:
                 # For VLANs, compare by VLAN id and parent interface
                 return (
-                    inet.settings.vlan.id == self.vlan.id
-                    and inet.settings.vlan.parent == self.vlan.interface
+                    settings.vlan.id == self.vlan.id
+                    and settings.vlan.parent == self.vlan.interface
                 )
             return False
 
@@ -144,60 +161,62 @@ class Interface:
         ]:
             return False
 
-        if inet.settings.match and inet.settings.match.path:
-            return inet.settings.match.path == [self.path]
-
-        return (
-            inet.settings.connection is not None
-            and inet.settings.connection.interface_name == self.name
+        return connection_matches_device(
+            settings, interface_name=self.name, path=self.path
         )
 
     @staticmethod
-    def from_dbus_interface(inet: NetworkInterface) -> Interface:
-        """Coerce a dbus interface into normal Interface."""
-        if inet.settings and inet.settings.ipv4:
+    def from_dbus_interface(
+        inet: NetworkInterface, resolved_settings: NetworkSetting | None = None
+    ) -> Interface:
+        """Coerce a dbus interface into normal Interface.
+
+        `resolved_settings` allows passing in connection settings resolved
+        independent of activation (e.g. via `NetworkManager.find_connection_settings()`)
+        so config remains visible/usable even when the device has no active
+        connection. When omitted, behavior is unchanged: settings are only
+        available through `inet.settings` (i.e. an active connection).
+        """
+        settings = resolved_settings or inet.settings
+        if settings and settings.ipv4:
             ipv4_setting = IpSetting(
-                method=Interface._map_nm_method(inet.settings.ipv4.method),
+                method=Interface._map_nm_method(settings.ipv4.method),
                 address=[
                     IPv4Interface(f"{ip.address}/{ip.prefix}")
-                    for ip in inet.settings.ipv4.address_data
+                    for ip in settings.ipv4.address_data
                 ]
-                if inet.settings.ipv4.address_data
+                if settings.ipv4.address_data
                 else [],
-                gateway=IPv4Address(inet.settings.ipv4.gateway)
-                if inet.settings.ipv4.gateway
+                gateway=IPv4Address(settings.ipv4.gateway)
+                if settings.ipv4.gateway
                 else None,
-                route_metric=inet.settings.ipv4.route_metric,
-                nameservers=[
-                    IPv4Address(socket.ntohl(ip)) for ip in inet.settings.ipv4.dns
-                ]
-                if inet.settings.ipv4.dns
+                route_metric=settings.ipv4.route_metric,
+                nameservers=[IPv4Address(socket.ntohl(ip)) for ip in settings.ipv4.dns]
+                if settings.ipv4.dns
                 else [],
             )
         else:
             ipv4_setting = IpSetting(InterfaceMethod.DISABLED, [], None, None, [])
 
-        if inet.settings and inet.settings.ipv6:
+        if settings and settings.ipv6:
             ipv6_setting = Ip6Setting(
-                method=Interface._map_nm_method(inet.settings.ipv6.method),
+                method=Interface._map_nm_method(settings.ipv6.method),
                 addr_gen_mode=Interface._map_nm_addr_gen_mode(
-                    inet.settings.ipv6.addr_gen_mode
+                    settings.ipv6.addr_gen_mode
                 ),
-                ip6_privacy=Interface._map_nm_ip6_privacy(
-                    inet.settings.ipv6.ip6_privacy
-                ),
+                ip6_privacy=Interface._map_nm_ip6_privacy(settings.ipv6.ip6_privacy),
                 address=[
                     IPv6Interface(f"{ip.address}/{ip.prefix}")
-                    for ip in inet.settings.ipv6.address_data
+                    for ip in settings.ipv6.address_data
                 ]
-                if inet.settings.ipv6.address_data
+                if settings.ipv6.address_data
                 else [],
-                gateway=IPv6Address(inet.settings.ipv6.gateway)
-                if inet.settings.ipv6.gateway
+                gateway=IPv6Address(settings.ipv6.gateway)
+                if settings.ipv6.gateway
                 else None,
-                route_metric=inet.settings.ipv6.route_metric,
-                nameservers=[IPv6Address(bytes(ip)) for ip in inet.settings.ipv6.dns]
-                if inet.settings.ipv6.dns
+                route_metric=settings.ipv6.route_metric,
+                nameservers=[IPv6Address(bytes(ip)) for ip in settings.ipv6.dns]
+                if settings.ipv6.dns
                 else [],
             )
         else:
@@ -212,9 +231,9 @@ class Interface:
             and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
         )
 
-        if inet.settings and inet.settings.connection:
-            mdns = inet.settings.connection.mdns
-            llmnr = inet.settings.connection.llmnr
+        if settings and settings.connection:
+            mdns = settings.connection.mdns
+            llmnr = settings.connection.llmnr
         else:
             mdns = None
             llmnr = None
@@ -253,7 +272,7 @@ class Interface:
             if inet.connection and inet.connection.ipv6
             else IpConfig([], None, [], ipv6_ready),
             ipv6setting=ipv6_setting,
-            wifi=Interface._map_nm_wifi(inet),
+            wifi=Interface._map_nm_wifi(inet, settings),
             vlan=Interface._map_nm_vlan(inet),
             mdns=Interface._map_nm_multicast_dns(mdns),
             llmnr=Interface._map_nm_multicast_dns(llmnr),
@@ -338,46 +357,54 @@ class Interface:
                 raise ValueError(f"Invalid device type: {device_type}")
 
     @staticmethod
-    def _map_nm_wifi(inet: NetworkInterface) -> WifiConfig | None:
+    def _map_nm_wifi(
+        inet: NetworkInterface, settings: NetworkSetting | None
+    ) -> WifiConfig | None:
         """Create mapping to nm wifi property."""
-        if inet.type != DeviceType.WIRELESS or not inet.settings:
+        if inet.type != DeviceType.WIRELESS or not settings:
             return None
 
         # Authentication and PSK
         auth = AuthMethod.OPEN
         psk = None
-        if inet.settings.wireless_security:
-            match inet.settings.wireless_security.key_mgmt:
+        if settings.wireless_security:
+            match settings.wireless_security.key_mgmt:
                 case "none":
                     auth = AuthMethod.WEP
                 case "wpa-psk":
                     auth = AuthMethod.WPA_PSK
-                    psk = inet.settings.wireless_security.psk
+                    psk = settings.wireless_security.psk
                 case _:
                     _LOGGER.warning(
                         "Auth method %s for network interface %s unsupported, skipping",
-                        inet.settings.wireless_security.key_mgmt,
+                        settings.wireless_security.key_mgmt,
                         inet.interface_name,
                     )
                     return None
 
         # WifiMode
         mode = WifiMode.INFRASTRUCTURE
-        if inet.settings.wireless and inet.settings.wireless.mode:
-            mode = WifiMode(inet.settings.wireless.mode)
+        if settings.wireless and settings.wireless.mode:
+            mode = WifiMode(settings.wireless.mode)
 
-        # Signal
+        # Signal and SSID of the currently connected access point (observed
+        # state) - distinct from `ssid` above, which is the stored profile's
+        # desired SSID and may not match what's actually connected (or
+        # anything, if not connected at all).
         if inet.wireless and inet.wireless.active:
             signal = inet.wireless.active.strength
+            active_ssid = inet.wireless.active.ssid
         else:
             signal = None
+            active_ssid = None
 
         return WifiConfig(
             mode=mode,
-            ssid=inet.settings.wireless.ssid if inet.settings.wireless else "",
+            ssid=settings.wireless.ssid if settings.wireless else "",
             auth=auth,
             psk=psk,
             signal=signal,
+            active_ssid=active_ssid,
         )
 
     @staticmethod
@@ -394,3 +421,20 @@ class Interface:
             return None
 
         return _MULTICAST_DNS_VALUE_MODE_MAPPING.get(mode)
+
+
+@dataclass(slots=True)
+class ResolvedInterface:
+    """An `Interface` paired with v2 config-resolution bookkeeping.
+
+    `has_profile` is true if a stored connection profile was found for the
+    interface (active or not, via `NetworkManager.find_connection_settings()`)
+    - used by the v2 API to decide whether `config` should be `null`.
+    `enabled` reflects the resolved profile's autoconnect setting (`True` when
+    there is no profile), independent of `Interface.enabled`'s v1
+    activation-based semantics.
+    """
+
+    interface: Interface
+    has_profile: bool
+    enabled: bool

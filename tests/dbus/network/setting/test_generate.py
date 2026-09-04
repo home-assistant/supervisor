@@ -143,3 +143,51 @@ async def test_generate_from_wireless(network_manager: NetworkManager):
     assert connection_payload["802-11-wireless"]["mode"].value == "infrastructure"
     assert connection_payload["802-11-wireless"]["ssid"].value == b"TestSSID"
     assert connection_payload["802-11-wireless"]["powersave"].value == 0
+
+    # Open auth has no security section, and it's explicitly cleared (empty
+    # dict) rather than merely absent, so a switch away from WPA/WEP on an
+    # existing profile removes the stale section instead of leaving it be.
+    assert connection_payload["802-11-wireless-security"] == {}
+    # The `802-11-wireless.security` reference property (which points at the
+    # `802-11-wireless-security` section by name) must also be explicitly
+    # cleared. `NetworkSetting.update()` merges the `802-11-wireless` section
+    # rather than replacing it, so a stale reference left over from a prior
+    # WPA/WEP profile would otherwise survive a switch to open auth and
+    # point at a now-removed section.
+    assert connection_payload["802-11-wireless"]["security"].value == ""
+
+
+async def test_generate_from_wireless_mode_and_security(
+    network_manager: NetworkManager,
+):
+    """Test wifi mode is honored and security settings are populated for non-open auth."""
+    wireless_interface = Interface(
+        name="wlan0",
+        mac="",
+        path="",
+        enabled=True,
+        connected=True,
+        primary=False,
+        type=InterfaceType.WIRELESS,
+        ipv4=IpConfig([], None, [], None),
+        ipv4setting=IpSetting(InterfaceMethod.AUTO, [], None, None, []),
+        ipv6=IpConfig([], None, [], None),
+        ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
+        wifi=WifiConfig(
+            mode=WifiMode.MESH,
+            ssid="TestMesh",
+            auth=AuthMethod.WPA_PSK,
+            psk="supersecret",
+            signal=None,
+        ),
+        vlan=None,
+        mdns=MulticastDnsMode.RESOLVE,
+        llmnr=MulticastDnsMode.OFF,
+    )
+
+    connection_payload = get_connection_from_interface(
+        wireless_interface, network_manager
+    )
+    assert connection_payload["802-11-wireless"]["mode"].value == "mesh"
+    assert connection_payload["802-11-wireless-security"]["key-mgmt"].value == "wpa-psk"
+    assert connection_payload["802-11-wireless-security"]["psk"].value == "supersecret"

@@ -202,6 +202,8 @@ def get_connection_from_interface(
     network_manager: NetworkManager,
     name: str | None = None,
     uuid: str | None = None,
+    *,
+    autoconnect: bool = True,
 ) -> dict[str, dict[str, Variant]]:
     """Generate message argument for network interface update."""
     # Simple input check to ensure it is safe to cast this for type checker
@@ -233,7 +235,7 @@ def get_connection_from_interface(
             CONF_ATTR_CONNECTION_TYPE: Variant("s", iftype),
             CONF_ATTR_CONNECTION_LLMNR: Variant("i", int(llmnr)),
             CONF_ATTR_CONNECTION_MDNS: Variant("i", int(mdns)),
-            CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", True),
+            CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", autoconnect),
         },
     }
 
@@ -269,9 +271,10 @@ def get_connection_from_interface(
             CONF_ATTR_VLAN_PARENT: Variant("s", parent),
         }
     elif interface.type == InterfaceType.WIRELESS:
+        mode = interface.wifi.mode.value if interface.wifi else "infrastructure"
         wireless = {
             CONF_ATTR_802_WIRELESS_ASSIGNED_MAC: Variant("s", "preserve"),
-            CONF_ATTR_802_WIRELESS_MODE: Variant("s", "infrastructure"),
+            CONF_ATTR_802_WIRELESS_MODE: Variant("s", mode),
             CONF_ATTR_802_WIRELESS_POWERSAVE: Variant("i", 0),
         }
         if interface.wifi and interface.wifi.ssid:
@@ -304,5 +307,19 @@ def get_connection_from_interface(
                     "s", interface.wifi.psk
                 )
             conn[CONF_ATTR_802_WIRELESS_SECURITY] = wireless_security
+        else:
+            # No security requested: explicitly clear any previously stored
+            # 802-11-wireless-security section instead of leaving it
+            # untouched. `NetworkSetting.update()` only merges sections that
+            # are present, so an old WPA/WEP section (and its PSK) would
+            # otherwise survive a switch to open auth. An empty dict here
+            # tells it to remove the section instead of merging it.
+            conn[CONF_ATTR_802_WIRELESS_SECURITY] = {}
+            # Also clear the `802-11-wireless.security` reference property.
+            # `NetworkSetting.update()` merges (rather than replaces) the
+            # `802-11-wireless` section, so a stale reference pointing at
+            # the now-removed security section would otherwise survive and
+            # NetworkManager can reject the resulting profile as invalid.
+            wireless["security"] = Variant("s", "")
 
     return conn
