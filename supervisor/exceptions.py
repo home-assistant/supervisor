@@ -142,8 +142,7 @@ class APISystemNotReadyError(APIError):
 
     error_key = "system_not_ready_error"
     message_template = (
-        "Supervisor is currently starting up or restoring a backup, please "
-        "try again once that has completed"
+        "Supervisor is not ready to perform this operation, please try again later"
     )
 
     def __init__(self, logger: Callable[..., None] | None = None) -> None:
