@@ -21,7 +21,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import dns_server_list, version_tag
 from .const import ATTR_FALLBACK, ATTR_LLMNR, ATTR_MDNS
-from .utils import api_process, api_return_stats, api_validate
+from .utils import api_process, api_return_stats, api_validate, require_running_system
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -88,6 +88,7 @@ class APICoreDNS(CoreSysAttributes):
         return api_return_stats(stats, legacy=True)
 
     @api_process
+    @require_running_system
     async def update(self, request: web.Request) -> None:
         """Update DNS plugin."""
         body = await api_validate(SCHEMA_VERSION, request)
@@ -98,6 +99,7 @@ class APICoreDNS(CoreSysAttributes):
         await asyncio.shield(self.sys_plugins.dns.update(version))
 
     @api_process
+    @require_running_system
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart CoreDNS plugin."""
         return asyncio.shield(self.sys_plugins.dns.restart())

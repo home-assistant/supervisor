@@ -16,7 +16,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..validate import version_tag
-from .utils import api_process, api_return_stats, api_validate
+from .utils import api_process, api_return_stats, api_validate, require_running_system
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ class APIObserver(CoreSysAttributes):
         return api_return_stats(stats, legacy=True)
 
     @api_process
+    @require_running_system
     async def update(self, request: web.Request) -> None:
         """Update HA observer."""
         body = await api_validate(SCHEMA_VERSION, request)
