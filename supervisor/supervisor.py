@@ -192,7 +192,6 @@ class Supervisor(CoreSysAttributes):
 
     @Job(
         name="supervisor_update",
-        # A reload can start the auto update while a user requests one too.
         on_condition=SupervisorJobError,
         concurrency=JobConcurrency.REJECT,
         # We assume for now the docker image pull is 100% of this task. But from

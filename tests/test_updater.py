@@ -224,7 +224,6 @@ async def test_reload_triggers_supervisor_update(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await coresys.core.set_state(CoreState.RUNNING)
 
-    # The update runs as a separate task, wait for its job to finish
     update_done = asyncio.Event()
 
     async def find_update_job_end(job: SupervisorJob):
@@ -241,13 +240,11 @@ async def test_reload_triggers_supervisor_update(
         ),
         patch.object(Supervisor, "update") as update,
     ):
-        # No newer version means no update
         await coresys.updater.reload()
         assert coresys.supervisor.latest_version == AwesomeVersion("2024.10.0")
         await asyncio.sleep(0)
         update.assert_not_called()
 
-        # A newer version starts an update
         version_data = await mock_update_data.text()
         mock_update_data.update_text(version_data.replace("2024.10.0", "2024.10.1"))
         await coresys.updater.reload()

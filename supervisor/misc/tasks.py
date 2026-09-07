@@ -399,7 +399,6 @@ class Tasks(CoreSysAttributes):
             "Found new Supervisor version %s, updating",
             self.sys_supervisor.latest_version,
         )
-        # A user may have started the same update already
         with suppress(SupervisorUpdateError, SupervisorJobError):
             await self.sys_supervisor.update()
 

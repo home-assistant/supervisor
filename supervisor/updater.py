@@ -74,9 +74,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         with suppress(UpdaterError):
             await self.fetch_data()
 
-        # A pending Supervisor update blocks Core, OS and app updates until it
-        # is installed, so start it now instead of at the next scheduled check.
-        # Startup handles its own Supervisor update before anything else runs.
+        # A pending update blocks other updates, don't wait for the scheduled check
         if self.sys_core.state == CoreState.RUNNING and self.sys_supervisor.need_update:
             self.sys_create_task(self.sys_tasks.auto_update_supervisor())
 

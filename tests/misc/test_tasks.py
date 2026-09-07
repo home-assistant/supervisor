@@ -255,7 +255,6 @@ async def test_scheduled_reload_updater_triggers_one_supervisor_update(
             ]
             await asyncio.gather(*pending)
 
-            # The updater reload starts the supervisor update as a separate task
             async with asyncio.timeout(5):
                 while not update.called:
                     await asyncio.sleep(0)
