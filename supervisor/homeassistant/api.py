@@ -289,6 +289,8 @@ class HomeAssistantAPI(CoreSysAttributes):
         Raises:
             HomeAssistantAPIError: When request cannot be completed due to
                 network errors, timeouts, or connection failures
+            HomeAssistantAuthError: When Core rejects Supervisor's own
+                credentials (HTTP 401), after one token refresh over TCP
 
         """
         await self._ensure_core_running()
@@ -318,6 +320,14 @@ class HomeAssistantAPI(CoreSysAttributes):
                     if resp.status == 401 and not self.use_unix_socket:
                         self._access_token = None
                         continue
+                    if resp.status == 401:
+                        # Over the Unix socket there is no token to refresh:
+                        # Core does not accept the Supervisor user itself.
+                        _LOGGER.error(
+                            "Home Assistant rejected Supervisor credentials on %s",
+                            path,
+                        )
+                        raise HomeAssistantAuthError
                     yield resp
                     return
             except TimeoutError as err:
@@ -326,6 +336,13 @@ class HomeAssistantAPI(CoreSysAttributes):
             except aiohttp.ClientError as err:
                 _LOGGER.debug("Error on call %s: %s", url, err)
                 raise HomeAssistantAPIError(str(err)) from err
+
+        # Core still answered 401 with a freshly refreshed token.
+        _LOGGER.error(
+            "Home Assistant rejected Supervisor credentials on %s after token refresh",
+            path,
+        )
+        raise HomeAssistantAuthError
 
     async def _get_json(self, path: str) -> dict[str, Any]:
         """Return Home Assistant get API."""

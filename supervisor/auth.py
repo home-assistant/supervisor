@@ -14,6 +14,7 @@ from .exceptions import (
     AuthListUsersError,
     AuthPasswordResetError,
     HomeAssistantAPIError,
+    HomeAssistantAuthError,
     HomeAssistantWSError,
 )
 from .utils.common import FileConfiguration
@@ -131,6 +132,10 @@ class Auth(FileConfiguration, CoreSysAttributes):
                 _LOGGER.warning("Unauthorized login for '%s'", username)
                 await self._dismatch_cache(username, password)
                 return False
+        except HomeAssistantAuthError:
+            # Core rejected Supervisor, not the app's user. The credentials
+            # were never checked, so leave the cache alone.
+            raise
         except HomeAssistantAPIError as err:
             _LOGGER.error("Can't request auth on Home Assistant: %s", err)
         finally:
@@ -151,6 +156,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
                     return
 
                 _LOGGER.warning("The user '%s' is not registered", username)
+        except HomeAssistantAuthError:
+            raise
         except HomeAssistantAPIError as err:
             _LOGGER.error("Can't request password reset on Home Assistant: %s", err)
 

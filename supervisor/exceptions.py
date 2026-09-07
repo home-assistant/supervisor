@@ -218,8 +218,15 @@ class HomeAssistantAPIError(HomeAssistantError):
     """Home Assistant API exception."""
 
 
-class HomeAssistantAuthError(HomeAssistantAPIError):
-    """Home Assistant Auth API exception."""
+class HomeAssistantAuthError(HomeAssistantAPIError, APIError):
+    """Supervisor could not authenticate itself against Home Assistant."""
+
+    status = 500
+    error_key = "home_assistant_auth_error"
+    message_template = (
+        "Supervisor could not authenticate with Home Assistant. "
+        "Check Supervisor logs for details"
+    )
 
 
 class HomeAssistantWSError(HomeAssistantAPIError):
