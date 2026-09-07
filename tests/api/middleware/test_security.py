@@ -218,6 +218,8 @@ def _versioned_path(prefix: str, path: str) -> str:
         ("get", "/os/ssh/authorized_keys", set()),
         ("post", "/os/ssh/authorized_keys", set()),
         ("delete", "/os/ssh/authorized_keys", set()),
+        ("get", "/time/info", set(ROLE_ALL)),
+        ("post", "/time/options", {"admin", "manager"}),
         ("post", "/addons/self/sys_options", set()),
         ("post", "/addons/abc123/sys_options", set()),
     ],

@@ -1825,24 +1825,11 @@ class MountNotFound(MountError, APINotFound):
         super().__init__(message, logger)
 
 
-class MountUsageNotActiveError(MountError):
-    """Raise when storage usage is requested for a mount that is not active."""
-
-    error_key = "mount_usage_not_active_error"
-    message_template = "Mount {name} is not active, cannot report storage usage"
-
-    def __init__(self, logger: Callable[..., None] | None = None, *, name: str) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"name": name}
-        super().__init__(None, logger)
-
-
 class MountUsageNotMountedError(MountError):
-    """Raise when a mount's path turns out to no longer be mounted.
+    """Raise when a mount's path is no longer a mount point.
 
-    The ghost mount case: systemd still reports the unit active, but the path
-    no longer crosses a filesystem boundary, so any numbers read from it would
-    be the host disk's, not the mount's.
+    The probe would already have activated a dormant automount, so this is a
+    plain directory. Numbers from it would be the host disk's, not the mount's.
     """
 
     error_key = "mount_usage_not_mounted_error"

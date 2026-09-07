@@ -44,6 +44,7 @@ from .security import APISecurity
 from .services import APIServices
 from .store import APIStore
 from .supervisor import APISupervisor
+from .time import APITime
 from .utils import api_process, api_process_raw
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -143,6 +144,7 @@ class RestAPI(CoreSysAttributes):
             self._register_services(app)
             self._register_store(app)
             self._register_supervisor(app)
+            self._register_time(app)
 
         if static_resource_configs:
 
@@ -295,6 +297,18 @@ class RestAPI(CoreSysAttributes):
                     "/network/interface/{interface}/vlan/{vlan}",
                     api_network.create_vlan,
                 ),
+            ]
+        )
+
+    def _register_time(self, app: web.Application) -> None:
+        """Register time and date functions."""
+        api_time = APITime()
+        api_time.coresys = self.coresys
+
+        app.add_routes(
+            [
+                web.get("/time/info", api_time.info),
+                web.post("/time/options", api_time.options),
             ]
         )
 

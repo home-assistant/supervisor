@@ -37,14 +37,12 @@ from ..const import (
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
-from ..dbus.const import UnitActiveState
 from ..exceptions import (
     APIDBMigrationInProgress,
     APIError,
     HostContainerLogEpochError,
     HostLogError,
     MountNotFound,
-    MountUsageNotActiveError,
     MountUsageNotMountedError,
     MountUsageReadError,
     MountUsageTimeoutError,
@@ -471,8 +469,8 @@ class APIHost(CoreSysAttributes):
             raise MountNotFound(name=name)
 
         mount = self.sys_mounts.get(name)
-        if mount.state != UnitActiveState.ACTIVE:
-            raise MountUsageNotActiveError(name=name)
+        # Don't use cached mount state — it can be 15 minutes stale.
+        # The probe below activates a dormant automount if needed.
 
         max_depth = self._requested_max_depth(request, DISK_USAGE_MAX_DEPTH_MOUNT)
         # All depths below 2 give totals only; normalize so concurrent callers
@@ -568,10 +566,9 @@ class APIHost(CoreSysAttributes):
             raise MountUsageReadError(name=mount.name, reason=str(err)) from err
 
         if usage is None:
-            # Ghost mount: systemd still reports the unit active, but the path
-            # no longer crosses a filesystem boundary, so statvfs was reading
-            # the host's data disk and would report its numbers under the
-            # mount's name.
+            # Not a mount point. The probe would already have activated a
+            # dormant automount, so this is a plain directory — don't report
+            # the host data disk's numbers as this mount.
             raise MountUsageNotMountedError(name=mount.name)
 
         total, _, free = usage

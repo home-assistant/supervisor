@@ -41,8 +41,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # socket is paired with a no-op oneshot service (RemainAfterExit) so systemd
 # always has a valid activation target -- otherwise it would tear the socket
 # down on the first connection attempt before Core is ready.
-_PORT_RESERVE_UNIT: Final = "hassio-port-reserve.socket"
-_PORT_RESERVE_SERVICE: Final = "hassio-port-reserve.service"
+_PORT_RESERVE_UNIT: Final = "homeassistant-core-port-reserve.socket"
+_PORT_RESERVE_SERVICE: Final = "homeassistant-core-port-reserve.service"
 _PORT_RESERVE_TIMEOUT: Final = 10
 _TERMINAL_STATES: Final = {UnitActiveState.INACTIVE, UnitActiveState.FAILED}
 
@@ -488,11 +488,11 @@ class Core(CoreSysAttributes):
     async def _reserve_core_port(self, hosts: list[str], port: int) -> bool:
         """Reserve Core's host TCP port(s) using a transient systemd socket.
 
-        Core runs with --network=host, so Supervisor (on the hassio bridge)
-        can't bind the port itself -- instead systemd is asked to bind a
-        transient ``.socket`` unit for each host, paired atomically (via
-        ``aux``) with a no-op oneshot service so it has a valid activation
-        target.
+        Core runs with --network=host, so Supervisor (on the ``hassio``
+        Docker bridge network) can't bind the port itself -- instead systemd
+        is asked to bind a transient ``.socket`` unit for each host, paired
+        atomically (via ``aux``) with a no-op oneshot service so it has a
+        valid activation target.
 
         Returns True if reserved (caller must later call
         ``_release_core_port``), or False if it couldn't be reserved

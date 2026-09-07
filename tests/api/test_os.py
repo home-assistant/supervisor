@@ -9,7 +9,6 @@ import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.agent.boards import BoardManager
 from supervisor.dbus.agent.boards.interface import BoardProxy
 from supervisor.exceptions import DBusError as SupervisorDBusError, HostError
@@ -38,18 +37,6 @@ async def fixture_boards_service(
 ) -> BoardsService:
     """Return mock Boards service."""
     return os_agent_services["agent_boards"]
-
-
-@pytest.fixture
-async def os_agent_version(request: pytest.FixtureRequest) -> None:
-    """Mock OS Agent version."""
-    version = (
-        AwesomeVersion(request.param)
-        if hasattr(request, "param")
-        else AwesomeVersion("1.9.0")
-    )
-    with patch.object(OSAgent, "version", new=PropertyMock(return_value=version)):
-        yield
 
 
 async def test_api_os_info(api_client_with_prefix: tuple[TestClient, str]):
