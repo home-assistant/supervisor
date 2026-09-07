@@ -26,6 +26,7 @@ from .const import (
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
     BusEvent,
+    CoreState,
     UpdateChannel,
 )
 from .coresys import CoreSys, CoreSysAttributes
@@ -72,6 +73,12 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
         with suppress(UpdaterError):
             await self.fetch_data()
+
+        # A pending Supervisor update blocks Core, OS and app updates until it
+        # is installed, so start it now instead of at the next scheduled check.
+        # Startup handles its own Supervisor update before anything else runs.
+        if self.sys_core.state == CoreState.RUNNING and self.sys_supervisor.need_update:
+            self.sys_create_task(self.sys_tasks.auto_update_supervisor())
 
     @property
     def version_homeassistant(self) -> AwesomeVersion | None:

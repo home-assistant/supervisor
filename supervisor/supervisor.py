@@ -32,7 +32,7 @@ from .exceptions import (
     SupervisorUpdateError,
 )
 from .jobs import ChildJobSyncFilter
-from .jobs.const import JobCondition
+from .jobs.const import JobConcurrency, JobCondition
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType
 from .utils.sentry import async_capture_exception
@@ -192,6 +192,9 @@ class Supervisor(CoreSysAttributes):
 
     @Job(
         name="supervisor_update",
+        # A reload can start the auto update while a user requests one too.
+        on_condition=SupervisorJobError,
+        concurrency=JobConcurrency.REJECT,
         # We assume for now the docker image pull is 100% of this task. But from
         # a user perspective that isn't true.  Other steps that take time which
         # is not accounted for in progress include: app armor update and restart

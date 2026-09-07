@@ -15,6 +15,7 @@ from supervisor.docker.supervisor import DockerSupervisor
 from supervisor.exceptions import (
     DockerError,
     SupervisorAppArmorError,
+    SupervisorJobError,
     SupervisorUpdateError,
 )
 from supervisor.host.apparmor import AppArmorControl
@@ -225,6 +226,35 @@ async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
         Issue(IssueType.UPDATE_FAILED, ContextType.SUPERVISOR)
         in coresys.resolution.issues
     )
+
+
+async def test_update_rejects_concurrent_update(coresys: CoreSys):
+    """Test a second update request is rejected while an update is running."""
+    # pylint: disable-next=protected-access
+    coresys.updater._data.setdefault("image", {})["supervisor"] = (
+        "ghcr.io/home-assistant/aarch64-hassio-supervisor"
+    )
+    install_started = asyncio.Event()
+    install_finish = asyncio.Event()
+
+    async def install(*args, **kwargs):
+        install_started.set()
+        await install_finish.wait()
+
+    with (
+        patch.object(DockerSupervisor, "install", side_effect=install),
+        patch.object(DockerSupervisor, "update_start_tag"),
+        patch.object(type(coresys.supervisor), "update_apparmor"),
+        patch.object(type(coresys.core), "stop"),
+    ):
+        first = asyncio.create_task(coresys.supervisor.update(AwesomeVersion("1.0")))
+        await install_started.wait()
+
+        with pytest.raises(SupervisorJobError):
+            await coresys.supervisor.update(AwesomeVersion("1.0"))
+
+        install_finish.set()
+        await first
 
 
 @pytest.mark.parametrize(

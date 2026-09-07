@@ -2,17 +2,18 @@
 
 import asyncio
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import ATTR_HASSOS_UNRESTRICTED, BusEvent
+from supervisor.const import ATTR_HASSOS_UNRESTRICTED, BusEvent, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
 from supervisor.exceptions import UpdaterJobError
 from supervisor.jobs import SupervisorJob
 from supervisor.resolution.const import UnsupportedReason
+from supervisor.supervisor import Supervisor
 
 from tests.common import MockResponse, load_binary_fixture
 from tests.dbus_service_mocks.network_manager import (
@@ -213,3 +214,68 @@ async def test_fetch_data_no_update_when_os_unsupported(
     assert coresys.updater.version_supervisor == initial_supervisor_version
     assert coresys.updater.version_homeassistant == initial_homeassistant_version
     assert coresys.updater.version_hassos == initial_hassos_version
+
+
+@pytest.mark.usefixtures("no_job_throttle", "supervisor_internet")
+async def test_reload_triggers_supervisor_update(
+    coresys: CoreSys, mock_update_data: MockResponse
+) -> None:
+    """Test a reload starts the supervisor update when a newer version is found."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    # The update runs as a separate task, wait for its job to finish
+    update_done = asyncio.Event()
+
+    async def find_update_job_end(job: SupervisorJob):
+        if job.name == "tasks_update_supervisor":
+            update_done.set()
+
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, find_update_job_end)
+
+    with (
+        patch.object(
+            Supervisor,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.10.0")),
+        ),
+        patch.object(Supervisor, "update") as update,
+    ):
+        # No newer version means no update
+        await coresys.updater.reload()
+        assert coresys.supervisor.latest_version == AwesomeVersion("2024.10.0")
+        await asyncio.sleep(0)
+        update.assert_not_called()
+
+        # A newer version starts an update
+        version_data = await mock_update_data.text()
+        mock_update_data.update_text(version_data.replace("2024.10.0", "2024.10.1"))
+        await coresys.updater.reload()
+        async with asyncio.timeout(5):
+            await update_done.wait()
+        update.assert_called_once()
+
+
+@pytest.mark.usefixtures("no_job_throttle", "supervisor_internet")
+async def test_reload_skips_supervisor_update_during_startup(
+    coresys: CoreSys, mock_update_data: MockResponse
+) -> None:
+    """Test a reload during startup leaves the supervisor update to the startup."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    await coresys.core.set_state(CoreState.STARTUP)
+
+    version_data = await mock_update_data.text()
+    mock_update_data.update_text(version_data.replace("2024.10.0", "2024.10.1"))
+
+    with (
+        patch.object(
+            Supervisor,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.10.0")),
+        ),
+        patch.object(Supervisor, "update") as update,
+    ):
+        await coresys.updater.reload()
+        assert coresys.supervisor.need_update
+        await asyncio.sleep(0)
+        update.assert_not_called()
