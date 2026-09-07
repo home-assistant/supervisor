@@ -20,6 +20,7 @@ from supervisor.exceptions import (
     HostJournalGatewaydConnectionError,
     HostNotSupportedError,
     StoreGitError,
+    SupervisorJobError,
 )
 from supervisor.homeassistant.const import WSEvent
 from supervisor.store.repository import Repository
@@ -539,6 +540,25 @@ async def test_api_supervisor_update_no_update_available(
     result = await resp.json()
     assert "No supervisor update available" in result["message"]
     update.assert_not_called()
+
+
+async def test_api_supervisor_update_already_running(
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test an update request during a running update reports success."""
+    api_client, prefix = api_client_with_prefix
+
+    with (
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(
+            Supervisor,
+            "update",
+            side_effect=SupervisorJobError("Another job is running"),
+        ),
+    ):
+        resp = await api_client.post(f"{prefix}/supervisor/update")
+
+    assert resp.status == 200
 
 
 async def test_api_supervisor_update_dev_explicit_version(

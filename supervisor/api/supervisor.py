@@ -40,7 +40,7 @@ from ..const import (
     UpdateChannel,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIError, SupervisorJobError
 from ..store.validate import repositories
 from ..utils.blockbuster import BlockBusterManager
 from ..utils.sentry import close_sentry, init_sentry
@@ -262,7 +262,11 @@ class APISupervisor(CoreSysAttributes):
         if not self.sys_dev:
             version = self.sys_updater.version_supervisor
 
-        await asyncio.shield(self.sys_supervisor.update(version))
+        try:
+            await asyncio.shield(self.sys_supervisor.update(version))
+        except SupervisorJobError:
+            # The auto update already runs, the caller sees it through the restart
+            _LOGGER.info("Supervisor update is already in progress")
 
     @api_process
     async def reload(self, request: web.Request) -> None:
