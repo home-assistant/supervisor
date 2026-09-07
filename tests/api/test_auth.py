@@ -1,7 +1,8 @@
 """Test auth API."""
 
+import asyncio
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from aiohttp.hdrs import WWW_AUTHENTICATE
 from aiohttp.test_utils import TestClient
@@ -150,6 +151,37 @@ async def test_failed_password_reset(
     assert expected_log in caplog.text
 
 
+async def test_password_reset_supervisor_rejected_by_core(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    websession: MagicMock,
+):
+    """Test password reset when Core rejects the Supervisor's own credentials."""
+    api_client, prefix = api_client_with_prefix
+    websession.request = MagicMock(return_value=MockResponse(status=401))
+
+    with (
+        patch.object(type(coresys.homeassistant.api), "use_unix_socket", True),
+        patch.object(
+            type(coresys.homeassistant.api),
+            "session",
+            new_callable=PropertyMock,
+            return_value=websession,
+        ),
+    ):
+        resp = await api_client.post(
+            f"{prefix}/auth/reset", json={"username": "john", "password": "doe"}
+        )
+
+    assert resp.status == 500
+    body = await resp.json()
+    assert body["error_key"] == "home_assistant_auth_error"
+    assert body["message"] == (
+        "Supervisor could not authenticate with Home Assistant. "
+        "Check Supervisor logs for details"
+    )
+
+
 async def test_list_users(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
@@ -250,6 +282,49 @@ async def test_auth_json_invalid_credentials(
     )
     assert WWW_AUTHENTICATE not in resp.headers
     assert resp.status == 401
+
+
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_auth_supervisor_rejected_by_core(
+    api_client: TestClient,
+    coresys: CoreSys,
+    websession: MagicMock,
+    install_app_ssh: App,
+):
+    """Test app login when Core rejects the Supervisor's own credentials.
+
+    The app user's credentials were never checked, so a cached login must
+    survive and a fresh login must report the Supervisor-side failure.
+    """
+    websession.request = MagicMock(return_value=MockResponse(status=401))
+
+    with (
+        patch.object(type(coresys.homeassistant.api), "use_unix_socket", True),
+        patch.object(
+            type(coresys.homeassistant.api),
+            "session",
+            new_callable=PropertyMock,
+            return_value=websession,
+        ),
+        patch.object(coresys.homeassistant.api, "check_api_state", return_value=True),
+    ):
+        resp = await api_client.post(
+            "/auth", json={"username": "test", "password": "pass"}
+        )
+        assert resp.status == 500
+        body = await resp.json()
+        assert body["error_key"] == "home_assistant_auth_error"
+
+        # pylint: disable-next=protected-access
+        await coresys.auth._update_cache("test", "pass")
+        resp = await api_client.post(
+            "/auth", json={"username": "test", "password": "pass"}
+        )
+        assert resp.status == 200
+        # Let the background backend check run and fail
+        await asyncio.sleep(0.1)
+        # pylint: disable-next=protected-access
+        assert coresys.auth._check_cache("test", "pass") is True
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)

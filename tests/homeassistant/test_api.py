@@ -1,7 +1,7 @@
 """Test Home Assistant API."""
 
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -9,7 +9,11 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import DockerError, HomeAssistantAPIError
+from supervisor.exceptions import (
+    DockerError,
+    HomeAssistantAPIError,
+    HomeAssistantAuthError,
+)
 from supervisor.homeassistant.api import APIState, CoreHTTPConfig, HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
 
@@ -539,6 +543,74 @@ async def test_make_request_tcp_timeout(coresys: CoreSys):
     ):
         async with api.make_request("get", "api/test"):
             pass
+
+
+@pytest.mark.usefixtures("websession")
+async def test_make_request_tcp_401_refreshes_token_once(coresys: CoreSys):
+    """Test a 401 over TCP drops the token and retries once."""
+    api = coresys.homeassistant.api
+    api._access_token = "stale"  # pylint: disable=protected-access
+    coresys.websession.request = MagicMock(
+        side_effect=[MockResponse(status=401), MockResponse(status=200)]
+    )
+
+    with (
+        patch.object(type(api), "use_unix_socket", False),
+        patch.object(api, "_ensure_access_token", new_callable=AsyncMock) as ensure,
+    ):
+        async with api.make_request("get", "api/test") as resp:
+            assert resp.status == 200
+
+    assert coresys.websession.request.call_count == 2
+    assert ensure.await_count == 2
+
+
+@pytest.mark.usefixtures("websession")
+async def test_make_request_tcp_401_after_refresh_raises(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a 401 with a freshly refreshed token raises HomeAssistantAuthError."""
+    api = coresys.homeassistant.api
+    coresys.websession.request = MagicMock(
+        side_effect=[MockResponse(status=401), MockResponse(status=401)]
+    )
+
+    with (
+        patch.object(type(api), "use_unix_socket", False),
+        patch.object(api, "_ensure_access_token", new_callable=AsyncMock),
+        pytest.raises(HomeAssistantAuthError),
+    ):
+        async with api.make_request("get", "api/test"):
+            pass
+
+    assert coresys.websession.request.call_count == 2
+    assert (
+        "Home Assistant rejected Supervisor credentials on api/test "
+        "after token refresh" in caplog.text
+    )
+
+
+@pytest.mark.usefixtures("websession")
+async def test_make_request_unix_socket_401_raises(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a 401 over the Unix socket raises HomeAssistantAuthError right away."""
+    api = coresys.homeassistant.api
+    session = MagicMock()
+    session.request = MagicMock(return_value=MockResponse(status=401))
+
+    with (
+        patch.object(type(api), "use_unix_socket", True),
+        patch.object(
+            type(api), "session", new_callable=PropertyMock, return_value=session
+        ),
+        pytest.raises(HomeAssistantAuthError),
+    ):
+        async with api.make_request("get", "api/test"):
+            pass
+
+    session.request.assert_called_once()
+    assert "Home Assistant rejected Supervisor credentials on api/test" in caplog.text
 
 
 # --- connect_websocket ---
