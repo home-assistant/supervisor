@@ -74,7 +74,6 @@ class Updater(FileConfiguration, CoreSysAttributes):
         with suppress(UpdaterError):
             await self.fetch_data()
 
-        # A pending update blocks other updates, don't wait for the scheduled check
         if self.sys_core.state == CoreState.RUNNING and self.sys_supervisor.need_update:
             self.sys_create_task(self.sys_tasks.auto_update_supervisor())
 
