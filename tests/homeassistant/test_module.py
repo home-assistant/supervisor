@@ -7,6 +7,7 @@ from pathlib import Path, PurePath
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from securetar import SecureTarFile
 
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
@@ -109,6 +110,22 @@ async def test_begin_backup_ws_error(coresys: CoreSys):
         ),
     ):
         await coresys.homeassistant.begin_backup()
+
+
+async def test_backup_begin_error_ends_backup(coresys: CoreSys, tmp_path: Path):
+    """Test backup cleanup runs when beginning the backup fails."""
+    error = HomeAssistantBackupError("Backup start rejected")
+    with (
+        patch.object(
+            HomeAssistant, "begin_backup", new_callable=AsyncMock, side_effect=error
+        ),
+        patch.object(HomeAssistant, "end_backup", new_callable=AsyncMock) as end_backup,
+        pytest.raises(HomeAssistantBackupError) as exc_info,
+    ):
+        await coresys.homeassistant.backup(SecureTarFile(tmp_path / "backup.tar"))
+
+    assert exc_info.value is error
+    end_backup.assert_awaited_once_with()
 
 
 async def test_end_backup_ws_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):

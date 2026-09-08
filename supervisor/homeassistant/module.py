@@ -500,8 +500,8 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                         _LOGGER.error,
                     ) from err
 
-        await self.begin_backup()
         try:
+            await self.begin_backup()
             _LOGGER.info("Backing up Home Assistant Core config folder")
             await self.sys_run_in_executor(_write_tarfile, self._data)
             _LOGGER.info("Backup Home Assistant Core config folder done")
