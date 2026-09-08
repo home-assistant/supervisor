@@ -1432,3 +1432,67 @@ async def test_disk_mount_stays_active_when_udisks2_unavailable(
         assert await mount.is_mounted() is True
 
     assert mount.state == UnitActiveState.ACTIVE
+
+
+async def test_disk_mount_discards_session_when_device_detached(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a disk pulled while mounted has its dead session torn down.
+
+    The kernel keeps the dead mount attached, which covers the autofs trigger,
+    and a reattached disk arrives as a new device instance — so without this
+    the path stays dead until someone reloads the mount by hand. Stopping the
+    .mount lets systemd re-install the trigger, and the next access mounts the
+    disk fresh.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    await mount.mount()
+    assert mount.state == UnitActiveState.ACTIVE
+
+    systemd_service.StopUnit.calls.clear()
+    # statvfs still succeeds from cache; only the device has gone
+    udisks2_manager_service.resolved_devices = []
+
+    assert await mount.is_mounted() is False
+    assert mount.state == UnitActiveState.INACTIVE
+
+    # Only the .mount is stopped — the .automount stays armed, so the path is
+    # never exposed as a writable directory
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-media-test.mount"
+    ]
+
+
+async def test_disk_mount_survives_failed_session_discard(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a failed teardown still reports the mount as unusable.
+
+    The probe's answer is what callers act on, so a systemd error while
+    discarding must not turn a health check into a raised error — the next
+    reconcile tries again.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    await mount.mount()
+
+    udisks2_manager_service.resolved_devices = []
+    systemd_service.response_stop_unit = ERROR_FAILURE
+
+    assert await mount.is_mounted() is False
+    assert mount.state == UnitActiveState.INACTIVE

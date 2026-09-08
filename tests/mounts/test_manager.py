@@ -1,5 +1,6 @@
 """Tests for mount manager."""
 
+import asyncio
 import errno
 import json
 from pathlib import Path
@@ -14,6 +15,7 @@ from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import (
     MountActivationError,
+    MountDeviceInUseError,
     MountError,
     MountJobError,
     MountNotFound,
@@ -34,28 +36,6 @@ from tests.dbus_service_mocks.udisks2_manager import (
 )
 
 ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
-BACKUP_TEST_DATA = {
-    "name": "backup_test",
-    "type": "cifs",
-    "usage": "backup",
-    "server": "backup.local",
-    "share": "backups",
-}
-MEDIA_TEST_DATA = {
-    "name": "media_test",
-    "type": "nfs",
-    "usage": "media",
-    "server": "media.local",
-    "path": "/media",
-}
-SHARE_TEST_DATA = {
-    "name": "share_test",
-    "type": "nfs",
-    "usage": "share",
-    "server": "share.local",
-    "path": "/share",
-}
-
 DISK_UUID = "d2f4a6c8-3b5e-4079-8a1c-6e9d2f4b7a30"
 BACKUP_TEST_DATA = {
     "name": "backup_test",
@@ -1434,3 +1414,80 @@ async def test_restore_disk_mount_missing_device_retains_and_retries(
         )
         in coresys.resolution.suggestions
     )
+
+
+async def test_restore_disk_mount_persists_resolved_filesystem(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test what activation resolved is written back after a restore.
+
+    The restore saves the config before activating, at which point the
+    filesystem has deliberately been cleared so the guard cannot be skipped.
+    Without a save afterwards the cleared value is what survives, and every
+    later start has to reach for UDisks2 again — defeating the persisted path
+    that lets a disk mount come back without it.
+    """
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    udisks2_manager_service.resolved_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sdc1"
+    ]
+
+    restored = Mount.from_dict(coresys, DISK_TEST_DATA)
+    activate = await coresys.mounts.restore_mount(restored)
+    assert restored.filesystem is None
+
+    await activate
+
+    assert restored.filesystem == "ext4"
+    # Saved after activation, so the resolved value is what a restart reads
+    # rather than the cleared one the pre-activation write left behind
+    assert coresys.mounts.save_data.call_count >= 1
+    saved = [m.to_dict() for m in coresys.mounts.mounts]
+    assert [m for m in saved if m["name"] == "disk_test"][0]["filesystem"] == "ext4"
+
+
+async def test_create_disk_mount_uuid_race_serialized(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test two creates racing for one disk cannot both claim it.
+
+    The in-use check looks at the mounts already configured, so without
+    serialization both callers can pass it before either is recorded and the
+    same disk ends up mounted twice under different names.
+    """
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    udisks2_manager_service.resolved_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sdc1"
+    ]
+
+    first = Mount.from_dict(coresys, DISK_TEST_DATA | {"name": "disk_one"})
+    second = Mount.from_dict(coresys, DISK_TEST_DATA | {"name": "disk_two"})
+    # Neither knows its filesystem yet, so both must resolve and both hit the
+    # in-use check
+    first.forget_resolved_device()
+    second.forget_resolved_device()
+
+    results = await asyncio.gather(
+        coresys.mounts.create_mount(first),
+        coresys.mounts.create_mount(second),
+        return_exceptions=True,
+    )
+
+    failures = [r for r in results if isinstance(r, Exception)]
+    assert len(failures) == 1
+    assert isinstance(failures[0], MountDeviceInUseError)
+    assert len(coresys.mounts.mounts) == 1

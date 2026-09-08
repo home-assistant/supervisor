@@ -1115,7 +1115,22 @@ class DiskMount(Mount):
             return False
 
         if not await self._device_attached():
-            _LOGGER.debug("Mount %s is mounted but its device is gone", self.name)
+            # The kernel keeps the dead mount attached, covering the autofs
+            # trigger, and a replugged disk arrives as a new device instance -
+            # so nothing re-fires the trigger on its own and What= outside /dev
+            # means no device unit ever will. Discard the session so systemd
+            # re-installs the trigger and the next access mounts the disk fresh.
+            _LOGGER.info(
+                "Mount %s is mounted but its device is gone, discarding its "
+                "session so a reattached disk mounts on next access",
+                self.name,
+            )
+            try:
+                await self.discard_session()
+            except MountError as err:
+                _LOGGER.warning(
+                    "Could not discard the stale session of %s: %s", self.name, err
+                )
             self._state = UnitActiveState.INACTIVE
             return False
 
