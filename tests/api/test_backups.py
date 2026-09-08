@@ -562,12 +562,21 @@ async def test_restore_immediate_errors(
             new=PropertyMock(return_value=AwesomeVersion("2023.12.0")),
         ),
     ):
+        coresys.updater.auto_update = False
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
             json={"background": True, "homeassistant": True},
         )
-    assert resp.status == 400
-    assert "Must update supervisor" in (await resp.json())["message"]
+        assert resp.status == 400
+        assert "Must update supervisor" in (await resp.json())["message"]
+
+        coresys.updater.auto_update = True
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"background": True, "homeassistant": True},
+        )
+        assert resp.status == 503
+        assert "Update is in-progress" in (await resp.json())["message"]
 
     with (
         patch.object(

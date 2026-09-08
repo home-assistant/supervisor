@@ -26,6 +26,8 @@ from ..exceptions import (
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
+    BackupSupervisorUpdateInProgressError,
+    BackupSupervisorVersionError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobConcurrency, JobCondition
 from ..jobs.decorator import Job
@@ -832,6 +834,25 @@ class BackupManager(FileConfiguration, JobGroup):
 
         await backup.validate_backup(location_name)
 
+    async def _check_supervisor_version(self, backup: Backup) -> None:
+        """Check backup is not from a newer Supervisor version, raise if so."""
+        if backup.supervisor_version <= self.sys_supervisor.version:
+            return
+
+        if self.sys_updater.auto_update:
+            self.sys_create_task(self.sys_tasks.auto_update_supervisor())
+            raise BackupSupervisorUpdateInProgressError(
+                _LOGGER.error,
+                backup_version=backup.supervisor_version,
+                supervisor_version=self.sys_supervisor.version,
+            )
+
+        raise BackupSupervisorVersionError(
+            _LOGGER.error,
+            backup_version=backup.supervisor_version,
+            supervisor_version=self.sys_supervisor.version,
+        )
+
     @Job(
         name=JOB_FULL_RESTORE,
         conditions=[
@@ -863,13 +884,7 @@ class BackupManager(FileConfiguration, JobGroup):
             )
 
         await self._validate_backup_location(backup, password, location)
-
-        if backup.supervisor_version > self.sys_supervisor.version:
-            raise BackupInvalidError(
-                f"Backup was made on supervisor version {backup.supervisor_version}, "
-                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
-                _LOGGER.error,
-            )
+        await self._check_supervisor_version(backup)
 
         # If being run in the background, notify caller that validation has completed
         if validation_complete:
@@ -940,12 +955,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 "No Home Assistant Core data inside the backup", _LOGGER.error
             )
 
-        if backup.supervisor_version > self.sys_supervisor.version:
-            raise BackupInvalidError(
-                f"Backup was made on supervisor version {backup.supervisor_version}, "
-                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
-                _LOGGER.error,
-            )
+        await self._check_supervisor_version(backup)
 
         # If being run in the background, notify caller that validation has completed
         if validation_complete:

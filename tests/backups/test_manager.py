@@ -31,6 +31,8 @@ from supervisor.exceptions import (
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
+    BackupSupervisorUpdateInProgressError,
+    BackupSupervisorVersionError,
     DockerError,
     MountError,
 )
@@ -362,18 +364,6 @@ async def test_fail_invalid_full_backup(
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_full(backup_instance)
 
-    backup_instance.all_locations[None].protected = False
-    backup_instance.supervisor_version = "2022.08.4"
-    with (
-        patch.object(
-            type(coresys.supervisor),
-            "version",
-            new=PropertyMock(return_value="2022.08.3"),
-        ),
-        pytest.raises(BackupInvalidError),
-    ):
-        await manager.do_restore_full(backup_instance)
-
 
 @pytest.mark.usefixtures("supervisor_internet")
 async def test_fail_invalid_partial_backup(
@@ -398,16 +388,81 @@ async def test_fail_invalid_partial_backup(
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_partial(backup_instance, homeassistant=True)
 
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("restore_method", ["do_restore_full", "do_restore_partial"])
+async def test_restore_fails_supervisor_version_auto_update_disabled(
+    coresys: CoreSys,
+    full_backup_mock: MagicMock,
+    restore_method: str,
+):
+    """Test restoring a backup from a newer Supervisor raises when auto update is off."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.updater.auto_update = False
+
+    manager = await BackupManager(coresys).load_config()
+    backup_instance = full_backup_mock.return_value
     backup_instance.supervisor_version = "2022.08.4"
+
     with (
         patch.object(
             type(coresys.supervisor),
             "version",
             new=PropertyMock(return_value="2022.08.3"),
         ),
-        pytest.raises(BackupInvalidError),
+        patch.object(
+            type(coresys.tasks), "auto_update_supervisor", new=AsyncMock()
+        ) as auto_update_supervisor,
+        pytest.raises(BackupSupervisorVersionError) as exc_info,
     ):
-        await manager.do_restore_partial(backup_instance)
+        await getattr(manager, restore_method)(backup_instance)
+
+    assert exc_info.value.status == 400
+    assert (
+        "Backup was made on supervisor version 2022.08.4, can't restore on "
+        "2022.08.3. Must update supervisor first." in str(exc_info.value)
+    )
+    auto_update_supervisor.assert_not_called()
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("restore_method", ["do_restore_full", "do_restore_partial"])
+async def test_restore_fails_supervisor_version_auto_update_enabled(
+    coresys: CoreSys,
+    full_backup_mock: MagicMock,
+    restore_method: str,
+):
+    """Test restoring a backup from a newer Supervisor triggers an auto update."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.updater.auto_update = True
+
+    manager = await BackupManager(coresys).load_config()
+    backup_instance = full_backup_mock.return_value
+    backup_instance.supervisor_version = "2022.08.4"
+
+    with (
+        patch.object(
+            type(coresys.supervisor),
+            "version",
+            new=PropertyMock(return_value="2022.08.3"),
+        ),
+        patch.object(
+            type(coresys.tasks), "auto_update_supervisor", new=AsyncMock()
+        ) as auto_update_supervisor,
+        pytest.raises(BackupSupervisorUpdateInProgressError) as exc_info,
+    ):
+        await getattr(manager, restore_method)(backup_instance)
+
+    assert exc_info.value.status == 503
+    assert (
+        "Backup was made on supervisor version 2022.08.4, can't restore on "
+        "2022.08.3. Update is in-progress, try again after it completes."
+        in str(exc_info.value)
+    )
+    await asyncio.sleep(0)
+    auto_update_supervisor.assert_called_once()
 
 
 @pytest.mark.usefixtures("install_app_ssh", "capture_exception")
