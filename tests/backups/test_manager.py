@@ -411,9 +411,7 @@ async def test_restore_fails_supervisor_version_auto_update_disabled(
             "version",
             new=PropertyMock(return_value="2022.08.3"),
         ),
-        patch.object(
-            type(coresys.tasks), "auto_update_supervisor", new=AsyncMock()
-        ) as auto_update_supervisor,
+        patch.object(type(coresys.updater), "reload", new=AsyncMock()) as reload,
         pytest.raises(BackupSupervisorVersionError) as exc_info,
     ):
         await getattr(manager, restore_method)(backup_instance)
@@ -423,17 +421,17 @@ async def test_restore_fails_supervisor_version_auto_update_disabled(
         "Backup was made on supervisor version 2022.08.4, can't restore on "
         "2022.08.3. Must update supervisor first." in str(exc_info.value)
     )
-    auto_update_supervisor.assert_not_called()
+    reload.assert_not_called()
 
 
 @pytest.mark.usefixtures("supervisor_internet")
 @pytest.mark.parametrize("restore_method", ["do_restore_full", "do_restore_partial"])
-async def test_restore_fails_supervisor_version_auto_update_enabled(
+async def test_restore_fails_supervisor_version_auto_update_already_in_progress(
     coresys: CoreSys,
     full_backup_mock: MagicMock,
     restore_method: str,
 ):
-    """Test restoring a backup from a newer Supervisor triggers an auto update."""
+    """Test restore raises update-in-progress without reloading if update is already known."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.updater.auto_update = True
@@ -449,7 +447,13 @@ async def test_restore_fails_supervisor_version_auto_update_enabled(
             new=PropertyMock(return_value="2022.08.3"),
         ),
         patch.object(
-            type(coresys.tasks), "auto_update_supervisor", new=AsyncMock()
+            type(coresys.supervisor),
+            "need_update",
+            new=PropertyMock(return_value=True),
+        ),
+        patch.object(type(coresys.updater), "reload", new=AsyncMock()) as reload,
+        patch.object(
+            type(coresys.supervisor), "auto_update_supervisor", new=AsyncMock()
         ) as auto_update_supervisor,
         pytest.raises(BackupSupervisorUpdateInProgressError) as exc_info,
     ):
@@ -461,8 +465,90 @@ async def test_restore_fails_supervisor_version_auto_update_enabled(
         "2022.08.3. Update is in-progress, try again after it completes."
         in str(exc_info.value)
     )
+    reload.assert_not_called()
     await asyncio.sleep(0)
     auto_update_supervisor.assert_called_once()
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("restore_method", ["do_restore_full", "do_restore_partial"])
+async def test_restore_fails_supervisor_version_auto_update_found_on_reload(
+    coresys: CoreSys,
+    full_backup_mock: MagicMock,
+    restore_method: str,
+):
+    """Test restore reloads updater and raises update-in-progress if reload finds an update."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.updater.auto_update = True
+
+    manager = await BackupManager(coresys).load_config()
+    backup_instance = full_backup_mock.return_value
+    backup_instance.supervisor_version = "2022.08.4"
+
+    with (
+        patch.object(
+            type(coresys.supervisor),
+            "version",
+            new=PropertyMock(return_value="2022.08.3"),
+        ),
+        patch.object(
+            type(coresys.supervisor),
+            "need_update",
+            new=PropertyMock(side_effect=[False, True]),
+        ),
+        patch.object(type(coresys.updater), "reload", new=AsyncMock()) as reload,
+        pytest.raises(BackupSupervisorUpdateInProgressError) as exc_info,
+    ):
+        await getattr(manager, restore_method)(backup_instance)
+
+    assert exc_info.value.status == 503
+    assert (
+        "Backup was made on supervisor version 2022.08.4, can't restore on "
+        "2022.08.3. Update is in-progress, try again after it completes."
+        in str(exc_info.value)
+    )
+    reload.assert_called_once()
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("restore_method", ["do_restore_full", "do_restore_partial"])
+async def test_restore_fails_supervisor_version_no_update_available_on_reload(
+    coresys: CoreSys,
+    full_backup_mock: MagicMock,
+    restore_method: str,
+):
+    """Test restore falls back to version mismatch if reload finds no update available."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.updater.auto_update = True
+
+    manager = await BackupManager(coresys).load_config()
+    backup_instance = full_backup_mock.return_value
+    backup_instance.supervisor_version = "2022.08.4"
+
+    with (
+        patch.object(
+            type(coresys.supervisor),
+            "version",
+            new=PropertyMock(return_value="2022.08.3"),
+        ),
+        patch.object(
+            type(coresys.supervisor),
+            "need_update",
+            new=PropertyMock(return_value=False),
+        ),
+        patch.object(type(coresys.updater), "reload", new=AsyncMock()) as reload,
+        pytest.raises(BackupSupervisorVersionError) as exc_info,
+    ):
+        await getattr(manager, restore_method)(backup_instance)
+
+    assert exc_info.value.status == 400
+    assert (
+        "Backup was made on supervisor version 2022.08.4, can't restore on "
+        "2022.08.3. Must update supervisor first." in str(exc_info.value)
+    )
+    reload.assert_called_once()
 
 
 @pytest.mark.usefixtures("install_app_ssh", "capture_exception")

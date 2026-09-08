@@ -75,7 +75,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
             await self.fetch_data()
 
         if self.sys_core.state == CoreState.RUNNING and self.sys_supervisor.need_update:
-            self.sys_create_task(self.sys_tasks.auto_update_supervisor())
+            self.sys_create_task(self.sys_supervisor.auto_update_supervisor())
 
     @property
     def version_homeassistant(self) -> AwesomeVersion | None:

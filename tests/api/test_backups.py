@@ -31,6 +31,7 @@ from supervisor.homeassistant.websocket import HomeAssistantWebSocket
 from supervisor.jobs import SupervisorJob
 from supervisor.mounts.mount import Mount
 from supervisor.supervisor import Supervisor
+from supervisor.updater import Updater
 
 from tests.common import get_fixture_path
 from tests.const import TEST_ADDON_SLUG
@@ -571,12 +572,19 @@ async def test_restore_immediate_errors(
         assert "Must update supervisor" in (await resp.json())["message"]
 
         coresys.updater.auto_update = True
-        resp = await api_client.post(
-            f"/backups/{mock_partial_backup.slug}/restore/partial",
-            json={"background": True, "homeassistant": True},
-        )
+        with (
+            patch.object(
+                Supervisor, "need_update", new=PropertyMock(return_value=True)
+            ),
+            patch.object(Updater, "reload", new=AsyncMock()) as reload,
+        ):
+            resp = await api_client.post(
+                f"/backups/{mock_partial_backup.slug}/restore/partial",
+                json={"background": True, "homeassistant": True},
+            )
         assert resp.status == 503
         assert "Update is in-progress" in (await resp.json())["message"]
+        reload.assert_not_called()
 
     with (
         patch.object(

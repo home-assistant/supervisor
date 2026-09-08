@@ -247,6 +247,29 @@ class Supervisor(CoreSysAttributes):
         self.sys_create_task(self.sys_core.stop())
 
     @Job(
+        name="supervisor_auto_update",
+        conditions=[
+            JobCondition.AUTO_UPDATE,
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.OS_SUPPORTED,
+            JobCondition.RUNNING,
+            JobCondition.ARCHITECTURE_SUPPORTED,
+        ],
+        concurrency=JobConcurrency.REJECT,
+        internal=True,
+    )
+    async def auto_update_supervisor(self) -> None:
+        """Auto update Supervisor if enabled."""
+        if not self.need_update:
+            return
+
+        _LOGGER.info("Found new Supervisor version %s, updating", self.latest_version)
+        with suppress(SupervisorUpdateError, SupervisorJobError):
+            await self.update()
+
+    @Job(
         name="supervisor_restart",
         conditions=[JobCondition.RUNNING],
         on_condition=SupervisorJobError,

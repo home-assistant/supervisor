@@ -1,6 +1,5 @@
 """A collection of tasks."""
 
-from contextlib import suppress
 from datetime import datetime, timedelta
 import logging
 from typing import cast
@@ -15,11 +14,8 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantWSError,
     ObserverError,
-    SupervisorJobError,
-    SupervisorUpdateError,
 )
 from ..homeassistant.const import LANDINGPAGE, WSType
-from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.dt import utcnow
@@ -375,32 +371,6 @@ class Tasks(CoreSysAttributes):
     async def _reload_store(self) -> None:
         """Reload store and check for app updates."""
         await self.sys_store.reload()
-
-    @Job(
-        name="tasks_update_supervisor",
-        conditions=[
-            JobCondition.AUTO_UPDATE,
-            JobCondition.FREE_SPACE,
-            JobCondition.HEALTHY,
-            JobCondition.INTERNET_HOST,
-            JobCondition.OS_SUPPORTED,
-            JobCondition.RUNNING,
-            JobCondition.ARCHITECTURE_SUPPORTED,
-        ],
-        concurrency=JobConcurrency.REJECT,
-        internal=True,
-    )
-    async def auto_update_supervisor(self) -> None:
-        """Auto update Supervisor if enabled."""
-        if not self.sys_supervisor.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new Supervisor version %s, updating",
-            self.sys_supervisor.latest_version,
-        )
-        with suppress(SupervisorUpdateError, SupervisorJobError):
-            await self.sys_supervisor.update()
 
     @Job(
         name="tasks_core_backup_cleanup",

@@ -840,12 +840,21 @@ class BackupManager(FileConfiguration, JobGroup):
             return
 
         if self.sys_updater.auto_update:
-            self.sys_create_task(self.sys_tasks.auto_update_supervisor())
-            raise BackupSupervisorUpdateInProgressError(
-                _LOGGER.error,
-                backup_version=backup.supervisor_version,
-                supervisor_version=self.sys_supervisor.version,
-            )
+            if self.sys_supervisor.need_update:
+                # Already known that an update is available, make sure it's kicked off
+                self.sys_create_task(self.sys_supervisor.auto_update_supervisor())
+            else:
+                # Refresh version info in case a newer Supervisor was just
+                # released. This also kicks off an auto update if one is now
+                # available.
+                await self.sys_updater.reload()
+
+            if self.sys_supervisor.need_update:
+                raise BackupSupervisorUpdateInProgressError(
+                    _LOGGER.error,
+                    backup_version=backup.supervisor_version,
+                    supervisor_version=self.sys_supervisor.version,
+                )
 
         raise BackupSupervisorVersionError(
             _LOGGER.error,

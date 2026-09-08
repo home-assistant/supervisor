@@ -227,7 +227,7 @@ async def test_reload_triggers_supervisor_update(
     update_done = asyncio.Event()
 
     async def find_update_job_end(job: SupervisorJob):
-        if job.name == "tasks_update_supervisor":
+        if job.name == "supervisor_auto_update":
             update_done.set()
 
     coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, find_update_job_end)
