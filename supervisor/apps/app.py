@@ -30,6 +30,8 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
+    ATTR_CONFIG,
+    ATTR_DISCOVERY,
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
@@ -41,6 +43,7 @@ from ..const import (
     ATTR_PORTS,
     ATTR_PROTECTED,
     ATTR_SCHEMA,
+    ATTR_SERVICE,
     ATTR_SLUG,
     ATTR_STATE,
     ATTR_SYSTEM,
@@ -59,6 +62,7 @@ from ..const import (
     BusEvent,
 )
 from ..coresys import CoreSys
+from ..discovery import Message
 from ..docker.app import DockerApp
 from ..docker.const import EXIT_CODE_SIGTERM_DEFAULT, ContainerState
 from ..docker.manager import ExecReturn
@@ -1023,9 +1027,7 @@ class App(AppModel):
             await self.sys_ingress.del_dynamic_port(self.slug)
 
         # Cleanup discovery data
-        for message in self.sys_discovery.list_messages:
-            if message.app != self.slug:
-                continue
+        for message in self.sys_discovery.messages_for_app(self.slug):
             await self.sys_discovery.remove(message)
 
         # Cleanup services data
@@ -1567,6 +1569,14 @@ class App(AppModel):
             ATTR_SYSTEM: self.data,
             ATTR_VERSION: self.version,
             ATTR_STATE: _MAP_APP_STATE.get(self.state, self.state),
+            ATTR_DISCOVERY: [
+                {
+                    ATTR_SERVICE: message.service,
+                    ATTR_UUID: message.uuid,
+                    ATTR_CONFIG: message.config,
+                }
+                for message in self.sys_discovery.messages_for_app(self.slug)
+            ],
         }
         apparmor_profile = (
             self.slug if self.sys_host.apparmor.exists(self.slug) else None
@@ -1671,6 +1681,21 @@ class App(AppModel):
             restore_image = self._image(data[ATTR_SYSTEM])
             await self.sys_apps.data.restore(
                 self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image
+            )
+
+            # Restore discovery messages before the app can send its own ones,
+            # so that a re-send updates the message which kept its uuid
+            await self.sys_discovery.restore_app_messages(
+                self,
+                [
+                    Message(
+                        app=self.slug,
+                        service=message[ATTR_SERVICE],
+                        config=message[ATTR_CONFIG],
+                        uuid=message[ATTR_UUID],
+                    )
+                    for message in data[ATTR_DISCOVERY]
+                ],
             )
 
             # Stop it first if its running
