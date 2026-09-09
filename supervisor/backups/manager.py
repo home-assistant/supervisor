@@ -840,16 +840,20 @@ class BackupManager(FileConfiguration, JobGroup):
             return
 
         if self.sys_updater.auto_update:
-            if self.sys_supervisor.need_update:
-                # Already known that an update is available, make sure it's kicked off
-                self.sys_create_task(self.sys_supervisor.auto_update_supervisor())
-            else:
-                # Refresh version info in case a newer Supervisor was just
-                # released. This also kicks off an auto update if one is now
-                # available.
-                await self.sys_updater.reload()
+            if not self.sys_supervisor.need_update:
+                # Ensure the latest version info is known before concluding
+                # there's no update to wait for. Await the fetch task
+                # directly (rather than calling reload()) so a fetch that's
+                # already in-flight - or one that just failed - isn't masked
+                # by fetch_data's throttle window.
+                await self.sys_updater.start_fetch_data()
 
-            if self.sys_supervisor.need_update:
+            # Start (or reuse) the auto update. We can't await it here - the
+            # update stops this very Supervisor instance once it completes,
+            # which would drop the connection before a response could be
+            # served. Use the task's existence/done status instead.
+            update_task = self.sys_supervisor.auto_update_supervisor()
+            if update_task and not update_task.done():
                 raise BackupSupervisorUpdateInProgressError(
                     _LOGGER.error,
                     backup_version=backup.supervisor_version,

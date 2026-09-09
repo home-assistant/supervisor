@@ -38,6 +38,7 @@ from ..exceptions import (
     HomeAssistantUpdateError,
     HomeAssistantUpdateImageError,
     JobException,
+    SupervisorJobError,
     SupervisorUpdateError,
 )
 from ..jobs import ChildJobSyncFilter
@@ -261,6 +262,14 @@ class HomeAssistantCore(JobGroup):
                             )
                             await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
                             continue
+                        except SupervisorJobError:
+                            _LOGGER.debug(
+                                "Supervisor update is already in progress, waiting %ssec",
+                                INSTALL_RETRY_WAIT_SECS,
+                            )
+                            await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
+                            continue
+
                     else:
                         _LOGGER.warning(
                             "Supervisor has a pending update but auto-update is"

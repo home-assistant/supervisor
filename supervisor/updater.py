@@ -1,5 +1,6 @@
 """Fetch last versions from webserver."""
 
+import asyncio
 from contextlib import suppress
 from datetime import timedelta
 import json
@@ -47,6 +48,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys
         self._connectivity_listener: EventListener | None = None
+        self._fetch_task: asyncio.Task[None] | None = None
 
     async def load(self) -> None:
         """Update internal data."""
@@ -59,23 +61,45 @@ class Updater(FileConfiguration, CoreSysAttributes):
             )
             await self.reload()
 
-    async def reload(self) -> None:
-        """Update internal data."""
-        # If there's no connectivity, delay initial version fetch
-        if not self.sys_supervisor.connectivity:
-            _LOGGER.debug("No Supervisor connectivity, delaying version fetch")
-            if not self._connectivity_listener:
-                self._connectivity_listener = self.sys_bus.register_event(
-                    BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
-                )
-            _LOGGER.info("No Supervisor connectivity, delaying version fetch")
-            return
+    def start_fetch_data(self) -> asyncio.Task[None]:
+        """Start (or reuse) a version data fetch, returning its task.
 
+        Returns the task performing the fetch, which may already be in
+        progress from a previous call.
+
+        Callers that need up to date version info should await the
+        returned task directly rather than calling fetch_data() themselves.
+        fetch_data() is throttled, so a second direct call while one is
+        already in-flight (or one that just failed) would silently be
+        skipped instead of reflecting the actual outcome of the fetch.
+        """
+        if self._fetch_task and not self._fetch_task.done():
+            return self._fetch_task
+
+        self._fetch_task = self.sys_create_task(
+            self._fetch_data_suppressed(), eager_start=True
+        )
+        return self._fetch_task
+
+    async def _fetch_data_suppressed(self) -> None:
+        """Fetch data, suppressing failures (already logged/issued in fetch_data)."""
         with suppress(UpdaterError):
             await self.fetch_data()
 
+    async def reload(self) -> None:
+        """Update internal data."""
+        if not self.sys_supervisor.connectivity:
+            # If there's no connectivity, delay version fetch until it's back
+            if not self._connectivity_listener:
+                _LOGGER.debug("No Supervisor connectivity, delaying version fetch")
+                self._connectivity_listener = self.sys_bus.register_event(
+                    BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
+                )
+        else:
+            await self.start_fetch_data()
+
         if self.sys_core.state == CoreState.RUNNING and self.sys_supervisor.need_update:
-            self.sys_create_task(self.sys_supervisor.auto_update_supervisor())
+            self.sys_supervisor.auto_update_supervisor()
 
     @property
     def version_homeassistant(self) -> AwesomeVersion | None:

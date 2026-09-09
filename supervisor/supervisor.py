@@ -59,6 +59,7 @@ class Supervisor(CoreSysAttributes):
         # -inf means "never probed" so the first non-forced call always runs;
         # 0.0 would wrongly short-circuit while loop.time() < min_interval.
         self._connectivity_last_check: float = float("-inf")
+        self._update_task: asyncio.Task[None] | None = None
 
     async def load(self) -> None:
         """Prepare Supervisor object."""
@@ -192,6 +193,9 @@ class Supervisor(CoreSysAttributes):
 
     @Job(
         name="supervisor_update",
+        # Callers currently assume a SupervisorJobError raised means update in
+        # progress since that's the only way it can occur. If other conditions
+        # are added to this job that will require refactoring.
         on_condition=SupervisorJobError,
         concurrency=JobConcurrency.REJECT,
         # We assume for now the docker image pull is 100% of this task. But from
@@ -246,6 +250,26 @@ class Supervisor(CoreSysAttributes):
 
         self.sys_create_task(self.sys_core.stop())
 
+    def auto_update_supervisor(self) -> asyncio.Task[None] | None:
+        """Start the Supervisor auto update if enabled and needed.
+
+        Returns the task performing the update, which may already be in
+        progress from a previous call, or None if no update was started.
+        """
+        if self._update_task and not self._update_task.done():
+            return self._update_task
+
+        if not self.need_update:
+            return None
+
+        _LOGGER.info("Found new Supervisor version %s, updating", self.latest_version)
+        # Eager start so a synchronous, immediate failure (e.g. a job condition
+        # that doesn't need to await anything) is reflected in the task's done
+        # state right away, without requiring an extra loop iteration at the
+        # call site.
+        self._update_task = self.sys_create_task(self._auto_update(), eager_start=True)
+        return self._update_task
+
     @Job(
         name="supervisor_auto_update",
         conditions=[
@@ -257,15 +281,10 @@ class Supervisor(CoreSysAttributes):
             JobCondition.RUNNING,
             JobCondition.ARCHITECTURE_SUPPORTED,
         ],
-        concurrency=JobConcurrency.REJECT,
         internal=True,
     )
-    async def auto_update_supervisor(self) -> None:
-        """Auto update Supervisor if enabled."""
-        if not self.need_update:
-            return
-
-        _LOGGER.info("Found new Supervisor version %s, updating", self.latest_version)
+    async def _auto_update(self) -> None:
+        """Auto update Supervisor."""
         with suppress(SupervisorUpdateError, SupervisorJobError):
             await self.update()
 

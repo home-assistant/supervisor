@@ -572,11 +572,16 @@ async def test_restore_immediate_errors(
         assert "Must update supervisor" in (await resp.json())["message"]
 
         coresys.updater.auto_update = True
+        update_task = MagicMock()
+        update_task.done.return_value = False
         with (
             patch.object(
                 Supervisor, "need_update", new=PropertyMock(return_value=True)
             ),
-            patch.object(Updater, "reload", new=AsyncMock()) as reload,
+            patch.object(Updater, "start_fetch_data") as start_fetch_data,
+            patch.object(
+                Supervisor, "auto_update_supervisor", return_value=update_task
+            ) as auto_update_supervisor,
         ):
             resp = await api_client.post(
                 f"/backups/{mock_partial_backup.slug}/restore/partial",
@@ -584,7 +589,8 @@ async def test_restore_immediate_errors(
             )
         assert resp.status == 503
         assert "Update is in-progress" in (await resp.json())["message"]
-        reload.assert_not_called()
+        start_fetch_data.assert_not_called()
+        auto_update_supervisor.assert_called_once()
 
     with (
         patch.object(

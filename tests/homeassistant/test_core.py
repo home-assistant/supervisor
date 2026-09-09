@@ -29,6 +29,7 @@ from supervisor.exceptions import (
     HomeAssistantNotRunningError,
     HomeAssistantStatsTimeoutError,
     HomeAssistantUnknownError,
+    SupervisorJobError,
     SupervisorUpdateError,
 )
 from supervisor.homeassistant.api import APIState
@@ -324,6 +325,47 @@ async def test_install_supervisor_update_fails_retries(
         sleep.assert_any_await(30)
 
     assert "Supervisor update failed, retrying in 30sec" in caplog.text
+
+
+async def test_install_supervisor_update_already_in_progress_retries(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test install retries after 30s when a supervisor update is already running."""
+    caplog.set_level("DEBUG", "supervisor.homeassistant.core")
+
+    # Supervisor reports needing update on first pass, not on second
+    need_update_values = [True, False]
+    need_update_mock = PropertyMock(side_effect=need_update_values)
+
+    with (
+        patch.object(HomeAssistantCore, "start"),
+        patch.object(DockerHomeAssistant, "cleanup"),
+        patch.object(
+            Updater,
+            "image_homeassistant",
+            new=PropertyMock(return_value="homeassistant"),
+        ),
+        patch.object(
+            Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
+        ),
+        patch.object(
+            DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
+        ),
+        patch.object(type(coresys.supervisor), "need_update", new=need_update_mock),
+        patch.object(
+            type(coresys.updater), "auto_update", new=PropertyMock(return_value=True)
+        ),
+        patch.object(
+            coresys.supervisor,
+            "update",
+            side_effect=SupervisorJobError("update already running"),
+        ),
+        patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
+    ):
+        await coresys.homeassistant.core.install()
+        sleep.assert_any_await(30)
+
+    assert "Supervisor update is already in progress, waiting 30sec" in caplog.text
 
 
 @pytest.mark.parametrize(
