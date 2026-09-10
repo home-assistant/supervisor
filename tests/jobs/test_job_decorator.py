@@ -1528,6 +1528,58 @@ async def test_progress_syncing(coresys: CoreSys):
     assert job.done
 
 
+async def test_synchronous_conditions_refuse_before_awaiting_ones(coresys: CoreSys):
+    """Test a synchronous condition refuses the job before any awaiting check runs.
+
+    Callers that eagerly start a job as a task rely on a refusal being visible
+    before the first suspension, so the awaiting checks must come last.
+    """
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.calls = 0
+
+        @Job(
+            name="test_synchronous_conditions_refuse_before_awaiting_ones_execute",
+            conditions=[
+                JobCondition.FREE_SPACE,
+                JobCondition.INTERNET_SYSTEM,
+                JobCondition.INTERNET_HOST,
+                JobCondition.ARCHITECTURE_SUPPORTED,
+            ],
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            self.calls += 1
+
+    test = TestClass(coresys)
+    coresys.resolution.add_unsupported_reason(UnsupportedReason.SYSTEM_ARCHITECTURE)
+
+    with (
+        patch.object(
+            type(coresys.host.info), "free_space", new=AsyncMock(return_value=5000)
+        ) as free_space,
+        patch.object(
+            type(coresys.supervisor), "check_and_update_connectivity", new=AsyncMock()
+        ) as system_connectivity,
+        patch.object(
+            type(coresys.host.network), "check_connectivity", new=AsyncMock()
+        ) as host_connectivity,
+    ):
+        task = coresys.create_task(test.execute(), eager_start=True)
+        assert task.done()
+        assert task.result() is None
+
+    assert test.calls == 0
+    free_space.assert_not_called()
+    system_connectivity.assert_not_called()
+    host_connectivity.assert_not_called()
+
+
 async def test_detach_runs_method_in_task(coresys: CoreSys):
     """Test a detached job returns a task and cleans up after it completes."""
 
