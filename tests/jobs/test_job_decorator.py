@@ -1807,3 +1807,31 @@ async def test_detach_cancelled_task_releases_lock(coresys: CoreSys):
     with pytest.raises(asyncio.CancelledError):
         await second
     assert coresys.jobs.jobs == []
+
+
+async def test_detach_drops_finished_task_reference(coresys: CoreSys):
+    """Test the decorator does not keep a finished detached task alive."""
+
+    class TestClass:
+        """Test class."""
+
+        job = Job(name="test_detach_drops_finished_task_reference_execute", detach=True)
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @job
+        async def execute(self) -> None:
+            """Execute the class method."""
+            raise HassioError("boom")
+
+    test = TestClass(coresys)
+    task = await test.execute()
+    assert task is not None
+    with pytest.raises(HassioError):
+        await task
+
+    await asyncio.sleep(0)
+    # pylint: disable-next=protected-access
+    assert TestClass.job._detached_task is None

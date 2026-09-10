@@ -349,12 +349,14 @@ class Job(CoreSysAttributes):
                         # before the task is exposed. A task cancelled before
                         # its first step never runs its finally, which would
                         # leave the lock held and the job registered.
-                        self._detached_task = self.sys_create_task(
+                        task = self.sys_create_task(
                             self._run_detached(job_group, job, cleanup, execute()),
                             eager_start=True,
                         )
                         detached = True
-                        return self._detached_task
+                        self._detached_task = task
+                        task.add_done_callback(self._clear_detached_task)
+                        return task
                     finally:
                         if not detached:
                             self._release_concurrency_control(job_group, job)
@@ -537,6 +539,14 @@ class Job(CoreSysAttributes):
             raise JobConditionException(
                 f"'{method_name}' blocked from execution, mounting not supported on system"
             )
+
+    def _clear_detached_task(self, task: asyncio.Task[Any]) -> None:
+        """Drop the reference to a finished detached task.
+
+        Guarded by identity so an older task cannot clear a newer one.
+        """
+        if self._detached_task is task:
+            self._detached_task = None
 
     async def _run_detached(
         self,
