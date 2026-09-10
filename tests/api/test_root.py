@@ -88,7 +88,9 @@ async def test_api_reload_updates(
 ):
     """Test reload updates."""
     with (
-        patch("supervisor.updater.Updater.fetch_data") as fetch_data,
+        patch(
+            "supervisor.updater.Updater.fetch_data", AsyncMock(return_value=None)
+        ) as fetch_data,
     ):
         resp = await api_client.post("/reload_updates")
 

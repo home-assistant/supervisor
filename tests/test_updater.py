@@ -30,7 +30,9 @@ async def test_fetch_versions(
     """Test download and sync version."""
 
     coresys.security.force = True
-    await coresys.updater.fetch_data()
+    task = await coresys.updater.fetch_data()
+    assert task
+    await task
 
     data = json.loads(await mock_update_data.text())
     assert coresys.updater.version_supervisor == data["supervisor"]
@@ -87,7 +89,9 @@ async def test_os_update_path(
     """Test OS upgrade path across major versions."""
     coresys.os._board = "rpi4-64"  # pylint: disable=protected-access
     coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
-    await coresys.updater.fetch_data()
+    task = await coresys.updater.fetch_data()
+    assert task
+    await task
 
     assert coresys.updater.version_hassos == AwesomeVersion(expected)
 

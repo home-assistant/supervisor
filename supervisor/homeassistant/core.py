@@ -38,7 +38,6 @@ from ..exceptions import (
     HomeAssistantUpdateError,
     HomeAssistantUpdateImageError,
     JobException,
-    SupervisorJobError,
     SupervisorUpdateError,
 )
 from ..jobs import ChildJobSyncFilter
@@ -253,19 +252,13 @@ class HomeAssistantCore(JobGroup):
                             " before installing Home Assistant Core. Updating Supervisor first"
                         )
                         try:
-                            await self.sys_supervisor.update()
+                            if task := await self.sys_supervisor.update():
+                                await task
                         except SupervisorUpdateError as err:
                             _LOGGER.warning(
                                 "Supervisor update failed, retrying in %ssec: %s",
                                 INSTALL_RETRY_WAIT_SECS,
                                 err,
-                            )
-                            await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
-                            continue
-                        except SupervisorJobError:
-                            _LOGGER.debug(
-                                "Supervisor update is already in progress, waiting %ssec",
-                                INSTALL_RETRY_WAIT_SECS,
                             )
                             await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
                             continue

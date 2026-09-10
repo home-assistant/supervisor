@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable
+from contextlib import suppress
 import errno
 import logging
 from pathlib import Path
@@ -28,6 +29,7 @@ from ..exceptions import (
     BackupMountDownError,
     BackupSupervisorUpdateInProgressError,
     BackupSupervisorVersionError,
+    UpdaterError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobConcurrency, JobCondition
 from ..jobs.decorator import Job
@@ -842,17 +844,20 @@ class BackupManager(FileConfiguration, JobGroup):
         if self.sys_updater.auto_update:
             if not self.sys_supervisor.need_update:
                 # Ensure the latest version info is known before concluding
-                # there's no update to wait for. Await the fetch task
-                # directly (rather than calling reload()) so a fetch that's
-                # already in-flight - or one that just failed - isn't masked
-                # by fetch_data's throttle window.
-                await self.sys_updater.start_fetch_data()
+                # there's no update to wait for. fetch_data is a detached,
+                # REJECT-concurrency job, so this reuses an already in-flight
+                # fetch instead of masking it behind the throttle window.
+                with suppress(UpdaterError):
+                    if task := await self.sys_updater.fetch_data():
+                        await task
 
-            # Start (or reuse) the auto update. We can't await it here - the
-            # update stops this very Supervisor instance once it completes,
-            # which would drop the connection before a response could be
-            # served. Use the task's existence/done status instead.
-            update_task = self.sys_supervisor.auto_update_supervisor()
+            # Start (or reuse) the auto update. We can't await its completion
+            # here - the update stops this very Supervisor instance once it
+            # completes, which would drop the connection before a response
+            # could be served. Use the returned task's done status instead;
+            # awaiting auto_update_supervisor() itself only waits for the
+            # update to be started (or reused), not for it to finish.
+            update_task = await self.sys_supervisor.auto_update_supervisor()
             if update_task and not update_task.done():
                 raise BackupSupervisorUpdateInProgressError(
                     _LOGGER.error,

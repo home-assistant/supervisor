@@ -458,7 +458,7 @@ async def test_restore_fails_supervisor_version_auto_update_already_in_progress(
         patch.object(
             type(coresys.supervisor),
             "auto_update_supervisor",
-            return_value=update_task,
+            new=AsyncMock(return_value=update_task),
         ) as auto_update_supervisor,
         pytest.raises(BackupSupervisorUpdateInProgressError) as exc_info,
     ):
@@ -508,12 +508,12 @@ async def test_restore_fails_supervisor_version_auto_update_found_on_reload(
             new=PropertyMock(return_value=False),
         ),
         patch.object(
-            type(coresys.updater), "start_fetch_data", return_value=fetch_task
-        ) as start_fetch_data,
+            type(coresys.updater), "fetch_data", new=AsyncMock(return_value=fetch_task)
+        ) as fetch_data,
         patch.object(
             type(coresys.supervisor),
             "auto_update_supervisor",
-            return_value=update_task,
+            new=AsyncMock(return_value=update_task),
         ) as auto_update_supervisor,
         pytest.raises(BackupSupervisorUpdateInProgressError) as exc_info,
     ):
@@ -525,7 +525,7 @@ async def test_restore_fails_supervisor_version_auto_update_found_on_reload(
         "2022.08.3. Update is in-progress, try again after it completes."
         in str(exc_info.value)
     )
-    start_fetch_data.assert_called_once()
+    fetch_data.assert_called_once()
     auto_update_supervisor.assert_called_once()
 
 
@@ -560,10 +560,12 @@ async def test_restore_fails_supervisor_version_no_update_available_on_reload(
             new=PropertyMock(return_value=False),
         ),
         patch.object(
-            type(coresys.updater), "start_fetch_data", return_value=fetch_task
-        ) as start_fetch_data,
+            type(coresys.updater), "fetch_data", new=AsyncMock(return_value=fetch_task)
+        ) as fetch_data,
         patch.object(
-            type(coresys.supervisor), "auto_update_supervisor", return_value=None
+            type(coresys.supervisor),
+            "auto_update_supervisor",
+            new=AsyncMock(return_value=None),
         ) as auto_update_supervisor,
         pytest.raises(BackupSupervisorVersionError) as exc_info,
     ):
@@ -574,7 +576,7 @@ async def test_restore_fails_supervisor_version_no_update_available_on_reload(
         "Backup was made on supervisor version 2022.08.4, can't restore on "
         "2022.08.3. Must update supervisor first." in str(exc_info.value)
     )
-    start_fetch_data.assert_called_once()
+    fetch_data.assert_called_once()
     auto_update_supervisor.assert_called_once()
 
 

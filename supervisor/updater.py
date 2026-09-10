@@ -1,6 +1,5 @@
 """Fetch last versions from webserver."""
 
-import asyncio
 from contextlib import suppress
 from datetime import timedelta
 import json
@@ -48,7 +47,6 @@ class Updater(FileConfiguration, CoreSysAttributes):
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys
         self._connectivity_listener: EventListener | None = None
-        self._fetch_task: asyncio.Task[None] | None = None
 
     async def load(self) -> None:
         """Update internal data."""
@@ -61,31 +59,6 @@ class Updater(FileConfiguration, CoreSysAttributes):
             )
             await self.reload()
 
-    def start_fetch_data(self) -> asyncio.Task[None]:
-        """Start (or reuse) a version data fetch, returning its task.
-
-        Returns the task performing the fetch, which may already be in
-        progress from a previous call.
-
-        Callers that need up to date version info should await the
-        returned task directly rather than calling fetch_data() themselves.
-        fetch_data() is throttled, so a second direct call while one is
-        already in-flight (or one that just failed) would silently be
-        skipped instead of reflecting the actual outcome of the fetch.
-        """
-        if self._fetch_task and not self._fetch_task.done():
-            return self._fetch_task
-
-        self._fetch_task = self.sys_create_task(
-            self._fetch_data_suppressed(), eager_start=True
-        )
-        return self._fetch_task
-
-    async def _fetch_data_suppressed(self) -> None:
-        """Fetch data, suppressing failures (already logged/issued in fetch_data)."""
-        with suppress(UpdaterError):
-            await self.fetch_data()
-
     async def reload(self) -> None:
         """Update internal data."""
         if not self.sys_supervisor.connectivity:
@@ -96,10 +69,16 @@ class Updater(FileConfiguration, CoreSysAttributes):
                     BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
                 )
         else:
-            await self.start_fetch_data()
+            # fetch_data is a detached, REJECT-concurrency job. A call while
+            # one is already in-flight gets back that same task instead of
+            # starting a redundant fetch, and awaiting it here surfaces the
+            # real outcome instead of relying on the throttle window.
+            with suppress(UpdaterError):
+                if task := await self.fetch_data():
+                    await task
 
         if self.sys_core.state == CoreState.RUNNING and self.sys_supervisor.need_update:
-            self.sys_supervisor.auto_update_supervisor()
+            await self.sys_supervisor.auto_update_supervisor()
 
     @property
     def version_homeassistant(self) -> AwesomeVersion | None:
@@ -276,8 +255,9 @@ class Updater(FileConfiguration, CoreSysAttributes):
         ],
         on_condition=UpdaterJobError,
         throttle_period=timedelta(seconds=30),
-        concurrency=JobConcurrency.QUEUE,
+        concurrency=JobConcurrency.REJECT,
         throttle=JobThrottle.THROTTLE,
+        detach=True,
     )
     async def fetch_data(self):
         """Fetch current versions from Github.

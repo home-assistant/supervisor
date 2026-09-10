@@ -578,9 +578,11 @@ async def test_restore_immediate_errors(
             patch.object(
                 Supervisor, "need_update", new=PropertyMock(return_value=True)
             ),
-            patch.object(Updater, "start_fetch_data") as start_fetch_data,
+            patch.object(Updater, "fetch_data", new=AsyncMock()) as fetch_data,
             patch.object(
-                Supervisor, "auto_update_supervisor", return_value=update_task
+                Supervisor,
+                "auto_update_supervisor",
+                new=AsyncMock(return_value=update_task),
             ) as auto_update_supervisor,
         ):
             resp = await api_client.post(
@@ -589,7 +591,7 @@ async def test_restore_immediate_errors(
             )
         assert resp.status == 503
         assert "Update is in-progress" in (await resp.json())["message"]
-        start_fetch_data.assert_not_called()
+        fetch_data.assert_not_called()
         auto_update_supervisor.assert_called_once()
 
     with (

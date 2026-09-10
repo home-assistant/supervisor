@@ -59,7 +59,6 @@ class Supervisor(CoreSysAttributes):
         # -inf means "never probed" so the first non-forced call always runs;
         # 0.0 would wrongly short-circuit while loop.time() < min_interval.
         self._connectivity_last_check: float = float("-inf")
-        self._update_task: asyncio.Task[None] | None = None
 
     async def load(self) -> None:
         """Prepare Supervisor object."""
@@ -193,10 +192,6 @@ class Supervisor(CoreSysAttributes):
 
     @Job(
         name="supervisor_update",
-        # Callers currently assume a SupervisorJobError raised means update in
-        # progress since that's the only way it can occur. If other conditions
-        # are added to this job that will require refactoring.
-        on_condition=SupervisorJobError,
         concurrency=JobConcurrency.REJECT,
         # We assume for now the docker image pull is 100% of this task. But from
         # a user perspective that isn't true.  Other steps that take time which
@@ -204,9 +199,19 @@ class Supervisor(CoreSysAttributes):
         child_job_syncs=[
             ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
         ],
+        detach=True,
     )
     async def update(self, version: AwesomeVersion | None = None) -> None:
-        """Update Supervisor version."""
+        """Update Supervisor version.
+
+        This job is detached: calling it returns the task performing the
+        update - which may already be in progress from a previous call,
+        whether that call was to this method directly or via
+        auto_update_supervisor() - or None if the job was refused (e.g.
+        throttled). Errors are raised on the returned task, not to the
+        caller of this method, so callers that need the result must await
+        the returned task themselves.
+        """
         version = version or self.latest_version or self.version
 
         if version == self.version:
@@ -250,26 +255,6 @@ class Supervisor(CoreSysAttributes):
 
         self.sys_create_task(self.sys_core.stop())
 
-    def auto_update_supervisor(self) -> asyncio.Task[None] | None:
-        """Start the Supervisor auto update if enabled and needed.
-
-        Returns the task performing the update, which may already be in
-        progress from a previous call, or None if no update was started.
-        """
-        if self._update_task and not self._update_task.done():
-            return self._update_task
-
-        if not self.need_update:
-            return None
-
-        _LOGGER.info("Found new Supervisor version %s, updating", self.latest_version)
-        # Eager start so a synchronous, immediate failure (e.g. a job condition
-        # that doesn't need to await anything) is reflected in the task's done
-        # state right away, without requiring an extra loop iteration at the
-        # call site.
-        self._update_task = self.sys_create_task(self._auto_update(), eager_start=True)
-        return self._update_task
-
     @Job(
         name="supervisor_auto_update",
         conditions=[
@@ -283,10 +268,25 @@ class Supervisor(CoreSysAttributes):
         ],
         internal=True,
     )
-    async def _auto_update(self) -> None:
-        """Auto update Supervisor."""
-        with suppress(SupervisorUpdateError, SupervisorJobError):
-            await self.update()
+    async def auto_update_supervisor(self) -> asyncio.Task[None] | None:
+        """Start the Supervisor auto update if enabled and needed.
+
+        Returns the task performing the update - which may already be in
+        progress, whether started by this call, a previous call, or a
+        direct call to update() elsewhere - or None if no update is
+        needed or the job was refused (e.g. a condition failed).
+
+        This never awaits the update to completion itself: update()
+        restarts Supervisor once done, and awaiting that here could drop
+        the caller's connection before a response is sent. Callers that
+        need to wait for the result should await the returned task
+        themselves.
+        """
+        if not self.need_update:
+            return None
+
+        _LOGGER.info("Found new Supervisor version %s, updating", self.latest_version)
+        return await self.update()
 
     @Job(
         name="supervisor_restart",

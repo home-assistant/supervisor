@@ -15,7 +15,6 @@ from supervisor.docker.supervisor import DockerSupervisor
 from supervisor.exceptions import (
     DockerError,
     SupervisorAppArmorError,
-    SupervisorJobError,
     SupervisorUpdateError,
 )
 from supervisor.host.apparmor import AppArmorControl
@@ -217,9 +216,11 @@ async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
     with (
         patch.object(DockerSupervisor, "install", side_effect=err),
         patch.object(type(coresys.supervisor), "update_apparmor"),
-        pytest.raises(SupervisorUpdateError),
     ):
-        await coresys.supervisor.update(AwesomeVersion("1.0"))
+        task = await coresys.supervisor.update(AwesomeVersion("1.0"))
+        assert task
+        with pytest.raises(SupervisorUpdateError):
+            await task
 
     capture_exception.assert_called_once_with(err)
     assert (
@@ -228,8 +229,8 @@ async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
     )
 
 
-async def test_update_rejects_concurrent_update(coresys: CoreSys):
-    """Test a second update request is rejected while an update is running."""
+async def test_update_returns_running_task_for_concurrent_call(coresys: CoreSys):
+    """Test a second update call while one is running gets back the same task."""
     # pylint: disable-next=protected-access
     coresys.updater._data.setdefault("image", {})["supervisor"] = (
         "ghcr.io/home-assistant/aarch64-hassio-supervisor"
@@ -247,14 +248,16 @@ async def test_update_rejects_concurrent_update(coresys: CoreSys):
         patch.object(type(coresys.supervisor), "update_apparmor"),
         patch.object(type(coresys.core), "stop"),
     ):
-        first = asyncio.create_task(coresys.supervisor.update(AwesomeVersion("1.0")))
+        first_task = await coresys.supervisor.update(AwesomeVersion("1.0"))
         await install_started.wait()
+        assert first_task
+        assert not first_task.done()
 
-        with pytest.raises(SupervisorJobError):
-            await coresys.supervisor.update(AwesomeVersion("1.0"))
+        second_task = await coresys.supervisor.update(AwesomeVersion("1.0"))
+        assert second_task is first_task
 
         install_finish.set()
-        await first
+        await first_task
 
 
 @pytest.mark.parametrize(
