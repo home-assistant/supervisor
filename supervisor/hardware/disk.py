@@ -94,8 +94,8 @@ class HwDisk(CoreSysAttributes):
         activates a dormant automount and raises if that fails. A path whose
         trigger is gone is a plain directory; statvfs then returns the
         underlying filesystem's numbers. Only the device-boundary check
-        distinguishes this mount from the host disk. Mirrors
-        `_probe_network_mount` in mounts/mount.py; keep the two agreeing.
+        distinguishes this mount from the host disk. Mirrors `_probe_mount`
+        in mounts/mount.py; keep the two agreeing.
         """
         usage = shutil.disk_usage(path)
         if path.stat().st_dev == path.parent.stat().st_dev:
