@@ -345,8 +345,13 @@ class Job(CoreSysAttributes):
                         # Record before the task is scheduled so a concurrent
                         # call is throttled instead of starting a second task
                         record_call()
+                        # Start eagerly so the runner is inside its try block
+                        # before the task is exposed. A task cancelled before
+                        # its first step never runs its finally, which would
+                        # leave the lock held and the job registered.
                         self._detached_task = self.sys_create_task(
-                            self._run_detached(job_group, job, cleanup, execute())
+                            self._run_detached(job_group, job, cleanup, execute()),
+                            eager_start=True,
                         )
                         detached = True
                         return self._detached_task

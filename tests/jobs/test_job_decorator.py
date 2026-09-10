@@ -1766,3 +1766,44 @@ async def test_detach_throttle_concurrent_calls(coresys: CoreSys):
     assert (first is None) != (second is None)
     await (first or second)
     assert test.calls == 1
+
+
+async def test_detach_cancelled_task_releases_lock(coresys: CoreSys):
+    """Test cancelling a detached task right away still releases lock and job."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.calls = 0
+
+        @Job(
+            name="test_detach_cancelled_task_releases_lock_execute",
+            concurrency=JobConcurrency.REJECT,
+            on_condition=JobException,
+            detach=True,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            self.calls += 1
+            await asyncio.Event().wait()
+
+    test = TestClass(coresys)
+    first = await test.execute()
+    assert first is not None
+    first.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await first
+
+    assert coresys.jobs.jobs == []
+
+    second = await test.execute()
+    assert second is not None
+    assert second is not first
+    assert test.calls == 2
+    second.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await second
+    assert coresys.jobs.jobs == []
