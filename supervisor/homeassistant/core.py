@@ -172,16 +172,8 @@ class HomeAssistantCore(JobGroup):
             return
 
         _LOGGER.info("Setting up Home Assistant landingpage")
+        install_image = self.sys_homeassistant.install_image
         while True:
-            if not (install_image := self.sys_homeassistant.install_image):
-                _LOGGER.warning(
-                    "Updater has no Home Assistant image information yet. Retrying in %ssec",
-                    INSTALL_RETRY_WAIT_SECS,
-                )
-                await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
-                await self.sys_updater.reload()
-                continue
-
             try:
                 await self.instance.install(LANDINGPAGE, image=install_image)
                 break
@@ -200,57 +192,31 @@ class HomeAssistantCore(JobGroup):
         self.sys_homeassistant.set_image(install_image)
         await self.sys_homeassistant.save_data()
 
-    async def _periodic_progress_log(self, stop: asyncio.Event) -> None:
-        """Log installation progress periodically for user visibility."""
-        while not stop.is_set():
-            try:
-                await asyncio.wait_for(stop.wait(), timeout=15)
-            except TimeoutError:
-                if (job := self.instance.active_job) and job.progress:
-                    _LOGGER.info(
-                        "Downloading Home Assistant Core image, %d%%",
-                        int(job.progress),
-                    )
-                else:
-                    _LOGGER.info("Home Assistant Core installation in progress")
-
     async def _reinstall(self, version: AwesomeVersion) -> bool:
         """Reinstall the lost image of an installed Home Assistant version.
 
         Return False if the image could not be pulled.
         """
-        image = (
-            self.sys_homeassistant.image
-            if self.sys_homeassistant.override_image
-            else self.sys_homeassistant.default_image
-        )
+        image = self.sys_homeassistant.install_image
         _LOGGER.info("Reinstalling Home Assistant %s", version)
-        stop_progress_log = asyncio.Event()
-        progress_task = self.sys_create_task(
-            self._periodic_progress_log(stop_progress_log)
-        )
-        try:
-            while True:
-                try:
-                    await self.instance.install(version, image=image)
-                    break
-                except DockerRegistryRateLimitExceeded:
-                    _LOGGER.warning(
-                        "Rate limit reached while reinstalling Home Assistant,"
-                        " retrying in %ssec",
-                        INSTALL_RETRY_WAIT_SECS,
-                    )
-                    await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
-                except DockerError, JobException:
-                    _LOGGER.warning(
-                        "Could not reinstall Home Assistant %s,"
-                        " installing latest version instead",
-                        version,
-                    )
-                    return False
-        finally:
-            stop_progress_log.set()
-            await progress_task
+        while True:
+            try:
+                await self.instance.install(version, image=image)
+                break
+            except DockerRegistryRateLimitExceeded:
+                _LOGGER.warning(
+                    "Rate limit reached while reinstalling Home Assistant,"
+                    " retrying in %ssec",
+                    INSTALL_RETRY_WAIT_SECS,
+                )
+                await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
+            except DockerError, JobException:
+                _LOGGER.warning(
+                    "Could not reinstall Home Assistant %s,"
+                    " installing latest version instead",
+                    version,
+                )
+                return False
 
         self.sys_homeassistant.version = self.instance.version or version
         self.sys_homeassistant.set_image(image)
@@ -279,10 +245,23 @@ class HomeAssistantCore(JobGroup):
         """Install Home Assistant Core."""
         _LOGGER.info("Home Assistant setup")
         stop_progress_log = asyncio.Event()
-        progress_task = self.sys_create_task(
-            self._periodic_progress_log(stop_progress_log)
-        )
-        install_image: str | None = None
+
+        async def _periodic_progress_log() -> None:
+            """Log installation progress periodically for user visibility."""
+            while not stop_progress_log.is_set():
+                try:
+                    await asyncio.wait_for(stop_progress_log.wait(), timeout=15)
+                except TimeoutError:
+                    if (job := self.instance.active_job) and job.progress:
+                        _LOGGER.info(
+                            "Downloading Home Assistant Core image, %d%%",
+                            int(job.progress),
+                        )
+                    else:
+                        _LOGGER.info("Home Assistant Core installation in progress")
+
+        progress_task = self.sys_create_task(_periodic_progress_log())
+        install_image = self.sys_homeassistant.install_image
         try:
             while True:
                 # read homeassistant tag and install it
