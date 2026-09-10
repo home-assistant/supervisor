@@ -1709,3 +1709,60 @@ def test_detach_rejects_group_concurrency():
             concurrency=JobConcurrency.GROUP_REJECT,
             detach=True,
         )
+
+
+async def test_detach_from_within_job_starts_root_job(coresys: CoreSys):
+    """Test a detached job called from inside another job runs as a root job."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.parent_id: str | None = "unset"
+
+        @Job(name="test_detach_from_within_job_starts_root_job_outer")
+        async def outer(self) -> asyncio.Task | None:
+            """Call the detached job from within a job."""
+            return await self.inner()
+
+        @Job(name="test_detach_from_within_job_starts_root_job_inner", detach=True)
+        async def inner(self) -> None:
+            """Record the parent of the detached job."""
+            self.parent_id = coresys.jobs.current.parent_id
+
+    test = TestClass(coresys)
+    task = await test.outer()
+    assert task is not None
+    await task
+    assert test.parent_id is None
+    assert coresys.jobs.jobs == []
+
+
+async def test_detach_throttle_concurrent_calls(coresys: CoreSys):
+    """Test concurrent calls to a throttled detached job start only one task."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.calls = 0
+
+        @Job(
+            name="test_detach_throttle_concurrent_calls_execute",
+            throttle=JobThrottle.THROTTLE,
+            throttle_period=timedelta(hours=1),
+            detach=True,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            self.calls += 1
+
+    test = TestClass(coresys)
+    first, second = await asyncio.gather(test.execute(), test.execute())
+    assert (first is None) != (second is None)
+    await (first or second)
+    assert test.calls == 1

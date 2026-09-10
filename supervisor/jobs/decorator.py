@@ -23,6 +23,7 @@ from ..resolution.const import (
     IssueType,
     UnsupportedReason,
 )
+from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
 from . import ChildJobSyncFilter, SupervisorJob
 from .const import JobConcurrency, JobCondition, JobThrottle
@@ -275,11 +276,14 @@ class Job(CoreSysAttributes):
                 if job_group:
                     job.reference = job_group.job_reference
             else:
+                # A detached job runs in its own task, which has no current job,
+                # and may outlive the caller. It is therefore a root job.
                 job = self.sys_jobs.new_job(
                     self.name,
                     job_group.job_reference if job_group else None,
                     internal=self._internal,
                     child_job_syncs=self._child_job_syncs,
+                    parent_id=None if self._detach else DEFAULT,
                 )
 
             cleanup = (
@@ -288,16 +292,16 @@ class Job(CoreSysAttributes):
                 else _job_override__cleanup
             )
 
+            def record_call() -> None:
+                """Record an accepted call for throttling."""
+                self.set_last_call(datetime.now(), group_name)
+                if self._rate_limited_calls is not None:
+                    self.add_rate_limited_call(self.last_call(group_name), group_name)
+
             async def execute() -> Any:
                 """Run the method within the started job."""
                 with job.start():
                     try:
-                        self.set_last_call(datetime.now(), group_name)
-                        if self._rate_limited_calls is not None:
-                            self.add_rate_limited_call(
-                                self.last_call(group_name), group_name
-                            )
-
                         return await method(obj, *args, **kwargs)
 
                     # If a method has a conditional JobCondition, they must check it in the method
@@ -338,6 +342,9 @@ class Job(CoreSysAttributes):
                         if not await self._handle_throttling(group_name):
                             return None  # Job was throttled, exit early
 
+                        # Record before the task is scheduled so a concurrent
+                        # call is throttled instead of starting a second task
+                        record_call()
                         self._detached_task = self.sys_create_task(
                             self._run_detached(job_group, job, cleanup, execute())
                         )
@@ -352,6 +359,7 @@ class Job(CoreSysAttributes):
                     if not await self._handle_throttling(group_name):
                         return None  # Job was throttled, exit early
 
+                    record_call()
                     return await execute()
 
             # Jobs that weren't started are always cleaned up. Also clean up done jobs if required.
