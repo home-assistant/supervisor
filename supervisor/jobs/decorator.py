@@ -1,7 +1,7 @@
 """Job decorator."""
 
 import asyncio
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 from functools import wraps
@@ -23,6 +23,7 @@ from ..resolution.const import (
     IssueType,
     UnsupportedReason,
 )
+from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
 from . import ChildJobSyncFilter, SupervisorJob
 from .const import JobConcurrency, JobCondition, JobThrottle
@@ -49,6 +50,8 @@ class Job(CoreSysAttributes):
         throttle_max_calls: int | None = None,
         internal: bool = False,
         child_job_syncs: list[ChildJobSyncFilter] | None = None,
+        *,
+        detach: bool = False,
     ):  # pylint: disable=too-many-positional-arguments
         """Initialize the Job decorator.
 
@@ -62,7 +65,8 @@ class Job(CoreSysAttributes):
             throttle_period (timedelta | Callable | None): Throttle period as a timedelta or a callable returning a timedelta (for throttled jobs).
             throttle_max_calls (int | None): Maximum number of calls allowed within the throttle period (for rate-limited jobs).
             internal (bool): Whether the job is internal (not exposed through the Supervisor API). Defaults to False.
-            child_job_syncs (list[ChildJobSyncFilter] | None): Use if jobs progress should be kept in sync with progress of one or more of its child jobs.ye
+            child_job_syncs (list[ChildJobSyncFilter] | None): Use if jobs progress should be kept in sync with progress of one or more of its child jobs.
+            detach (bool): Run the method in a separate task once conditions, concurrency and throttling allow it. The call then returns the task, or None if the job was refused. With REJECT concurrency a call while the job runs returns the running task. Not supported with group concurrency.
 
         Raises:
             RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected throttle policy.
@@ -83,6 +87,8 @@ class Job(CoreSysAttributes):
         self._rate_limited_calls: dict[str | None, list[datetime]] | None = None
         self._internal = internal
         self._child_job_syncs = child_job_syncs
+        self._detach = detach
+        self._detached_task: asyncio.Task[Any] | None = None
 
         self.concurrency = concurrency
         self.throttle = throttle
@@ -113,6 +119,11 @@ class Job(CoreSysAttributes):
 
     def _validate_parameters(self) -> None:
         """Validate job parameters."""
+        if self._detach and self._is_group_concurrency():
+            raise RuntimeError(
+                f"Job {self.name} cannot combine detach with group concurrency ({self.concurrency})!"
+            )
+
         # Validate throttle parameters
         if self.throttle is not None and self._throttle_period is None:
             raise RuntimeError(
@@ -265,13 +276,48 @@ class Job(CoreSysAttributes):
                 if job_group:
                     job.reference = job_group.job_reference
             else:
+                # A detached job runs in its own task, which has no current job,
+                # and may outlive the caller. It is therefore a root job.
                 job = self.sys_jobs.new_job(
                     self.name,
                     job_group.job_reference if job_group else None,
                     internal=self._internal,
                     child_job_syncs=self._child_job_syncs,
+                    parent_id=None if self._detach else DEFAULT,
                 )
 
+            cleanup = (
+                self.cleanup
+                if _job_override__cleanup is None
+                else _job_override__cleanup
+            )
+
+            def record_call() -> None:
+                """Record an accepted call for throttling."""
+                self.set_last_call(datetime.now(), group_name)
+                if self._rate_limited_calls is not None:
+                    self.add_rate_limited_call(self.last_call(group_name), group_name)
+
+            async def execute() -> Any:
+                """Run the method within the started job."""
+                with job.start():
+                    try:
+                        return await method(obj, *args, **kwargs)
+
+                    # If a method has a conditional JobCondition, they must check it in the method
+                    # These should be handled like normal JobConditions as much as possible
+                    except JobConditionException as err:
+                        return self._handle_job_condition_exception(err)
+                    except HassioError as err:
+                        job.capture_error(err)
+                        raise err
+                    except Exception as err:
+                        _LOGGER.exception("Unhandled exception: %s", err)
+                        job.capture_error()
+                        await async_capture_exception(err)
+                        raise JobException from err
+
+            detached = False
             try:
                 # Handle condition
                 if self.conditions:
@@ -282,43 +328,51 @@ class Job(CoreSysAttributes):
                     except JobConditionException as err:
                         return self._handle_job_condition_exception(err)
 
+                if self._detach:
+                    # A running detached job is returned instead of rejected
+                    if (
+                        self.concurrency == JobConcurrency.REJECT
+                        and self._detached_task
+                        and not self._detached_task.done()
+                    ):
+                        return self._detached_task
+
+                    await self._handle_concurrency_control(job_group, job)
+                    try:
+                        if not await self._handle_throttling(group_name):
+                            return None  # Job was throttled, exit early
+
+                        # Record before the task is scheduled so a concurrent
+                        # call is throttled instead of starting a second task
+                        record_call()
+                        # Start eagerly so the runner is inside its try block
+                        # before the task is exposed. A task cancelled before
+                        # its first step never runs its finally, which would
+                        # leave the lock held and the job registered.
+                        task = self.sys_create_task(
+                            self._run_detached(job_group, job, cleanup, execute()),
+                            eager_start=True,
+                        )
+                        detached = True
+                        self._detached_task = task
+                        task.add_done_callback(self._clear_detached_task)
+                        return task
+                    finally:
+                        if not detached:
+                            self._release_concurrency_control(job_group, job)
+
                 # Handle execution limits using context manager
                 async with self._concurrency_control(job_group, job):
                     if not await self._handle_throttling(group_name):
                         return None  # Job was throttled, exit early
 
-                    # Execute Job
-                    with job.start():
-                        try:
-                            self.set_last_call(datetime.now(), group_name)
-                            if self._rate_limited_calls is not None:
-                                self.add_rate_limited_call(
-                                    self.last_call(group_name), group_name
-                                )
+                    record_call()
+                    return await execute()
 
-                            return await method(obj, *args, **kwargs)
-
-                        # If a method has a conditional JobCondition, they must check it in the method
-                        # These should be handled like normal JobConditions as much as possible
-                        except JobConditionException as err:
-                            return self._handle_job_condition_exception(err)
-                        except HassioError as err:
-                            job.capture_error(err)
-                            raise err
-                        except Exception as err:
-                            _LOGGER.exception("Unhandled exception: %s", err)
-                            job.capture_error()
-                            await async_capture_exception(err)
-                            raise JobException from err
-
-            # Jobs that weren't started are always cleaned up. Also clean up done jobs if required
+            # Jobs that weren't started are always cleaned up. Also clean up done jobs if required.
+            # A detached job cleans up after itself once its task completes.
             finally:
-                if (
-                    job.done is None
-                    or _job_override__cleanup
-                    or _job_override__cleanup is None
-                    and self.cleanup
-                ):
+                if not detached and (job.done is None or cleanup):
                     self.sys_jobs.remove_job(job)
 
         return wrapper
@@ -485,6 +539,29 @@ class Job(CoreSysAttributes):
             raise JobConditionException(
                 f"'{method_name}' blocked from execution, mounting not supported on system"
             )
+
+    def _clear_detached_task(self, task: asyncio.Task[Any]) -> None:
+        """Drop the reference to a finished detached task.
+
+        Guarded by identity so an older task cannot clear a newer one.
+        """
+        if self._detached_task is task:
+            self._detached_task = None
+
+    async def _run_detached(
+        self,
+        job_group: JobGroup | None,
+        job: SupervisorJob,
+        cleanup: bool,
+        execute: Coroutine[Any, Any, Any],
+    ) -> Any:
+        """Run a detached job, then release its concurrency lock and clean up."""
+        try:
+            return await execute
+        finally:
+            self._release_concurrency_control(job_group, job)
+            if job.done is None or cleanup:
+                self.sys_jobs.remove_job(job)
 
     def _release_concurrency_control(
         self, job_group: JobGroup | None, job: SupervisorJob
