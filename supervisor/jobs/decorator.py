@@ -382,6 +382,9 @@ class Job(CoreSysAttributes):
         coresys: CoreSysAttributes, conditions: set[JobCondition], method_name: str
     ):
         """Check conditions."""
+        # Evaluation order: synchronous state reads first, checks that await
+        # second, and PLUGINS_UPDATED last because it performs work. New
+        # conditions must be inserted in the matching section.
         used_conditions = set(conditions) - set(coresys.sys_jobs.ignore_conditions)
         ignored_conditions = set(conditions) & set(coresys.sys_jobs.ignore_conditions)
 
@@ -412,38 +415,6 @@ class Job(CoreSysAttributes):
             raise JobConditionException(
                 f"'{method_name}' blocked from execution, system is not frozen - {coresys.sys_core.state!s}"
             )
-
-        if (
-            JobCondition.FREE_SPACE in used_conditions
-            and (free_space := await coresys.sys_host.info.free_space())
-            < MINIMUM_FREE_SPACE_THRESHOLD
-        ):
-            coresys.sys_resolution.create_issue(
-                IssueType.FREE_SPACE, ContextType.SYSTEM
-            )
-            raise JobConditionException(
-                f"'{method_name}' blocked from execution, not enough free space ({free_space}GB) left on the device"
-            )
-
-        if JobCondition.INTERNET_SYSTEM in used_conditions:
-            # Precondition wants a recent result, not necessarily a fresh one;
-            # the min-interval short-circuit inside check_and_update_connectivity
-            # reuses the cached state when it's still within window.
-            await coresys.sys_supervisor.check_and_update_connectivity()
-            if not coresys.sys_supervisor.connectivity:
-                raise JobConditionException(
-                    f"'{method_name}' blocked from execution, no supervisor internet connection"
-                )
-
-        if JobCondition.INTERNET_HOST in used_conditions:
-            await coresys.sys_host.network.check_connectivity()
-            if (
-                coresys.sys_host.network.connectivity is not None
-                and not coresys.sys_host.network.connectivity
-            ):
-                raise JobConditionException(
-                    f"'{method_name}' blocked from execution, no host internet connection"
-                )
 
         if JobCondition.HAOS in used_conditions and not coresys.sys_os.available:
             raise JobConditionException(
@@ -507,6 +478,50 @@ class Job(CoreSysAttributes):
                 f"'{method_name}' blocked from execution, unsupported system architecture"
             )
 
+        if (
+            JobCondition.MOUNT_AVAILABLE in used_conditions
+            and HostFeature.MOUNT not in coresys.sys_host.features
+        ):
+            raise JobConditionException(
+                f"'{method_name}' blocked from execution, mounting not supported on system"
+            )
+
+        # Checks below await (executor call or connectivity probe). Keep them
+        # after the synchronous checks above so a refused job fails before
+        # the first suspension: that is faster, and callers that eagerly start
+        # a job task can rely on the refusal being visible immediately.
+        if (
+            JobCondition.FREE_SPACE in used_conditions
+            and (free_space := await coresys.sys_host.info.free_space())
+            < MINIMUM_FREE_SPACE_THRESHOLD
+        ):
+            coresys.sys_resolution.create_issue(
+                IssueType.FREE_SPACE, ContextType.SYSTEM
+            )
+            raise JobConditionException(
+                f"'{method_name}' blocked from execution, not enough free space ({free_space}GB) left on the device"
+            )
+
+        if JobCondition.INTERNET_SYSTEM in used_conditions:
+            # Precondition wants a recent result, not necessarily a fresh one;
+            # the min-interval short-circuit inside check_and_update_connectivity
+            # reuses the cached state when it's still within window.
+            await coresys.sys_supervisor.check_and_update_connectivity()
+            if not coresys.sys_supervisor.connectivity:
+                raise JobConditionException(
+                    f"'{method_name}' blocked from execution, no supervisor internet connection"
+                )
+
+        if JobCondition.INTERNET_HOST in used_conditions:
+            await coresys.sys_host.network.check_connectivity()
+            if (
+                coresys.sys_host.network.connectivity is not None
+                and not coresys.sys_host.network.connectivity
+            ):
+                raise JobConditionException(
+                    f"'{method_name}' blocked from execution, no host internet connection"
+                )
+
         if JobCondition.PLUGINS_UPDATED in used_conditions and (
             out_of_date := [
                 plugin
@@ -531,14 +546,6 @@ class Job(CoreSysAttributes):
                 raise JobConditionException(
                     f"'{method_name}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
                 )
-
-        if (
-            JobCondition.MOUNT_AVAILABLE in used_conditions
-            and HostFeature.MOUNT not in coresys.sys_host.features
-        ):
-            raise JobConditionException(
-                f"'{method_name}' blocked from execution, mounting not supported on system"
-            )
 
     def _clear_detached_task(self, task: asyncio.Task[Any]) -> None:
         """Drop the reference to a finished detached task.
