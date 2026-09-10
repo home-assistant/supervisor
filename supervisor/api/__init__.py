@@ -227,7 +227,12 @@ class RestAPI(CoreSysAttributes):
 
         app.add_routes(
             [
-                web.get("/host/info", api_host.info),
+                web.get(
+                    "/host/info",
+                    api_host.info_v1
+                    if app is self.versions[AppVersion.V1]
+                    else api_host.info,
+                ),
                 web.get(
                     "/host/logs",
                     partial(api_host.advanced_logs, default_verbose=True),

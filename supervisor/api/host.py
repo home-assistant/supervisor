@@ -19,6 +19,7 @@ import voluptuous as vol
 from voluptuous.error import CoerceInvalid
 
 from ..const import (
+    ATTR_ALL_FEATURES,
     ATTR_CHASSIS,
     ATTR_CPE,
     ATTR_DEPLOYMENT,
@@ -51,6 +52,7 @@ from ..host.const import (
     PARAM_BOOT_ID,
     PARAM_FOLLOW,
     PARAM_SYSLOG_IDENTIFIER,
+    HostFeature,
     LogFormat,
     LogFormatter,
 )
@@ -156,9 +158,8 @@ class APIHost(CoreSysAttributes):
                 "Home Assistant offline database migration in progress, please wait until complete before shutting down host"
             )
 
-    @api_process
-    async def info(self, request: web.Request) -> dict[str, Any]:
-        """Return host information."""
+    async def _info_data(self) -> dict[str, Any]:
+        """Return host information data."""
         return {
             ATTR_AGENT_VERSION: self.sys_dbus.agent.version,
             ATTR_APPARMOR_VERSION: self.sys_host.apparmor.version,
@@ -184,6 +185,28 @@ class APIHost(CoreSysAttributes):
             ATTR_BROADCAST_LLMNR: self.sys_host.info.broadcast_llmnr,
             ATTR_BROADCAST_MDNS: self.sys_host.info.broadcast_mdns,
         }
+
+    @api_process
+    async def info(self, request: web.Request) -> dict[str, Any]:
+        """Return host information."""
+        return await self._info_data()
+
+    @api_process
+    async def info_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return host information with a v1-compatible features list.
+
+        The python-supervisor-client library's ``HostFeature`` model is a
+        strict enum rather than ``HostFeature | str``, so new feature values
+        (such as ``ntp``, added for NTP support) break older clients that
+        parse the ``features`` field. Hide ``ntp`` from that field for v1 and
+        expose the full, unfiltered list under ``all_features`` instead.
+        """
+        data = await self._info_data()
+        data[ATTR_ALL_FEATURES] = data[ATTR_FEATURES]
+        data[ATTR_FEATURES] = [
+            feature for feature in data[ATTR_FEATURES] if feature != HostFeature.NTP
+        ]
+        return data
 
     @api_process
     async def options(self, request: web.Request) -> None:

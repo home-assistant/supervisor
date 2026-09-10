@@ -25,7 +25,7 @@ from supervisor.exceptions import (
     MountUsageTimeoutError,
 )
 from supervisor.homeassistant.api import APIState
-from supervisor.host.const import LogFormat, LogFormatter
+from supervisor.host.const import HostFeature, LogFormat, LogFormatter
 from supervisor.host.control import SystemControl
 from supervisor.mounts.mount import Mount
 
@@ -169,13 +169,59 @@ async def test_api_host_features_os(
     coresys.host.supported_features.cache_clear()
     resp = await api_client.get(f"{prefix}/host/info")
     result = await resp.json()
-    assert "ntp" in result["data"]["features"]
+    if prefix == "/v2":
+        assert "ntp" in result["data"]["features"]
+    else:
+        # V1's features field is parsed by a strict enum in older clients, so
+        # ntp is hidden there and only exposed via all_features instead
+        assert "ntp" not in result["data"]["features"]
+        assert "ntp" in result["data"]["all_features"]
 
     coresys.host.sys_dbus.systemd.is_connected = False
     coresys.host.supported_features.cache_clear()
     resp = await api_client.get(f"{prefix}/host/info")
     result = await resp.json()
     assert "ntp" not in result["data"]["features"]
+
+
+# Host features known to the v1 python-supervisor-client HostInfo model's
+# strict `features: list[HostFeature]` typing at the time this test was
+# written. If this test fails after adding a new HostFeature value, that new
+# value needs the same v1 compatibility treatment as ntp in
+# APIHost.info_v1 (supervisor/api/host.py) until the client library relaxes
+# its typing.
+_KNOWN_V1_HOST_FEATURES = {
+    HostFeature.DISK,
+    HostFeature.HAOS,
+    HostFeature.HOSTNAME,
+    HostFeature.JOURNAL,
+    HostFeature.MOUNT,
+    HostFeature.NETWORK,
+    HostFeature.OS_AGENT,
+    HostFeature.REBOOT,
+    HostFeature.RESOLVED,
+    HostFeature.SERVICES,
+    HostFeature.SHUTDOWN,
+    HostFeature.TIMEDATE,
+}
+
+
+async def test_api_host_info_v1_features_no_unknown_values(
+    api_client: TestClient,
+    coresys_disk_info: CoreSys,
+):
+    """Test v1 host info features has no values unknown to older clients."""
+    coresys = coresys_disk_info
+
+    with patch.object(
+        coresys.host, "supported_features", return_value=list(HostFeature)
+    ):
+        resp = await api_client.get("/host/info")
+        result = await resp.json()
+
+    assert not set(result["data"]["features"]) - _KNOWN_V1_HOST_FEATURES
+    assert "ntp" not in result["data"]["features"]
+    assert "ntp" in result["data"]["all_features"]
 
 
 async def test_api_llmnr_mdns_info(
