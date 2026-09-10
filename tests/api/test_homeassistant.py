@@ -28,6 +28,17 @@ from supervisor.updater import Updater
 from tests.common import AsyncIterator, load_json_fixture
 
 
+@pytest.fixture(autouse=True)
+async def running_state(coresys: CoreSys) -> None:
+    """Set the default state to a fully started system.
+
+    Starting/restarting/rebuilding Home Assistant Core via the API is only
+    allowed once Supervisor has fully started (see require_running_system).
+    Tests exercising other states set them explicitly.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+
+
 @pytest.mark.parametrize("legacy_route", [True, False])
 async def test_api_core_logs(
     advanced_logs_tester: AsyncMock,

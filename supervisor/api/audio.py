@@ -29,7 +29,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..host.sound import StreamType
 from ..validate import version_tag
-from .utils import api_process, api_return_stats, api_validate
+from .utils import api_process, api_return_stats, api_validate, require_running_system
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -93,6 +93,7 @@ class APIAudio(CoreSysAttributes):
         return api_return_stats(stats, legacy=True)
 
     @api_process
+    @require_running_system
     async def update(self, request: web.Request) -> None:
         """Update Audio plugin."""
         body = await api_validate(SCHEMA_VERSION, request)
@@ -103,6 +104,7 @@ class APIAudio(CoreSysAttributes):
         await asyncio.shield(self.sys_plugins.audio.update(version))
 
     @api_process
+    @require_running_system
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart Audio plugin."""
         return asyncio.shield(self.sys_plugins.audio.restart())

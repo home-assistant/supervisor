@@ -108,7 +108,13 @@ from ..exceptions import (
 )
 from ..validate import docker_ports
 from .const import ATTR_BOOT_CONFIG, ATTR_REMOVE_CONFIG, ATTR_SIGNED
-from .utils import api_process, api_return_stats, api_validate, json_loads
+from .utils import (
+    api_process,
+    api_return_stats,
+    api_validate,
+    json_loads,
+    require_running_system,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -472,6 +478,7 @@ class APIApps(CoreSysAttributes):
         )
 
     @api_process
+    @require_running_system
     async def start(self, request: web.Request) -> None:
         """Start app."""
         app = self.get_app_for_request(request)
@@ -485,6 +492,7 @@ class APIApps(CoreSysAttributes):
         return asyncio.shield(app.stop())
 
     @api_process
+    @require_running_system
     async def restart(self, request: web.Request) -> None:
         """Restart app."""
         app: App = self.get_app_for_request(request)
@@ -492,6 +500,7 @@ class APIApps(CoreSysAttributes):
             await start_task
 
     @api_process
+    @require_running_system
     async def rebuild(self, request: web.Request) -> None:
         """Rebuild local build app."""
         app = self.get_app_for_request(request)
