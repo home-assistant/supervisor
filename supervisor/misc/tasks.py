@@ -1,6 +1,5 @@
 """A collection of tasks."""
 
-from contextlib import suppress
 from datetime import datetime, timedelta
 import logging
 from typing import cast
@@ -15,10 +14,8 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantWSError,
     ObserverError,
-    SupervisorUpdateError,
 )
 from ..homeassistant.const import LANDINGPAGE, WSType
-from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.dt import utcnow
@@ -80,7 +77,7 @@ class Tasks(CoreSysAttributes):
 
         # Reload
         self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_APPS)
-        self.sys_scheduler.register_task(self._reload_updater, RUN_RELOAD_UPDATER)
+        self.sys_scheduler.register_task(self.sys_updater.reload, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
         self.sys_scheduler.register_task(self.sys_mounts.reload, RUN_RELOAD_MOUNTS)
@@ -374,41 +371,6 @@ class Tasks(CoreSysAttributes):
     async def _reload_store(self) -> None:
         """Reload store and check for app updates."""
         await self.sys_store.reload()
-
-    @Job(name="tasks_reload_updater", internal=True)
-    async def _reload_updater(self) -> None:
-        """Check for new versions of Home Assistant, Supervisor, OS, etc."""
-        await self.sys_updater.reload()
-
-        # If there's a new version of supervisor, update immediately
-        if self.sys_supervisor.need_update:
-            await self._auto_update_supervisor()
-
-    @Job(
-        name="tasks_update_supervisor",
-        conditions=[
-            JobCondition.AUTO_UPDATE,
-            JobCondition.FREE_SPACE,
-            JobCondition.HEALTHY,
-            JobCondition.INTERNET_HOST,
-            JobCondition.OS_SUPPORTED,
-            JobCondition.RUNNING,
-            JobCondition.ARCHITECTURE_SUPPORTED,
-        ],
-        concurrency=JobConcurrency.REJECT,
-        internal=True,
-    )
-    async def _auto_update_supervisor(self):
-        """Auto update Supervisor if enabled."""
-        if not self.sys_supervisor.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new Supervisor version %s, updating",
-            self.sys_supervisor.latest_version,
-        )
-        with suppress(SupervisorUpdateError):
-            await self.sys_supervisor.update()
 
     @Job(
         name="tasks_core_backup_cleanup",

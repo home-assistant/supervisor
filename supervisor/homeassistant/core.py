@@ -245,28 +245,31 @@ class HomeAssistantCore(JobGroup):
 
                 # Supervisor must always be updated before Core to avoid
                 # incompatibilities between a newer Core and an older Supervisor.
-                if self.sys_supervisor.need_update:
-                    if self.sys_updater.auto_update:
-                        _LOGGER.info(
-                            "Supervisor has a pending update and must be updated"
-                            " before installing Home Assistant Core. Updating Supervisor first"
-                        )
-                        try:
-                            await self.sys_supervisor.update()
-                        except SupervisorUpdateError as err:
-                            _LOGGER.warning(
-                                "Supervisor update failed, retrying in %ssec: %s",
-                                INSTALL_RETRY_WAIT_SECS,
-                                err,
-                            )
-                            await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
-                            continue
-                    else:
+                # Cache need_update: it's checked twice below and must reflect
+                # the same value both times.
+                supervisor_needs_update = self.sys_supervisor.need_update
+                if supervisor_needs_update and not self.sys_updater.auto_update:
+                    _LOGGER.warning(
+                        "Supervisor has a pending update but auto-update is"
+                        " disabled. Installing Home Assistant Core anyway —"
+                        " unknown issues may occur"
+                    )
+                elif supervisor_needs_update:
+                    _LOGGER.info(
+                        "Supervisor has a pending update and must be updated"
+                        " before installing Home Assistant Core. Updating Supervisor first"
+                    )
+                    try:
+                        if task := await self.sys_supervisor.update():
+                            await task
+                    except SupervisorUpdateError as err:
                         _LOGGER.warning(
-                            "Supervisor has a pending update but auto-update is"
-                            " disabled. Installing Home Assistant Core anyway —"
-                            " unknown issues may occur"
+                            "Supervisor update failed, retrying in %ssec: %s",
+                            INSTALL_RETRY_WAIT_SECS,
+                            err,
                         )
+                        await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
+                        continue
 
                 try:
                     install_image = self.sys_homeassistant.install_image

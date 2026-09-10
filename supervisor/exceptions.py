@@ -1599,6 +1599,55 @@ class BackupInvalidError(BackupError):
     """Raise if backup or password provided is invalid."""
 
 
+class BackupSupervisorVersionError(BackupError, APIError):
+    """Raise if backup requires a newer Supervisor version and auto update is disabled."""
+
+    error_key = "backup_supervisor_version_error"
+    message_template = (
+        "Backup was made on supervisor version {backup_version}, can't restore on "
+        "{supervisor_version}. Must update supervisor first."
+    )
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        backup_version: str,
+        supervisor_version: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {
+            "backup_version": backup_version,
+            "supervisor_version": supervisor_version,
+        }
+        super().__init__(None, logger)
+
+
+class BackupSupervisorUpdateInProgressError(BackupError, APIError):
+    """Raise if backup requires a newer Supervisor version and an auto update was just started."""
+
+    status = 503
+    error_key = "backup_supervisor_update_in_progress_error"
+    message_template = (
+        "Backup was made on supervisor version {backup_version}, can't restore on "
+        "{supervisor_version}. Update is in-progress, try again after it completes."
+    )
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        backup_version: str,
+        supervisor_version: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {
+            "backup_version": backup_version,
+            "supervisor_version": supervisor_version,
+        }
+        super().__init__(None, logger)
+
+
 class BackupMountDownError(BackupError, APIError):
     """Raise if mount specified for backup is down."""
 

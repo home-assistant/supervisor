@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable
+from contextlib import suppress
 import errno
 import logging
 from pathlib import Path
@@ -26,6 +27,9 @@ from ..exceptions import (
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
+    BackupSupervisorUpdateInProgressError,
+    BackupSupervisorVersionError,
+    UpdaterError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobConcurrency, JobCondition
 from ..jobs.decorator import Job
@@ -832,6 +836,41 @@ class BackupManager(FileConfiguration, JobGroup):
 
         await backup.validate_backup(location_name)
 
+    async def _check_supervisor_version(self, backup: Backup) -> None:
+        """Check backup is not from a newer Supervisor version, raise if so."""
+        if backup.supervisor_version <= self.sys_supervisor.version:
+            return
+
+        if self.sys_updater.auto_update:
+            if not self.sys_supervisor.need_update:
+                # Ensure the latest version info is known before concluding
+                # there's no update to wait for. fetch_data is a detached,
+                # REJECT-concurrency job, so this reuses an already in-flight
+                # fetch instead of masking it behind the throttle window.
+                with suppress(UpdaterError):
+                    if task := await self.sys_updater.fetch_data():
+                        await task
+
+            # Start (or reuse) the auto update. We can't await its completion
+            # here - the update stops this very Supervisor instance once it
+            # completes, which would drop the connection before a response
+            # could be served. Use the returned task's done status instead;
+            # awaiting auto_update_supervisor() itself only waits for the
+            # update to be started (or reused), not for it to finish.
+            update_task = await self.sys_supervisor.auto_update_supervisor()
+            if update_task and not update_task.done():
+                raise BackupSupervisorUpdateInProgressError(
+                    _LOGGER.error,
+                    backup_version=backup.supervisor_version,
+                    supervisor_version=self.sys_supervisor.version,
+                )
+
+        raise BackupSupervisorVersionError(
+            _LOGGER.error,
+            backup_version=backup.supervisor_version,
+            supervisor_version=self.sys_supervisor.version,
+        )
+
     @Job(
         name=JOB_FULL_RESTORE,
         conditions=[
@@ -863,13 +902,7 @@ class BackupManager(FileConfiguration, JobGroup):
             )
 
         await self._validate_backup_location(backup, password, location)
-
-        if backup.supervisor_version > self.sys_supervisor.version:
-            raise BackupInvalidError(
-                f"Backup was made on supervisor version {backup.supervisor_version}, "
-                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
-                _LOGGER.error,
-            )
+        await self._check_supervisor_version(backup)
 
         # If being run in the background, notify caller that validation has completed
         if validation_complete:
@@ -940,12 +973,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 "No Home Assistant Core data inside the backup", _LOGGER.error
             )
 
-        if backup.supervisor_version > self.sys_supervisor.version:
-            raise BackupInvalidError(
-                f"Backup was made on supervisor version {backup.supervisor_version}, "
-                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
-                _LOGGER.error,
-            )
+        await self._check_supervisor_version(backup)
 
         # If being run in the background, notify caller that validation has completed
         if validation_complete:
