@@ -34,7 +34,7 @@ BLOCKED_STATES = [CoreState.SETUP, CoreState.STARTUP, CoreState.FREEZE]
 
 async def _assert_blocked(resp, mocked: AsyncMock) -> None:
     """Assert the call was rejected before reaching the business logic."""
-    assert resp.status == 400
+    assert resp.status == 503
     body = await resp.json()
     assert body["error_key"] == "system_not_ready_error"
     mocked.assert_not_called()

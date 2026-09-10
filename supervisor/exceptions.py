@@ -103,14 +103,18 @@ class APIInternalServerError(APIError):
     status = 500
 
 
+class APIServiceUnavailable(APIError):
+    """API service unavailable error."""
+
+    status = 503
+
+
 class APIAppNotInstalled(APIError):
     """Not installed app requested at apps API."""
 
 
-class APIDBMigrationInProgress(APIError):
+class APIDBMigrationInProgress(APIServiceUnavailable):
     """Service is unavailable due to an offline DB migration is in progress."""
-
-    status = 503
 
 
 class APIUnknownSupervisorError(APIError):
@@ -131,7 +135,7 @@ class APIUnknownSupervisorError(APIError):
         super().__init__(None, logger, job_id=job_id)
 
 
-class APISystemNotReadyError(APIError):
+class APISystemNotReadyError(APIServiceUnavailable):
     """Raise when an API call is rejected because Supervisor isn't in a state that allows it.
 
     Used by require_running_system to reject start/restart/rebuild/update
