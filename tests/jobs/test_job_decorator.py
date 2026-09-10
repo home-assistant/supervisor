@@ -1526,3 +1526,186 @@ async def test_progress_syncing(coresys: CoreSys):
     execute_event.set()
     await task
     assert job.done
+
+
+async def test_detach_runs_method_in_task(coresys: CoreSys):
+    """Test a detached job returns a task and cleans up after it completes."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.started = asyncio.Event()
+            self.finish = asyncio.Event()
+
+        @Job(name="test_detach_runs_method_in_task_execute", detach=True)
+        async def execute(self) -> str:
+            """Execute the class method."""
+            self.started.set()
+            await self.finish.wait()
+            return "done"
+
+    test = TestClass(coresys)
+    task = await test.execute()
+    assert isinstance(task, asyncio.Task)
+    assert not task.done()
+
+    await test.started.wait()
+    assert [job.name for job in coresys.jobs.jobs] == [
+        "test_detach_runs_method_in_task_execute"
+    ]
+
+    test.finish.set()
+    assert await task == "done"
+    assert coresys.jobs.jobs == []
+
+
+async def test_detach_refused_by_condition(coresys: CoreSys):
+    """Test a detached job returns None when a condition refuses it."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.calls = 0
+
+        @Job(
+            name="test_detach_refused_by_condition_execute",
+            conditions=[JobCondition.HEALTHY],
+            detach=True,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            self.calls += 1
+
+        @Job(
+            name="test_detach_refused_by_condition_raise",
+            conditions=[JobCondition.HEALTHY],
+            on_condition=JobException,
+            detach=True,
+        )
+        async def execute_raise(self) -> None:
+            """Execute the class method."""
+            self.calls += 1
+
+    test = TestClass(coresys)
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER)
+
+    assert await test.execute() is None
+    with pytest.raises(JobException):
+        await test.execute_raise()
+
+    await asyncio.sleep(0)
+    assert test.calls == 0
+    assert coresys.jobs.jobs == []
+
+
+async def test_detach_throttled(coresys: CoreSys):
+    """Test a throttled detached job returns None without starting a task."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.calls = 0
+
+        @Job(
+            name="test_detach_throttled_execute",
+            throttle=JobThrottle.THROTTLE,
+            throttle_period=timedelta(hours=1),
+            detach=True,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            self.calls += 1
+
+    test = TestClass(coresys)
+    task = await test.execute()
+    assert task is not None
+    await task
+    assert test.calls == 1
+
+    assert await test.execute() is None
+    await asyncio.sleep(0)
+    assert test.calls == 1
+    assert coresys.jobs.jobs == []
+
+
+async def test_detach_reject_returns_running_task(coresys: CoreSys):
+    """Test a detached REJECT job returns the running task instead of raising."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.finish = asyncio.Event()
+            self.calls = 0
+
+        @Job(
+            name="test_detach_reject_returns_running_task_execute",
+            concurrency=JobConcurrency.REJECT,
+            on_condition=JobException,
+            detach=True,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            self.calls += 1
+            await self.finish.wait()
+
+    test = TestClass(coresys)
+    first = await test.execute()
+    assert first is not None
+    assert await test.execute() is first
+    await asyncio.sleep(0)
+    assert test.calls == 1
+
+    test.finish.set()
+    await first
+
+    second = await test.execute()
+    assert second is not None
+    assert second is not first
+    await second
+    assert test.calls == 2
+    assert coresys.jobs.jobs == []
+
+
+async def test_detach_error_propagates_to_task(coresys: CoreSys):
+    """Test an error in a detached job is raised when awaiting its task."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name="test_detach_error_propagates_to_task_execute", detach=True)
+        async def execute(self) -> None:
+            """Execute the class method."""
+            raise HassioError("boom")
+
+    test = TestClass(coresys)
+    task = await test.execute()
+    assert task is not None
+    with pytest.raises(HassioError):
+        await task
+    assert coresys.jobs.jobs == []
+
+
+def test_detach_rejects_group_concurrency():
+    """Test detach cannot be combined with group concurrency."""
+    with pytest.raises(RuntimeError, match="cannot combine detach"):
+        Job(
+            name="test_detach_rejects_group_concurrency",
+            concurrency=JobConcurrency.GROUP_REJECT,
+            detach=True,
+        )
