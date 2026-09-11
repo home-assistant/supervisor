@@ -468,11 +468,20 @@ class NetworkManager(CoreSysAttributes):
         )
 
         try:
+            # Persist the cleared autoconnect first, while `existing_settings`
+            # is still guaranteed alive. Deactivating first would race: NM's
+            # `PropertiesChanged` (ActiveConnection -> `/`) can be processed
+            # before or during the settings update, shutting down
+            # `existing_settings` (via `NetworkInterface.update()` ->
+            # `NetworkConnection.shutdown()`) and turning it into either a
+            # silent no-op (`dbus_connected` swallows calls once shut down)
+            # or a `DBusNotConnectedError`, which isn't a `DBusError` and
+            # would escape the except clause below.
+            await existing_settings.update(settings)
             if inet.connection:
                 await self.sys_dbus.network.deactivate_connection(
                     inet.connection.object_path
                 )
-            await existing_settings.update(settings)
         except DBusError as err:
             _LOGGER.error("Can't deactivate interface %s: %s", interface.name, err)
             raise HostNetworkDeactivateConfigError(interface=interface.name) from err
