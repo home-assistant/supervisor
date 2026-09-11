@@ -1,5 +1,6 @@
 """Test network v2 API."""
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -11,6 +12,9 @@ from supervisor.coresys import CoreSys
 
 from tests.const import TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.network_active_connection import (
+    ActiveConnection as ActiveConnectionService,
+)
 from tests.dbus_service_mocks.network_connection_settings import (
     ConnectionSettings as ConnectionSettingsService,
 )
@@ -28,6 +32,20 @@ async def fixture_device_eth0_service(
     return network_manager_services["network_device"][
         "/org/freedesktop/NetworkManager/Devices/1"
     ]
+
+
+async def _wait_for_background_job(coresys: CoreSys, job_id: str) -> None:
+    """Wait for a job scheduled by `apply_changes_v2` to finish.
+
+    Creating a new connection profile always triggers a full activation
+    cycle, which now runs as a background job (see `apply_changes_v2`)
+    instead of blocking the request. Tests that don't care about the outcome
+    still need to let it finish before the test ends, or the dbus session
+    bus gets disconnected on teardown while it's mid-flight.
+    """
+    job = coresys.jobs.get_job(job_id)
+    while not job.done:
+        await asyncio.sleep(0)
 
 
 async def test_api_network_info_v2(api_client_v2: TestClient, coresys: CoreSys):
@@ -121,7 +139,7 @@ async def test_api_network_update_config_v2_round_trip(api_client_v2: TestClient
     )
     assert resp.status == 200, await resp.text()
     result = await resp.json()
-    first_config = result["data"]["config"]
+    first_config = result["data"]["interface"]["config"]
     assert first_config["ipv4"] == config["ipv4"]
 
     # PUT the exact same (now current) config again: must be a no-op round-trip
@@ -130,7 +148,7 @@ async def test_api_network_update_config_v2_round_trip(api_client_v2: TestClient
     )
     assert resp.status == 200, await resp.text()
     result = await resp.json()
-    assert result["data"]["config"] == first_config
+    assert result["data"]["interface"]["config"] == first_config
 
 
 @pytest.mark.parametrize(
@@ -292,8 +310,8 @@ async def test_api_network_update_config_v2_disable_non_destructive(
     )
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["config"]["enabled"] is False
-    assert result["data"]["config"] is not None
+    assert result["data"]["interface"]["config"]["enabled"] is False
+    assert result["data"]["interface"]["config"] is not None
 
 
 async def test_api_network_update_config_v2_disable_without_profile(
@@ -333,6 +351,7 @@ async def test_api_network_update_config_v2_disable_without_profile(
 async def test_api_network_update_config_v2_wifi(
     api_client_v2: TestClient,
     network_manager_service: NetworkManagerService,
+    coresys: CoreSys,
 ):
     """Test a full wifi config update via v2 PUT (happy path).
 
@@ -372,10 +391,16 @@ async def test_api_network_update_config_v2_wifi(
     assert settings["802-11-wireless"]["ssid"] == Variant("ay", b"MY_TEST")
     assert settings["802-11-wireless-security"]["psk"] == Variant("s", "myWifiPassword")
 
+    # New connections always activate, which now runs as a background job
+    # (see apply_changes_v2). Let it finish instead of leaving it dangling.
+    result = await resp.json()
+    await _wait_for_background_job(coresys, result["data"]["job_id"])
+
 
 async def test_api_network_update_config_v2_wifi_open_auth_create(
     api_client_v2: TestClient,
     network_manager_service: NetworkManagerService,
+    coresys: CoreSys,
 ):
     """Test creating a new open-auth wifi profile doesn't send a broken security section.
 
@@ -417,9 +442,15 @@ async def test_api_network_update_config_v2_wifi_open_auth_create(
     assert "security" not in settings["802-11-wireless"]
     assert "802-11-wireless-security" not in settings
 
+    # New connections always activate, which now runs as a background job
+    # (see apply_changes_v2). Let it finish instead of leaving it dangling.
+    result = await resp.json()
+    await _wait_for_background_job(coresys, result["data"]["job_id"])
+
 
 async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
     api_client_v2: TestClient,
+    coresys: CoreSys,
 ):
     """Test the read-only `psk_set` marker from GET can be echoed back on PUT (R1).
 
@@ -453,6 +484,11 @@ async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
     )
     assert resp.status == 200, await resp.text()
 
+    # New connections always activate, which now runs as a background job
+    # (see apply_changes_v2). Let it finish instead of leaving it dangling.
+    result = await resp.json()
+    await _wait_for_background_job(coresys, result["data"]["job_id"])
+
 
 async def test_api_network_update_config_v2_mdns_llmnr(
     api_client_v2: TestClient,
@@ -479,13 +515,85 @@ async def test_api_network_update_config_v2_mdns_llmnr(
     )
     assert resp.status == 200, await resp.text()
     result = await resp.json()
-    assert result["data"]["config"]["mdns"] == "resolve"
-    assert result["data"]["config"]["llmnr"] == "off"
+    assert result["data"]["interface"]["config"]["mdns"] == "resolve"
+    assert result["data"]["interface"]["config"]["llmnr"] == "off"
 
     assert connection_settings_service.Update.calls
     settings = connection_settings_service.Update.calls[-1][0]
     assert settings["connection"]["mdns"] == Variant("i", 1)
     assert settings["connection"]["llmnr"] == Variant("i", 0)
+
+
+async def test_api_network_update_config_v2_no_carrier_does_not_block(
+    api_client_v2: TestClient,
+    active_connection_service: ActiveConnectionService,
+    coresys: CoreSys,
+):
+    """Test a PUT on an interface stuck activating (e.g. no carrier) doesn't block.
+
+    Regression test for a bug caught in review: `apply_changes_v2()` used to
+    always await the full activation cycle inline on the request. NetworkManager
+    accepts an activation request for an interface without a carrier (e.g. an
+    unplugged ethernet cable) and leaves it in ACTIVATING indefinitely, so that
+    wait would block the request for `CONNECTION_ACTIVATION_TIMEOUT` (60s) and
+    then raise `HostNetworkActivationTimeoutError`, which the API mapped to a
+    400 blaming the *settings* - even though they had already been persisted
+    successfully and a subsequent GET would show them applied.
+
+    Activation now always runs as a background job for v2 (see
+    `NetworkManager.apply_changes_v2`): the request returns as soon as
+    settings are persisted, with a job ID the client can use to check on the
+    outcome, instead of a stuck/failed activation surfacing as a misleading
+    400 on the request that only changed unrelated settings.
+    """
+    # Simulate NetworkManager accepting an activation request but never
+    # reaching a terminal state (no carrier, so it stays ACTIVATING forever
+    # instead of reaching ACTIVATED or DEACTIVATED). Module-level shared
+    # fixture, must be restored to avoid bleeding into other tests. Emit the
+    # matching signal (and ping to let it be processed) so the already
+    # cached client-side state is actually updated, not just the fixture the
+    # mock reads from for future calls.
+    original_state = active_connection_service.fixture.state
+    active_connection_service.fixture.state = 1  # ACTIVATING
+    active_connection_service.emit_properties_changed({"State": 1})
+    await active_connection_service.ping()
+    try:
+        resp = await api_client_v2.get(
+            f"/v2/network/interfaces/{TEST_INTERFACE_ETH_NAME}"
+        )
+        result = await resp.json()
+        config = result["data"]["config"]
+        config["ipv4"] = {"method": "auto"}
+        config["mdns"] = "resolve"
+
+        # Avoid actually waiting out the real (60s) timeout: only how quickly
+        # the request itself returns is under test here, not the timeout
+        # duration, which is already covered by
+        # `test_apply_changes_activation_timeout`.
+        with patch("supervisor.host.network.CONNECTION_ACTIVATION_TIMEOUT", 0.1):
+            resp = await api_client_v2.put(
+                f"/v2/network/interfaces/{TEST_INTERFACE_ETH_NAME}/config",
+                json=config,
+            )
+            assert resp.status == 200, await resp.text()
+            result = await resp.json()
+
+            # Settings are visible immediately even though activation hasn't
+            # (and in this scenario never will) complete.
+            assert result["data"]["interface"]["config"]["mdns"] == "resolve"
+            job_id = result["data"]["job_id"]
+
+            # The background job eventually times out on its own; the PUT
+            # above never waited on it.
+            await _wait_for_background_job(coresys, job_id)
+    finally:
+        active_connection_service.fixture.state = original_state
+        active_connection_service.emit_properties_changed({"State": original_state})
+        await active_connection_service.ping()
+
+    job = coresys.jobs.get_job(job_id)
+    assert job.errors
+    assert "Timed out waiting" in job.errors[-1].message
 
 
 async def test_api_network_accesspoints_v2(api_client_v2: TestClient):

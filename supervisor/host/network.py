@@ -45,6 +45,7 @@ from ..exceptions import (
     HostNotSupportedError,
     NetworkInterfaceNotFound,
 )
+from ..jobs import JobSchedulerOptions
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
@@ -515,6 +516,28 @@ class NetworkManager(CoreSysAttributes):
             except TimeoutError as err:
                 raise HostNetworkActivationTimeoutError(_LOGGER.error) from err
 
+    @Job(name="network_manager_activate_connection", cleanup=False)
+    async def _activate_connection_job(
+        self, con: NetworkConnection, *, update_only: bool
+    ) -> None:
+        """Wait for a backgrounded connection activation, then refresh network state.
+
+        Only used for `apply_changes(..., background_activation=True)` (the v2
+        API - see `apply_changes_v2`): NM can take up to
+        `CONNECTION_ACTIVATION_TIMEOUT` to give up on a connection that never
+        gets e.g. a carrier, and by the time it does the Supervisor<->client
+        connection may itself have dropped as part of the network change
+        taking effect. `cleanup=False` keeps this job (and any error it
+        captures) available through the API after it finishes so the client
+        can check back on the outcome once reconnected, instead of the result
+        being cleaned up while nobody could see it.
+        """
+        try:
+            await self._wait_for_activation(con)
+        finally:
+            # update_only means not done by user so don't force a check afterwards
+            await self.update(force_connectivity_check=not update_only)
+
     async def apply_changes(
         self,
         interface: Interface,
@@ -522,7 +545,8 @@ class NetworkManager(CoreSysAttributes):
         update_only: bool = False,
         resolved_settings: NetworkSetting | None = None,
         destructive_disable: bool = True,
-    ) -> None:
+        background_activation: bool = False,
+    ) -> str | None:
         """Apply Interface changes to host.
 
         `resolved_settings` allows updating an existing stored connection
@@ -535,6 +559,19 @@ class NetworkManager(CoreSysAttributes):
         interface: True (default, v1 behavior) deletes any stored connection
         profile. False deactivates the active connection (if any) and clears
         autoconnect on the stored profile instead of deleting it.
+
+        `background_activation` controls whether a full activation cycle (if
+        one is triggered) is awaited before returning. False (default, v1
+        behavior) blocks until the connection activates, fails, or times out
+        (`CONNECTION_ACTIVATION_TIMEOUT`). True runs the wait as a background
+        job instead and returns its job ID immediately - e.g. an interface
+        without a carrier would otherwise block the caller for up to a
+        minute, then report a possibly-misleading error, even though the
+        settings themselves were already persisted successfully.
+
+        Returns the job ID tracking a backgrounded activation, None if
+        `background_activation` is False or no activation cycle was needed
+        (settings applied in place, or the interface was disabled).
         """
         try:
             inet = self.sys_dbus.network.get(interface.name)
@@ -578,13 +615,26 @@ class NetworkManager(CoreSysAttributes):
         else:
             raise HostNetworkInterfaceUpdateError(_LOGGER.warning)
 
+        job_id: str | None = None
         if con:
-            await self._wait_for_activation(con)
+            if background_activation:
+                job, _ = self.sys_jobs.schedule_job(
+                    self._activate_connection_job,
+                    JobSchedulerOptions(),
+                    con,
+                    update_only=update_only,
+                )
+                job_id = job.uuid
+            else:
+                await self._wait_for_activation(con)
 
-        # update_only means not done by user so don't force a check afterwards
-        await self.update(force_connectivity_check=not update_only)
+        if job_id is None:
+            # update_only means not done by user so don't force a check afterwards
+            await self.update(force_connectivity_check=not update_only)
 
-    async def apply_changes_v2(self, interface: Interface) -> None:
+        return job_id
+
+    async def apply_changes_v2(self, interface: Interface) -> str | None:
         """Apply v2 Interface changes, resolving an existing profile independent of activation.
 
         Thin wrapper around `apply_changes()`: looks up a stored connection
@@ -594,6 +644,11 @@ class NetworkManager(CoreSysAttributes):
         the temporary D-Bus object it created for the lookup (if any). Always
         disables non-destructively (R5) - the v2 API never deletes a stored
         connection profile, unlike v1's default `apply_changes()` behavior.
+
+        Settings are always persisted before returning. Activation (if
+        needed) always runs in the background (`background_activation=True`)
+        so the request never blocks on it; returns the job ID tracking that
+        activation, or None if none was needed.
         """
         try:
             inet = self.sys_dbus.network.get(interface.name)
@@ -610,10 +665,11 @@ class NetworkManager(CoreSysAttributes):
                 ) = await self.sys_dbus.network.find_connection_settings(inet)
 
         try:
-            await self.apply_changes(
+            return await self.apply_changes(
                 interface,
                 resolved_settings=resolved_settings,
                 destructive_disable=False,
+                background_activation=True,
             )
         finally:
             if temp_settings:

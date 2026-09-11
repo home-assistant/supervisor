@@ -28,6 +28,7 @@ from ..const import (
     ATTR_IP6_PRIVACY,
     ATTR_IPV4,
     ATTR_IPV6,
+    ATTR_JOB_ID,
     ATTR_LLMNR,
     ATTR_MAC,
     ATTR_MDNS,
@@ -486,7 +487,12 @@ class APINetwork(CoreSysAttributes):
 
     @api_process
     async def update_config(self, request: web.Request) -> dict[str, Any]:
-        """Replace the desired configuration of an interface (v2)."""
+        """Replace the desired configuration of an interface (v2).
+
+        Returns `{"job_id": ..., "interface": {...}}` - `interface` matches
+        the GET response shape exactly, `job_id` tracks a backgrounded
+        activation (None if none was needed).
+        """
         resolved = await self._get_resolved_interface(request.match_info[ATTR_NAME])
         interface = resolved.interface
 
@@ -549,10 +555,20 @@ class APINetwork(CoreSysAttributes):
         interface.mdns = body[ATTR_MDNS]
         interface.llmnr = body[ATTR_LLMNR]
 
-        await asyncio.shield(self.sys_host.network.apply_changes_v2(interface))
+        job_id = await asyncio.shield(self.sys_host.network.apply_changes_v2(interface))
 
         updated = await self.sys_host.network.get_with_config(interface.name)
-        return interface_struct(updated)
+        # Settings are always persisted by this point; activation (if any was
+        # needed) runs in the background instead of blocking this request -
+        # see `NetworkManager.apply_changes_v2()`. `job_id` is None if no
+        # activation was needed, otherwise the client can poll it for the
+        # outcome (including any activation error) once it completes. Kept
+        # as a wrapper around the interface struct (matching the GET
+        # response) rather than merged into it, so the two stay consistent.
+        return {
+            ATTR_JOB_ID: job_id,
+            ATTR_INTERFACE: interface_struct(updated),
+        }
 
     @api_process
     async def interface_update(self, request: web.Request) -> None:
