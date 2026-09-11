@@ -381,6 +381,7 @@ class NetworkManager(CoreSysAttributes):
             self.sys_dbus.network,
             name=existing_settings.connection.id,
             uuid=existing_settings.connection.uuid,
+            for_update=True,
         )
 
         try:
@@ -463,6 +464,7 @@ class NetworkManager(CoreSysAttributes):
             name=existing_settings.connection.id,
             uuid=existing_settings.connection.uuid,
             autoconnect=False,
+            for_update=True,
         )
 
         try:

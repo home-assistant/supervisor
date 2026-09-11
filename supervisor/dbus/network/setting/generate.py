@@ -204,8 +204,22 @@ def get_connection_from_interface(
     uuid: str | None = None,
     *,
     autoconnect: bool = True,
+    for_update: bool = False,
 ) -> dict[str, dict[str, Variant]]:
-    """Generate message argument for network interface update."""
+    """Generate message argument for network interface update.
+
+    `for_update` must be set when the result is headed for
+    `NetworkSetting.update()` (merging into an existing stored profile), as
+    opposed to `NetworkManager.add_connection()`/`add_and_activate_connection()`
+    (creating a brand new one). It controls whether clearing Wi-Fi security
+    is expressed as an explicit-empty-section sentinel (only meaningful to
+    `NetworkSetting.update()`'s own merge logic, see `_merge_settings_attribute()`)
+    or by omitting the section entirely (required for a new connection, since
+    NetworkManager receives this settings hash as-is with no merge step of its
+    own - a present-but-empty `802-11-wireless-security` section would still
+    instantiate one with an unset `key-mgmt`, which NetworkManager's connection
+    verify rejects).
+    """
     # Simple input check to ensure it is safe to cast this for type checker
     if interface.type == InterfaceType.VLAN and not interface.vlan:
         raise ValueError("Interface has type vlan but no vlan config!")
@@ -307,8 +321,9 @@ def get_connection_from_interface(
                     "s", interface.wifi.psk
                 )
             conn[CONF_ATTR_802_WIRELESS_SECURITY] = wireless_security
-        else:
-            # No security requested: explicitly clear any previously stored
+        elif for_update:
+            # No security requested, and this is merging into an existing
+            # stored profile: explicitly clear any previously stored
             # 802-11-wireless-security section instead of leaving it
             # untouched. `NetworkSetting.update()` only merges sections that
             # are present, so an old WPA/WEP section (and its PSK) would
@@ -321,5 +336,12 @@ def get_connection_from_interface(
             # the now-removed security section would otherwise survive and
             # NetworkManager can reject the resulting profile as invalid.
             wireless["security"] = Variant("s", "")
+        # else: creating a brand new connection - just omit the security
+        # section and reference entirely instead of sending the clear
+        # sentinel. There's nothing to clear yet, and unlike `update()`,
+        # `add_connection()`/`add_and_activate_connection()` hand this hash
+        # to NetworkManager unchanged, which would otherwise instantiate an
+        # empty `802-11-wireless-security` setting and reject the connection
+        # for missing `key-mgmt`.
 
     return conn

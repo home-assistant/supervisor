@@ -373,6 +373,51 @@ async def test_api_network_update_config_v2_wifi(
     assert settings["802-11-wireless-security"]["psk"] == Variant("s", "myWifiPassword")
 
 
+async def test_api_network_update_config_v2_wifi_open_auth_create(
+    api_client_v2: TestClient,
+    network_manager_service: NetworkManagerService,
+):
+    """Test creating a new open-auth wifi profile doesn't send a broken security section.
+
+    Regression test for a bug caught in review: `get_connection_from_interface()`
+    used to always emit an explicit-empty `802-11-wireless-security: {}` for
+    open auth as a sentinel for `NetworkSetting.update()`'s merge logic to
+    clear a stale section. That sentinel is meaningless to
+    `AddAndActivateConnection`/`AddConnection` (there's no merge step - the
+    settings hash is handed to NetworkManager as-is), and a present-but-empty
+    `802-11-wireless-security` section there would make NetworkManager
+    instantiate one with an unset `key-mgmt`, which fails connection verify.
+    Creating a brand new open-auth profile (wlan0 has no stored profile by
+    default, see `test_api_network_interface_info_v2_config_null`) must omit
+    the section entirely instead.
+    """
+    network_manager_service.AddAndActivateConnection.calls.clear()
+
+    config = {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+        "wifi": {
+            "mode": "infrastructure",
+            "ssid": "MY_OPEN_TEST",
+            "auth": "open",
+        },
+    }
+
+    resp = await api_client_v2.put(
+        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+    )
+    assert resp.status == 200, await resp.text()
+
+    assert len(network_manager_service.AddAndActivateConnection.calls) == 1
+    settings = network_manager_service.AddAndActivateConnection.calls[0][0]
+    assert settings["802-11-wireless"]["ssid"] == Variant("ay", b"MY_OPEN_TEST")
+    assert "security" not in settings["802-11-wireless"]
+    assert "802-11-wireless-security" not in settings
+
+
 async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
     api_client_v2: TestClient,
 ):

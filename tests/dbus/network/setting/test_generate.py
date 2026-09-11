@@ -144,6 +144,56 @@ async def test_generate_from_wireless(network_manager: NetworkManager):
     assert connection_payload["802-11-wireless"]["ssid"].value == b"TestSSID"
     assert connection_payload["802-11-wireless"]["powersave"].value == 0
 
+    # Open auth has no security section. By default (a brand new connection,
+    # headed for `add_connection()`/`add_and_activate_connection()`) it must
+    # be omitted entirely rather than sent as an empty dict: NetworkManager
+    # takes this payload as-is with no merge step of its own, so a
+    # present-but-empty `802-11-wireless-security` section would still
+    # instantiate one with an unset `key-mgmt`, which NetworkManager's
+    # connection verify rejects.
+    assert "802-11-wireless-security" not in connection_payload
+    assert "security" not in connection_payload["802-11-wireless"]
+
+
+async def test_generate_from_wireless_for_update_clears_security(
+    network_manager: NetworkManager,
+):
+    """Test for_update=True explicitly clears a stale security section (R3).
+
+    Only meaningful when the payload is headed for `NetworkSetting.update()`,
+    which merges sections rather than replacing them wholesale - an empty
+    dict here is a sentinel `_merge_settings_attribute()` understands as
+    "remove this section", letting a switch away from WPA/WEP on an existing
+    profile actually drop the stale section instead of leaving it merged in.
+    """
+    wireless_interface = Interface(
+        name="wlan0",
+        mac="",
+        path="",
+        enabled=True,
+        connected=True,
+        primary=False,
+        type=InterfaceType.WIRELESS,
+        ipv4=IpConfig([], None, [], None),
+        ipv4setting=IpSetting(InterfaceMethod.AUTO, [], None, None, []),
+        ipv6=IpConfig([], None, [], None),
+        ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
+        wifi=WifiConfig(
+            mode=WifiMode.INFRASTRUCTURE,
+            ssid="TestSSID",
+            auth=AuthMethod.OPEN,
+            psk=None,
+            signal=None,
+        ),
+        vlan=None,
+        mdns=MulticastDnsMode.RESOLVE,
+        llmnr=MulticastDnsMode.OFF,
+    )
+
+    connection_payload = get_connection_from_interface(
+        wireless_interface, network_manager, for_update=True
+    )
+
     # Open auth has no security section, and it's explicitly cleared (empty
     # dict) rather than merely absent, so a switch away from WPA/WEP on an
     # existing profile removes the stale section instead of leaving it be.
