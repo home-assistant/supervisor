@@ -385,8 +385,16 @@ def test_map_nm_wifi_wpa_psk_authentication():
 
 
 def test_map_nm_wifi_unsupported_authentication():
-    """Test _map_nm_wifi returns None for unsupported authentication method."""
-    # Mock wireless interface with unsupported authentication
+    """Test _map_nm_wifi reports unsupported auth instead of hiding the profile.
+
+    Regression test for a bug caught in review: an auth method Supervisor
+    doesn't understand (WPA3/sae, wpa-eap, owe, ...) used to make
+    `_map_nm_wifi` return `None` entirely, hiding both the (partially
+    understood) config *and* the independently observed signal/SSID of an
+    active connection - `state.wifi` and `config.wifi` would both go `null`
+    even while genuinely connected. It's reported as `AuthMethod.UNSUPPORTED`
+    instead, and refused only on write (see `_validate_wifi_config_v2`).
+    """
     mock_interface = Mock()
     mock_interface.type = DeviceType.WIRELESS
     mock_interface.settings = Mock()
@@ -394,11 +402,23 @@ def test_map_nm_wifi_unsupported_authentication():
     mock_interface.settings.wireless_security.key_mgmt = "wpa-eap"  # Unsupported
     mock_interface.settings.wireless = Mock()
     mock_interface.settings.wireless.ssid = "EnterpriseNetwork"
+    mock_interface.settings.wireless.mode = "infrastructure"
+    mock_interface.wireless = Mock()
+    mock_interface.wireless.active = Mock()
+    mock_interface.wireless.active.strength = 75
+    mock_interface.wireless.active.ssid = "EnterpriseNetwork"
     mock_interface.interface_name = "wlan0"
 
     result = Interface._map_nm_wifi(mock_interface, mock_interface.settings)
 
-    assert result is None
+    assert result is not None
+    assert result.auth == AuthMethod.UNSUPPORTED
+    assert result.ssid == "EnterpriseNetwork"
+    assert result.psk is None
+    # Observed state remains visible even though the auth method (config)
+    # isn't understood.
+    assert result.signal == 75
+    assert result.active_ssid == "EnterpriseNetwork"
 
 
 def test_map_nm_wifi_different_modes():

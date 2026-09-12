@@ -54,7 +54,12 @@ from ..const import (
     DOCKER_NETWORK,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APINotFound, HostNetworkNotFound
+from ..exceptions import (
+    APIError,
+    APINotFound,
+    HostNetworkNotFound,
+    HostNetworkWifiPskRequiredError,
+)
 from ..host.configuration import (
     AccessPoint,
     Interface,
@@ -150,10 +155,42 @@ def _validate_ip_config_v2(schema_key: str):
 
 def _validate_wifi_config_v2(config: dict[str, Any]) -> dict[str, Any]:
     """Reject a psk supplied without a matching auth method."""
+    if config[ATTR_AUTH] == AuthMethod.UNSUPPORTED:
+        # Read-only value reported for a stored profile whose auth method
+        # Supervisor doesn't understand (see `AuthMethod.UNSUPPORTED`) - not
+        # something a client can meaningfully (re)create; such an interface
+        # must either supply a supported auth method or omit `wifi` entirely
+        # to leave the existing profile untouched (see `update_config()`).
+        raise vol.Invalid(f"{ATTR_AUTH} unsupported is read-only and cannot be set")
     if config.get(ATTR_PSK) and config[ATTR_AUTH] != AuthMethod.WPA_PSK:
         raise vol.Invalid(f"{ATTR_PSK} is only valid when {ATTR_AUTH} is wpa-psk")
 
     return config
+
+
+def _require_psk_for_wpa_psk(
+    resolved: ResolvedInterface, wifi: dict[str, Any] | None
+) -> None:
+    """Require a psk when (re)creating a wpa-psk profile, unless one is kept.
+
+    GET never returns the actual `psk` (only whether one is set, via
+    `psk_set`), so a client echoing back a fetched config can't supply it.
+    Omitting `psk` is therefore only valid when an existing wpa-psk profile
+    is being kept as-is; a brand new profile, or switching from a different
+    auth method, must supply one. Without this, a `psk`-less `wpa-psk`
+    request would pass schema validation, get persisted, and only fail at
+    activation time with a much less obvious error - while GET would still
+    report `psk_set: true` (inferred from `auth`), leaving a client with no
+    signal to ever re-prompt for the secret.
+    """
+    if not wifi or wifi[ATTR_AUTH] != AuthMethod.WPA_PSK or wifi.get(ATTR_PSK):
+        return
+
+    existing = resolved.interface.wifi if resolved.has_profile else None
+    if existing and existing.auth == AuthMethod.WPA_PSK:
+        return
+
+    raise HostNetworkWifiPskRequiredError
 
 
 _SCHEMA_IPV4_CONFIG_V2 = vol.All(
@@ -512,7 +549,16 @@ class APINetwork(CoreSysAttributes):
                 "it cannot be replaced with a disabled one"
             )
 
-        if interface.type == InterfaceType.WIRELESS and body.get(ATTR_WIFI) is None:
+        if (
+            interface.type == InterfaceType.WIRELESS
+            and body.get(ATTR_WIFI) is None
+            and not (interface.wifi and interface.wifi.auth == AuthMethod.UNSUPPORTED)
+        ):
+            # Omitting `wifi` is also allowed (in addition to the type check
+            # below) when the existing stored profile's auth method isn't
+            # one we understand (see `AuthMethod.UNSUPPORTED`) - the only way
+            # to change unrelated settings (e.g. `mdns`) without being forced
+            # to overwrite a working security section we can't reconstruct.
             raise APIError(
                 f"Interface {interface.name} is wireless and requires a wifi configuration"
             )
@@ -520,6 +566,7 @@ class APINetwork(CoreSysAttributes):
             raise APIError(
                 f"Interface {interface.name} is not wireless and does not support a wifi configuration"
             )
+        _require_psk_for_wpa_psk(resolved, body.get(ATTR_WIFI))
 
         ipv4 = body[ATTR_IPV4]
         interface.ipv4setting = IpSetting(

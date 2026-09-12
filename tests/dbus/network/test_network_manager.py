@@ -9,8 +9,11 @@ import pytest
 from supervisor.dbus.const import ConnectionState
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
+from supervisor.dbus.network.setting import NetworkSetting
 from supervisor.exceptions import (
     DBusFatalError,
+    DBusInterfaceMethodError,
+    DBusObjectError,
     DBusParseError,
     DBusServiceUnkownError,
     HostNotSupportedError,
@@ -161,6 +164,32 @@ async def test_find_connection_settings_no_match(
     inet = network_manager.get(TEST_INTERFACE_WLAN_NAME)
 
     assert await network_manager.find_connection_settings(inet) is None
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        DBusObjectError("UnknownObject"),
+        DBusInterfaceMethodError("UnknownMethod"),
+    ],
+)
+async def test_find_connection_settings_vanished_profile(
+    network_manager_service: NetworkManagerService,
+    network_manager: NetworkManager,
+    error: Exception,
+):
+    """Test a profile vanishing between list_connections and connect is skipped.
+
+    `DBusObjectError`/`DBusInterfaceMethodError` derive from
+    `HassioNotSupportedError`, not `DBusError` - a race where another client
+    removes the profile right after `ListConnections` (e.g. `nmcli con
+    delete`, or a v1 destructive disable) surfaces as one of these instead,
+    and must be skipped rather than propagated.
+    """
+    inet = network_manager.get(TEST_INTERFACE_ETH_NAME)
+
+    with patch.object(NetworkSetting, "connect", side_effect=error):
+        assert await network_manager.find_connection_settings(inet) is None
 
 
 async def test_removed_devices_disconnect(

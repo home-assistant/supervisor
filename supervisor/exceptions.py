@@ -1136,6 +1136,20 @@ class HostNetworkActivationTimeoutError(HostNetworkError, APIError):
         super().__init__(None, logger)
 
 
+class HostNetworkWifiPskRequiredError(HostNetworkError, APIError):
+    """Raise when (re)creating a wpa-psk profile without supplying a psk."""
+
+    error_key = "host_network_wifi_psk_required_error"
+    message_template = (
+        "psk is required when auth is wpa-psk, unless an existing wpa-psk "
+        "profile is being kept unchanged"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
 class HostLogError(HostError):
     """Internal error with host log."""
 

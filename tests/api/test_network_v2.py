@@ -9,6 +9,8 @@ import pytest
 
 from supervisor.const import DOCKER_IPV4_NETWORK_MASK, DOCKER_NETWORK
 from supervisor.coresys import CoreSys
+from supervisor.host.configuration import ResolvedInterface, WifiConfig
+from supervisor.host.const import AuthMethod, WifiMode
 
 from tests.const import TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -114,6 +116,121 @@ async def test_api_network_interface_info_v2_config_null(
     resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}")
     result = await resp.json()
     assert result["data"]["config"] is None
+
+
+async def test_api_network_interface_info_v2_unsupported_auth(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+):
+    """Test unsupported auth is reported, not hidden, in both state and config.
+
+    Regression test for a bug caught in review: a stored profile whose auth
+    method Supervisor doesn't understand (WPA3/sae, wpa-eap, owe, ...) used
+    to make `interface.wifi` (and therefore both `state.wifi` and
+    `config.wifi`) `null` entirely - hiding the observed signal/SSID of an
+    active connection along with the (partially understood) config.
+    """
+    resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
+    resolved.interface.wifi = WifiConfig(
+        mode=WifiMode.INFRASTRUCTURE,
+        ssid="EnterpriseNetwork",
+        auth=AuthMethod.UNSUPPORTED,
+        psk=None,
+        signal=80,
+        active_ssid="EnterpriseNetwork",
+    )
+    existing = ResolvedInterface(
+        resolved.interface, has_profile=True, enabled=resolved.enabled
+    )
+
+    with patch.object(
+        coresys.host.network, "get_with_config", AsyncMock(return_value=existing)
+    ):
+        resp = await api_client_v2.get(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}"
+        )
+    result = await resp.json()
+
+    assert result["data"]["state"]["wifi"] == {
+        "ssid": "EnterpriseNetwork",
+        "signal": 80,
+    }
+    config_wifi = result["data"]["config"]["wifi"]
+    assert config_wifi["auth"] == "unsupported"
+    assert config_wifi["ssid"] == "EnterpriseNetwork"
+    assert config_wifi["psk_set"] is False
+
+
+async def test_api_network_update_config_v2_unsupported_auth_wifi_null_round_trip(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+):
+    """Test PUTting `wifi: null` for an unsupported-auth profile round-trips (R1/R4).
+
+    The only way through for a client that just wants to change unrelated
+    settings (e.g. `mdns`) on such an interface: it can't echo back
+    `config.wifi` verbatim (auth `unsupported` is refused on write, see
+    `_validate_wifi_config_v2`), but explicitly omitting `wifi` must be
+    accepted and must leave the existing (not understood) security section
+    untouched rather than forcing a supported auth method to be supplied.
+    """
+    resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
+    resolved.interface.wifi = WifiConfig(
+        mode=WifiMode.INFRASTRUCTURE,
+        ssid="EnterpriseNetwork",
+        auth=AuthMethod.UNSUPPORTED,
+        psk=None,
+        signal=None,
+    )
+    existing = ResolvedInterface(
+        resolved.interface, has_profile=True, enabled=resolved.enabled
+    )
+
+    config = {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "resolve",
+        "llmnr": "default",
+        "wifi": None,
+    }
+
+    with patch.object(
+        coresys.host.network, "get_with_config", AsyncMock(return_value=existing)
+    ):
+        resp = await api_client_v2.put(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+        )
+    assert resp.status == 200, await resp.text()
+
+
+async def test_api_network_update_config_v2_unsupported_auth_rejected(
+    api_client_v2: TestClient,
+):
+    """Test `auth: unsupported` cannot be set explicitly via PUT.
+
+    It's a read-only marker reported for a profile Supervisor doesn't fully
+    understand, not something a client can (re)create.
+    """
+    config = {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+        "wifi": {
+            "mode": "infrastructure",
+            "ssid": "test",
+            "auth": "unsupported",
+        },
+    }
+
+    resp = await api_client_v2.put(
+        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+    )
+    assert resp.status == 400
+    result = await resp.json()
+    assert "unsupported is read-only and cannot be set" in result["message"]
 
 
 async def test_api_network_update_config_v2_round_trip(api_client_v2: TestClient):
@@ -448,6 +565,48 @@ async def test_api_network_update_config_v2_wifi_open_auth_create(
     await _wait_for_background_job(coresys, result["data"]["job_id"])
 
 
+async def test_api_network_update_config_v2_wifi_psk_required_for_new_profile(
+    api_client_v2: TestClient,
+):
+    """Test v2 config PUT requires a psk when (re)creating a wpa-psk profile.
+
+    Regression test for a bug caught in review: `auth: wpa-psk` with no `psk`
+    used to pass schema validation outright for a brand new profile (wlan0
+    has no stored profile by default, see
+    `test_api_network_interface_info_v2_config_null`, so there's no existing
+    secret to keep). `AddAndActivateConnection` accepts a `key-mgmt: wpa-psk`
+    section with no secret (missing secrets are only checked at activation),
+    so this would persist the profile and only fail asynchronously with
+    `NO_SECRETS` - while a subsequent GET would still report `psk_set: true`
+    (inferred purely from `auth`), leaving a client with no signal to ever
+    re-prompt for the password.
+    """
+    resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}")
+    result = await resp.json()
+    assert result["data"]["config"] is None  # No existing profile/secret to keep
+
+    config = {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+        "wifi": {
+            "mode": "infrastructure",
+            "ssid": "MY_TEST",
+            "auth": "wpa-psk",
+        },
+    }
+
+    resp = await api_client_v2.put(
+        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+    )
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == "host_network_wifi_psk_required_error"
+    assert "psk is required when auth is wpa-psk" in result["message"]
+
+
 async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
     api_client_v2: TestClient,
     coresys: CoreSys,
@@ -455,20 +614,33 @@ async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
     """Test the read-only `psk_set` marker from GET can be echoed back on PUT (R1).
 
     GET never returns the actual `psk`, only whether one is set (`psk_set`).
-    A client that fetches a config and PUTs it back unchanged must not be
-    rejected by schema validation just because it includes this read-only
-    marker.
+    A client that fetches a config for an *existing* wpa-psk profile and PUTs
+    it back unchanged must not be rejected just because it omits the actual
+    secret (which it was never given) alongside the read-only `psk_set`
+    marker. Uses a patched `get_with_config()` to simulate an existing
+    wpa-psk profile, since the fixture's stored wlan0 settings normally have
+    no `802-11-wireless-security` section at all (see
+    `test_api_network_update_config_v2_wifi_psk_required_for_new_profile`).
     """
-    resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}")
-    result = await resp.json()
-    config = result["data"]["config"] or {
+    resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
+    resolved.interface.wifi = WifiConfig(
+        mode=WifiMode.INFRASTRUCTURE,
+        ssid="MY_TEST",
+        auth=AuthMethod.WPA_PSK,
+        psk=None,
+        signal=None,
+    )
+    existing = ResolvedInterface(
+        resolved.interface, has_profile=True, enabled=resolved.enabled
+    )
+
+    config = {
         "enabled": True,
         "ipv4": {"method": "auto"},
         "ipv6": {"method": "auto"},
         "mdns": "default",
         "llmnr": "default",
     }
-    config["enabled"] = True
     # Simulates a client echoing back a GET response for an existing WPA
     # profile: `psk_set` is present (read-only marker) but the actual `psk`
     # is not, since GET never returns it.
@@ -479,9 +651,12 @@ async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
         "psk_set": True,
     }
 
-    resp = await api_client_v2.put(
-        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
-    )
+    with patch.object(
+        coresys.host.network, "get_with_config", AsyncMock(return_value=existing)
+    ):
+        resp = await api_client_v2.put(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+        )
     assert resp.status == 200, await resp.text()
 
     # New connections always activate, which now runs as a background job

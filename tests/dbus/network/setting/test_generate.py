@@ -241,3 +241,52 @@ async def test_generate_from_wireless_mode_and_security(
     assert connection_payload["802-11-wireless"]["mode"].value == "mesh"
     assert connection_payload["802-11-wireless-security"]["key-mgmt"].value == "wpa-psk"
     assert connection_payload["802-11-wireless-security"]["psk"].value == "supersecret"
+
+
+async def test_generate_from_wireless_unsupported_auth_leaves_security_untouched(
+    network_manager: NetworkManager,
+):
+    """Test unsupported auth never touches the existing security section.
+
+    Regression test for a bug caught in review: `interface.wifi` used to be
+    `None` entirely for a stored profile with an auth method Supervisor
+    doesn't understand (see `AuthMethod.UNSUPPORTED`), which - now that it's
+    reported instead - would otherwise fall into the same `for_update`
+    branch as open auth and get its `802-11-wireless-security` section
+    explicitly cleared, destroying a working WPA3/wpa-eap/owe profile.
+    Neither the section nor the `802-11-wireless.security` reference may be
+    present in the payload at all, for either a fresh connection or a
+    `for_update=True` merge - `NetworkSetting.update()` only touches
+    sections that are present, so omitting them entirely is what leaves the
+    existing section (and its secrets) alone.
+    """
+    wireless_interface = Interface(
+        name="wlan0",
+        mac="",
+        path="",
+        enabled=True,
+        connected=True,
+        primary=False,
+        type=InterfaceType.WIRELESS,
+        ipv4=IpConfig([], None, [], None),
+        ipv4setting=IpSetting(InterfaceMethod.AUTO, [], None, None, []),
+        ipv6=IpConfig([], None, [], None),
+        ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
+        wifi=WifiConfig(
+            mode=WifiMode.INFRASTRUCTURE,
+            ssid="EnterpriseNetwork",
+            auth=AuthMethod.UNSUPPORTED,
+            psk=None,
+            signal=None,
+        ),
+        vlan=None,
+        mdns=MulticastDnsMode.RESOLVE,
+        llmnr=MulticastDnsMode.OFF,
+    )
+
+    for for_update in (False, True):
+        connection_payload = get_connection_from_interface(
+            wireless_interface, network_manager, for_update=for_update
+        )
+        assert "802-11-wireless-security" not in connection_payload
+        assert "security" not in connection_payload["802-11-wireless"]

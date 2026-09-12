@@ -11,6 +11,7 @@ from ...exceptions import (
     DBusFatalError,
     DBusInterfaceError,
     DBusNoReplyError,
+    DBusObjectError,
     DBusServiceUnkownError,
     HostNotSupportedError,
     NetworkInterfaceNotFound,
@@ -159,7 +160,16 @@ class NetworkManager(DBusInterfaceProxy):
             setting = NetworkSetting(object_path)
             try:
                 await setting.connect(self.connected_dbus.bus)
-            except DBusError:
+            except DBusError, DBusInterfaceError, DBusObjectError:
+                # A profile can vanish between `list_connections()` and this
+                # `connect()` call (e.g. another client deleting it, or a v1
+                # destructive disable) - it then comes back as
+                # UnknownObject/UnknownMethod, which `DBus.from_dbus_error()`
+                # maps to `DBusObjectError`/`DBusInterfaceMethodError`
+                # (a `DBusInterfaceError` subclass). Neither derives from
+                # `DBusError`, so they need to be listed explicitly here to
+                # be treated the same as any other unreadable profile: skip
+                # it rather than letting it fail the whole lookup.
                 _LOGGER.debug(
                     "Could not connect to connection settings %s, skipping",
                     object_path,

@@ -298,7 +298,14 @@ def get_connection_from_interface(
 
         conn[CONF_ATTR_802_WIRELESS] = wireless
 
-        if interface.wifi and interface.wifi.auth != "open":
+        if interface.wifi and interface.wifi.auth == "unsupported":
+            # A profile whose auth method we don't understand well enough to
+            # safely regenerate (see `AuthMethod.UNSUPPORTED`) - leave its
+            # existing `802-11-wireless-security` section (and the
+            # `802-11-wireless.security` reference) completely untouched
+            # rather than risk corrupting or clearing it.
+            pass
+        elif interface.wifi and interface.wifi.auth != "open":
             wireless["security"] = Variant("s", CONF_ATTR_802_WIRELESS_SECURITY)
             wireless_security = {}
             if interface.wifi.auth == "wep":

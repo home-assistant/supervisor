@@ -375,12 +375,16 @@ class Interface:
                     auth = AuthMethod.WPA_PSK
                     psk = settings.wireless_security.psk
                 case _:
+                    # An auth method we don't understand (WPA3/sae, wpa-eap,
+                    # owe, ...) - report it as such (rather than hiding the
+                    # profile/observed state entirely, see below) but leave
+                    # `psk` unset; only refuse it on write.
                     _LOGGER.warning(
-                        "Auth method %s for network interface %s unsupported, skipping",
+                        "Auth method %s for network interface %s unsupported, reporting as such",
                         settings.wireless_security.key_mgmt,
                         inet.interface_name,
                     )
-                    return None
+                    auth = AuthMethod.UNSUPPORTED
 
         # WifiMode
         mode = WifiMode.INFRASTRUCTURE
