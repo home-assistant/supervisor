@@ -4,6 +4,7 @@ from dbus_fast import DBusError
 from dbus_fast.service import PropertyAccess, dbus_property, signal
 
 from .base import DBusServiceMock, dbus_method
+from .network_device import DEVICES_BY_OBJECT_PATH
 
 BUS_NAME = "org.freedesktop.NetworkManager"
 
@@ -268,7 +269,21 @@ class NetworkManager(DBusServiceMock):
 
     @dbus_method()
     def DeactivateConnection(self, active_connection: "o") -> None:
-        """Do DeactivateConnection method."""
+        """Do DeactivateConnection method.
+
+        Mirrors real NetworkManager: deactivating a connection clears the
+        owning device's `ActiveConnection` property back to `/` and emits
+        the matching `PropertiesChanged` signal, same as it would for any
+        other reason a device stops using a connection (unplugged cable,
+        Wi-Fi roam, etc.). Only the signal is emitted (not persisted onto
+        the shared fixture, which - like `Managed`/`Autoconnect` above -
+        would otherwise leak into other tests reusing the same fixture
+        instance).
+        """
+        for device in DEVICES_BY_OBJECT_PATH.values():
+            if device.fixture.ActiveConnection == active_connection:
+                device.emit_properties_changed({"ActiveConnection": "/"})
+                break
 
     @dbus_method()
     def Sleep(self, sleep: "b") -> None:

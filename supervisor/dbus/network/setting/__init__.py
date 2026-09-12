@@ -85,16 +85,28 @@ def _merge_settings_attribute(
     *,
     ignore_current_value: list[str] | None = None,
 ) -> None:
-    """Merge settings attribute if present."""
-    if attribute in new_settings:
-        if attribute in base_settings:
-            if ignore_current_value:
-                for field in ignore_current_value:
-                    base_settings[attribute].pop(field, None)
+    """Merge settings attribute if present.
 
-            base_settings[attribute].update(new_settings[attribute])
-        else:
-            base_settings[attribute] = new_settings[attribute]
+    An empty dict for `attribute` in `new_settings` explicitly removes it
+    from `base_settings` instead of being merged in as a no-op, letting a
+    caller clear an entire section it doesn't otherwise own (e.g. wireless
+    security when switching an interface to open auth).
+    """
+    if attribute not in new_settings:
+        return
+
+    if not new_settings[attribute]:
+        base_settings.pop(attribute, None)
+        return
+
+    if attribute in base_settings:
+        if ignore_current_value:
+            for field in ignore_current_value:
+                base_settings[attribute].pop(field, None)
+
+        base_settings[attribute].update(new_settings[attribute])
+    else:
+        base_settings[attribute] = new_settings[attribute]
 
 
 class NetworkSetting(DBusInterface):
@@ -255,6 +267,9 @@ class NetworkSetting(DBusInterface):
                 llmnr=data[CONF_ATTR_CONNECTION].get(
                     CONF_ATTR_CONNECTION_LLMNR, MulticastDnsValue.DEFAULT.value
                 ),
+                autoconnect=data[CONF_ATTR_CONNECTION].get(
+                    CONF_ATTR_CONNECTION_AUTOCONNECT, True
+                ),
             )
 
         if CONF_ATTR_802_ETHERNET in data:
@@ -334,3 +349,24 @@ class NetworkSetting(DBusInterface):
             self._match = MatchProperties(
                 data[CONF_ATTR_MATCH].get(CONF_ATTR_MATCH_PATH)
             )
+
+
+def connection_matches_device(
+    setting: NetworkSetting, *, interface_name: str, path: str
+) -> bool:
+    """Return true if setting's match/interface-name identifies the given device.
+
+    Only covers the plain ethernet/wireless identity check (match by udev
+    path, falling back to interface name) shared between
+    `Interface.equals_dbus_interface()` and the stored-connection enumeration
+    lookup in `NetworkManager.find_connection_settings()`. VLAN matching (by
+    id/parent) and device-type compatibility are intentionally not part of
+    this helper, they stay call-site specific.
+    """
+    if setting.match and setting.match.path:
+        return setting.match.path == [path]
+
+    return (
+        setting.connection is not None
+        and setting.connection.interface_name == interface_name
+    )
