@@ -22,6 +22,7 @@ from .utils import api_process, api_return_stats, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): vol.Boolean()})
 
