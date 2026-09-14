@@ -541,10 +541,16 @@ class Job(CoreSysAttributes):
             )
 
     def _clear_detached_task(self, task: asyncio.Task[Any]) -> None:
-        """Drop the reference to a finished detached task.
+        """Drop the reference to a finished detached task and consume its error.
 
-        Guarded by identity so an older task cannot clear a newer one.
+        The wrapper has already captured the error on the job and logged it,
+        so a caller that does not await the task must not trigger asyncio's
+        "Task exception was never retrieved" report. Callers that do await
+        the task still receive the exception. Guarded by identity so an
+        older task cannot clear a newer one.
         """
+        if not task.cancelled():
+            task.exception()
         if self._detached_task is task:
             self._detached_task = None
 
