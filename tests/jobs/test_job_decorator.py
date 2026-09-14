@@ -1838,8 +1838,10 @@ async def test_detach_drops_finished_task_reference(coresys: CoreSys):
     assert TestClass.job._detached_task is None
 
 
-async def test_detach_unawaited_error_is_retrieved(coresys: CoreSys):
-    """Test a failed detached task nobody awaits does not report an unretrieved error."""
+async def test_detach_unawaited_error_is_retrieved(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a failed detached task nobody awaits is logged once, not reported by asyncio."""
 
     class TestClass:
         """Test class."""
@@ -1863,3 +1865,7 @@ async def test_detach_unawaited_error_is_retrieved(coresys: CoreSys):
         gc.collect()
 
     asyncio_logger.error.assert_not_called()
+    assert (
+        "Detached job test_detach_unawaited_error_is_retrieved_execute failed: boom"
+        in caplog.text
+    )
