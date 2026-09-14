@@ -86,10 +86,10 @@ class PluginMulticast(PluginBase):
         # watchdog_container ignores events while disabled.
         self.start_watchdog()
 
-        # Supervisor may have exited between persisting the disabled state and
-        # removing the container, make sure it is not left running.
-        with suppress(DockerError):
-            await self.instance.stop()
+        # A previous disable may not have finished removing the container and
+        # image (Supervisor exit, Docker error), retry the cleanup.
+        with suppress(MulticastError):
+            await self._remove()
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in plugin container and restart if necessary."""
@@ -116,23 +116,27 @@ class PluginMulticast(PluginBase):
 
     async def disable(self) -> None:
         """Disable the Multicast plugin and remove its container and image."""
-        if not self.enabled:
-            return
+        if self.enabled:
+            _LOGGER.info("Disabling Multicast plugin")
+            self._data[ATTR_ENABLED] = False
+            await self.save_data()
 
-        _LOGGER.info("Disabling Multicast plugin")
-        self._data[ATTR_ENABLED] = False
-        await self.save_data()
+        await self._remove()
 
+    async def _remove(self) -> None:
+        """Remove container and image of the plugin and forget the version."""
+        try:
+            await self.instance.stop()
+            if self.version:
+                await self.sys_docker.remove_image(self.image, self.version)
+        except DockerError as err:
+            raise MulticastError(
+                "Can't remove Multicast plugin", _LOGGER.error
+            ) from err
+
+        # Removed from the system, forget the installed version so a later
+        # enable installs the current one.
         if self.version:
-            try:
-                await self.instance.remove()
-            except DockerError as err:
-                raise MulticastError(
-                    "Can't remove Multicast plugin", _LOGGER.error
-                ) from err
-
-            # Removed from the system, forget the installed version so a later
-            # enable installs the current one.
             self._data.pop(ATTR_VERSION, None)
             await self.save_data()
 
