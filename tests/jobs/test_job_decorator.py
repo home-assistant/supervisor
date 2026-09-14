@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timedelta
+import gc
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
@@ -1835,3 +1836,36 @@ async def test_detach_drops_finished_task_reference(coresys: CoreSys):
     await asyncio.sleep(0)
     # pylint: disable-next=protected-access
     assert TestClass.job._detached_task is None
+
+
+async def test_detach_unawaited_error_is_retrieved(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a failed detached task nobody awaits is logged once, not reported by asyncio."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name="test_detach_unawaited_error_is_retrieved_execute", detach=True)
+        async def execute(self) -> None:
+            """Execute the class method."""
+            raise HassioError("boom")
+
+    test = TestClass(coresys)
+    with patch("asyncio.base_events.logger") as asyncio_logger:
+        task = await test.execute()
+        assert task is not None
+        await asyncio.sleep(0)
+        assert task.done()
+        del task
+        gc.collect()
+
+    asyncio_logger.error.assert_not_called()
+    assert (
+        "Detached job test_detach_unawaited_error_is_retrieved_execute failed: boom"
+        in caplog.text
+    )
