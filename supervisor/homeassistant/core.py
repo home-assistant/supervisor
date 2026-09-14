@@ -26,6 +26,7 @@ from ..exceptions import (
     DockerContainerNotFoundError,
     DockerContainerNotRunningError,
     DockerError,
+    DockerRegistryRateLimitExceeded,
     DockerStatsTimeoutError,
     HomeAssistantCrashError,
     HomeAssistantError,
@@ -103,10 +104,11 @@ class HomeAssistantCore(JobGroup):
             BusEvent.SUPERVISOR_STATE_CHANGE, self._supervisor_state_changed
         )
 
+        stored_version = self.sys_homeassistant.version
         try:
             # Evaluate Version if we lost this information
-            if self.sys_homeassistant.version:
-                version = self.sys_homeassistant.version
+            if stored_version:
+                version = stored_version
             else:
                 self.sys_homeassistant.version = (
                     version
@@ -124,6 +126,15 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image
             )
+            # The image of an installed Core got lost (e.g. Docker storage was
+            # wiped). Reinstall that version instead of installing the latest
+            # release through the landingpage.
+            if (
+                stored_version
+                and stored_version != LANDINGPAGE
+                and await self._reinstall(stored_version)
+            ):
+                return
             await self.install_landingpage()
         else:
             self.sys_homeassistant.version = self.instance.version or version
@@ -161,16 +172,8 @@ class HomeAssistantCore(JobGroup):
             return
 
         _LOGGER.info("Setting up Home Assistant landingpage")
+        install_image = self.sys_homeassistant.install_image
         while True:
-            if not (install_image := self.sys_homeassistant.install_image):
-                _LOGGER.warning(
-                    "Updater has no Home Assistant image information yet. Retrying in %ssec",
-                    INSTALL_RETRY_WAIT_SECS,
-                )
-                await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
-                await self.sys_updater.reload()
-                continue
-
             try:
                 await self.instance.install(LANDINGPAGE, image=install_image)
                 break
@@ -188,6 +191,37 @@ class HomeAssistantCore(JobGroup):
         self.sys_homeassistant.version = LANDINGPAGE
         self.sys_homeassistant.set_image(install_image)
         await self.sys_homeassistant.save_data()
+
+    async def _reinstall(self, version: AwesomeVersion) -> bool:
+        """Reinstall the lost image of an installed Home Assistant version.
+
+        Return False if the image could not be pulled.
+        """
+        image = self.sys_homeassistant.install_image
+        _LOGGER.info("Reinstalling Home Assistant %s", version)
+        while True:
+            try:
+                await self.instance.install(version, image=image)
+                break
+            except DockerRegistryRateLimitExceeded:
+                _LOGGER.warning(
+                    "Rate limit reached while reinstalling Home Assistant,"
+                    " retrying in %ssec",
+                    INSTALL_RETRY_WAIT_SECS,
+                )
+                await asyncio.sleep(INSTALL_RETRY_WAIT_SECS)
+            except DockerError, JobException:
+                _LOGGER.warning(
+                    "Could not reinstall Home Assistant %s,"
+                    " installing latest version instead",
+                    version,
+                )
+                return False
+
+        self.sys_homeassistant.version = self.instance.version or version
+        self.sys_homeassistant.set_image(image)
+        await self.sys_homeassistant.save_data()
+        return True
 
     @Job(
         name="home_assistant_core_install",
@@ -227,7 +261,7 @@ class HomeAssistantCore(JobGroup):
                         _LOGGER.info("Home Assistant Core installation in progress")
 
         progress_task = self.sys_create_task(_periodic_progress_log())
-        install_image: str | None = None
+        install_image = self.sys_homeassistant.install_image
         try:
             while True:
                 # read homeassistant tag and install it
