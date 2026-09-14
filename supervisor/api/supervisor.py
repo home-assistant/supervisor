@@ -265,8 +265,8 @@ class APISupervisor(CoreSysAttributes):
         # update() is detached: this may return a task already started by a
         # concurrent call (manual or auto-update) instead of a new one. Await
         # it so this request reflects the real (possibly shared) result.
-        if task := await asyncio.shield(self.sys_supervisor.update(version)):
-            await task
+        if task := await self.sys_supervisor.update(version):
+            await asyncio.shield(task)
 
     @api_process
     async def reload(self, request: web.Request) -> None:
