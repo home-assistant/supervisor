@@ -32,7 +32,7 @@ from .exceptions import (
     SupervisorUpdateError,
 )
 from .jobs import ChildJobSyncFilter
-from .jobs.const import JobCondition
+from .jobs.const import JobConcurrency, JobCondition
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType
 from .utils.sentry import async_capture_exception
@@ -192,15 +192,26 @@ class Supervisor(CoreSysAttributes):
 
     @Job(
         name="supervisor_update",
+        concurrency=JobConcurrency.REJECT,
         # We assume for now the docker image pull is 100% of this task. But from
         # a user perspective that isn't true.  Other steps that take time which
         # is not accounted for in progress include: app armor update and restart
         child_job_syncs=[
             ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
         ],
+        detach=True,
     )
     async def update(self, version: AwesomeVersion | None = None) -> None:
-        """Update Supervisor version."""
+        """Update Supervisor version.
+
+        This job is detached: calling it returns the task performing the
+        update - which may already be in progress from a previous call,
+        whether that call was to this method directly or via
+        auto_update_supervisor() - or None if the job was refused (e.g.
+        throttled). Errors are raised on the returned task, not to the
+        caller of this method, so callers that need the result must await
+        the returned task themselves.
+        """
         version = version or self.latest_version or self.version
 
         if version == self.version:
@@ -243,6 +254,39 @@ class Supervisor(CoreSysAttributes):
         await self.sys_config.save_data()
 
         self.sys_create_task(self.sys_core.stop())
+
+    @Job(
+        name="supervisor_auto_update",
+        conditions=[
+            JobCondition.AUTO_UPDATE,
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.OS_SUPPORTED,
+            JobCondition.RUNNING,
+            JobCondition.ARCHITECTURE_SUPPORTED,
+        ],
+        internal=True,
+    )
+    async def auto_update_supervisor(self) -> asyncio.Task[None] | None:
+        """Start the Supervisor auto update if enabled and needed.
+
+        Returns the task performing the update - which may already be in
+        progress, whether started by this call, a previous call, or a
+        direct call to update() elsewhere - or None if no update is
+        needed or the job was refused (e.g. a condition failed).
+
+        This never awaits the update to completion itself: update()
+        restarts Supervisor once done, and awaiting that here could drop
+        the caller's connection before a response is sent. Callers that
+        need to wait for the result should await the returned task
+        themselves.
+        """
+        if not self.need_update:
+            return None
+
+        _LOGGER.info("Found new Supervisor version %s, updating", self.latest_version)
+        return await self.update()
 
     @Job(
         name="supervisor_restart",

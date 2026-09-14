@@ -216,15 +216,48 @@ async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
     with (
         patch.object(DockerSupervisor, "install", side_effect=err),
         patch.object(type(coresys.supervisor), "update_apparmor"),
-        pytest.raises(SupervisorUpdateError),
     ):
-        await coresys.supervisor.update(AwesomeVersion("1.0"))
+        task = await coresys.supervisor.update(AwesomeVersion("1.0"))
+        assert task
+        with pytest.raises(SupervisorUpdateError):
+            await task
 
     capture_exception.assert_called_once_with(err)
     assert (
         Issue(IssueType.UPDATE_FAILED, ContextType.SUPERVISOR)
         in coresys.resolution.issues
     )
+
+
+async def test_update_returns_running_task_for_concurrent_call(coresys: CoreSys):
+    """Test a second update call while one is running gets back the same task."""
+    # pylint: disable-next=protected-access
+    coresys.updater._data.setdefault("image", {})["supervisor"] = (
+        "ghcr.io/home-assistant/aarch64-hassio-supervisor"
+    )
+    install_started = asyncio.Event()
+    install_finish = asyncio.Event()
+
+    async def install(*args, **kwargs):
+        install_started.set()
+        await install_finish.wait()
+
+    with (
+        patch.object(DockerSupervisor, "install", side_effect=install),
+        patch.object(DockerSupervisor, "update_start_tag"),
+        patch.object(type(coresys.supervisor), "update_apparmor"),
+        patch.object(type(coresys.core), "stop"),
+    ):
+        first_task = await coresys.supervisor.update(AwesomeVersion("1.0"))
+        await install_started.wait()
+        assert first_task
+        assert not first_task.done()
+
+        second_task = await coresys.supervisor.update(AwesomeVersion("1.0"))
+        assert second_task is first_task
+
+        install_finish.set()
+        await first_task
 
 
 @pytest.mark.parametrize(

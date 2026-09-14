@@ -26,6 +26,7 @@ from .const import (
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
     BusEvent,
+    CoreState,
     UpdateChannel,
 )
 from .coresys import CoreSys, CoreSysAttributes
@@ -60,18 +61,24 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
     async def reload(self) -> None:
         """Update internal data."""
-        # If there's no connectivity, delay initial version fetch
         if not self.sys_supervisor.connectivity:
-            _LOGGER.debug("No Supervisor connectivity, delaying version fetch")
+            # If there's no connectivity, delay version fetch until it's back
             if not self._connectivity_listener:
+                _LOGGER.debug("No Supervisor connectivity, delaying version fetch")
                 self._connectivity_listener = self.sys_bus.register_event(
                     BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
                 )
-            _LOGGER.info("No Supervisor connectivity, delaying version fetch")
-            return
+        else:
+            # fetch_data is a detached, REJECT-concurrency job. A call while
+            # one is already in-flight gets back that same task instead of
+            # starting a redundant fetch, and awaiting it here surfaces the
+            # real outcome instead of relying on the throttle window.
+            with suppress(UpdaterError):
+                if task := await self.fetch_data():
+                    await task
 
-        with suppress(UpdaterError):
-            await self.fetch_data()
+        if self.sys_core.state == CoreState.RUNNING and self.sys_supervisor.need_update:
+            await self.sys_supervisor.auto_update_supervisor()
 
     @property
     def version_homeassistant(self) -> AwesomeVersion | None:
@@ -248,8 +255,9 @@ class Updater(FileConfiguration, CoreSysAttributes):
         ],
         on_condition=UpdaterJobError,
         throttle_period=timedelta(seconds=30),
-        concurrency=JobConcurrency.QUEUE,
+        concurrency=JobConcurrency.REJECT,
         throttle=JobThrottle.THROTTLE,
+        detach=True,
     )
     async def fetch_data(self):
         """Fetch current versions from Github.

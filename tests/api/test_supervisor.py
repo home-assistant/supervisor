@@ -1,6 +1,7 @@
 """Test Supervisor API."""
 
 # pylint: disable=protected-access
+import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -541,6 +542,32 @@ async def test_api_supervisor_update_no_update_available(
     update.assert_not_called()
 
 
+async def test_api_supervisor_update_already_running(
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test an update request while one is already running awaits and reports its result."""
+    api_client, prefix = api_client_with_prefix
+
+    async def _already_running_update() -> None:
+        """Simulate the shared, already-in-progress update completing successfully."""
+
+    with (
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(
+            Supervisor,
+            "update",
+            AsyncMock(
+                return_value=asyncio.get_event_loop().create_task(
+                    _already_running_update()
+                )
+            ),
+        ),
+    ):
+        resp = await api_client.post(f"{prefix}/supervisor/update")
+
+    assert resp.status == 200
+
+
 async def test_api_supervisor_update_dev_explicit_version(
     api_client_with_prefix: tuple[TestClient, str],
 ):
@@ -550,7 +577,7 @@ async def test_api_supervisor_update_dev_explicit_version(
     with (
         patch.object(CoreSys, "dev", new=PropertyMock(return_value=True)),
         patch.object(Supervisor, "need_update", new=PropertyMock(return_value=False)),
-        patch.object(Supervisor, "update") as update,
+        patch.object(Supervisor, "update", AsyncMock(return_value=None)) as update,
     ):
         resp = await api_client.post(
             f"{prefix}/supervisor/update", json={"version": "2025.08.3"}
