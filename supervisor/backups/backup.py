@@ -1131,10 +1131,9 @@ class Backup(JobGroup):
                 # extractfile() requires seeking backwards, so read the members
                 # sequentially as they stream past instead.
                 for member in tar_file:
-                    if member.name not in ("mounts.json", "docker.json"):
-                        continue
-                    file_obj = tar_file.extractfile(member)
-                    if not file_obj:
+                    if member.name not in ("mounts.json", "docker.json") or not (
+                        file_obj := tar_file.extractfile(member)
+                    ):
                         continue
                     data = json.loads(file_obj.read().decode("utf-8"))
                     if member.name == "mounts.json":
