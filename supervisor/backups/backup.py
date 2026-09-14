@@ -102,7 +102,18 @@ def location_sort_key(value: str | None) -> str:
 
 
 class Backup(JobGroup):
-    """A single Supervisor backup."""
+    """A single Supervisor backup.
+
+    A backup is a plain outer tar containing backup.json and one inner tar per
+    component (homeassistant, each app slug, each folder slug, supervisor). The
+    inner tars are encrypted when a password is set.
+
+    Core only encrypts/decrypts inner tars it knows about when rewriting a backup
+    (see _get_expected_archives in homeassistant/components/backup/util.py). When
+    adding a new inner tar, add it to that list in Core as well, or Core will
+    leave it untouched and its encryption state will no longer match the backup
+    metadata.
+    """
 
     def __init__(
         self,
@@ -1115,21 +1126,25 @@ class Backup(JobGroup):
                 bufsize=BUF_SIZE,
                 password=self._password,
             ) as tar_file:
-                try:
-                    member = tar_file.getmember("mounts.json")
-                    file_obj = tar_file.extractfile(member)
-                    if file_obj:
-                        mounts_data = json.loads(file_obj.read().decode("utf-8"))
-                except KeyError:
-                    _LOGGER.debug("mounts.json not found in supervisor tar")
+                # Encrypted tars are opened in streaming mode by securetar since
+                # it cannot seek in the ciphertext. getmember() followed by
+                # extractfile() requires seeking backwards, so read the members
+                # sequentially as they stream past instead.
+                for member in tar_file:
+                    if member.name not in ("mounts.json", "docker.json") or not (
+                        file_obj := tar_file.extractfile(member)
+                    ):
+                        continue
+                    data = json.loads(file_obj.read().decode("utf-8"))
+                    if member.name == "mounts.json":
+                        mounts_data = data
+                    else:
+                        docker_data = data
 
-                try:
-                    member = tar_file.getmember("docker.json")
-                    file_obj = tar_file.extractfile(member)
-                    if file_obj:
-                        docker_data = json.loads(file_obj.read().decode("utf-8"))
-                except KeyError:
-                    _LOGGER.debug("docker.json not found in supervisor tar")
+            if mounts_data is None:
+                _LOGGER.debug("mounts.json not found in supervisor tar")
+            if docker_data is None:
+                _LOGGER.debug("docker.json not found in supervisor tar")
 
             return (mounts_data, docker_data)
 

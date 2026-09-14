@@ -1,6 +1,8 @@
 """Test backups."""
 
 from contextlib import AbstractContextManager, nullcontext as does_not_raise
+import io
+import json
 from pathlib import Path
 from shutil import copy
 import tarfile
@@ -576,6 +578,123 @@ async def test_restore_supervisor_config_with_registries(
     assert coresys.docker.config.registries["ghcr.io"]["password"] == "secret"
     assert "docker.io" in coresys.docker.config.registries
     assert coresys.docker.config.registries["docker.io"]["username"] == "docker_user"
+
+
+@pytest.mark.parametrize("password", [None, "backup_password"])
+async def test_restore_supervisor_config_with_mounts_and_registries(
+    coresys: CoreSys, tmp_path: Path, password: str | None
+):
+    """Test restoring mounts and registries, with and without a backup password.
+
+    Encrypted inner tars are read in streaming mode, so the supervisor tar
+    must be read sequentially. Regression test for #7213.
+    """
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test_share",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "192.168.1.100",
+            "share": "backup_share",
+        },
+    )
+    coresys.mounts._mounts[mount.name] = mount  # noqa: SLF001  # pylint: disable=protected-access
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "user",
+        "password": "secret",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new(
+        "test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL, password=password
+    )
+
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+    coresys.mounts._mounts.clear()  # noqa: SLF001  # pylint: disable=protected-access
+    coresys.docker.config.registries.clear()
+
+    mount_task = MagicMock()
+    with patch.object(
+        coresys.mounts, "restore_mount", return_value=mount_task
+    ) as restore_mount:
+        async with backup.open(None):
+            success, tasks = await backup.restore_supervisor_config()
+
+    assert success is True
+    assert tasks == [mount_task]
+    assert restore_mount.call_args[0][0].name == "test_share"
+    assert coresys.docker.config.registries["ghcr.io"]["username"] == "user"
+
+
+@pytest.mark.parametrize("present", ["mounts.json", "docker.json"])
+async def test_restore_supervisor_config_single_file(
+    coresys: CoreSys, tmp_path: Path, present: str
+):
+    """Test restoring an encrypted supervisor tar with only one of the JSON files.
+
+    Backups from Supervisor 2026.03.x have no docker.json. Unknown and
+    non-file members are skipped.
+    """
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new(
+        "test",
+        "2023-07-21T21:05:00.000000+00:00",
+        BackupType.FULL,
+        password="backup_password",
+    )
+
+    if present == "mounts.json":
+        content = {
+            "mounts": [
+                {
+                    "name": "test_share",
+                    "usage": "backup",
+                    "type": "cifs",
+                    "server": "192.168.1.100",
+                    "share": "backup_share",
+                }
+            ]
+        }
+    else:
+        content = {"registries": {"ghcr.io": {"username": "user", "password": "pw"}}}
+    content_json = json.dumps(content).encode("utf-8")
+
+    def _write_supervisor_tar() -> None:
+        with backup._outer_secure_tarfile.create_tar(  # noqa: SLF001  # pylint: disable=protected-access
+            "./supervisor.tar.gz", gzip=True
+        ) as tar_file:
+            tarinfo = tarfile.TarInfo(name="unknown.json")
+            tarinfo.size = len(b"{}")
+            tar_file.addfile(tarinfo, io.BytesIO(b"{}"))
+            tarinfo = tarfile.TarInfo(name="some_dir")
+            tarinfo.type = tarfile.DIRTYPE
+            tar_file.addfile(tarinfo)
+            tarinfo = tarfile.TarInfo(name=present)
+            tarinfo.size = len(content_json)
+            tar_file.addfile(tarinfo, io.BytesIO(content_json))
+
+    async with backup.create():
+        await coresys.run_in_executor(_write_supervisor_tar)
+
+    mount_task = MagicMock()
+    with patch.object(
+        coresys.mounts, "restore_mount", return_value=mount_task
+    ) as restore_mount:
+        async with backup.open(None):
+            success, tasks = await backup.restore_supervisor_config()
+
+    assert success is True
+    if present == "mounts.json":
+        assert tasks == [mount_task]
+        assert restore_mount.call_args[0][0].name == "test_share"
+        assert not coresys.docker.config.registries
+    else:
+        assert tasks == []
+        restore_mount.assert_not_called()
+        assert coresys.docker.config.registries["ghcr.io"]["username"] == "user"
 
 
 async def test_restore_supervisor_config_registries_merge(

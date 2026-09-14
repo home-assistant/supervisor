@@ -45,6 +45,7 @@ from supervisor.jobs.const import JobCondition
 from supervisor.mounts.manager import MountManager
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import UnhealthyReason
+from supervisor.supervisor import Supervisor
 from supervisor.utils.json import read_json_file, write_json_file
 
 from tests.common import force_app_state, get_fixture_path
@@ -308,6 +309,54 @@ async def test_do_restore_partial_minimal(
     backup_instance.restore_folders.assert_not_called()
 
     assert coresys.core.state == CoreState.RUNNING
+
+
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
+async def test_do_restore_partial_encrypted_supervisor_config(coresys: CoreSys):
+    """Test restoring mounts and registries from a real encrypted backup.
+
+    The fixture was created by Supervisor with a password set and only contains
+    supervisor.tar.gz. Regression test for #7213.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    copy(
+        get_fixture_path("backup_example_enc_supervisor.tar"),
+        coresys.config.path_backup,
+    )
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("fd244f04"))
+    assert backup.protected
+
+    assert not coresys.mounts.mounts
+    assert not coresys.docker.config.registries
+
+    with (
+        patch.object(
+            Supervisor,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2026.09.0")),
+        ),
+        patch.object(
+            MountManager,
+            "restore_mount",
+            return_value=coresys.create_task(asyncio.sleep(0)),
+        ) as restore_mount,
+    ):
+        assert await coresys.backups.do_restore_partial(backup, password="test123")
+
+    restore_mount.assert_called_once()
+    mount = restore_mount.call_args[0][0]
+    assert mount.name == "backup_share"
+    assert mount.server == "192.168.1.10"
+    assert mount.share == "backups"
+    assert mount.username == "hass"
+    assert mount.password == "cifs_secret"
+    assert coresys.docker.config.registries["ghcr.io"] == {
+        "username": "user",
+        "password": "registry_secret",
+    }
 
 
 @pytest.mark.usefixtures("supervisor_internet")
