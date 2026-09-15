@@ -60,7 +60,7 @@ from ..store.app import AppStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
 from .const import ATTR_BACKGROUND, CONTENT_TYPE_PNG, CONTENT_TYPE_TEXT
-from .utils import background_task
+from .utils import background_task, require_running_system
 
 SCHEMA_UPDATE = vol.Schema(
     {
@@ -253,6 +253,7 @@ class APIStore(CoreSysAttributes):
         return await install_task
 
     @api_process
+    @require_running_system
     async def apps_app_update(self, request: web.Request) -> dict[str, str] | None:
         """Update app."""
         app = self._extract_app(request, installed=True)
