@@ -321,8 +321,11 @@ async def test_auth_supervisor_rejected_by_core(
             "/auth", json={"username": "test", "password": "pass"}
         )
         assert resp.status == 200
-        # Let the background backend check run and fail
-        await asyncio.sleep(0.1)
+        # Wait for the background re-validation to run into the 401
+        # pylint: disable-next=protected-access
+        if task := coresys.auth._running.get("test"):
+            await asyncio.wait_for(task, 1)
+        assert websession.request.call_count == 2
         # pylint: disable-next=protected-access
         assert coresys.auth._check_cache("test", "pass") is True
 
