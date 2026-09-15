@@ -434,6 +434,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/multicast/info", api_multicast.info),
                 web.get("/multicast/stats", stats_handler),
+                web.post("/multicast/options", api_multicast.options),
                 web.post("/multicast/update", api_multicast.update),
                 web.post("/multicast/restart", api_multicast.restart),
             ]

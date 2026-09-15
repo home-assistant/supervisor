@@ -9,19 +9,22 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ENABLED,
     ATTR_ONE_SHOT,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIError, MulticastDisabledError
 from ..validate import version_tag
 from .utils import api_process, api_return_stats, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
+SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): vol.Boolean()})
 
 
 class APIMulticast(CoreSysAttributes):
@@ -34,7 +37,19 @@ class APIMulticast(CoreSysAttributes):
             ATTR_VERSION: self.sys_plugins.multicast.version,
             ATTR_VERSION_LATEST: self.sys_plugins.multicast.latest_version,
             ATTR_UPDATE_AVAILABLE: self.sys_plugins.multicast.need_update,
+            ATTR_ENABLED: self.sys_plugins.multicast.enabled,
         }
+
+    @api_process
+    async def options(self, request: web.Request) -> None:
+        """Set Multicast options."""
+        body = await api_validate(SCHEMA_OPTIONS, request)
+
+        if ATTR_ENABLED in body:
+            if body[ATTR_ENABLED]:
+                await asyncio.shield(self.sys_plugins.multicast.enable())
+            else:
+                await asyncio.shield(self.sys_plugins.multicast.disable())
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
@@ -53,6 +68,9 @@ class APIMulticast(CoreSysAttributes):
     @api_process
     async def update(self, request: web.Request) -> None:
         """Update Multicast plugin."""
+        if not self.sys_plugins.multicast.enabled:
+            raise MulticastDisabledError
+
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_plugins.multicast.latest_version)
 
