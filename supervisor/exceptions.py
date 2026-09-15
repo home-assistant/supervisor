@@ -1024,6 +1024,29 @@ class HostAppArmorError(HostError):
     """Host apparmor functions failed."""
 
 
+class HostAppArmorLoadProfileError(HostAppArmorError, APIError):
+    """OS Agent rejected an AppArmor profile.
+
+    The profile content is user-supplied (app repository), so a parser
+    rejection is a client error. The OS Agent's D-Bus error message is
+    relayed as the reason.
+    """
+
+    error_key = "host_apparmor_load_profile_error"
+    message_template = "Can't load profile {profile_name}: {reason}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        profile_name: str,
+        reason: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"profile_name": profile_name, "reason": reason}
+        super().__init__(None, logger)
+
+
 class HostNetworkError(HostError):
     """Error with host network."""
 
