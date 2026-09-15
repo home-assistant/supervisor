@@ -12,12 +12,15 @@ import shutil
 from typing import Final
 
 from awesomeversion import AwesomeVersion
+from dbus_fast import Variant
 
 from supervisor.utils import remove_colors
 
 from ..bus import EventListener
 from ..const import ATTR_HOMEASSISTANT, BusEvent, CoreState
 from ..coresys import CoreSys
+from ..dbus.const import StartUnitMode, StopUnitMode, UnitActiveState
+from ..dbus.systemd import ExecStartEntry
 from ..docker.const import ContainerState
 from ..docker.homeassistant import HASS_DOCKER_NAME, DockerHomeAssistant
 from ..docker.monitor import DockerContainerStateEvent
@@ -28,6 +31,7 @@ from ..exceptions import (
     DockerError,
     DockerRegistryRateLimitExceeded,
     DockerStatsTimeoutError,
+    HassioError,
     HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
@@ -71,6 +75,20 @@ DATABASE_MIGRATION_TIMEOUT: Final[timedelta] = timedelta(
 )
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
+_PORT_RESERVE_UNIT: Final = "homeassistant-core-port-reserve.socket"
+_PORT_RESERVE_SERVICE: Final = "homeassistant-core-port-reserve.service"
+_PORT_RESERVE_TIMEOUT: Final = 10
+_TERMINAL_STATES: Final = {UnitActiveState.INACTIVE, UnitActiveState.FAILED}
+
+
+def _format_bind_address(host: str, port: int) -> str:
+    """Format a host/port pair for a systemd ``Listen`` directive.
+
+    IPv6 addresses must be bracketed (e.g. ``[::]:8123``) or systemd rejects
+    them; plain ``host:port`` is used for IPv4 addresses/hostnames.
+    """
+    return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+
 
 @dataclass
 class ConfigResult:
@@ -89,6 +107,7 @@ class HomeAssistantCore(JobGroup):
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self._error_state: bool = False
         self._watchdog_listener: EventListener | None = None
+        self._port_reserved: bool = False
 
     @property
     def error_state(self) -> bool:
@@ -505,6 +524,10 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.warning("Home Assistant is already running!")
             return
 
+        # Give the port back before the container needs it, in case the boot
+        # flow still holds it (e.g. Core started via the API during app boot)
+        await self.release_port()
+
         # Instance/Container exists, simple start
         if await self.instance.is_initialize():
             try:
@@ -554,6 +577,9 @@ class HomeAssistantCore(JobGroup):
             await self.sys_run_in_executor(
                 (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
             )
+
+        # See start(): Core rebinds its port on restart
+        await self.release_port()
 
         try:
             await self.instance.restart()
@@ -612,6 +638,187 @@ class HomeAssistantCore(JobGroup):
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.instance.in_progress or self.active_job is not None
+
+    async def reserve_port(self) -> bool:
+        """Reserve Core's host TCP port(s) using a transient systemd socket.
+
+        Used by the Supervisor boot flow to keep host-network apps from
+        grabbing Core's port while they boot ahead of Core. Core runs with
+        --network=host, so Supervisor (on the ``hassio`` Docker bridge
+        network) can't bind the port itself -- instead systemd is asked to
+        bind a transient ``.socket`` unit for each host, paired atomically
+        (via ``aux``) with a no-op oneshot service so it has a valid
+        activation target.
+
+        The reservation is released by ``release_port``, which ``start`` and
+        ``restart`` call themselves before touching the container, so it is
+        safe no matter which path ends up starting Core first.
+
+        Returns True if reserved, or False if it couldn't be reserved
+        (non-fatal, boot continues without the protection).
+        """
+        hosts = self.sys_homeassistant.http_server_host or ["0.0.0.0", "::"]
+        port = self.sys_homeassistant.api_port
+
+        if not self.sys_dbus.systemd.is_connected:
+            _LOGGER.warning(
+                "Cannot reserve Core port(s) %s:%d: systemd D-Bus not connected",
+                hosts,
+                port,
+            )
+            return False
+
+        # Clean up any unit left behind by a crashed Supervisor boot -- systemd
+        # refuses to redefine a transient unit that's still loaded under the
+        # same name, even with mode=replace.
+        if not await self._stop_port_reserve_units():
+            _LOGGER.warning(
+                "Cannot reserve Core port(s) %s:%d: a previous reservation "
+                "could not be confirmed released",
+                hosts,
+                port,
+            )
+            return False
+
+        service_properties: list[tuple[str, Variant]] = [
+            (
+                "Description",
+                Variant("s", "Home Assistant Core port reservation holder"),
+            ),
+            ("Type", Variant("s", "oneshot")),
+            ("RemainAfterExit", Variant("b", True)),
+            (
+                "ExecStart",
+                Variant(
+                    "a(sasb)",
+                    [ExecStartEntry("/bin/sh", ["/bin/sh", "-c", ":"], False)],
+                ),
+            ),
+        ]
+        socket_properties: list[tuple[str, Variant]] = [
+            ("Description", Variant("s", "Home Assistant Core port reservation")),
+            (
+                "Listen",
+                Variant(
+                    "a(ss)",
+                    [("Stream", _format_bind_address(host, port)) for host in hosts],
+                ),
+            ),
+            ("BindIPv6Only", Variant("s", "ipv6-only")),
+        ]
+
+        try:
+            await self.sys_dbus.systemd.start_transient_unit(
+                _PORT_RESERVE_UNIT,
+                StartUnitMode.REPLACE,
+                socket_properties,
+                aux=[(_PORT_RESERVE_SERVICE, service_properties)],
+            )
+            unit = await self.sys_dbus.systemd.get_unit(_PORT_RESERVE_UNIT)
+            async with asyncio.timeout(_PORT_RESERVE_TIMEOUT):
+                state = await unit.wait_for_active_state(
+                    {UnitActiveState.ACTIVE, UnitActiveState.FAILED}
+                )
+            if state != UnitActiveState.ACTIVE:
+                raise HassioError(f"unit entered state {state}")
+        except (HassioError, TimeoutError) as err:
+            _LOGGER.warning(
+                "Could not reserve Home Assistant Core port(s) %s:%d: %s",
+                hosts,
+                port,
+                err,
+            )
+            await self._stop_port_reserve_units()
+            return False
+
+        _LOGGER.debug(
+            "Reserved Home Assistant Core port(s) %s:%d during app startup",
+            hosts,
+            port,
+        )
+        self._port_reserved = True
+        return True
+
+    async def release_port(self) -> bool:
+        """Release the port reservation made by ``reserve_port``, if any.
+
+        Cheap no-op when nothing is reserved. Returns True once the port is
+        confirmed free (or was never held), False if the release could not
+        be confirmed -- in which case the reservation stays flagged so a
+        later call retries.
+        """
+        if not self._port_reserved:
+            return True
+
+        released = await self._stop_port_reserve_units()
+        self._port_reserved = not released
+        return released
+
+    async def _stop_unit_confirmed(self, unit_name: str) -> bool:
+        """Stop a transient unit and confirm it actually reached INACTIVE.
+
+        Retries once. Returns False if this can't be confirmed, meaning
+        systemd may still be holding whatever resource the unit represents.
+        """
+        try:
+            unit = await self.sys_dbus.systemd.get_unit(unit_name)
+        except HassioError:
+            # No such unit (or couldn't even ask) -- nothing to release.
+            return True
+
+        for _attempt in range(2):
+            # A stop error doesn't necessarily mean it didn't happen on the
+            # systemd side -- always re-check the real state below instead.
+            with suppress(HassioError):
+                await self.sys_dbus.systemd.stop_unit(unit_name, StopUnitMode.REPLACE)
+
+            try:
+                with suppress(TimeoutError):
+                    async with asyncio.timeout(_PORT_RESERVE_TIMEOUT):
+                        await unit.wait_for_active_state(_TERMINAL_STATES)
+
+                state = await unit.get_active_state()
+            except HassioError:
+                return True  # unit disappeared -- nothing left to hold it
+
+            if state == UnitActiveState.INACTIVE:
+                return True
+
+            if state == UnitActiveState.FAILED:
+                # FAILED units stick around until explicitly reset.
+                with suppress(HassioError):
+                    await self.sys_dbus.systemd.reset_failed_unit(unit_name)
+                with suppress(HassioError):
+                    if await unit.get_active_state() == UnitActiveState.INACTIVE:
+                        return True
+
+        _LOGGER.error(
+            "Could not confirm systemd unit %s was released; it may still be "
+            "holding Home Assistant Core's port",
+            unit_name,
+        )
+        return False
+
+    async def _stop_port_reserve_units(self) -> bool:
+        """Stop the port reservation units if they exist, releasing the port.
+
+        Unconditional: also used to clean up units left behind by a crashed
+        Supervisor before reserving again. Safe to call as a no-op when
+        nothing exists yet. Returns True once both units are confirmed
+        gone/INACTIVE, or False otherwise.
+        """
+        if not self.sys_dbus.systemd.is_connected:
+            return True
+
+        # Stop both units -- leaving either loaded would make systemd refuse
+        # to redefine it under the same name next time.
+        socket_released = await self._stop_unit_confirmed(_PORT_RESERVE_UNIT)
+        service_released = await self._stop_unit_confirmed(_PORT_RESERVE_SERVICE)
+
+        if socket_released and service_released:
+            _LOGGER.debug("Stopped Home Assistant Core port reservation unit")
+
+        return socket_released and service_released
 
     async def check_config(self) -> ConfigResult:
         """Run Home Assistant config check."""
