@@ -110,9 +110,17 @@ class AppArmorControl(CoreSysAttributes):
         """Remove a AppArmor profile."""
         profile_file: Path = self._get_profile(profile_name)
 
-        # Unload if apparmor is enabled
+        # Remove the stored file even if the unload fails: OS Agent 1.14.0
+        # refuses to unload a rejected profile, and a lingering file would be
+        # retried on every startup.
         if self.available:
-            await self._unload_profile(profile_name)
+            try:
+                await self._unload_profile(profile_name)
+            except HostAppArmorError:
+                _LOGGER.warning(
+                    "Could not unload AppArmor profile %s, removing it anyway",
+                    profile_name,
+                )
 
         try:
             await self.sys_run_in_executor(profile_file.unlink)
