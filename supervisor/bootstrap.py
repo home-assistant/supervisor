@@ -271,6 +271,13 @@ def initialize_system(coresys: CoreSys) -> None:
         )
         config.path_mounts_credentials.mkdir(mode=0o600)
 
+    if not config.path_mounts_devices.is_dir():
+        _LOGGER.debug(
+            "Creating Supervisor mounts devices folder at '%s'",
+            config.path_mounts_devices,
+        )
+        config.path_mounts_devices.mkdir()
+
     # App Configs folder
     if not config.path_app_configs.is_dir():
         _LOGGER.debug(
