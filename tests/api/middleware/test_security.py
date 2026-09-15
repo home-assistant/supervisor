@@ -302,6 +302,19 @@ async def test_blacklist(
     )
     assert resp.status == 403
 
+    # Percent-encoded variants are matched on the fully decoded path. Only the
+    # first decode happens in aiohttp; a second one would happen downstream.
+    for encoded in (
+        "hassio%5Fauth/password_reset",
+        "hassio%255Fauth/password_reset",
+        "hassio%252Fapp",
+    ):
+        resp = await client.post(
+            f"{prefix}/core/api/{encoded}",
+            headers={"Authorization": "Bearer abc123"},
+        )
+        assert resp.status == 403, encoded
+
     # A normal (non-hassio) Core API call through the same proxy is allowed
     resp = await client.get(
         f"{prefix}/core/api/states", headers={"Authorization": "Bearer abc123"}

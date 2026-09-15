@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import Awaitable, Callable, Coroutine, Generator
 from json import dumps
 import logging
+import re
 from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
@@ -436,6 +437,78 @@ async def test_api_proxy_blocks_core_hassio_endpoints(
 
         assert response.status == 403
         make_request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "hassio%5Fauth/password_reset",  # single-encoded "_"
+        "hassio%255Fauth/password_reset",  # double-encoded "_"
+        "hassio%252Fapp",  # double-encoded "/"
+        "hassio%25255Fauth",  # triple-encoded "_"
+    ],
+)
+async def test_api_proxy_blocks_encoded_core_hassio_endpoints(
+    api_client: TestClient,
+    install_app_example: App,
+    request: pytest.FixtureRequest,
+    path: str,
+):
+    """Test the proxy deny check sees through percent-encoding.
+
+    The route capture is decoded once and the upstream client would decode
+    again, so the deny pattern must match the fully decoded path. The security
+    middleware blacklist is disabled here so the proxy's own guard is exercised.
+    """
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+
+    request.param = "local_example"
+
+    with (
+        patch("supervisor.api.middleware.security.BLACKLIST", re.compile(r"(?!)")),
+        patch.object(HomeAssistantAPI, "make_request") as make_request,
+    ):
+        response = await api_client.post(
+            f"/core/api/{path}",
+            headers={"Authorization": "Bearer abc123"},
+            json={"username": "owner", "password": "attacker"},
+        )
+
+        assert response.status == 403
+        make_request.assert_not_called()
+
+
+async def test_api_proxy_forwards_raw_path(
+    api_client: TestClient,
+    install_app_example: App,
+    request: pytest.FixtureRequest,
+):
+    """Test the proxy forwards the path exactly as the app sent it.
+
+    Percent-encoded sequences must reach Core untouched: %2F must not become a
+    path separator and %255F must not collapse into "_" on the way.
+    """
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+
+    request.param = "local_example"
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "application/json"
+        mock_response.read.return_value = b"{}"
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.get(
+            "/core/api/states/light.a%2Fb%255Fc%20d?x=1",
+            headers={"Authorization": "Bearer abc123"},
+        )
+
+        assert response.status == 200
+        assert make_request.call_args[0][1] == "api/states/light.a%2Fb%255Fc%20d"
+        assert make_request.call_args[1]["params"]["x"] == "1"
 
 
 @pytest.mark.parametrize(

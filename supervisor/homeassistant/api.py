@@ -12,6 +12,7 @@ import aiohttp
 from aiohttp import hdrs
 from awesomeversion import AwesomeVersion
 from multidict import MultiMapping
+from yarl import URL
 
 from ..const import SOCKET_CORE
 from ..coresys import CoreSys, CoreSysAttributes
@@ -275,7 +276,9 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         Args:
             method: HTTP method (get, post, etc.)
-            path: API path relative to Home Assistant base URL
+            path: API path relative to Home Assistant base URL. Sent as-is:
+                it must already be percent-encoded where needed and is not
+                decoded or normalized again.
             json: JSON data to send in request body
             content_type: Override content-type header
             data: Raw data to send in request body
@@ -293,7 +296,11 @@ class HomeAssistantAPI(CoreSysAttributes):
         """
         await self._ensure_core_running()
 
-        url = f"{self.api_url}/{path}"
+        # encoded=True makes yarl send the path byte-for-byte. Without it, yarl
+        # would normalize percent-encoded unreserved characters (e.g. %5F -> _),
+        # which lets a path that passed a deny check upstream turn into a
+        # different one on the wire.
+        url = URL(f"{self.api_url}/{path}", encoded=True)
         headers = headers or {}
         client_timeout = aiohttp.ClientTimeout(total=timeout)
 
