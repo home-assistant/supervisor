@@ -10,7 +10,12 @@ import shutil
 from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DBusError, HostAppArmorError
+from ..exceptions import (
+    DBusError,
+    DBusFatalError,
+    HostAppArmorError,
+    HostAppArmorLoadProfileError,
+)
 from ..resolution.const import UnsupportedReason
 from ..utils.apparmor import validate_profile
 from .const import HostFeature
@@ -139,6 +144,13 @@ class AppArmorControl(CoreSysAttributes):
                 self.sys_config.path_extern_apparmor.joinpath(profile_name),
                 self.sys_config.path_extern_apparmor_cache,
             )
+        except DBusFatalError as err:
+            # Service-specific failure: the OS Agent's parser rejected the
+            # profile. Transport errors (timeouts, no reply) map to their own
+            # DBusError subclasses and stay unexpected errors below.
+            raise HostAppArmorLoadProfileError(
+                _LOGGER.error, profile_name=profile_name, reason=str(err)
+            ) from err
         except DBusError as err:
             raise HostAppArmorError(
                 f"Can't load profile {profile_name}: {err!s}", _LOGGER.error
