@@ -334,6 +334,36 @@ class HassOSUpdateError(HassOSError):
     """Error on update of a HassOS."""
 
 
+class HassOSUpdateAlreadyInstalledError(HassOSUpdateError, APIError):
+    """Raise when the requested OS version is already installed."""
+
+    error_key = "hassos_update_already_installed_error"
+    message_template = "Version {version} is already installed"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
+
+
+class HassOSUpdatePendingRebootError(HassOSUpdateError, APIError):
+    """Raise when the requested OS version is installed and awaits a reboot."""
+
+    error_key = "hassos_update_pending_reboot_error"
+    message_template = (
+        "Version {version} is already installed, reboot the system to activate it"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
+
+
 class HassOSJobError(HassOSError, JobException):
     """Function not supported by HassOS."""
 

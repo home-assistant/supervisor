@@ -19,7 +19,9 @@ from ..exceptions import (
     HassOSJobError,
     HassOSSlotNotFound,
     HassOSSlotUpdateError,
+    HassOSUpdateAlreadyInstalledError,
     HassOSUpdateError,
+    HassOSUpdatePendingRebootError,
     HostError,
 )
 from ..jobs.const import JobConcurrency, JobCondition
@@ -367,14 +369,11 @@ class OSManager(JobGroup):
                 "No version information available, cannot update", _LOGGER.error
             )
         if version == self.version:
-            raise HassOSUpdateError(
-                f"Version {version!s} is already installed", _LOGGER.warning
+            raise HassOSUpdateAlreadyInstalledError(
+                _LOGGER.warning, version=str(version)
             )
         if self.version_pending is not None and version == self.version_pending:
-            raise HassOSUpdateError(
-                f"Version {version!s} is already installed, reboot the system to activate it",
-                _LOGGER.warning,
-            )
+            raise HassOSUpdatePendingRebootError(_LOGGER.warning, version=str(version))
 
         # Fetch files from internet
         ota_url = self._get_download_url(version)
