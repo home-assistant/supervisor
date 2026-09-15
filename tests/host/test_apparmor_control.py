@@ -132,3 +132,36 @@ async def test_remove_profile_unload_error(
 
     assert not profile_file.exists()
     assert not coresys.host.apparmor.exists("test")
+
+
+async def test_load_profile_rejected_cleanup(
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    path_extern,
+    tmp_path: Path,
+):
+    """A load rejected by the OS Agent leaves no profile file behind."""
+    apparmor_service: AppArmorService = os_agent_services["agent_apparmor"]
+    apparmor_service.response_load_profile = DBusError(
+        ErrorType.FAILED,
+        "profile file '/mnt/data/supervisor/apparmor/test' defines unexpected profile 'docker-default'",
+    )
+
+    coresys.config.path_apparmor.mkdir(parents=True, exist_ok=True)
+    source_file = tmp_path / "apparmor.txt"
+    source_file.write_text("profile test {}", encoding="utf-8")
+    dest_file = coresys.config.path_apparmor / "test"
+
+    with (
+        patch("supervisor.host.apparmor.validate_profile"),
+        patch.object(
+            type(coresys.host),
+            "features",
+            new=PropertyMock(return_value=[HostFeature.OS_AGENT]),
+        ),
+        pytest.raises(HostAppArmorLoadProfileError),
+    ):
+        await coresys.host.apparmor.load_profile("test", source_file)
+
+    assert not dest_file.exists()
+    assert not coresys.host.apparmor.exists("test")
