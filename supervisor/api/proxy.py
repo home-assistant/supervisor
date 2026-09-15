@@ -18,6 +18,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
 from ..utils.logging import AppLoggerAdapter
+from .middleware.security import recursive_unquote
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -169,8 +170,13 @@ class APIProxy(CoreSysAttributes):
         """Proxy Home Assistant API Requests."""
         self._check_access(request)
 
-        path = request.match_info.get("path", "")
-        if CORE_API_DENY.match(path):
+        # Forward the path exactly as the app sent it on the wire. The route's
+        # match_info is percent-decoded once already, and re-encoding a decoded
+        # path is lossy (e.g. %2F becomes a path separator, and a second decode
+        # downstream turns hassio%5Fauth into hassio_auth). Both routes end in
+        # "/api/" right before the captured path.
+        path = request.url.raw_path.partition("/api/")[2]
+        if CORE_API_DENY.match(recursive_unquote(path)):
             _LOGGER.warning("Blocked proxied add-on access to Core API path %s", path)
             raise HTTPForbidden
 
