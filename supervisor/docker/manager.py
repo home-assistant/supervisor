@@ -367,6 +367,7 @@ class DockerAPI(CoreSysAttributes):
         tmpfs: dict[str, str] | None = None,
         entrypoint: list[str] | None = None,
         cap_add: list[Capabilities] | None = None,
+        cap_drop: list[Capabilities] | None = None,
         ulimits: list[Ulimit] | None = None,
         cpu_rt_runtime: int | None = None,
         stdin_open: bool = False,
@@ -404,6 +405,8 @@ class DockerAPI(CoreSysAttributes):
             host_config["Tmpfs"] = tmpfs
         if cap_add:
             host_config["CapAdd"] = cap_add
+        if cap_drop:
+            host_config["CapDrop"] = cap_drop
         if cpu_rt_runtime is not None:
             host_config["CPURealtimeRuntime"] = cpu_rt_runtime
         if pid_mode:
