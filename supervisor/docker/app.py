@@ -28,6 +28,7 @@ from ..const import (
     SYSTEMD_JOURNAL_VOLATILE,
     BusEvent,
     CpuArch,
+    FeatureFlag,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -389,6 +390,18 @@ class DockerApp(DockerInterface):
         return None
 
     @property
+    def dropped_capabilities(self) -> list[Capabilities] | None:
+        """Generate capabilities to drop from the Docker default set."""
+        if not self.sys_config.feature_flags.get(FeatureFlag.APP_DROP_NET_RAW, False):
+            return None
+
+        # NET_RAW allows ARP and MAC spoofing on the shared internal network.
+        # Drop it unless the app explicitly asked for it.
+        if Capabilities.NET_RAW in (self.capabilities or []):
+            return None
+        return [Capabilities.NET_RAW]
+
+    @property
     def ulimits(self) -> list[Ulimit] | None:
         """Generate ulimits for app."""
         limits: list[Ulimit] = []
@@ -697,6 +710,7 @@ class DockerApp(DockerInterface):
                 extra_hosts=self.network_mapping,
                 device_cgroup_rules=self.cgroups_rules,
                 cap_add=self.capabilities,
+                cap_drop=self.dropped_capabilities,
                 ulimits=self.ulimits,
                 cpu_rt_runtime=self.cpu_rt_runtime,
                 security_opt=self.security_opt,
