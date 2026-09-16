@@ -651,16 +651,29 @@ async def test_app_set_options_keeps_secret_ref(
     install_app_example: App,
     coresys: CoreSys,
 ):
-    """Test setting options with a !secret reference persists the reference, not the value."""
+    """Test !secret references nested in dicts/lists persist as references, not values."""
     client, root = app_api_client_with_root
     coresys.homeassistant.secrets.secrets = {"example_secret": "hunter2"}
+    install_app_example.data["schema"] = {
+        "message": "str?",
+        "credentials": {"username": "str", "password": "str"},
+        "servers": [{"host": "str", "token": "str"}],
+    }
 
+    nested_options = {
+        "message": "!secret example_secret",
+        "credentials": {"username": "alice", "password": "!secret example_secret"},
+        "servers": [
+            {"host": "server1", "token": "!secret example_secret"},
+            {"host": "server2", "token": "plain-token"},
+        ],
+    }
     resp = await client.post(
         f"{root}/local_example/options",
-        json={"options": {"message": "!secret example_secret"}},
+        json={"options": nested_options},
     )
     assert resp.status == 200
-    assert install_app_example.options == {"message": "!secret example_secret"}
+    assert install_app_example.options == nested_options
 
 
 async def test_app_reset_options(
