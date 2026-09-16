@@ -241,7 +241,9 @@ async def test_install_supervisor_needs_update_auto_update_enabled(
         patch.object(
             type(coresys.updater), "auto_update", new=PropertyMock(return_value=True)
         ),
-        patch.object(coresys.supervisor, "update") as supervisor_update,
+        patch.object(
+            coresys.supervisor, "update", AsyncMock(return_value=None)
+        ) as supervisor_update,
         patch("supervisor.homeassistant.core.asyncio.sleep"),
     ):
         await coresys.homeassistant.core.install()
@@ -324,6 +326,55 @@ async def test_install_supervisor_update_fails_retries(
         sleep.assert_any_await(30)
 
     assert "Supervisor update failed, retrying in 30sec" in caplog.text
+
+
+async def test_install_supervisor_update_shares_running_task(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test install awaits the shared task when a supervisor update is already running."""
+    # Supervisor reports needing update on first pass, not on second
+    need_update_values = [True, False]
+    need_update_mock = PropertyMock(side_effect=need_update_values)
+
+    async def _already_running_update() -> None:
+        """Simulate the shared, already-in-progress update completing successfully."""
+
+    with (
+        patch.object(HomeAssistantCore, "start"),
+        patch.object(DockerHomeAssistant, "cleanup"),
+        patch.object(
+            Updater,
+            "image_homeassistant",
+            new=PropertyMock(return_value="homeassistant"),
+        ),
+        patch.object(
+            Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
+        ),
+        patch.object(
+            DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
+        ),
+        patch.object(type(coresys.supervisor), "need_update", new=need_update_mock),
+        patch.object(
+            type(coresys.updater), "auto_update", new=PropertyMock(return_value=True)
+        ),
+        patch.object(
+            coresys.supervisor,
+            "update",
+            AsyncMock(
+                return_value=asyncio.get_event_loop().create_task(
+                    _already_running_update()
+                )
+            ),
+        ) as supervisor_update,
+        patch("supervisor.homeassistant.core.asyncio.sleep"),
+    ):
+        await coresys.homeassistant.core.install()
+        supervisor_update.assert_awaited_once()
+
+    assert (
+        "Supervisor has a pending update and must be updated before installing Home Assistant Core"
+        in caplog.text
+    )
 
 
 @pytest.mark.parametrize(
@@ -1009,3 +1060,187 @@ async def test_core_loads_wrong_image_for_architecture(
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
     )
+
+
+def _lose_core_image(coresys: CoreSys) -> None:
+    """Make Docker report neither a Core container nor a Core image."""
+    not_found = aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"})
+    coresys.docker.containers.container.return_value.show.side_effect = not_found
+    coresys.docker.images.inspect.side_effect = not_found
+    coresys.docker.images.list.return_value = []
+
+
+async def test_load_missing_image_reinstalls_stored_version(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a lost image of an installed Core is reinstalled at the same version.
+
+    When the Docker storage is wiped (e.g. storage driver migration) the image
+    of the installed Core is gone. Supervisor must reinstall the version that
+    was installed before instead of jumping to the latest release, and it
+    must not install the landingpage in between.
+    """
+    coresys.homeassistant.version = AwesomeVersion("2026.2.3")
+    _lose_core_image(coresys)
+
+    with patch.object(
+        DockerAPI,
+        "pull_image",
+        return_value={
+            "Id": "abc123",
+            "Config": {"Labels": {"io.hass.version": "2026.2.3"}},
+        },
+    ) as pull_image:
+        await coresys.homeassistant.core.load()
+
+    pull_image.assert_called_once_with(
+        ANY,
+        "ghcr.io/home-assistant/qemux86-64-homeassistant",
+        "2026.2.3",
+        platform="linux/amd64",
+        auth=None,
+    )
+    coresys.docker.containers.create.assert_not_called()
+    assert coresys.homeassistant.version == AwesomeVersion("2026.2.3")
+    assert (
+        coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
+    )
+    assert "Reinstalling Home Assistant 2026.2.3" in caplog.text
+
+
+async def test_load_missing_image_reinstall_uses_overridden_image(coresys: CoreSys):
+    """Test reinstalling a lost Core image pulls the user-overridden image."""
+    coresys.homeassistant.version = AwesomeVersion("2026.2.3")
+    coresys.homeassistant.set_image("myorg/qemux86-64-homeassistant")
+    coresys.homeassistant.override_image = True
+    _lose_core_image(coresys)
+
+    with patch.object(
+        DockerAPI,
+        "pull_image",
+        return_value={
+            "Id": "abc123",
+            "Config": {"Labels": {"io.hass.version": "2026.2.3"}},
+        },
+    ) as pull_image:
+        await coresys.homeassistant.core.load()
+
+    pull_image.assert_called_once_with(
+        ANY,
+        "myorg/qemux86-64-homeassistant",
+        "2026.2.3",
+        platform="linux/amd64",
+        auth=None,
+    )
+    assert coresys.homeassistant.image == "myorg/qemux86-64-homeassistant"
+
+
+@pytest.mark.parametrize("stored_version", [None, LANDINGPAGE])
+@pytest.mark.usefixtures("path_extern")
+async def test_load_missing_image_fresh_install_uses_landingpage(
+    coresys: CoreSys, stored_version: AwesomeVersion | None
+):
+    """Test a new installation still goes through the landingpage."""
+    coresys.homeassistant.version = stored_version
+    _lose_core_image(coresys)
+
+    with (
+        patch.object(
+            DockerAPI,
+            "pull_image",
+            return_value={
+                "Id": "abc123",
+                "Config": {"Labels": {"io.hass.version": LANDINGPAGE}},
+            },
+        ) as pull_image,
+        patch.object(
+            DockerAPI,
+            "run",
+            return_value={
+                "Id": "abc123",
+                "Config": {"Labels": {"io.hass.type": "landingpage"}},
+                "State": {"Status": "running", "Running": True, "ExitCode": 0},
+            },
+        ),
+    ):
+        await coresys.homeassistant.core.load()
+
+    pull_image.assert_called_once_with(
+        ANY,
+        "ghcr.io/home-assistant/qemux86-64-homeassistant",
+        LANDINGPAGE,
+        platform="linux/amd64",
+        auth=None,
+    )
+    assert coresys.homeassistant.version == LANDINGPAGE
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_load_missing_image_falls_back_to_landingpage(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test load falls back to the landingpage if the stored version can't be pulled."""
+    coresys.homeassistant.version = AwesomeVersion("2026.2.3")
+    _lose_core_image(coresys)
+
+    with (
+        patch.object(
+            DockerAPI,
+            "pull_image",
+            side_effect=[
+                aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"}),
+                {
+                    "Id": "abc123",
+                    "Config": {"Labels": {"io.hass.version": LANDINGPAGE}},
+                },
+            ],
+        ) as pull_image,
+        patch.object(
+            DockerAPI,
+            "run",
+            return_value={
+                "Id": "abc123",
+                "Config": {"Labels": {"io.hass.type": "landingpage"}},
+                "State": {"Status": "running", "Running": True, "ExitCode": 0},
+            },
+        ),
+    ):
+        await coresys.homeassistant.core.load()
+
+    assert [c.args[2] for c in pull_image.call_args_list] == ["2026.2.3", LANDINGPAGE]
+    assert coresys.homeassistant.version == LANDINGPAGE
+    assert (
+        "Could not reinstall Home Assistant 2026.2.3, installing latest version instead"
+        in caplog.text
+    )
+
+
+async def test_load_missing_image_reinstall_retries_on_ratelimit(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a registry rate limit retries the reinstall instead of falling back."""
+    coresys.homeassistant.version = AwesomeVersion("2026.2.3")
+    _lose_core_image(coresys)
+
+    with (
+        patch.object(
+            DockerAPI,
+            "pull_image",
+            side_effect=[
+                aiodocker.DockerError(
+                    HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}
+                ),
+                {
+                    "Id": "abc123",
+                    "Config": {"Labels": {"io.hass.version": "2026.2.3"}},
+                },
+            ],
+        ) as pull_image,
+        patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
+    ):
+        await coresys.homeassistant.core.load()
+        sleep.assert_awaited_once_with(30)
+
+    assert [c.args[2] for c in pull_image.call_args_list] == ["2026.2.3", "2026.2.3"]
+    assert coresys.homeassistant.version == AwesomeVersion("2026.2.3")
+    assert "Could not reinstall" not in caplog.text

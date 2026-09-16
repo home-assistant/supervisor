@@ -33,7 +33,9 @@ async def test_ota_url_generic_x86_64_rename(
     """Test download URL generated."""
     coresys.os._board = "intel-nuc"
     coresys.os._version = AwesomeVersion("5.13")
-    await coresys.updater.fetch_data()
+    task = await coresys.updater.fetch_data()
+    assert task
+    await task
 
     version6 = AwesomeVersion("6.0")
     url = coresys.updater.ota_url.format(

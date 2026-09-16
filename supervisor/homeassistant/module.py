@@ -229,15 +229,15 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self._data[ATTR_OVERRIDE_IMAGE] = value
 
     @property
-    def install_image(self) -> str | None:
+    def install_image(self) -> str:
         """Return image to pull when installing or updating Home Assistant Core.
 
         Uses the user-overridden image if set, otherwise the image from the
-        update information.
+        update information, falling back to the default image for this system.
         """
         if self.override_image:
             return self.image
-        return self.sys_updater.image_homeassistant
+        return self.sys_updater.image_homeassistant or self.default_image
 
     @property
     def version(self) -> AwesomeVersion | None:

@@ -103,14 +103,18 @@ class APIInternalServerError(APIError):
     status = 500
 
 
+class APIServiceUnavailable(APIError):
+    """API service unavailable error."""
+
+    status = 503
+
+
 class APIAppNotInstalled(APIError):
     """Not installed app requested at apps API."""
 
 
-class APIDBMigrationInProgress(APIError):
+class APIDBMigrationInProgress(APIServiceUnavailable):
     """Service is unavailable due to an offline DB migration is in progress."""
-
-    status = 503
 
 
 class APIUnknownSupervisorError(APIError):
@@ -129,6 +133,25 @@ class APIUnknownSupervisorError(APIError):
             f"{self.message_template}. Check Supervisor logs for details"
         )
         super().__init__(None, logger, job_id=job_id)
+
+
+class APISystemNotReadyError(APIServiceUnavailable):
+    """Raise when an API call is rejected because Supervisor isn't in a state that allows it.
+
+    Used by require_running_system to reject start/restart/rebuild/update
+    calls made while Supervisor's boot or backup-restore sequences are still
+    in progress (see #7189), instead of letting the internal
+    JobConditionException (meant for job/log consumers) bubble up as-is.
+    """
+
+    error_key = "system_not_ready_error"
+    message_template = (
+        "Supervisor is not ready to perform this operation, please try again later"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
 
 
 # JobManager
@@ -1001,6 +1024,29 @@ class HostAppArmorError(HostError):
     """Host apparmor functions failed."""
 
 
+class HostAppArmorLoadProfileError(HostAppArmorError, APIError):
+    """OS Agent rejected an AppArmor profile.
+
+    The profile content is user-supplied (app repository), so a parser
+    rejection is a client error. The OS Agent's D-Bus error message is
+    relayed as the reason.
+    """
+
+    error_key = "host_apparmor_load_profile_error"
+    message_template = "Can't load profile {profile_name}: {reason}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        profile_name: str,
+        reason: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"profile_name": profile_name, "reason": reason}
+        super().__init__(None, logger)
+
+
 class HostNetworkError(HostError):
     """Error with host network."""
 
@@ -1738,6 +1784,55 @@ class HomeAssistantBackupError(BackupError, HomeAssistantError):
 
 class BackupInvalidError(BackupError):
     """Raise if backup or password provided is invalid."""
+
+
+class BackupSupervisorVersionError(BackupError, APIError):
+    """Raise if backup requires a newer Supervisor version and auto update is disabled."""
+
+    error_key = "backup_supervisor_version_error"
+    message_template = (
+        "Backup was made on supervisor version {backup_version}, can't restore on "
+        "{supervisor_version}. Must update supervisor first."
+    )
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        backup_version: str,
+        supervisor_version: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {
+            "backup_version": backup_version,
+            "supervisor_version": supervisor_version,
+        }
+        super().__init__(None, logger)
+
+
+class BackupSupervisorUpdateInProgressError(BackupError, APIError):
+    """Raise if backup requires a newer Supervisor version and an auto update was just started."""
+
+    status = 503
+    error_key = "backup_supervisor_update_in_progress_error"
+    message_template = (
+        "Backup was made on supervisor version {backup_version}, can't restore on "
+        "{supervisor_version}. Update is in-progress, try again after it completes."
+    )
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        backup_version: str,
+        supervisor_version: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {
+            "backup_version": backup_version,
+            "supervisor_version": supervisor_version,
+        }
+        super().__init__(None, logger)
 
 
 class BackupMountDownError(BackupError, APIError):

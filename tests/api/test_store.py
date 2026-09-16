@@ -33,6 +33,17 @@ from tests.const import TEST_ADDON_SLUG
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
 
+@pytest.fixture(autouse=True)
+async def running_state(coresys: CoreSys) -> None:
+    """Set the default state to a fully started system.
+
+    Updating an app via the API is only allowed once Supervisor has fully
+    started (see require_running_system). Tests exercising other states set
+    them explicitly.
+    """
+    await coresys.core.set_state(CoreState.RUNNING)
+
+
 async def test_api_store(
     api_client: TestClient,
     store_app: AppStore,
