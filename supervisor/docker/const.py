@@ -35,13 +35,16 @@ EXIT_CODE_SIGTERM_DEFAULT = 128 + signal.SIGTERM
 class Capabilities(StrEnum):
     """Linux Capabilities."""
 
+    AUDIT_WRITE = "AUDIT_WRITE"
     BPF = "BPF"
     CHECKPOINT_RESTORE = "CHECKPOINT_RESTORE"
     DAC_READ_SEARCH = "DAC_READ_SEARCH"
     IPC_LOCK = "IPC_LOCK"
+    MKNOD = "MKNOD"
     NET_ADMIN = "NET_ADMIN"
     NET_RAW = "NET_RAW"
     PERFMON = "PERFMON"
+    SETFCAP = "SETFCAP"
     SYS_ADMIN = "SYS_ADMIN"
     SYS_MODULE = "SYS_MODULE"
     SYS_NICE = "SYS_NICE"
@@ -49,6 +52,15 @@ class Capabilities(StrEnum):
     SYS_RAWIO = "SYS_RAWIO"
     SYS_RESOURCE = "SYS_RESOURCE"
     SYS_TIME = "SYS_TIME"
+
+
+# Docker default capabilities that containerd's "reduced" profile also drops,
+# besides NET_RAW: https://github.com/containerd/containerd/pull/12588
+REDUCED_CAPABILITIES_DROP = (
+    Capabilities.AUDIT_WRITE,
+    Capabilities.MKNOD,
+    Capabilities.SETFCAP,
+)
 
 
 class ContainerState(StrEnum):

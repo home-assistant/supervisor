@@ -69,6 +69,7 @@ from .const import (
     PATH_PUBLIC_CONFIG,
     PATH_SHARE,
     PATH_SSL,
+    REDUCED_CAPABILITIES_DROP,
     Capabilities,
     DockerMount,
     MountBindOptions,
@@ -392,14 +393,19 @@ class DockerApp(DockerInterface):
     @property
     def dropped_capabilities(self) -> list[Capabilities] | None:
         """Generate capabilities to drop from the Docker default set."""
-        if not self.sys_config.feature_flags.get(FeatureFlag.APP_DROP_NET_RAW, False):
-            return None
-
+        candidates: list[Capabilities] = []
         # NET_RAW allows ARP and MAC spoofing on the shared internal network.
-        # Drop it unless the app explicitly asked for it.
-        if Capabilities.NET_RAW in (self.capabilities or []):
-            return None
-        return [Capabilities.NET_RAW]
+        if self.sys_config.feature_flags.get(FeatureFlag.APP_DROP_NET_RAW, False):
+            candidates.append(Capabilities.NET_RAW)
+        if self.sys_config.feature_flags.get(
+            FeatureFlag.APP_REDUCED_CAPABILITIES, False
+        ):
+            candidates.extend(REDUCED_CAPABILITIES_DROP)
+
+        # Keep whatever the app explicitly asked for
+        requested = set(self.capabilities or [])
+        dropped = [cap for cap in candidates if cap not in requested]
+        return dropped or None
 
     @property
     def ulimits(self) -> list[Ulimit] | None:
