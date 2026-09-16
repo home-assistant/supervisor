@@ -534,19 +534,7 @@ def _pretty_services(app: App) -> list[str]:
 
 
 def _restore_options_secret_refs(validated_options: Any, raw_options: Any) -> Any:
-    """Restore "!secret x" values app.schema() resolved for validation.
-
-    Args:
-        validated_options: Options as returned by app.schema(), with !secret
-            references resolved to their actual value.
-        raw_options: Options as originally submitted by the caller, with
-            !secret references still unresolved.
-
-    Returns:
-        validated_options with any resolved !secret reference restored to its
-        original "!secret x" form.
-
-    """
+    """Restore "!secret x" values app.schema() resolved for validation."""
     if isinstance(raw_options, dict):
         return _restore_dict_secret_refs(validated_options, raw_options)
     if isinstance(raw_options, list):
@@ -555,17 +543,7 @@ def _restore_options_secret_refs(validated_options: Any, raw_options: Any) -> An
 
 
 def _restore_value_secret_ref(validated_value: Any, raw_value: Any) -> Any:
-    """Restore a single "!secret x" value.
-
-    Args:
-        validated_value: Value as returned by app.schema(), possibly the
-            resolved value of raw_value if it was a !secret reference.
-        raw_value: Value as originally submitted by the caller.
-
-    Returns:
-        raw_value if it was a !secret reference, else validated_value.
-
-    """
+    """Restore raw_value if it is an unresolved "!secret x" reference."""
     if isinstance(raw_value, str) and raw_value.startswith("!secret "):
         return raw_value
     return validated_value
@@ -574,17 +552,7 @@ def _restore_value_secret_ref(validated_value: Any, raw_value: Any) -> Any:
 def _restore_dict_secret_refs(
     validated_options: Any, raw_options: dict[str, Any]
 ) -> Any:
-    """Restore "!secret x" values in a dict of options.
-
-    Args:
-        validated_options: Options as returned by app.schema() for this dict.
-        raw_options: The matching dict as originally submitted by the caller.
-
-    Returns:
-        validated_options with any resolved !secret reference restored, or
-        validated_options unchanged if it isn't a dict.
-
-    """
+    """Restore "!secret x" values in a dict of options."""
     if not isinstance(validated_options, dict):
         return validated_options
     return {
@@ -594,20 +562,12 @@ def _restore_dict_secret_refs(
 
 
 def _restore_list_secret_refs(validated_options: Any, raw_options: list[Any]) -> Any:
-    """Restore "!secret x" values in a list of options.
-
-    Args:
-        validated_options: Options as returned by app.schema() for this list.
-        raw_options: The matching list as originally submitted by the caller.
-
-    Returns:
-        validated_options with any resolved !secret reference restored, or
-        validated_options unchanged if it isn't a list.
-
-    """
+    """Restore "!secret x" values in a list of options."""
     if not isinstance(validated_options, list):
+        return validated_options
+    if len(validated_options) != len(raw_options):
         return validated_options
     return [
         _restore_options_secret_refs(item, raw_item)
-        for item, raw_item in zip(validated_options, raw_options, strict=False)
+        for item, raw_item in zip(validated_options, raw_options, strict=True)
     ]
