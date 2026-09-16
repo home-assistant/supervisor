@@ -646,6 +646,23 @@ async def test_app_set_options(
     assert install_app_example.options == {"message": "test"}
 
 
+async def test_app_set_options_keeps_secret_ref(
+    app_api_client_with_root: tuple[TestClient, str],
+    install_app_example: App,
+    coresys: CoreSys,
+):
+    """Test setting options with a !secret reference persists the reference, not the value."""
+    client, root = app_api_client_with_root
+    coresys.homeassistant.secrets.secrets = {"example_secret": "hunter2"}
+
+    resp = await client.post(
+        f"{root}/local_example/options",
+        json={"options": {"message": "!secret example_secret"}},
+    )
+    assert resp.status == 200
+    assert install_app_example.options == {"message": "!secret example_secret"}
+
+
 async def test_app_reset_options(
     app_api_client_with_root: tuple[TestClient, str], install_app_example: App
 ):

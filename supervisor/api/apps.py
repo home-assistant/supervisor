@@ -334,15 +334,21 @@ class APIApps(CoreSysAttributes):
 
         # Validate/Process Body
         body = await api_validate(SCHEMA_OPTIONS, request)
-        if body.get(ATTR_OPTIONS) is not None:
+        if (raw_options := body.get(ATTR_OPTIONS)) is not None:
             # Validate options
             try:
-                body[ATTR_OPTIONS] = app.schema(body[ATTR_OPTIONS])
+                validated_options = app.schema(raw_options)
             except vol.Invalid as ex:
                 raise AppConfigurationInvalidError(
                     app=app.slug,
-                    validation_error=humanize_error(body[ATTR_OPTIONS], ex),
+                    validation_error=humanize_error(raw_options, ex),
                 ) from None
+
+            # app.schema() resolves !secret references to validate them; keep
+            # the original reference so we don't persist the plaintext secret.
+            body[ATTR_OPTIONS] = _restore_options_secret_refs(
+                validated_options, raw_options
+            )
         if ATTR_BOOT in body and app.boot_config == AppBootConfig.MANUAL_ONLY:
             raise AppBootConfigCannotChangeError(
                 app=app.slug, boot_config=app.boot_config.value
@@ -525,3 +531,83 @@ class APIApps(CoreSysAttributes):
 def _pretty_services(app: App) -> list[str]:
     """Return a simplified services role list."""
     return [f"{name}:{access}" for name, access in app.services_role.items()]
+
+
+def _restore_options_secret_refs(validated_options: Any, raw_options: Any) -> Any:
+    """Restore "!secret x" values app.schema() resolved for validation.
+
+    Args:
+        validated_options: Options as returned by app.schema(), with !secret
+            references resolved to their actual value.
+        raw_options: Options as originally submitted by the caller, with
+            !secret references still unresolved.
+
+    Returns:
+        validated_options with any resolved !secret reference restored to its
+        original "!secret x" form.
+
+    """
+    if isinstance(raw_options, dict):
+        return _restore_dict_secret_refs(validated_options, raw_options)
+    if isinstance(raw_options, list):
+        return _restore_list_secret_refs(validated_options, raw_options)
+    return _restore_value_secret_ref(validated_options, raw_options)
+
+
+def _restore_value_secret_ref(validated_value: Any, raw_value: Any) -> Any:
+    """Restore a single "!secret x" value.
+
+    Args:
+        validated_value: Value as returned by app.schema(), possibly the
+            resolved value of raw_value if it was a !secret reference.
+        raw_value: Value as originally submitted by the caller.
+
+    Returns:
+        raw_value if it was a !secret reference, else validated_value.
+
+    """
+    if isinstance(raw_value, str) and raw_value.startswith("!secret "):
+        return raw_value
+    return validated_value
+
+
+def _restore_dict_secret_refs(
+    validated_options: Any, raw_options: dict[str, Any]
+) -> Any:
+    """Restore "!secret x" values in a dict of options.
+
+    Args:
+        validated_options: Options as returned by app.schema() for this dict.
+        raw_options: The matching dict as originally submitted by the caller.
+
+    Returns:
+        validated_options with any resolved !secret reference restored, or
+        validated_options unchanged if it isn't a dict.
+
+    """
+    if not isinstance(validated_options, dict):
+        return validated_options
+    return {
+        key: _restore_options_secret_refs(value, raw_options.get(key))
+        for key, value in validated_options.items()
+    }
+
+
+def _restore_list_secret_refs(validated_options: Any, raw_options: list[Any]) -> Any:
+    """Restore "!secret x" values in a list of options.
+
+    Args:
+        validated_options: Options as returned by app.schema() for this list.
+        raw_options: The matching list as originally submitted by the caller.
+
+    Returns:
+        validated_options with any resolved !secret reference restored, or
+        validated_options unchanged if it isn't a list.
+
+    """
+    if not isinstance(validated_options, list):
+        return validated_options
+    return [
+        _restore_options_secret_refs(item, raw_item)
+        for item, raw_item in zip(validated_options, raw_options, strict=False)
+    ]
