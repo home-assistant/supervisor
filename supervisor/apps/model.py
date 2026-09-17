@@ -645,11 +645,21 @@ class AppModel(JobGroup, ABC):
     @property
     def schema(self) -> AppOptions:
         """Return App options validation object."""
+        return self.options_schema()
+
+    def options_schema(self, *, resolve_secrets: bool = True) -> AppOptions:
+        """Return App options validation object."""
         raw_schema = self.data[ATTR_SCHEMA]
         if isinstance(raw_schema, bool):
             raw_schema = {}
 
-        return AppOptions(self.coresys, raw_schema, self.name, self.slug)
+        return AppOptions(
+            self.coresys,
+            raw_schema,
+            self.name,
+            self.slug,
+            resolve_secrets=resolve_secrets,
+        )
 
     @property
     def schema_ui(self) -> list[dict[Any, Any]] | None:

@@ -60,15 +60,26 @@ class AppOptions(CoreSysAttributes):
     """Validate Apps Options."""
 
     def __init__(
-        self, coresys: CoreSys, raw_schema: dict[str, Any], name: str, slug: str
+        self,
+        coresys: CoreSys,
+        raw_schema: dict[str, Any],
+        name: str,
+        slug: str,
+        *,
+        resolve_secrets: bool = True,
     ):
-        """Validate schema."""
+        """Validate schema.
+
+        With resolve_secrets=False, "!secret x" values are still validated
+        against the resolved secret but returned as the reference.
+        """
         self.coresys: CoreSys = coresys
         self.raw_schema: dict[str, Any] = raw_schema
         self.devices: set[Device] = set()
         self.pwned: set[str] = set()
         self._name = name
         self._slug = slug
+        self._resolve_secrets = resolve_secrets
 
     @property
     def validate(self) -> vol.Schema:
@@ -114,7 +125,6 @@ class AppOptions(CoreSysAttributes):
         # normal value
         return self._single_validate(typ, value, key)
 
-    # pylint: disable=no-value-for-parameter
     def _single_validate(self, typ: str, value: Any, key: str) -> Any:
         """Validate a single element."""
         # if required argument
@@ -123,15 +133,22 @@ class AppOptions(CoreSysAttributes):
                 f"Missing required option '{key}' in {self._name} ({self._slug})"
             ) from None
 
-        # Lookup secret
-        if str(value).startswith("!secret "):
+        if isinstance(value, str) and value.startswith("!secret "):
             secret: str = value.partition(" ")[2]
-            value = self.sys_homeassistant.secrets.get(secret)
-            if value is None:
+            resolved = self.sys_homeassistant.secrets.get(secret)
+            if resolved is None:
                 raise vol.Invalid(
                     f"Unknown secret '{secret}' in {self._name} ({self._slug})"
                 ) from None
+            validated = self._validate_typed(typ, resolved, key)
+            # Persisting callers keep the reference; write_options resolves it again
+            return validated if self._resolve_secrets else value
 
+        return self._validate_typed(typ, value, key)
+
+    # pylint: disable=no-value-for-parameter
+    def _validate_typed(self, typ: str, value: Any, key: str) -> Any:
+        """Validate and coerce a value against its schema type."""
         # parse extend data from type
         match = RE_SCHEMA_ELEMENT.match(typ)
 

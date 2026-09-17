@@ -335,9 +335,11 @@ class APIApps(CoreSysAttributes):
         # Validate/Process Body
         body = await api_validate(SCHEMA_OPTIONS, request)
         if body.get(ATTR_OPTIONS) is not None:
-            # Validate options
+            # Persist "!secret x" references, not the resolved secrets
             try:
-                body[ATTR_OPTIONS] = app.schema(body[ATTR_OPTIONS])
+                body[ATTR_OPTIONS] = app.options_schema(resolve_secrets=False)(
+                    body[ATTR_OPTIONS]
+                )
             except vol.Invalid as ex:
                 raise AppConfigurationInvalidError(
                     app=app.slug,
