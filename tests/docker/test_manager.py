@@ -15,6 +15,7 @@ from supervisor.const import DNS_SUFFIX, ENV_SUPERVISOR_CPU_RT
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import (
     LABEL_MANAGED,
+    Capabilities,
     DockerMount,
     MountBindOptions,
     MountType,
@@ -1181,3 +1182,18 @@ async def test_cleanup_old_images_list_timeout(docker: DockerAPI):
     docker.images.list.side_effect = TimeoutError()
     with pytest.raises(DockerTimeoutError, match="Timeout listing images for cleanup"):
         await docker.cleanup_old_images("myimage", AwesomeVersion("1.0"))
+
+
+async def test_run_command_with_cap_drop(docker: DockerAPI):
+    """Test dropped capabilities are passed to the container host config."""
+    result = await docker.run_command(
+        image="alpine",
+        command="test",
+        cap_add=[Capabilities.SYS_TIME],
+        cap_drop=[Capabilities.NET_RAW],
+    )
+    assert result.exit_code == 0
+
+    host_config = docker.containers.create.call_args.args[0]["HostConfig"]
+    assert host_config["CapAdd"] == ["SYS_TIME"]
+    assert host_config["CapDrop"] == ["NET_RAW"]

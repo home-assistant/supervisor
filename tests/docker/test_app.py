@@ -15,11 +15,12 @@ from supervisor.apps import validate as vd
 from supervisor.apps.app import App
 from supervisor.apps.model import Data
 from supervisor.apps.options import AppOptions
-from supervisor.const import BusEvent
+from supervisor.const import BusEvent, FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent.cgroup import CGroup
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import (
+    Capabilities,
     DockerMount,
     MountBindOptions,
     MountType,
@@ -1009,3 +1010,49 @@ async def test_app_hardware_events_get_timeout(
             DockerTimeoutError, match="Timeout processing Hardware Event"
         ):
             await fire_bus_event(coresys, BusEvent.HARDWARE_NEW_DEVICE, TEST_HW_DEVICE)
+
+
+@pytest.mark.parametrize(
+    ("privileged", "expected_drop"),
+    [
+        ([], [Capabilities.NET_RAW]),
+        (["SYS_TIME"], [Capabilities.NET_RAW]),
+        (["NET_RAW"], None),
+        (["NET_ADMIN"], [Capabilities.NET_RAW]),
+        (["NET_ADMIN", "NET_RAW"], None),
+    ],
+)
+async def test_dropped_capabilities_feature_flag(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    privileged: list[str],
+    expected_drop: list[Capabilities] | None,
+):
+    """Test NET_RAW is dropped with the feature flag unless the app needs it."""
+    docker_app = DockerApp(coresys, install_app_ssh)
+    install_app_ssh.data["privileged"] = privileged
+
+    # Default: Docker default capability set is left untouched
+    assert docker_app.dropped_capabilities is None
+
+    coresys.config.set_feature_flag(FeatureFlag.APP_DROP_NET_RAW, True)
+    assert docker_app.dropped_capabilities == expected_drop
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_run_drops_net_raw_with_feature_flag(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test the container is created with NET_RAW dropped when the flag is set."""
+    coresys.config.set_feature_flag(FeatureFlag.APP_DROP_NET_RAW, True)
+    docker_app = DockerApp(coresys, install_app_ssh)
+
+    with (
+        patch.object(DockerAPI, "run", return_value=MagicMock()) as run,
+        patch.object(DockerApp, "is_running", return_value=False),
+        patch.object(DockerApp, "stop"),
+    ):
+        await docker_app.run()
+
+    assert run.call_args.kwargs["cap_add"] is None
+    assert run.call_args.kwargs["cap_drop"] == [Capabilities.NET_RAW]
