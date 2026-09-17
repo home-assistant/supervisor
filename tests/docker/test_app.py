@@ -1013,29 +1013,77 @@ async def test_app_hardware_events_get_timeout(
 
 
 @pytest.mark.parametrize(
-    ("privileged", "expected_drop"),
+    ("flags", "privileged", "expected_drop"),
     [
-        ([], [Capabilities.NET_RAW]),
-        (["SYS_TIME"], [Capabilities.NET_RAW]),
-        (["NET_RAW"], None),
-        (["NET_ADMIN"], [Capabilities.NET_RAW]),
-        (["NET_ADMIN", "NET_RAW"], None),
+        pytest.param([], [], None, id="no-flags"),
+        pytest.param(
+            [FeatureFlag.APP_DROP_NET_RAW], [], [Capabilities.NET_RAW], id="net-raw"
+        ),
+        pytest.param(
+            [FeatureFlag.APP_DROP_NET_RAW],
+            ["SYS_TIME"],
+            [Capabilities.NET_RAW],
+            id="net-raw-unrelated-privilege",
+        ),
+        pytest.param(
+            [FeatureFlag.APP_DROP_NET_RAW], ["NET_RAW"], None, id="net-raw-requested"
+        ),
+        pytest.param(
+            [FeatureFlag.APP_DROP_NET_RAW],
+            ["NET_ADMIN"],
+            [Capabilities.NET_RAW],
+            id="net-raw-not-implied-by-net-admin",
+        ),
+        pytest.param(
+            [FeatureFlag.APP_REDUCED_CAPABILITIES],
+            [],
+            [Capabilities.AUDIT_WRITE, Capabilities.MKNOD, Capabilities.SETFCAP],
+            id="reduced",
+        ),
+        pytest.param(
+            [FeatureFlag.APP_REDUCED_CAPABILITIES],
+            ["MKNOD"],
+            [Capabilities.AUDIT_WRITE, Capabilities.SETFCAP],
+            id="reduced-mknod-requested",
+        ),
+        pytest.param(
+            [FeatureFlag.APP_REDUCED_CAPABILITIES],
+            ["NET_RAW"],
+            [Capabilities.AUDIT_WRITE, Capabilities.MKNOD, Capabilities.SETFCAP],
+            id="reduced-keeps-net-raw",
+        ),
+        pytest.param(
+            [FeatureFlag.APP_DROP_NET_RAW, FeatureFlag.APP_REDUCED_CAPABILITIES],
+            [],
+            [
+                Capabilities.NET_RAW,
+                Capabilities.AUDIT_WRITE,
+                Capabilities.MKNOD,
+                Capabilities.SETFCAP,
+            ],
+            id="both-flags",
+        ),
+        pytest.param(
+            [FeatureFlag.APP_DROP_NET_RAW, FeatureFlag.APP_REDUCED_CAPABILITIES],
+            ["NET_RAW", "AUDIT_WRITE", "MKNOD", "SETFCAP"],
+            None,
+            id="both-flags-all-requested",
+        ),
     ],
 )
-async def test_dropped_capabilities_feature_flag(
+async def test_dropped_capabilities_feature_flags(
     coresys: CoreSys,
     install_app_ssh: App,
+    flags: list[FeatureFlag],
     privileged: list[str],
     expected_drop: list[Capabilities] | None,
 ):
-    """Test NET_RAW is dropped with the feature flag unless the app needs it."""
+    """Test capabilities are dropped per feature flag unless the app requests them."""
     docker_app = DockerApp(coresys, install_app_ssh)
     install_app_ssh.data["privileged"] = privileged
+    for flag in flags:
+        coresys.config.set_feature_flag(flag, True)
 
-    # Default: Docker default capability set is left untouched
-    assert docker_app.dropped_capabilities is None
-
-    coresys.config.set_feature_flag(FeatureFlag.APP_DROP_NET_RAW, True)
     assert docker_app.dropped_capabilities == expected_drop
 
 
