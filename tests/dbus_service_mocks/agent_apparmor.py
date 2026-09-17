@@ -22,6 +22,7 @@ class AppArmor(DBusServiceMock):
     object_path = "/io/hass/os/AppArmor"
     interface = "io.hass.os.AppArmor"
     response_load_profile: bool | DBusError = True
+    response_unload_profile: bool | DBusError = True
 
     @dbus_property(access=PropertyAccess.READ)
     def ParserVersion(self) -> "s":
@@ -38,4 +39,6 @@ class AppArmor(DBusServiceMock):
     @dbus_method()
     def UnloadProfile(self, arg_0: "s", arg_1: "s") -> "b":
         """Unload profile."""
-        return True
+        if isinstance(self.response_unload_profile, DBusError):
+            raise self.response_unload_profile  # pylint: disable=raising-bad-type
+        return self.response_unload_profile
