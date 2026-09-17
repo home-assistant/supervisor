@@ -1,6 +1,7 @@
 """Manage SSO for Apps with Home Assistant user."""
 
 import asyncio
+from contextlib import suppress
 import hashlib
 import logging
 from typing import Any, TypedDict, cast
@@ -14,6 +15,7 @@ from .exceptions import (
     AuthListUsersError,
     AuthPasswordResetError,
     HomeAssistantAPIError,
+    HomeAssistantAuthError,
     HomeAssistantWSError,
 )
 from .utils.common import FileConfiguration
@@ -105,10 +107,21 @@ class Auth(FileConfiguration, CoreSysAttributes):
         # Let's use the cache and update the cache in background
         if username not in self._running:
             self._running[username] = self.sys_create_task(
-                self._backend_login(app, username, password)
+                self._refresh_cached_login(app, username, password)
             )
 
         return cache_hit
+
+    async def _refresh_cached_login(
+        self, app: App, username: str, password: str
+    ) -> None:
+        """Re-validate a cached login against Core in the background.
+
+        Nothing awaits this task, so failures already logged by the request
+        path are consumed here instead of surfacing as unretrieved task errors.
+        """
+        with suppress(AuthHomeAssistantAPIValidationError, HomeAssistantAuthError):
+            await self._backend_login(app, username, password)
 
     async def _backend_login(self, app: App, username: str, password: str) -> bool:
         """Check username login on core."""
@@ -131,6 +144,10 @@ class Auth(FileConfiguration, CoreSysAttributes):
                 _LOGGER.warning("Unauthorized login for '%s'", username)
                 await self._dismatch_cache(username, password)
                 return False
+        except HomeAssistantAuthError:
+            # Core rejected Supervisor, not the app's user. The credentials
+            # were never checked, so leave the cache alone.
+            raise
         except HomeAssistantAPIError as err:
             _LOGGER.error("Can't request auth on Home Assistant: %s", err)
         finally:
@@ -151,6 +168,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
                     return
 
                 _LOGGER.warning("The user '%s' is not registered", username)
+        except HomeAssistantAuthError:
+            raise
         except HomeAssistantAPIError as err:
             _LOGGER.error("Can't request password reset on Home Assistant: %s", err)
 
