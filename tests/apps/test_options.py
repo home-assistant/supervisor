@@ -1,11 +1,13 @@
 """Test apps schema to UI schema conversion."""
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 import voluptuous as vol
 
 from supervisor.apps.options import AppOptions, UiOptions
+from supervisor.coresys import CoreSys
 from supervisor.hardware.data import Device
 
 MOCK_ADDON_NAME = "Mock Add-on"
@@ -467,6 +469,70 @@ def test_simple_schema_password(coresys):
     assert validate({"name": "Pascal", "password": "", "fires": True, "alias": "test"})
 
     assert not validate.pwned
+
+
+@pytest.mark.parametrize(
+    ("resolve_secrets", "expected"),
+    [
+        pytest.param(
+            True,
+            {"password": "hunter2", "port": 8080, "servers": [{"token": "hunter2"}]},
+            id="resolved",
+        ),
+        pytest.param(
+            False,
+            {
+                "password": "!secret password",
+                "port": "!secret port",
+                "servers": [{"token": "!secret password"}],
+            },
+            id="references",
+        ),
+    ],
+)
+def test_schema_secret_references(
+    coresys: CoreSys, resolve_secrets: bool, expected: dict[str, Any]
+):
+    """Test !secret references are validated against the resolved value."""
+    coresys.homeassistant.secrets.secrets = {"password": "hunter2", "port": "8080"}
+    validate = AppOptions(
+        coresys,
+        {"password": "password", "port": "int", "servers": [{"token": "str"}]},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+        resolve_secrets=resolve_secrets,
+    )
+
+    assert (
+        validate(
+            {
+                "password": "!secret password",
+                "port": "!secret port",
+                "servers": [{"token": "!secret password"}],
+            }
+        )
+        == expected
+    )
+    assert validate.pwned == {"f3bbbd66a63d4bf1747940578ec3d0103530e21d"}
+
+
+@pytest.mark.parametrize("resolve_secrets", [True, False])
+def test_schema_secret_references_invalid(coresys: CoreSys, resolve_secrets: bool):
+    """Test unknown secrets and type mismatches of resolved secrets are rejected."""
+    coresys.homeassistant.secrets.secrets = {"port": "not-a-number"}
+    validate = AppOptions(
+        coresys,
+        {"port": "int"},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+        resolve_secrets=resolve_secrets,
+    )
+
+    with pytest.raises(vol.Invalid, match="Unknown secret 'missing'"):
+        validate({"port": "!secret missing"})
+
+    with pytest.raises(vol.Invalid):
+        validate({"port": "!secret port"})
 
 
 def test_ui_simple_schema(coresys):
