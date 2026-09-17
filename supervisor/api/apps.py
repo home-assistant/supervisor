@@ -565,8 +565,6 @@ def _restore_list_secret_refs(validated_options: Any, raw_options: list[Any]) ->
     """Restore "!secret x" values in a list of options."""
     if not isinstance(validated_options, list):
         return validated_options
-    if len(validated_options) != len(raw_options):
-        return validated_options
     return [
         _restore_options_secret_refs(item, raw_item)
         for item, raw_item in zip(validated_options, raw_options, strict=True)
