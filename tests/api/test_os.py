@@ -336,6 +336,54 @@ async def test_api_os_update_failure_no_reboot_no_issue(
     )
 
 
+async def test_api_os_update_already_installed(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern: None,
+    supervisor_internet,
+    os_available,
+    capture_exception: Mock,
+):
+    """Updating to an installed or pending version is a client error, not a Sentry event."""
+    api_client, prefix = api_client_with_prefix
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    resp = await api_client.post(f"{prefix}/os/update", json={"version": "16.2"})
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["message"] == "Version 16.2 is already installed"
+    assert result["error_key"] == "hassos_update_already_installed_error"
+    assert result["extra_fields"] == {"version": "16.2"}
+
+    async def fake_download(url, raucb) -> None:
+        raucb.touch()
+
+    with (
+        patch.object(
+            coresys.os,
+            "_get_download_url",
+            return_value="https://example.invalid/update.raucb",
+        ),
+        patch.object(coresys.os, "_download_raucb", side_effect=fake_download),
+        patch.object(coresys.host.control, "reboot"),
+    ):
+        resp = await api_client.post(f"{prefix}/os/update", json={"version": "13.0"})
+        assert resp.status == 200
+
+        resp = await api_client.post(f"{prefix}/os/update", json={"version": "13.0"})
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert (
+        result["message"]
+        == "Version 13.0 is already installed, reboot the system to activate it"
+    )
+    assert result["error_key"] == "hassos_update_pending_reboot_error"
+    assert result["extra_fields"] == {"version": "13.0"}
+    capture_exception.assert_not_called()
+
+
 async def test_api_board_yellow_info(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
