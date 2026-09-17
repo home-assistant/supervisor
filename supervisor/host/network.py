@@ -26,24 +26,40 @@ from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting import (
     CONF_ATTR_802_WIRELESS_SECURITY,
     CONF_ATTR_802_WIRELESS_SECURITY_PSK,
+    NetworkSetting,
 )
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
+    HostNetworkActivationFailedError,
+    HostNetworkActivationTimeoutError,
+    HostNetworkCreateConfigError,
+    HostNetworkDeactivateConfigError,
+    HostNetworkDeleteConfigError,
     HostNetworkError,
+    HostNetworkInterfaceUpdateError,
+    HostNetworkInterfaceUpdateNotFoundError,
     HostNetworkNotFound,
+    HostNetworkUpdateConfigError,
     HostNotSupportedError,
     NetworkInterfaceNotFound,
 )
+from ..jobs import JobSchedulerOptions
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
 from ..utils.sentry import async_capture_exception
-from .configuration import AccessPoint, Interface
+from .configuration import AccessPoint, Interface, ResolvedInterface
 from .const import InterfaceMethod, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Safety net for `_wait_for_activation()`: NetworkManager should always emit a
+# terminal state (ACTIVATED/DEACTIVATED), but this guards against it silently
+# getting stuck (e.g. a dropped D-Bus signal), which would otherwise hang the
+# caller indefinitely.
+CONNECTION_ACTIVATION_TIMEOUT = 60
 
 
 class NetworkManager(CoreSysAttributes):
@@ -133,6 +149,51 @@ class NetworkManager(CoreSysAttributes):
             raise HostNetworkNotFound
 
         return Interface.from_dbus_interface(self.sys_dbus.network.get(inet_name))
+
+    async def get_with_config(self, inet_name: str) -> ResolvedInterface:
+        """Return interface from interface name, resolving config independent of activation.
+
+        Unlike `get()`, this also looks up a stored connection profile (via
+        `NetworkManager.find_connection_settings()`) when the interface has no
+        active connection, so its configuration stays visible while the
+        device is down (unplugged, wrong wifi password, etc). Used by the v2
+        API.
+        """
+        if inet_name not in self.sys_dbus.network:
+            raise HostNetworkNotFound
+
+        inet = self.sys_dbus.network.get(inet_name)
+        resolved_settings = inet.settings
+        temp_settings: NetworkSetting | None = None
+        if not resolved_settings:
+            resolved_settings = (
+                temp_settings
+            ) = await self.sys_dbus.network.find_connection_settings(inet)
+
+        interface = Interface.from_dbus_interface(
+            inet, resolved_settings=resolved_settings
+        )
+
+        enabled = True
+        if resolved_settings and resolved_settings.connection:
+            enabled = resolved_settings.connection.autoconnect is not False
+
+        if temp_settings:
+            temp_settings.shutdown()
+
+        return ResolvedInterface(
+            interface, has_profile=resolved_settings is not None, enabled=enabled
+        )
+
+    async def interfaces_with_config(self) -> list[ResolvedInterface]:
+        """Return all interfaces, resolving config independent of activation for each.
+
+        See `get_with_config()`. Used by the v2 API.
+        """
+        return [
+            await self.get_with_config(inet.interface_name)
+            for inet in self.sys_dbus.network.interfaces
+        ]
 
     @Job(
         name="network_manager_load",
@@ -299,132 +360,320 @@ class NetworkManager(CoreSysAttributes):
         )
         return True
 
-    async def apply_changes(
-        self, interface: Interface, *, update_only: bool = False
+    async def _apply_update(
+        self,
+        inet: NetworkInterface,
+        interface: Interface,
+        existing_settings: NetworkSetting,
+        *,
+        update_only: bool,
+    ) -> NetworkConnection | None:
+        """Update an existing stored connection profile.
+
+        Return the newly (re)activated connection if a full activation cycle
+        was triggered, None if the change was applied in place or is a no-op.
+        """
+        _LOGGER.debug("Updating existing configuration for %s", interface.name)
+        # Caller only takes this path once it's confirmed `existing_settings.connection`
+        # is set (see `apply_changes`).
+        assert existing_settings.connection is not None
+        settings = get_connection_from_interface(
+            interface,
+            self.sys_dbus.network,
+            name=existing_settings.connection.id,
+            uuid=existing_settings.connection.uuid,
+            for_update=True,
+        )
+
+        try:
+            settings_changed = await existing_settings.update(settings)
+            if await self._apply_settings_in_place(
+                inet, interface, settings, settings_changed, update_only=update_only
+            ):
+                return None
+
+            _LOGGER.info("Activating connection for interface %s", interface.name)
+            activated = await self.sys_dbus.network.activate_connection(
+                existing_settings.object_path, inet.object_path
+            )
+            _LOGGER.debug("activate_connection returns %s", activated.object_path)
+        except DBusError as err:
+            _LOGGER.error("Can't update config on %s: %s", interface.name, err)
+            raise HostNetworkUpdateConfigError(interface=interface.name) from err
+
+        return activated
+
+    async def _apply_create(
+        self, inet: NetworkInterface, interface: Interface
+    ) -> NetworkConnection:
+        """Create and activate a new connection profile for an interface."""
+        _LOGGER.info(
+            "Creating and activating connection for interface %s", interface.name
+        )
+        settings = get_connection_from_interface(interface, self.sys_dbus.network)
+
+        try:
+            _, activated = await self.sys_dbus.network.add_and_activate_connection(
+                settings, inet.object_path
+            )
+            _LOGGER.debug(
+                "add_and_activate_connection returns %s", activated.object_path
+            )
+        except DBusError as err:
+            _LOGGER.error(
+                "Can't create config and activate %s: %s", interface.name, err
+            )
+            raise HostNetworkCreateConfigError(interface=interface.name) from err
+
+        return activated
+
+    async def _apply_delete(
+        self, interface: Interface, existing_settings: NetworkSetting | None
     ) -> None:
-        """Apply Interface changes to host."""
+        """Delete the stored connection profile for a disabled interface."""
+        if not existing_settings:
+            _LOGGER.debug("Interface %s is already disabled.", interface.name)
+            return
+
+        _LOGGER.info("Deleting configuration for interface %s", interface.name)
+        try:
+            await existing_settings.delete()
+        except DBusError as err:
+            _LOGGER.error(
+                "Can't delete configuration for interface %s: %s", interface.name, err
+            )
+            raise HostNetworkDeleteConfigError(interface=interface.name) from err
+
+    async def _apply_deactivate(
+        self,
+        inet: NetworkInterface,
+        interface: Interface,
+        existing_settings: NetworkSetting | None,
+    ) -> None:
+        """Deactivate an interface's connection and clear autoconnect, keeping its profile."""
+        if not existing_settings:
+            _LOGGER.debug("Interface %s is already disabled.", interface.name)
+            return
+
+        _LOGGER.info("Deactivating interface %s", interface.name)
+        # Caller only takes this path once it's confirmed `existing_settings.connection`
+        # is set (see `apply_changes`).
+        assert existing_settings.connection is not None
+        settings = get_connection_from_interface(
+            interface,
+            self.sys_dbus.network,
+            name=existing_settings.connection.id,
+            uuid=existing_settings.connection.uuid,
+            autoconnect=False,
+            for_update=True,
+        )
+
+        try:
+            # Persist the cleared autoconnect first, while `existing_settings`
+            # is still guaranteed alive. Deactivating first would race: NM's
+            # `PropertiesChanged` (ActiveConnection -> `/`) can be processed
+            # before or during the settings update, shutting down
+            # `existing_settings` (via `NetworkInterface.update()` ->
+            # `NetworkConnection.shutdown()`) and turning it into either a
+            # silent no-op (`dbus_connected` swallows calls once shut down)
+            # or a `DBusNotConnectedError`, which isn't a `DBusError` and
+            # would escape the except clause below.
+            await existing_settings.update(settings)
+            if inet.connection:
+                await self.sys_dbus.network.deactivate_connection(
+                    inet.connection.object_path
+                )
+        except DBusError as err:
+            _LOGGER.error("Can't deactivate interface %s: %s", interface.name, err)
+            raise HostNetworkDeactivateConfigError(interface=interface.name) from err
+
+    async def _wait_for_activation(self, con: NetworkConnection) -> None:
+        """Wait for a connection to finish activating.
+
+        Raises `HostNetworkActivationFailedError` if the connection
+        deactivates instead, or `HostNetworkActivationTimeoutError` if it
+        doesn't reach a terminal state within `CONNECTION_ACTIVATION_TIMEOUT`
+        seconds (see its definition for why).
+        """
+        async with con.connected_dbus.signal(
+            DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
+        ) as signal:
+            # From this point we monitor signals. However, it might be that
+            # the state change before this point. Get the state currently to
+            # avoid any race condition.
+            await con.update()
+            state: ConnectionState = con.state
+
+            try:
+                async with asyncio.timeout(CONNECTION_ACTIVATION_TIMEOUT):
+                    while state != ConnectionState.ACTIVATED:
+                        if state == ConnectionState.DEACTIVATED:
+                            raise HostNetworkActivationFailedError
+
+                        msg = await signal.wait_for_signal()
+                        state = ConnectionState(msg[0])
+                        _LOGGER.debug("Active connection state changed to %s", state)
+            except TimeoutError as err:
+                raise HostNetworkActivationTimeoutError(_LOGGER.error) from err
+
+    @Job(name="network_manager_activate_connection", cleanup=False)
+    async def _activate_connection_job(
+        self, con: NetworkConnection, *, update_only: bool
+    ) -> None:
+        """Wait for a backgrounded connection activation, then refresh network state.
+
+        Only used for `apply_changes(..., background_activation=True)` (the v2
+        API - see `apply_changes_v2`): NM can take up to
+        `CONNECTION_ACTIVATION_TIMEOUT` to give up on a connection that never
+        gets e.g. a carrier, and by the time it does the Supervisor<->client
+        connection may itself have dropped as part of the network change
+        taking effect. `cleanup=False` keeps this job (and any error it
+        captures) available through the API after it finishes so the client
+        can check back on the outcome once reconnected, instead of the result
+        being cleaned up while nobody could see it.
+        """
+        try:
+            await self._wait_for_activation(con)
+        finally:
+            # update_only means not done by user so don't force a check afterwards
+            await self.update(force_connectivity_check=not update_only)
+
+    async def apply_changes(
+        self,
+        interface: Interface,
+        *,
+        update_only: bool = False,
+        resolved_settings: NetworkSetting | None = None,
+        destructive_disable: bool = True,
+        background_activation: bool = False,
+    ) -> str | None:
+        """Apply Interface changes to host.
+
+        `resolved_settings` allows updating an existing stored connection
+        profile even when the interface currently has no active connection
+        (see `NetworkManager.find_connection_settings()`). When omitted, only
+        an active connection (`inet.settings`) is treated as existing
+        configuration to update - unchanged v1 behavior.
+
+        `destructive_disable` controls what happens when disabling the
+        interface: True (default, v1 behavior) deletes any stored connection
+        profile. False deactivates the active connection (if any) and clears
+        autoconnect on the stored profile instead of deleting it.
+
+        `background_activation` controls whether a full activation cycle (if
+        one is triggered) is awaited before returning. False (default, v1
+        behavior) blocks until the connection activates, fails, or times out
+        (`CONNECTION_ACTIVATION_TIMEOUT`). True runs the wait as a background
+        job instead and returns its job ID immediately - e.g. an interface
+        without a carrier would otherwise block the caller for up to a
+        minute, then report a possibly-misleading error, even though the
+        settings themselves were already persisted successfully.
+
+        Returns the job ID tracking a backgrounded activation, None if
+        `background_activation` is False or no activation cycle was needed
+        (settings applied in place, or the interface was disabled).
+        """
         try:
             inet = self.sys_dbus.network.get(interface.name)
         except NetworkInterfaceNotFound as err:
             # The API layer (or anybody else) should not pass any updates for
             # non-existing interfaces.
             await async_capture_exception(err)
-            raise HostNetworkError(
-                "Requested Network interface update is not possible", _LOGGER.warning
-            ) from err
+            raise HostNetworkInterfaceUpdateError(_LOGGER.warning) from err
 
+        existing_settings = inet.settings or resolved_settings
         con: NetworkConnection | None = None
 
         # Update exist configuration
         if (
-            inet.settings
-            and inet.settings.connection
-            and interface.equals_dbus_interface(inet)
+            existing_settings
+            and existing_settings.connection
+            and interface.matches_settings(inet, existing_settings)
             and interface.enabled
         ):
-            _LOGGER.debug("Updating existing configuration for %s", interface.name)
-            settings = get_connection_from_interface(
-                interface,
-                self.sys_dbus.network,
-                name=inet.settings.connection.id,
-                uuid=inet.settings.connection.uuid,
+            con = await self._apply_update(
+                inet, interface, existing_settings, update_only=update_only
             )
-
-            try:
-                settings_changed = await inet.settings.update(settings)
-                if not await self._apply_settings_in_place(
-                    inet,
-                    interface,
-                    settings,
-                    settings_changed,
-                    update_only=update_only,
-                ):
-                    _LOGGER.info(
-                        "Activating connection for interface %s", interface.name
-                    )
-                    con = activated = await self.sys_dbus.network.activate_connection(
-                        inet.settings.object_path, inet.object_path
-                    )
-                    _LOGGER.debug(
-                        "activate_connection returns %s",
-                        activated.object_path,
-                    )
-            except DBusError as err:
-                raise HostNetworkError(
-                    f"Can't update config on {interface.name}: {err}", _LOGGER.error
-                ) from err
 
         # Stop if only updates are allowed as other paths create/delete interfaces
         elif update_only:
-            raise HostNetworkNotFound(
-                f"Requested to update interface {interface.name} which does not exist or is disabled.",
-                _LOGGER.warning,
+            raise HostNetworkInterfaceUpdateNotFoundError(
+                _LOGGER.warning, interface=interface.name
             )
 
         # Create new configuration and activate interface
         elif interface.enabled:
-            _LOGGER.info(
-                "Creating and activating connection for interface %s", interface.name
-            )
-            settings = get_connection_from_interface(interface, self.sys_dbus.network)
-
-            try:
-                (
-                    settings,
-                    activated,
-                ) = await self.sys_dbus.network.add_and_activate_connection(
-                    settings, inet.object_path
-                )
-                con = activated
-                _LOGGER.debug(
-                    "add_and_activate_connection returns %s",
-                    activated.object_path,
-                )
-            except DBusError as err:
-                raise HostNetworkError(
-                    f"Can't create config and activate {interface.name}: {err}",
-                    _LOGGER.error,
-                ) from err
+            con = await self._apply_create(inet, interface)
 
         # Remove config from interface
         elif not interface.enabled:
-            if not inet.settings:
-                _LOGGER.debug("Interface %s is already disabled.", interface.name)
-                return
-            try:
-                await inet.settings.delete()
-            except DBusError as err:
-                raise HostNetworkError(
-                    f"Can't disable interface {interface.name}: {err}", _LOGGER.error
-                ) from err
+            if destructive_disable:
+                await self._apply_delete(interface, existing_settings)
+            else:
+                await self._apply_deactivate(inet, interface, existing_settings)
 
         else:
-            raise HostNetworkError(
-                "Requested Network interface update is not possible", _LOGGER.warning
-            )
+            raise HostNetworkInterfaceUpdateError(_LOGGER.warning)
 
+        job_id: str | None = None
         if con:
-            async with con.connected_dbus.signal(
-                DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
-            ) as signal:
-                # From this point we monitor signals. However, it might be that
-                # the state change before this point. Get the state currently to
-                # avoid any race condition.
-                await con.update()
-                state: ConnectionState = con.state
+            if background_activation:
+                job, _ = self.sys_jobs.schedule_job(
+                    self._activate_connection_job,
+                    JobSchedulerOptions(),
+                    con,
+                    update_only=update_only,
+                )
+                job_id = job.uuid
+            else:
+                await self._wait_for_activation(con)
 
-                while state != ConnectionState.ACTIVATED:
-                    if state == ConnectionState.DEACTIVATED:
-                        raise HostNetworkError(
-                            "Activating connection failed, check connection settings."
-                        )
+        if job_id is None:
+            # update_only means not done by user so don't force a check afterwards
+            await self.update(force_connectivity_check=not update_only)
 
-                    msg = await signal.wait_for_signal()
-                    state = ConnectionState(msg[0])
-                    _LOGGER.debug("Active connection state changed to %s", state)
+        return job_id
 
-        # update_only means not done by user so don't force a check afterwards
-        await self.update(force_connectivity_check=not update_only)
+    async def apply_changes_v2(self, interface: Interface) -> str | None:
+        """Apply v2 Interface changes, resolving an existing profile independent of activation.
+
+        Thin wrapper around `apply_changes()`: looks up a stored connection
+        profile via `NetworkManager.find_connection_settings()` when the
+        interface has no active connection, so a PUT can update/reactivate
+        that profile instead of creating a duplicate one (R2), then cleans up
+        the temporary D-Bus object it created for the lookup (if any). Always
+        disables non-destructively (R5) - the v2 API never deletes a stored
+        connection profile, unlike v1's default `apply_changes()` behavior.
+
+        Settings are always persisted before returning. Activation (if
+        needed) always runs in the background (`background_activation=True`)
+        so the request never blocks on it; returns the job ID tracking that
+        activation, or None if none was needed.
+        """
+        try:
+            inet = self.sys_dbus.network.get(interface.name)
+        except NetworkInterfaceNotFound:
+            inet = None
+
+        resolved_settings: NetworkSetting | None = None
+        temp_settings: NetworkSetting | None = None
+        if inet:
+            resolved_settings = inet.settings
+            if not resolved_settings:
+                resolved_settings = (
+                    temp_settings
+                ) = await self.sys_dbus.network.find_connection_settings(inet)
+
+        try:
+            return await self.apply_changes(
+                interface,
+                resolved_settings=resolved_settings,
+                destructive_disable=False,
+                background_activation=True,
+            )
+        finally:
+            if temp_settings:
+                temp_settings.shutdown()
 
     async def scan_wifi(self, interface: Interface) -> list[AccessPoint]:
         """Scan on Interface for AccessPoint."""
