@@ -6,7 +6,7 @@ from contextlib import suppress
 from dataclasses import replace
 import logging
 from pathlib import Path
-from typing import Self
+from typing import Self, cast
 
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
@@ -19,7 +19,7 @@ from ..exceptions import (
     MountTargetNotEmptyError,
 )
 from ..host.const import HostFeature
-from ..jobs.const import JobCondition
+from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, SuggestionType
 from ..utils.common import FileConfiguration
@@ -28,9 +28,10 @@ from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
     FILE_CONFIG_MOUNTS,
+    MountType,
     MountUsage,
 )
-from .mount import Mount
+from .mount import DiskMount, Mount
 from .validate import SCHEMA_MOUNTS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -174,6 +175,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         name="mount_manager_create_mount",
         conditions=[JobCondition.MOUNT_AVAILABLE],
         on_condition=MountJobError,
+        # Serialized: a disk's UUID is checked against the mounts already
+        # configured, so two creates racing could both pass that check and
+        # claim the same disk under different names.
+        concurrency=JobConcurrency.QUEUE,
     )
     async def create_mount(self, mount: Mount) -> None:
         """Add/update a mount."""
@@ -476,6 +481,11 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             old_mount = self._mounts[mount.name]
             await old_mount.unmount()
 
+        # A backup is from another host, so drop the resolved filesystem and
+        # re-resolve on activation. That re-runs the mountable-device guard.
+        if mount.type == MountType.DISK:
+            cast(DiskMount, mount).forget_resolved_device()
+
         self._mounts[mount.name] = mount
         return self.sys_create_task(self._activate_restored_mount(mount))
 
@@ -491,6 +501,11 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         try:
             _LOGGER.info("Activating restored mount: %s", mount.name)
             await mount.load()
+            # The restore wrote the config before activation, when a disk
+            # mount's resolved filesystem had deliberately been cleared. Saving
+            # again keeps what activation resolved, so later starts mount from
+            # the persisted value instead of needing UDisks2 at boot.
+            await self.save_data()
             _LOGGER.info("Mount %s activated successfully", mount.name)
         except MountError as err:
             _LOGGER.warning(
