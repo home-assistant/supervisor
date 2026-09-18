@@ -476,6 +476,17 @@ class MulticastJobError(MulticastError, PluginJobError):
     """Raise on job error with multicast plugin."""
 
 
+class MulticastDisabledError(MulticastError, APIError):
+    """Raise when an action requires the disabled Multicast plugin."""
+
+    error_key = "multicast_disabled_error"
+    message_template = "Multicast plugin is disabled"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
 class MulticastNotRunningError(MulticastError, APIError):
     """Raise when Multicast is not running."""
 
