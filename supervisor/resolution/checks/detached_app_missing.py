@@ -3,6 +3,7 @@
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType
+from ..data import Issue
 from .base import CheckBase
 
 
@@ -17,30 +18,30 @@ class CheckDetachedAppMissing(CheckBase):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return "detached_addon_missing"
+        return "detached_app_missing"
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for app in self.sys_apps.installed:
             if app.is_detached and app.repository not in self.sys_store.repositories:
                 self.sys_resolution.create_issue(
-                    IssueType.DETACHED_ADDON_MISSING,
+                    IssueType.DETACHED_APP_MISSING,
                     ContextType.ADDON,
                     reference=app.slug,
                 )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
-        if not reference:
+        if not issue.reference:
             return False
 
-        app = self.sys_apps.get_local_only(reference)
+        app = self.sys_apps.get_local_only(issue.reference)
         return app is not None and app.is_detached
 
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DETACHED_ADDON_MISSING
+        return IssueType.DETACHED_APP_MISSING
 
     @property
     def context(self) -> ContextType:

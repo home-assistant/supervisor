@@ -88,7 +88,8 @@ def _convert_local_location(item: str | None) -> str | None:
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_FOLDERS = vol.All([vol.In(_ALL_FOLDERS)], vol.Unique())
+SCHEMA_FOLDERS_V2 = vol.All([vol.In(ALL_FOLDERS)], vol.Unique())
+SCHEMA_FOLDERS_V1 = vol.All([vol.In(_ALL_FOLDERS)], vol.Unique())
 SCHEMA_LOCATION = vol.All(vol.Maybe(str), _convert_local_location)
 SCHEMA_LOCATION_LIST = vol.All(_ensure_list, [SCHEMA_LOCATION], vol.Unique())
 
@@ -105,7 +106,7 @@ SCHEMA_RESTORE_PARTIAL_V1 = SCHEMA_RESTORE_FULL.extend(
     {
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
         vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
-        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
+        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS_V1,
     }
 )
 
@@ -114,7 +115,7 @@ SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
     {
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
         vol.Optional(ATTR_APPS): vol.All([str], vol.Unique()),
-        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
+        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS_V2,
     }
 )
 
@@ -135,7 +136,7 @@ SCHEMA_BACKUP_FULL = vol.Schema(
 SCHEMA_BACKUP_PARTIAL_V1 = SCHEMA_BACKUP_FULL.extend(
     {
         vol.Optional(ATTR_ADDONS): vol.Or(ALL_APPS_FLAG, vol.All([str], vol.Unique())),
-        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
+        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS_V1,
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     }
 )
@@ -144,7 +145,7 @@ SCHEMA_BACKUP_PARTIAL_V1 = SCHEMA_BACKUP_FULL.extend(
 SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     {
         vol.Optional(ATTR_APPS): vol.Or(ALL_APPS_FLAG, vol.All([str], vol.Unique())),
-        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
+        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS_V2,
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     }
 )

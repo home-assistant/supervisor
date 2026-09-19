@@ -2,7 +2,10 @@
 # ==============================================================================
 # Start Supervisor service
 # ==============================================================================
-export LD_PRELOAD="/usr/local/lib/libjemalloc.so.2"
-export MALLOC_CONF="background_thread:true,metadata_thp:auto"
+# Use mimalloc as Python's object allocator by default. It is bundled in CPython
+# (3.13+), so no LD_PRELOAD or extra library is required, and it uses noticeably
+# less memory than the previously preloaded jemalloc. Override or disable via
+# PYTHONMALLOC, e.g. `PYTHONMALLOC=pymalloc` for the default allocator.
+export PYTHONMALLOC="${PYTHONMALLOC:-mimalloc}"
 
 exec python3 -m supervisor

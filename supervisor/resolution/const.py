@@ -3,6 +3,8 @@
 from enum import StrEnum
 from pathlib import Path
 
+from awesomeversion import AwesomeVersion
+
 from ..const import SUPERVISOR_DATA
 
 FILE_CONFIG_RESOLUTION = Path(SUPERVISOR_DATA, "resolution.json")
@@ -43,6 +45,7 @@ class UnsupportedReason(StrEnum):
     DNS_SERVER = "dns_server"
     DOCKER_CONFIGURATION = "docker_configuration"
     DOCKER_VERSION = "docker_version"
+    HOME_ASSISTANT_CORE_CUSTOM_IMAGE = "home_assistant_core_custom_image"
     HOME_ASSISTANT_CORE_VERSION = "home_assistant_core_version"
     JOB_CONDITIONS = "job_conditions"
     LXC = "lxc"
@@ -64,10 +67,12 @@ class UnsupportedReason(StrEnum):
 class UnhealthyReason(StrEnum):
     """Reasons for unsupported status."""
 
+    DATA_FILESYSTEM_CHECK_ERROR = "data_filesystem_check_error"
     DOCKER = "docker"
     DOCKER_GATEWAY_UNPROTECTED = "docker_gateway_unprotected"
     DUPLICATE_OS_INSTALLATION = "duplicate_os_installation"
     OSERROR_BAD_MESSAGE = "oserror_bad_message"
+    OS_FILESYSTEM_CHECK_ERROR = "os_filesystem_check_error"
     PRIVILEGED = "privileged"
     SETUP = "setup"
     SUPERVISOR = "supervisor"
@@ -77,14 +82,15 @@ class UnhealthyReason(StrEnum):
 class IssueType(StrEnum):
     """Issue type."""
 
+    APP_PORT_CONFLICT = "app_port_conflict"
     BOOT_FAIL = "boot_fail"
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
     CORRUPT_FILESYSTEM = "corrupt_filesystem"
-    DEPRECATED_ADDON = "deprecated_addon"
-    DEPRECATED_ARCH_ADDON = "deprecated_arch_addon"
-    DETACHED_ADDON_MISSING = "detached_addon_missing"
-    DETACHED_ADDON_REMOVED = "detached_addon_removed"
+    DEPRECATED_APP = "deprecated_app"
+    DEPRECATED_ARCH_APP = "deprecated_arch_app"
+    DETACHED_APP_MISSING = "detached_app_missing"
+    DETACHED_APP_REMOVED = "detached_app_removed"
     DEVICE_ACCESS_MISSING = "device_access_missing"
     DISABLED_DATA_DISK = "disabled_data_disk"
     DISK_LIFETIME = "disk_lifetime"
@@ -106,6 +112,7 @@ class IssueType(StrEnum):
     REBOOT_REQUIRED = "reboot_required"
     RPI_FIRMWARE_UPDATE_BLOCKED = "rpi_firmware_update_blocked"
     SECURITY = "security"
+    SYSTEMD_UNIT_FAILED = "systemd_unit_failed"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
 
@@ -115,6 +122,7 @@ class SuggestionType(StrEnum):
 
     ADOPT_DATA_DISK = "adopt_data_disk"
     CLEAR_FULL_BACKUP = "clear_full_backup"
+    CLEAR_PORT_CONFIG = "clear_port_config"
     CREATE_FULL_BACKUP = "create_full_backup"
     DISABLE_BOOT = "disable_boot"
     ENABLE_NTP = "enable_ntp"
@@ -128,5 +136,44 @@ class SuggestionType(StrEnum):
     EXECUTE_START = "execute_start"
     EXECUTE_STOP = "execute_stop"
     EXECUTE_UPDATE = "execute_update"
+    MOVE_LOCAL_DATA = "move_local_data"
     REGISTRY_LOGIN = "registry_login"
     RENAME_DATA_DISK = "rename_data_disk"
+
+
+# Suggestions the Home Assistant frontend can only present from a given Core
+# version on (the fix flow translations ship with Core). Suggestions below
+# their minimum version are filtered from Core-facing API responses and
+# events; all other API consumers always see them.
+SUGGESTION_MIN_CORE_VERSION: dict[SuggestionType, AwesomeVersion] = {
+    SuggestionType.MOVE_LOCAL_DATA: AwesomeVersion("2026.9.0b0"),
+}
+
+
+# Maps legacy check slugs to current slugs.
+# Legacy slugs are stored in old resolution.json or in incoming REST API.
+# Used to migrate persisted metadata on load and translate incoming V1 API
+# requests.
+LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
+    "addon_pwned": "app_pwned",
+    "deprecated_addon": "deprecated_app",
+    "deprecated_arch_addon": "deprecated_arch_app",
+    "detached_addon_missing": "detached_app_missing",
+    "detached_addon_removed": "detached_app_removed",
+}
+
+# Reverse map for translating current check slugs to legacy slugs for outgoing
+# v1-compatible responses.
+OUTGOING_LEGACY_CHECK_SLUG_MAP: dict[str, str] = {
+    v: k for k, v in LEGACY_CHECK_SLUG_MAP.items()
+}
+
+# Maps new issue type values to legacy values for backward compatibility.
+# Used for outgoing WS API compatibility (when SUPERVISOR_WEBSOCKET_V2_API is
+# disabled) and V1 REST API responses.
+LEGACY_ISSUE_TYPE_MAP: dict[str, str] = {
+    "deprecated_app": "deprecated_addon",
+    "deprecated_arch_app": "deprecated_arch_addon",
+    "detached_app_missing": "detached_addon_missing",
+    "detached_app_removed": "detached_addon_removed",
+}

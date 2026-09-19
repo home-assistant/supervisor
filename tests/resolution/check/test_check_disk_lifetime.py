@@ -76,7 +76,9 @@ async def test_approve_no_data_disk(coresys: CoreSys):
         "current_device",
         new=PropertyMock(return_value=None),
     ):
-        assert not await disk_lifetime.approve_check()
+        assert not await disk_lifetime.approve_check(
+            Issue(IssueType.DISK_LIFETIME, ContextType.SYSTEM)
+        )
 
 
 @pytest.mark.parametrize(
@@ -103,7 +105,12 @@ async def test_approve_check_lifetime_threshold(
             return_value=lifetime,
         ),
     ):
-        assert await disk_lifetime.approve_check() is approved
+        assert (
+            await disk_lifetime.approve_check(
+                Issue(IssueType.DISK_LIFETIME, ContextType.SYSTEM)
+            )
+            is approved
+        )
 
 
 async def test_did_run(coresys: CoreSys):

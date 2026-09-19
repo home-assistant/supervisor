@@ -24,6 +24,7 @@ from .cgroup import CGroup
 from .datadisk import DataDisk
 from .swap import Swap
 from .system import System
+from .timesyncd import Timesyncd
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class OSAgent(DBusInterfaceProxy):
         self._datadisk: DataDisk = DataDisk()
         self._swap: Swap = Swap()
         self._system: System = System()
+        self._timesyncd: Timesyncd = Timesyncd()
 
     @property
     def cgroup(self) -> CGroup:
@@ -78,6 +80,11 @@ class OSAgent(DBusInterfaceProxy):
         return self._board
 
     @property
+    def timesyncd(self) -> Timesyncd:
+        """Return Timesyncd DBUS object."""
+        return self._timesyncd
+
+    @property
     @dbus_property
     def version(self) -> AwesomeVersion:
         """Return version of OS-Agent."""
@@ -104,6 +111,7 @@ class OSAgent(DBusInterfaceProxy):
             self.datadisk,
             self.swap,
             self.system,
+            self.timesyncd,
         ]
 
     async def connect(self, bus: MessageBus) -> None:
@@ -140,7 +148,12 @@ class OSAgent(DBusInterfaceProxy):
             await asyncio.gather(
                 *[
                     dbus.update()
-                    for dbus in [self.apparmor, self.board, self.datadisk]
+                    for dbus in [
+                        self.apparmor,
+                        self.board,
+                        self.datadisk,
+                        self.timesyncd,
+                    ]
                     if dbus.is_connected
                 ]
             )

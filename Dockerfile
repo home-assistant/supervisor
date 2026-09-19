@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.22-2026.05.0
+ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.06.1
 FROM ${BUILD_FROM} AS supervisor-base
 
 ENV \
@@ -51,8 +51,17 @@ RUN \
 ARG BUILD_VERSION="9999.09.9.dev9999"
 COPY . supervisor
 RUN \
-    sed -i "s/^SUPERVISOR_VERSION =.*/SUPERVISOR_VERSION = \"${BUILD_VERSION}\"/g" /usr/src/supervisor/supervisor/const.py \
+    --mount=type=bind,source=./wheels,target=/usr/src/wheels \
+    if ls /usr/src/wheels/musllinux/* >/dev/null 2>&1; then \
+        LOCAL_WHEELS=/usr/src/wheels/musllinux; \
+        echo "Using local wheels from: $LOCAL_WHEELS"; \
+    else \
+        LOCAL_WHEELS=; \
+        echo "No local wheels found"; \
+    fi \
+    && sed -i "s/^SUPERVISOR_VERSION =.*/SUPERVISOR_VERSION = \"${BUILD_VERSION}\"/g" /usr/src/supervisor/supervisor/const.py \
     && uv pip install --no-cache -e ./supervisor \
+        ${LOCAL_WHEELS:+--find-links $LOCAL_WHEELS} \
     && python3 -m compileall ./supervisor/supervisor
 
 # Copy the rest of rootfs files

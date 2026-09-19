@@ -6,6 +6,7 @@ import logging
 from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
 from ..const import ContextType, IssueType
+from ..data import Issue
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class CheckBase(ABC, CoreSysAttributes):
                 self.context,
                 issue.reference,
             )
-            if await self.approve_check(reference=issue.reference):
+            if await self.approve_check(issue):
                 continue
             self.sys_resolution.dismiss_issue(issue)
 
@@ -60,7 +61,7 @@ class CheckBase(ABC, CoreSysAttributes):
         """Run check if not affected by issue."""
 
     @abstractmethod
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
 
     @property

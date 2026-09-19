@@ -236,17 +236,33 @@ class Systemd(DBusInterfaceProxy):
         return await self.connected_dbus.Manager.call("list_units")
 
     @dbus_connected
+    async def list_units_filtered(
+        self, states: list[str]
+    ) -> list[tuple[str, str, str, str, str, str, str, int, str, str]]:
+        """Return a list of available systemd services filtered by state."""
+        return await self.connected_dbus.Manager.call("list_units_filtered", states)
+
+    @dbus_connected
     async def get_system_state(self) -> SystemState:
         """Return the systemd manager state."""
         return SystemState(await self.connected_dbus.Manager.get("system_state"))
 
     @dbus_connected
     async def start_transient_unit(
-        self, unit: str, mode: StartUnitMode, properties: list[tuple[str, Variant]]
+        self,
+        unit: str,
+        mode: StartUnitMode,
+        properties: list[tuple[str, Variant]],
+        aux: list[tuple[str, list[tuple[str, Variant]]]] | None = None,
     ) -> str:
-        """Start a transient unit which is released when stopped or on reboot. Returns object path of job."""
+        """Start a transient unit which is released when stopped or on reboot.
+
+        ``aux`` allows auxiliary transient units (e.g. a paired ``.service``
+        for a ``.socket`` unit) to be defined atomically in the same
+        transaction as the primary unit. Returns object path of job.
+        """
         return await self.connected_dbus.Manager.call(
-            "start_transient_unit", unit, mode, properties, []
+            "start_transient_unit", unit, mode, properties, aux or []
         )
 
     @dbus_connected

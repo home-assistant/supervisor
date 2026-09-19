@@ -3,8 +3,9 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import AppsError, ResolutionFixupError
+from ...exceptions import AppsError
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -18,21 +19,19 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupAppExecuteRestart(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
-        if not reference:
+        if not suggestion.reference:
             return
 
-        if not (app := self.sys_apps.get_local_only(reference)):
-            _LOGGER.info("Cannot restart app %s as it does not exist", reference)
+        if not (app := self.sys_apps.get_local_only(suggestion.reference)):
+            _LOGGER.info(
+                "Cannot restart app %s as it does not exist", suggestion.reference
+            )
             return
 
         # Stop app
-        try:
-            await app.stop()
-        except AppsError as err:
-            _LOGGER.error("Could not stop %s due to %s", reference, err)
-            raise ResolutionFixupError from None
+        await app.stop()
 
         # Start app
         # Removing the container has already fixed the issue and dismissed it
@@ -40,7 +39,7 @@ class FixupAppExecuteRestart(FixupBase):
         try:
             await app.start()
         except AppsError as err:
-            _LOGGER.error("Could not restart %s due to %s", reference, err)
+            _LOGGER.error("Could not restart %s due to %s", suggestion.reference, err)
 
     @property
     def suggestion(self) -> SuggestionType:

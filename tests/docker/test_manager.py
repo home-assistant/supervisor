@@ -15,15 +15,29 @@ from supervisor.const import DNS_SUFFIX, ENV_SUPERVISOR_CPU_RT
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import (
     LABEL_MANAGED,
+    Capabilities,
     DockerMount,
     MountBindOptions,
     MountType,
 )
 from supervisor.docker.manager import CommandReturn, DockerAPI, PullLogEntry
 from supervisor.exceptions import (
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerError,
     DockerNoSpaceOnDevice,
+    DockerNotFound,
     DockerRegistryRateLimitExceeded,
+    DockerStatsTimeoutError,
+    DockerStatsUnknownError,
+    DockerTimeoutError,
+)
+
+CORRUPT_CONTAINER_ID = (
+    "1b56493ca170514364e10113038a16e9d207cb16a229be55ed6139649a39ca4e"
+)
+CORRUPT_CONTAINER_MESSAGE = (
+    f"RWLayer of container {CORRUPT_CONTAINER_ID} is unexpectedly nil"
 )
 
 
@@ -319,9 +333,6 @@ async def test_stop_container_with_cidfile_cleanup(
     coresys: CoreSys, docker: DockerAPI, container: DockerContainer
 ):
     """Test container stop with cidfile cleanup."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
-
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
 
@@ -342,9 +353,6 @@ async def test_stop_container_without_removal_no_cidfile_cleanup(
     docker: DockerAPI, container: DockerContainer
 ):
     """Test container stop without removal doesn't clean up cidfile."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
-
     container_name = "test_container"
 
     # Mock the containers.get method and cidfile cleanup
@@ -365,9 +373,6 @@ async def test_cidfile_cleanup_handles_oserror(
     coresys: CoreSys, docker: DockerAPI, container: DockerContainer
 ):
     """Test that cidfile cleanup handles OSError gracefully."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
-
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
 
@@ -596,3 +601,599 @@ def test_pull_log_entry_exception_generic_error():
     assert isinstance(err, DockerError)
     assert not isinstance(err, DockerRegistryRateLimitExceeded)
     assert not isinstance(err, DockerNoSpaceOnDevice)
+
+
+# ---------------------------------------------------------------------------
+# Timeout error path tests
+# ---------------------------------------------------------------------------
+
+
+async def test_post_init_system_info_timeout(docker: DockerAPI):
+    """Test post_init raises DockerTimeoutError when system.info times out."""
+    docker.docker.system.info.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout while getting Docker information"
+    ):
+        await docker.post_init()
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_container_create_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when containers.create times out."""
+    coresys.docker.containers.create.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout creating container from alpine:latest"
+    ):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_container_start_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when container.start times out."""
+    coresys.docker.containers.create.return_value.start.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout starting"):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_attach_network_failure_logs_warning(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test run logs warning and continues when attach to hassio-network fails."""
+    with (
+        patch.object(
+            coresys.docker.network,
+            "attach_container",
+            new=AsyncMock(side_effect=DockerError("failed")),
+        ),
+        patch.object(
+            coresys.docker.network,
+            "detach_default_bridge",
+            new=AsyncMock(),
+        ) as detach_default_bridge,
+    ):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+    assert "Can't attach test to hassio-network!" in caplog.text
+    detach_default_bridge.assert_not_called()
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_get_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when loading host network times out."""
+    coresys.docker.docker.networks.get.side_effect = TimeoutError()
+
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting host network information"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_get_docker_error(coresys: CoreSys):
+    """Test run raises DockerError when loading host network fails."""
+    coresys.docker.docker.networks.get.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}
+    )
+
+    with pytest.raises(
+        DockerError, match="Can't get host network information from Docker"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_disconnect_timeout(coresys: CoreSys):
+    """Test run raises DockerTimeoutError when disconnect from host network times out."""
+    host_network = MagicMock(spec=DockerNetwork)
+    host_network.show.return_value = {"Containers": {"abc": {"Name": "test"}}}
+    host_network.disconnect.side_effect = TimeoutError()
+    coresys.docker.docker.networks.get.return_value = host_network
+
+    with pytest.raises(
+        DockerTimeoutError,
+        match="Timeout disconnecting container test from host network",
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_host_network_disconnect_non_not_found_error(coresys: CoreSys):
+    """Test run raises DockerError when host network disconnect fails with non-404."""
+    host_network = MagicMock(spec=DockerNetwork)
+    host_network.show.return_value = {"Containers": {"abc": {"Name": "test"}}}
+    host_network.disconnect.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}
+    )
+    coresys.docker.docker.networks.get.return_value = host_network
+
+    with pytest.raises(
+        DockerError, match="Can't disconnect container test from host network"
+    ):
+        await coresys.docker.run(
+            "alpine", name="test", tag="latest", network_mode="host"
+        )
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_metadata_timeout(coresys: CoreSys, container: DockerContainer):
+    """Test run() raises DockerTimeoutError when container.show times out after start."""
+    container.show.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout inspecting started container"
+    ):
+        await coresys.docker.run("alpine", name="test", tag="latest")
+
+
+async def test_run_command_image_inspect_timeout(docker: DockerAPI):
+    """Test run_command raises DockerTimeoutError when image inspect times out."""
+    docker.images.inspect.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout inspecting image"):
+        await docker.run_command(image="alpine", command=["echo", "hi"])
+
+
+async def test_repair_timeouts(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, container: DockerContainer
+):
+    """Test repair logs warnings and continues when prune operations time out."""
+    coresys.docker.docker.containers.prune.side_effect = TimeoutError()
+    coresys.docker.docker.images.prune.side_effect = TimeoutError()
+    coresys.docker.docker.images.prune_builds.side_effect = TimeoutError()
+    coresys.docker.docker.volumes.prune.side_effect = TimeoutError()
+    coresys.docker.docker.networks.prune.side_effect = TimeoutError()
+    # prune_networks is called next; make networks.get raise DockerError to keep it short
+    coresys.docker.docker.networks.get.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+
+    await coresys.docker.repair()
+
+    assert "Error for containers prune: timed out" in caplog.text
+    assert "Error for images prune: timed out" in caplog.text
+    assert "Error for builds prune: timed out" in caplog.text
+    assert "Error for volumes prune: timed out" in caplog.text
+    assert "Error for networks prune: timed out" in caplog.text
+
+
+async def test_prune_networks_get_timeout(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test prune_networks raises DockerTimeoutError when networks.get/show times out."""
+    coresys.docker.docker.networks.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout loading network metadata"):
+        await coresys.docker.prune_networks("hassio")
+
+
+async def test_prune_networks_container_get_timeout(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test prune_networks raises DockerTimeoutError when containers.get times out."""
+    network = MagicMock(spec=DockerNetwork)
+    network.show.return_value = {"Containers": {"abc123": {"Name": "test"}}}
+    coresys.docker.docker.networks.get.return_value = network
+    coresys.docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout checking container abc123"):
+        await coresys.docker.prune_networks("hassio")
+
+
+async def test_container_is_initialized_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_is_initialized raises DockerTimeoutError when show times out."""
+    container.show.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout getting container"):
+        await docker.container_is_initialized(
+            "mycontainer", "myimage", AwesomeVersion("1.0")
+        )
+
+
+async def test_container_is_initialized_corrupt_container(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_is_initialized treats a corrupt container as missing."""
+    container.show.side_effect = aiodocker.DockerError(500, CORRUPT_CONTAINER_MESSAGE)
+    assert not await docker.container_is_initialized(
+        "mycontainer", "myimage", AwesomeVersion("1.0")
+    )
+
+    # Read path: reported missing, nothing is removed here
+    container.delete.assert_not_called()
+
+
+async def test_stop_container_get_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test stop_container raises DockerTimeoutError when stop times out."""
+    container.stop.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout stopping container"):
+        await docker.stop_container("mycontainer", timeout=10)
+
+
+async def test_stop_container_not_found(docker: DockerAPI, container: DockerContainer):
+    """Test stop_container raises DockerNotFound when container doesn't exist."""
+    container.stop.side_effect = aiodocker.DockerError(404, {"message": "missing"})
+    with pytest.raises(DockerNotFound):
+        await docker.stop_container("mycontainer", timeout=10)
+
+    container.delete.assert_not_called()
+
+
+async def test_stop_container_already_stopped(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test stop_container treats a 304 (already stopped) as success, not an error."""
+    # Docker returns 304 when the container is already stopped. aiodocker only
+    # raises DockerError for 4xx/5xx responses, so this surfaces as a normal
+    # return from stop() rather than an exception.
+    container.stop.return_value = None
+
+    await docker.stop_container("mycontainer", timeout=10, remove_container=False)
+
+    container.stop.assert_called_once_with(t=10)
+    container.delete.assert_not_called()
+
+
+async def test_start_container_get_timeout(docker: DockerAPI):
+    """Test start_container raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout getting .* for starting up"):
+        await docker.start_container("mycontainer")
+
+
+async def test_start_container_start_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test start_container raises DockerTimeoutError when container.start times out."""
+    container.start.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout starting mycontainer"):
+        await docker.start_container("mycontainer")
+
+
+async def test_start_container_corrupt_container(docker: DockerAPI):
+    """Test start_container treats a corrupt container as missing."""
+    docker.containers.get.side_effect = aiodocker.DockerError(
+        500, CORRUPT_CONTAINER_MESSAGE
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.start_container("mycontainer")
+
+    docker.containers.container.return_value.delete.assert_not_called()
+
+
+async def test_start_container_corrupt_at_start(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test start_container removes a container that turns out corrupt on start.
+
+    With the containerd image store the inspect of a corrupt container
+    succeeds and the error only surfaces from the start call itself.
+    """
+    docker.coresys.run_in_executor = AsyncMock()
+    container.start.side_effect = aiodocker.DockerError(500, CORRUPT_CONTAINER_MESSAGE)
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.start_container("mycontainer")
+
+    container.delete.assert_called_once_with(force=True, v=True)
+
+
+async def test_restart_container_get_timeout(docker: DockerAPI):
+    """Test restart_container raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting container .* for restarting"
+    ):
+        await docker.restart_container("mycontainer", timeout=10)
+
+
+async def test_restart_container_corrupt_container(docker: DockerAPI):
+    """Test restart_container treats a corrupt container as missing."""
+    docker.containers.get.side_effect = aiodocker.DockerError(
+        500, CORRUPT_CONTAINER_MESSAGE
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.restart_container("mycontainer", timeout=10)
+
+
+async def test_restart_container_corrupt_at_restart(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test restart_container removes a container that turns out corrupt on restart.
+
+    With the containerd image store the inspect of a corrupt container
+    succeeds and the error only surfaces from the restart call itself.
+    """
+    docker.coresys.run_in_executor = AsyncMock()
+    container.restart.side_effect = aiodocker.DockerError(
+        500, "RWLayer is unexpectedly nil for container " + CORRUPT_CONTAINER_ID
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.restart_container("mycontainer", timeout=10)
+
+    container.delete.assert_called_once_with(force=True, v=True)
+
+
+async def test_container_logs_get_timeout(docker: DockerAPI):
+    """Test container_logs raises DockerTimeoutError when containers.get times out."""
+    docker.containers.get.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting container .* for logs"
+    ):
+        await docker.container_logs("mycontainer")
+
+
+async def test_container_logs_corrupt_container(docker: DockerAPI):
+    """Test container_logs treats a corrupt container as missing."""
+    docker.containers.get.side_effect = aiodocker.DockerError(
+        500, CORRUPT_CONTAINER_MESSAGE
+    )
+    with pytest.raises(DockerNotFound, match="storage metadata is corrupt"):
+        await docker.container_logs("mycontainer")
+
+
+async def test_container_stats_not_found(docker: DockerAPI):
+    """Test container_stats raises DockerContainerNotFoundError when container doesn't exist."""
+    docker.containers.container.return_value.stats.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "not found"}
+    )
+    with pytest.raises(DockerContainerNotFoundError, match="not found"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_not_running(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerContainerNotRunningError when stopped.
+
+    Docker returns a stub response containing only id/name (no online_cpus in
+    cpu_stats) for a stopped or restarting container instead of an error, same
+    as in one-shot mode.
+    """
+    stub_response = {
+        "id": "abc123",
+        "name": "/mycontainer",
+        "cpu_stats": {"cpu_usage": {"total_usage": 0}},
+        "memory_stats": {},
+    }
+    container.stats = AsyncMock(return_value=[stub_response])
+    with pytest.raises(DockerContainerNotRunningError, match="is not running"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_timeout(docker: DockerAPI, container: DockerContainer):
+    """Test container_stats raises DockerStatsTimeoutError when the stats call times out."""
+    container.stats.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerStatsTimeoutError, match="Timed out getting stats for container"
+    ):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_unknown_error(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerStatsUnknownError on unexpected stats error."""
+    container.stats.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "boom"}
+    )
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_container_stats_one_shot(docker: DockerAPI, container: DockerContainer):
+    """Test container_stats requests an immediate, un-windowed sample without inspecting the container."""
+    stats_payload = {"cpu_stats": {"cpu_usage": {"total_usage": 123}, "online_cpus": 4}}
+    docker.containers.get.reset_mock()
+    docker.containers.container.reset_mock()
+    container.show.reset_mock()
+
+    with patch.object(
+        DockerAPI,
+        "_query_one_shot_stats",
+        AsyncMock(return_value=stats_payload),
+    ) as query_one_shot_stats:
+        result = await docker.container_stats("mycontainer", one_shot=True)
+
+    assert result == stats_payload
+    query_one_shot_stats.assert_called_once_with("mycontainer")
+    docker.containers.get.assert_not_called()
+    docker.containers.container.assert_not_called()
+    container.show.assert_not_called()
+    container.stats.assert_not_called()
+
+
+async def test_container_stats_one_shot_timeout(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsTimeoutError on timeout."""
+    with (
+        patch.object(
+            DockerAPI, "_query_one_shot_stats", AsyncMock(side_effect=TimeoutError())
+        ),
+        pytest.raises(
+            DockerStatsTimeoutError, match="Timed out getting stats for container"
+        ),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_not_found(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerContainerNotFoundError when container doesn't exist."""
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(
+                side_effect=aiodocker.DockerError(
+                    HTTPStatus.NOT_FOUND, {"message": "gone"}
+                )
+            ),
+        ),
+        pytest.raises(DockerContainerNotFoundError, match="not found"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_unknown_error(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsUnknownError on unexpected error."""
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(
+                side_effect=aiodocker.DockerError(
+                    HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "boom"}
+                )
+            ),
+        ),
+        pytest.raises(DockerStatsUnknownError, match="unknown error"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_not_running(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerContainerNotRunningError for a stopped container.
+
+    Docker returns a stub response containing only id/name (no online_cpus in
+    cpu_stats, no memory_stats.usage, no networks) instead of an error for a
+    stopped or restarting container, even in one-shot mode.
+    """
+    stub_response = {
+        "id": "abc123",
+        "name": "/mycontainer",
+        "cpu_stats": {"cpu_usage": {"total_usage": 0}},
+        "memory_stats": {},
+    }
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=stub_response),
+        ),
+        pytest.raises(DockerContainerNotRunningError, match="is not running"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_one_shot_empty_response(docker: DockerAPI):
+    """Test container_stats one-shot raises DockerStatsUnknownError when Docker returns nothing."""
+    with (
+        patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=None),
+        ),
+        pytest.raises(DockerStatsUnknownError, match="unknown error"),
+    ):
+        await docker.container_stats("mycontainer", one_shot=True)
+
+
+async def test_container_stats_empty_response(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_stats raises DockerStatsUnknownError when Docker returns no samples."""
+    container.stats = AsyncMock(return_value=[])
+    with pytest.raises(DockerStatsUnknownError, match="unknown error"):
+        await docker.container_stats("mycontainer")
+
+
+async def test_query_one_shot_stats(docker: DockerAPI):
+    """Test _query_one_shot_stats queries Docker directly for a one-shot sample."""
+    stats_payload = {"cpu_stats": {"online_cpus": 4}}
+
+    class MockResponse:
+        async def json(self, *, content_type=None):
+            return stats_payload
+
+    class MockQueryCM:
+        async def __aenter__(self):
+            return MockResponse()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+    query_mock = MagicMock(return_value=MockQueryCM())
+    docker.docker._query = query_mock  # pylint: disable=protected-access
+
+    result = await docker._query_one_shot_stats(  # pylint: disable=protected-access
+        "mycontainer"
+    )
+
+    assert result == stats_payload
+    query_mock.assert_called_once_with(
+        "containers/mycontainer/stats",
+        params={"stream": "0", "one-shot": "1"},
+    )
+
+
+async def test_container_run_inside_get_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_run_inside raises DockerTimeoutError when exec times out."""
+    container.exec.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout running command in container"
+    ):
+        await docker.container_run_inside("mycontainer", "echo hi")
+
+
+async def test_container_run_inside_exec_timeout(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test container_run_inside raises DockerTimeoutError when exec stream times out."""
+    container.exec.side_effect = TimeoutError()
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout running command in container"
+    ):
+        await docker.container_run_inside("mycontainer", "echo hi")
+
+
+async def test_remove_image_latest_timeout(docker: DockerAPI):
+    """Test remove_image raises DockerTimeoutError when deleting latest tag times out."""
+    docker.images.delete.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout removing image .*:latest"):
+        await docker.remove_image("myimage", AwesomeVersion("1.0"), latest=True)
+
+
+async def test_remove_image_version_timeout(docker: DockerAPI):
+    """Test remove_image raises DockerTimeoutError when deleting version tag times out."""
+    # latest delete succeeds (raises NOT_FOUND which is suppressed), version times out
+    docker.images.delete.side_effect = [
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "not found"}),
+        TimeoutError(),
+    ]
+    with pytest.raises(DockerTimeoutError, match="Timeout removing image .*:1.0"):
+        await docker.remove_image("myimage", AwesomeVersion("1.0"), latest=True)
+
+
+async def test_cleanup_old_images_inspect_timeout(docker: DockerAPI):
+    """Test cleanup_old_images raises DockerTimeoutError when inspect times out."""
+    docker.images.inspect.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout getting myimage for cleanup"):
+        await docker.cleanup_old_images("myimage", AwesomeVersion("1.0"))
+
+
+async def test_cleanup_old_images_list_timeout(docker: DockerAPI):
+    """Test cleanup_old_images raises DockerTimeoutError when image list times out."""
+    docker.images.inspect.return_value = {"Id": "abc123"}
+    docker.images.list.side_effect = TimeoutError()
+    with pytest.raises(DockerTimeoutError, match="Timeout listing images for cleanup"):
+        await docker.cleanup_old_images("myimage", AwesomeVersion("1.0"))
+
+
+async def test_run_command_with_cap_drop(docker: DockerAPI):
+    """Test dropped capabilities are passed to the container host config."""
+    result = await docker.run_command(
+        image="alpine",
+        command="test",
+        cap_add=[Capabilities.SYS_TIME],
+        cap_drop=[Capabilities.NET_RAW],
+    )
+    assert result.exit_code == 0
+
+    host_config = docker.containers.create.call_args.args[0]["HostConfig"]
+    assert host_config["CapAdd"] == ["SYS_TIME"]
+    assert host_config["CapDrop"] == ["NET_RAW"]

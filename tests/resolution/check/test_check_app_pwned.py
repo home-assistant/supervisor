@@ -7,7 +7,8 @@ from supervisor.const import AppState, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import PwnedSecret
 from supervisor.resolution.checks.app_pwned import CheckAppPwned
-from supervisor.resolution.const import IssueType, SuggestionType
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Issue
 
 
 class FakeApp:
@@ -22,7 +23,7 @@ class FakeApp:
 async def test_base(coresys: CoreSys):
     """Test check basics."""
     app_pwned = CheckAppPwned(coresys)
-    assert app_pwned.slug == "addon_pwned"
+    assert app_pwned.slug == "app_pwned"
     assert app_pwned.enabled
 
 
@@ -68,10 +69,14 @@ async def test_approve(coresys: CoreSys, supervisor_internet):
     app.pwned.add("123456")
 
     coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
-    assert await app_pwned.approve_check(reference=app.slug)
+    assert await app_pwned.approve_check(
+        Issue(IssueType.PWNED, ContextType.ADDON, reference=app.slug)
+    )
 
     coresys.security.verify_secret = AsyncMock(return_value=None)
-    assert not await app_pwned.approve_check(reference=app.slug)
+    assert not await app_pwned.approve_check(
+        Issue(IssueType.PWNED, ContextType.ADDON, reference=app.slug)
+    )
 
 
 async def test_with_global_disable(coresys: CoreSys, caplog):
@@ -87,7 +92,7 @@ async def test_with_global_disable(coresys: CoreSys, caplog):
     coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
     await app_pwned.run_check.__wrapped__(app_pwned)
     assert not coresys.security.verify_secret.called
-    assert "Skipping addon_pwned, pwned is globally disabled" in caplog.text
+    assert "Skipping app_pwned, pwned is globally disabled" in caplog.text
 
 
 async def test_did_run(coresys: CoreSys):

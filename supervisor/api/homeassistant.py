@@ -14,20 +14,13 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_BACKUP,
     ATTR_BACKUPS_EXCLUDE_DATABASE,
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
     ATTR_BOOT,
-    ATTR_CPU_PERCENT,
     ATTR_DUPLICATE_LOG_FILE,
     ATTR_IMAGE,
     ATTR_IP_ADDRESS,
     ATTR_JOB_ID,
     ATTR_MACHINE,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
+    ATTR_ONE_SHOT,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
@@ -40,7 +33,13 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIDBMigrationInProgress, APIError
 from ..validate import docker_image, network_port, version_tag
 from .const import ATTR_BACKGROUND, ATTR_FORCE, ATTR_SAFE_MODE
-from .utils import api_process, api_validate, background_task
+from .utils import (
+    api_process,
+    api_return_stats,
+    api_validate,
+    background_task,
+    require_running_system,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -161,23 +160,20 @@ class APIHomeAssistant(CoreSysAttributes):
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information."""
-        stats = await self.sys_homeassistant.core.stats()
-        if not stats:
-            raise APIError("No stats available")
-
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+        """Return resource information for v2 contract (always one-shot)."""
+        stats = await self.sys_homeassistant.core.stats(one_shot=True)
+        return api_return_stats(stats, legacy=False)
 
     @api_process
+    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return resource information."""
+        one_shot = ATTR_ONE_SHOT in request.query
+        stats = await self.sys_homeassistant.core.stats(one_shot=one_shot)
+
+        return api_return_stats(stats, legacy=True)
+
+    @api_process
+    @require_running_system
     async def update(self, request: web.Request) -> dict[str, str] | None:
         """Update Home Assistant."""
         body = await api_validate(SCHEMA_UPDATE, request)
@@ -205,11 +201,13 @@ class APIHomeAssistant(CoreSysAttributes):
         return await asyncio.shield(self.sys_homeassistant.core.stop())
 
     @api_process
+    @require_running_system
     def start(self, request: web.Request) -> Awaitable[None]:
         """Start Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.core.start())
 
     @api_process
+    @require_running_system
     async def restart(self, request: web.Request) -> None:
         """Restart Home Assistant."""
         body = await api_validate(SCHEMA_RESTART, request)
@@ -220,6 +218,7 @@ class APIHomeAssistant(CoreSysAttributes):
         )
 
     @api_process
+    @require_running_system
     async def rebuild(self, request: web.Request) -> None:
         """Rebuild Home Assistant."""
         body = await api_validate(SCHEMA_RESTART, request)

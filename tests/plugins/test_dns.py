@@ -15,7 +15,12 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.dns import DockerDNS
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.plugins.dns import HostEntry, PluginDns
-from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+)
 from supervisor.resolution.data import Issue, Suggestion
 
 
@@ -144,6 +149,28 @@ async def test_reset(coresys: CoreSys):
                 names=["observer", "observer.local.hass.io"],
             ),
         ]
+
+
+@pytest.mark.parametrize(
+    ("error_num", "unhealthy"),
+    [(errno.EBUSY, False), (errno.EBADMSG, True)],
+)
+async def test_reset_hosts_unlink_oserror(
+    coresys: CoreSys, error_num: int, unhealthy: bool
+):
+    """Test reset does not fail if hosts cannot be removed but checks OSError."""
+    err = OSError()
+    err.errno = error_num
+
+    with (
+        patch.object(type(coresys.plugins.dns.hosts), "unlink", side_effect=err),
+        patch.object(type(coresys.plugins.dns), "write_hosts"),
+    ):
+        await coresys.plugins.dns.reset()
+
+    assert (
+        UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
+    ) is unhealthy
 
 
 async def test_loop_detection_on_failure(coresys: CoreSys, container: DockerContainer):

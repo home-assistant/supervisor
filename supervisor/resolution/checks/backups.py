@@ -4,6 +4,7 @@ from ...backups.const import BackupType
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Issue
 from .base import CheckBase
 
 
@@ -17,14 +18,14 @@ class CheckBackups(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
-        if await self.approve_check():
+        if await self.approve_check(Issue(self.issue, self.context)):
             self.sys_resolution.create_issue(
                 IssueType.NO_CURRENT_BACKUP,
                 ContextType.SYSTEM,
                 suggestions=[SuggestionType.CREATE_FULL_BACKUP],
             )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
         return (
             len(

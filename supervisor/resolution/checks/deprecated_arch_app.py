@@ -3,6 +3,7 @@
 from ...const import AppStage, CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Issue
 from .base import CheckBase
 
 
@@ -17,7 +18,7 @@ class CheckDeprecatedArchApp(CheckBase):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return "deprecated_arch_addon"
+        return "deprecated_arch_app"
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
@@ -29,18 +30,18 @@ class CheckDeprecatedArchApp(CheckBase):
                 app.has_deprecated_machine and not app.has_supported_machine
             ):
                 self.sys_resolution.create_issue(
-                    IssueType.DEPRECATED_ARCH_ADDON,
+                    IssueType.DEPRECATED_ARCH_APP,
                     ContextType.ADDON,
                     reference=app.slug,
                     suggestions=[SuggestionType.EXECUTE_REMOVE],
                 )
 
-    async def approve_check(self, reference: str | None = None) -> bool:
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
-        if not reference:
+        if not issue.reference:
             return False
 
-        app = self.sys_apps.get_local_only(reference)
+        app = self.sys_apps.get_local_only(issue.reference)
         return (
             app is not None
             and app.stage != AppStage.DEPRECATED
@@ -53,7 +54,7 @@ class CheckDeprecatedArchApp(CheckBase):
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DEPRECATED_ARCH_ADDON
+        return IssueType.DEPRECATED_ARCH_APP
 
     @property
     def context(self) -> ContextType:

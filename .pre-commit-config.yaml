@@ -26,9 +26,16 @@ repos:
       # pyenv and/or virtualenv activated; it may not have been e.g. if
       # committing from a GUI tool that was not launched from an activated
       # shell.
+      #
+      # mypy is a whole-program checker, so run it against the entire
+      # supervisor package (matching CI) in a single serial invocation rather
+      # than against the changed files. See python/mypy#13916 for why running
+      # mypy per-file under pre-commit is problematic.
       - id: mypy
         name: mypy
-        entry: script/run-in-env.sh mypy --ignore-missing-imports
+        entry: script/run-in-env.sh mypy supervisor
         language: script
         types_or: [python, pyi]
         files: ^supervisor/.+\.(py|pyi)$
+        pass_filenames: false
+        require_serial: true

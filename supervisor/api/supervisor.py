@@ -13,11 +13,8 @@ from ..const import (
     ATTR_APPS_REPOSITORIES,
     ATTR_ARCH,
     ATTR_AUTO_UPDATE,
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
     ATTR_CHANNEL,
     ATTR_COUNTRY,
-    ATTR_CPU_PERCENT,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DETECT_BLOCKING_IO,
@@ -27,12 +24,8 @@ from ..const import (
     ATTR_ICON,
     ATTR_IP_ADDRESS,
     ATTR_LOGGING,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
     ATTR_NAME,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
+    ATTR_ONE_SHOT,
     ATTR_REPOSITORY,
     ATTR_SLUG,
     ATTR_STATE,
@@ -54,7 +47,7 @@ from ..utils.sentry import close_sentry, init_sentry
 from ..utils.validate import validate_timezone
 from ..validate import version_tag, wait_boot
 from .const import CONTENT_TYPE_TEXT, DetectBlockingIO
-from .utils import api_process, api_process_raw, api_validate
+from .utils import api_process, api_process_raw, api_return_stats, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -62,9 +55,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannel),
-        vol.Optional(ATTR_APPS_REPOSITORIES): repositories,
         vol.Optional(ATTR_TIMEZONE): str,
-        vol.Optional(ATTR_WAIT_BOOT): wait_boot,
         vol.Optional(ATTR_LOGGING): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
@@ -78,20 +69,21 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
+SCHEMA_OPTIONS_V1 = SCHEMA_OPTIONS.extend(
+    {
+        vol.Optional(ATTR_APPS_REPOSITORIES): repositories,
+        vol.Optional(ATTR_WAIT_BOOT): wait_boot,
+    }
+)
+
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 
 
 class APISupervisor(CoreSysAttributes):
     """Handle RESTful API for Supervisor functions."""
 
-    @api_process
-    async def ping(self, request: web.Request) -> bool:
-        """Return ok for signal that the API is ready."""
-        return True
-
-    @api_process
-    async def info(self, request: web.Request) -> dict[str, Any]:
-        """Return host information."""
+    def _info_data(self) -> dict[str, Any]:
+        """Build supervisor info response."""
         return {
             ATTR_VERSION: self.sys_supervisor.version,
             ATTR_VERSION_LATEST: self.sys_supervisor.latest_version,
@@ -113,31 +105,78 @@ class APISupervisor(CoreSysAttributes):
                 feature.value: self.sys_config.feature_flags.get(feature, False)
                 for feature in FeatureFlag
             },
-            # Deprecated
-            ATTR_WAIT_BOOT: self.sys_config.wait_boot,
-            ATTR_ADDONS: [
-                {
-                    ATTR_NAME: app.name,
-                    ATTR_SLUG: app.slug,
-                    ATTR_VERSION: app.version,
-                    ATTR_VERSION_LATEST: app.latest_version,
-                    ATTR_UPDATE_AVAILABLE: app.need_update,
-                    ATTR_STATE: app.state,
-                    ATTR_REPOSITORY: app.repository,
-                    ATTR_ICON: app.with_icon,
-                }
-                for app in self.sys_apps.local.values()
-            ],
-            ATTR_APPS_REPOSITORIES: [
-                {ATTR_NAME: store.name, ATTR_SLUG: store.slug}
-                for store in self.sys_store.all
-            ],
         }
 
     @api_process
+    async def ping(self, request: web.Request) -> bool:
+        """Return ok for signal that the API is ready."""
+        return True
+
+    @api_process
+    async def info(self, request: web.Request) -> dict[str, Any]:
+        """Return host information for v2 contract."""
+        return self._info_data()
+
+    @api_process
+    async def info_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return host information."""
+        data = self._info_data()
+        # Deprecated
+        data[ATTR_WAIT_BOOT] = self.sys_config.wait_boot
+        data[ATTR_ADDONS] = [
+            {
+                ATTR_NAME: app.name,
+                ATTR_SLUG: app.slug,
+                ATTR_VERSION: app.version,
+                ATTR_VERSION_LATEST: app.latest_version,
+                ATTR_UPDATE_AVAILABLE: app.need_update,
+                ATTR_STATE: app.state,
+                ATTR_REPOSITORY: app.repository,
+                ATTR_ICON: app.with_icon,
+            }
+            for app in self.sys_apps.local.values()
+        ]
+        data[ATTR_APPS_REPOSITORIES] = [
+            {ATTR_NAME: store.name, ATTR_SLUG: store.slug}
+            for store in self.sys_store.all
+        ]
+        return data
+
+    @api_process
     async def options(self, request: web.Request) -> None:
-        """Set Supervisor options."""
+        """Set Supervisor options for v2 contract."""
         body = await api_validate(SCHEMA_OPTIONS, request)
+        await self._options(body)
+
+        await self.sys_updater.save_data()
+        await self.sys_config.save_data()
+
+        await self.sys_resolution.evaluate.evaluate_system()
+
+    @api_process
+    async def options_v1(self, request: web.Request) -> None:
+        """Set Supervisor options."""
+        body = await api_validate(SCHEMA_OPTIONS_V1, request)
+        await self._options(body)
+
+        if ATTR_WAIT_BOOT in body:
+            # Deprecated
+            self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
+
+        # Save changes before processing apps in case of errors
+        await self.sys_updater.save_data()
+        await self.sys_config.save_data()
+
+        # Remove: 2022.9
+        if ATTR_APPS_REPOSITORIES in body:
+            await asyncio.shield(
+                self.sys_store.update_repositories(set(body[ATTR_APPS_REPOSITORIES]))
+            )
+
+        await self.sys_resolution.evaluate.evaluate_system()
+
+    async def _options(self, body: dict[str, Any]) -> None:
+        """Apply supervisor options."""
 
         # Timezone must be first as validation is incomplete
         # If a timezone is present we do that validation after in the executor
@@ -187,41 +226,23 @@ class APISupervisor(CoreSysAttributes):
                 self.sys_config.detect_blocking_io = False
                 BlockBusterManager.deactivate()
 
-        # Deprecated
-        if ATTR_WAIT_BOOT in body:
-            self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
-
         if ATTR_FEATURE_FLAGS in body:
             for feature, enabled in body[ATTR_FEATURE_FLAGS].items():
                 self.sys_config.set_feature_flag(feature, enabled)
 
-        # Save changes before processing apps in case of errors
-        await self.sys_updater.save_data()
-        await self.sys_config.save_data()
-
-        # Remove: 2022.9
-        if ATTR_APPS_REPOSITORIES in body:
-            await asyncio.shield(
-                self.sys_store.update_repositories(set(body[ATTR_APPS_REPOSITORIES]))
-            )
-
-        await self.sys_resolution.evaluate.evaluate_system()
-
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information."""
-        stats = await self.sys_supervisor.stats()
+        """Return resource information for v2 contract (always one-shot)."""
+        stats = await self.sys_supervisor.stats(one_shot=True)
+        return api_return_stats(stats, legacy=False)
 
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+    @api_process
+    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return resource information."""
+        one_shot = ATTR_ONE_SHOT in request.query
+        stats = await self.sys_supervisor.stats(one_shot=one_shot)
+
+        return api_return_stats(stats, legacy=True)
 
     @api_process
     async def update(self, request: web.Request) -> None:
@@ -241,7 +262,11 @@ class APISupervisor(CoreSysAttributes):
         if not self.sys_dev:
             version = self.sys_updater.version_supervisor
 
-        await asyncio.shield(self.sys_supervisor.update(version))
+        # update() is detached: this may return a task already started by a
+        # concurrent call (manual or auto-update) instead of a new one. Await
+        # it so this request reflects the real (possibly shared) result.
+        if task := await self.sys_supervisor.update(version):
+            await asyncio.shield(task)
 
     @api_process
     async def reload(self, request: web.Request) -> None:

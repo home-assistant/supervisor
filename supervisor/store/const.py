@@ -3,12 +3,7 @@
 from enum import StrEnum
 from pathlib import Path
 
-from ..const import (
-    REPOSITORY_CORE,
-    REPOSITORY_LOCAL,
-    SUPERVISOR_DATA,
-    URL_HASSIO_ADDONS,
-)
+from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, SUPERVISOR_DATA, URL_HASSIO_APPS
 
 FILE_HASSIO_STORE = Path(SUPERVISOR_DATA, "store.json")
 """Repository type definitions for the store."""
@@ -22,7 +17,7 @@ class BuiltinRepository(StrEnum):
 
     # Git-based built-in repositories
     CORE = REPOSITORY_CORE
-    COMMUNITY_ADDONS = "https://github.com/hassio-addons/repository"
+    COMMUNITY_APPS = "https://github.com/hassio-addons/repository"
     ESPHOME = "https://github.com/esphome/home-assistant-addon"
     MUSIC_ASSISTANT = "https://github.com/music-assistant/home-assistant-addon"
 
@@ -32,5 +27,19 @@ class BuiltinRepository(StrEnum):
         if self == BuiltinRepository.LOCAL:
             raise RuntimeError("Local repository does not have a git URL")
         if self == BuiltinRepository.CORE:
-            return URL_HASSIO_ADDONS
+            return URL_HASSIO_APPS
         return self.value  # For URL-based repos, value is the URL
+
+    @property
+    def slug(self) -> str:
+        """Return fixed slug for this built-in repository."""
+        if self in (BuiltinRepository.LOCAL, BuiltinRepository.CORE):
+            return self.value
+        if self == BuiltinRepository.COMMUNITY_APPS:
+            return "a0d7b954"
+        if self == BuiltinRepository.ESPHOME:
+            return "5c53de3b"
+        if self == BuiltinRepository.MUSIC_ASSISTANT:
+            return "d5369777"
+
+        raise RuntimeError(f"Unknown built-in repository: {self}")

@@ -10,7 +10,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.apps.app import App
-from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState
+from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState, FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -175,37 +175,6 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
         rebuild.assert_not_called()
 
 
-@pytest.mark.usefixtures("no_job_throttle", "supervisor_internet")
-async def test_reload_updater_triggers_supervisor_update(
-    tasks: Tasks, coresys: CoreSys, mock_update_data: MockResponse
-):
-    """Test an updater reload triggers a supervisor update if there is one."""
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    await coresys.core.set_state(CoreState.RUNNING)
-
-    with (
-        patch.object(
-            Supervisor,
-            "version",
-            new=PropertyMock(return_value=AwesomeVersion("2024.10.0")),
-        ),
-        patch.object(Supervisor, "update") as update,
-    ):
-        # Set supervisor's version initially
-        await coresys.updater.reload()
-        assert coresys.supervisor.latest_version == AwesomeVersion("2024.10.0")
-
-        # No change in version means no update
-        await tasks._reload_updater()
-        update.assert_not_called()
-
-        # Version change causes an update
-        version_data = await mock_update_data.text()
-        mock_update_data.update_text(version_data.replace("2024.10.0", "2024.10.1"))
-        await tasks._reload_updater()
-        update.assert_called_once()
-
-
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_core_backup_cleanup(tasks: Tasks, coresys: CoreSys):
     """Test core backup task cleans up old backup files."""
@@ -249,12 +218,7 @@ async def test_update_dns_skipped_when_auto_update_disabled(
 async def test_scheduled_reload_updater_triggers_one_supervisor_update(
     tasks: Tasks, coresys: CoreSys, mock_update_data: MockResponse
 ):
-    """Test scheduled reload updater triggers exactly one supervisor update.
-
-    Regression test: previously _update_supervisor ran on a separate schedule
-    in addition to being called from _reload_updater, causing duplicate updates.
-    Now only _reload_updater triggers the supervisor auto-update.
-    """
+    """Test the scheduled updater reload triggers exactly one supervisor update."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await coresys.core.set_state(CoreState.RUNNING)
 
@@ -291,6 +255,10 @@ async def test_scheduled_reload_updater_triggers_one_supervisor_update(
             ]
             await asyncio.gather(*pending)
 
+            async with asyncio.timeout(5):
+                while not update.called:
+                    await asyncio.sleep(0)
+
             # Verify update was triggered exactly once
             update.assert_called_once()
         finally:
@@ -300,14 +268,23 @@ async def test_scheduled_reload_updater_triggers_one_supervisor_update(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
+@pytest.mark.parametrize(
+    ("websocket_v2_enabled", "expected_message_type", "expected_slug_key"),
+    [(False, "hassio/update/addon", "addon"), (True, "hassio/update/app", "app")],
+)
 async def test_update_apps_auto_update_success(
     tasks: Tasks,
-    coresys: CoreSys,
     ha_ws_client: AsyncMock,
     install_app_example: App,
+    websocket_v2_enabled: bool,
+    expected_message_type: str,
+    expected_slug_key: str,
 ):
     """Test that an eligible app is auto-updated via websocket command."""
-    await coresys.core.set_state(CoreState.RUNNING)
+    await tasks.sys_core.set_state(CoreState.RUNNING)
+    tasks.sys_config.set_feature_flag(
+        FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, websocket_v2_enabled
+    )
 
     # Set up the app as eligible for auto-update
     install_app_example.auto_update = True
@@ -326,8 +303,8 @@ async def test_update_apps_auto_update_success(
 
         ha_ws_client.async_send_command.assert_any_call(
             {
-                "type": "hassio/update/addon",
-                "addon": install_app_example.slug,
+                "type": expected_message_type,
+                expected_slug_key: install_app_example.slug,
                 "backup": True,
             }
         )

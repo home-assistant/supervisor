@@ -4,6 +4,7 @@ from importlib import import_module
 import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HassioError
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..utils.sentry import async_capture_exception
@@ -12,6 +13,26 @@ from .fixups.base import FixupBase
 from .validate import get_valid_modules
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+async def apply_fixup_safely(
+    fix: FixupBase, suggestion: Suggestion | None = None
+) -> None:
+    """Apply a fixup without letting its failure propagate.
+
+    For the unattended paths (autofix, bus events): a HassioError is an
+    environmental/config failure — reported to Sentry at the raise site
+    if warranted, so just log it. Everything else is a Supervisor bug
+    and is captured. User-applied suggestions do not go through here;
+    their errors propagate to the API caller.
+    """
+    try:
+        await fix(suggestion)
+    except HassioError as err:
+        _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
+    except Exception as err:  # pylint: disable=broad-except
+        _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
+        await async_capture_exception(err)
 
 
 class ResolutionFixup(CoreSysAttributes):
@@ -51,11 +72,7 @@ class ResolutionFixup(CoreSysAttributes):
         for fix in self.all_fixes:
             if not fix.auto:
                 continue
-            try:
-                await fix()
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
-                await async_capture_exception(err)
+            await apply_fixup_safely(fix)
 
         _LOGGER.info("System autofix complete")
 

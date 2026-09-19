@@ -5,9 +5,10 @@ from pathlib import Path
 
 from ...coresys import CoreSys
 from ...dbus.udisks2.data import DeviceSpecification
-from ...exceptions import DBusError, HostError, ResolutionFixupError
+from ...exceptions import DBusError, HassOSDataDiskError, HostError
 from ...os.const import FILESYSTEM_LABEL_DATA_DISK, FILESYSTEM_LABEL_OLD_DATA_DISK
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -21,19 +22,19 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemAdoptDataDisk(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
-        if not reference:
+        if not suggestion.reference:
             return
 
         if not (
             new_resolved := await self.sys_dbus.udisks2.resolve_device(
-                DeviceSpecification(path=Path(reference))
+                DeviceSpecification(path=Path(suggestion.reference))
             )
         ):
             _LOGGER.info(
                 "Data disk at %s with name conflict was removed, skipping adopt",
-                reference,
+                suggestion.reference,
             )
             return
 
@@ -47,21 +48,21 @@ class FixupSystemAdoptDataDisk(FixupBase):
             )
             or not current_resolved[0].filesystem
         ):
-            raise ResolutionFixupError(
+            raise HassOSDataDiskError(
                 "Cannot resolve current data disk for rename", _LOGGER.error
             )
 
         if new_resolved[0].id_label != FILESYSTEM_LABEL_DATA_DISK:
             _LOGGER.info(
                 "Renaming disabled data disk at %s to %s to activate it",
-                reference,
+                suggestion.reference,
                 FILESYSTEM_LABEL_DATA_DISK,
             )
             try:
                 await new_resolved[0].filesystem.set_label(FILESYSTEM_LABEL_DATA_DISK)
             except DBusError as err:
-                raise ResolutionFixupError(
-                    f"Could not rename filesystem at {reference}: {err!s}",
+                raise HassOSDataDiskError(
+                    f"Could not rename filesystem at {suggestion.reference}: {err!s}",
                     _LOGGER.error,
                 ) from err
 
@@ -69,14 +70,14 @@ class FixupSystemAdoptDataDisk(FixupBase):
             "Renaming current data disk at %s to %s so new data disk at %s becomes primary ",
             self.sys_dbus.agent.datadisk.current_device,
             FILESYSTEM_LABEL_OLD_DATA_DISK,
-            reference,
+            suggestion.reference,
         )
         try:
             await current_resolved[0].filesystem.set_label(
                 FILESYSTEM_LABEL_OLD_DATA_DISK
             )
         except DBusError as err:
-            raise ResolutionFixupError(
+            raise HassOSDataDiskError(
                 f"Could not rename filesystem at {current.as_posix()}: {err!s}",
                 _LOGGER.error,
             ) from err

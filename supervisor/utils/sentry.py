@@ -79,6 +79,22 @@ async def async_capture_exception(err: BaseException) -> None:
         )
 
 
+async def async_capture_message(
+    msg: str,
+    level: Literal["fatal", "critical", "error", "warning", "info", "debug"]
+    | None = "warning",
+) -> None:
+    """Capture a message and send to sentry.
+
+    Safe to call in event loop.
+    """
+    if sentry_sdk.is_initialized():
+        await asyncio.get_running_loop().run_in_executor(
+            None,
+            partial(sentry_sdk.capture_message, msg, level=level),
+        )
+
+
 def fire_and_forget_capture_message(
     msg: str,
     level: Literal["fatal", "critical", "error", "warning", "info", "debug"]

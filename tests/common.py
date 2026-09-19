@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from typing import Any, Self
 
+from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
 from supervisor.apps.app import App
@@ -239,3 +240,40 @@ class AsyncIterator:
             return next(self.iter)
         except StopIteration:
             raise StopAsyncIteration from None
+
+
+def mount_start_transient_unit_call(
+    *,
+    automount_unit: str,
+    mount_unit: str,
+    where: str,
+    description: str,
+    what: str,
+    fstype: str,
+    options: str | None,
+) -> tuple:
+    """Build the expected StartTransientUnit call for a mount unit pair.
+
+    The .automount is the primary unit (its start job arms the autofs
+    trigger); the .mount is created alongside as an aux unit.
+    """
+    mount_properties: list[tuple[str, Variant]] = []
+    if options is not None:
+        mount_properties.append(("Options", Variant("s", options)))
+    mount_properties += [
+        ("Type", Variant("s", fstype)),
+        ("Description", Variant("s", description)),
+        ("What", Variant("s", what)),
+        ("TimeoutUSec", Variant("t", 35000000)),
+        ("LazyUnmount", Variant("b", True)),
+        ("StartLimitIntervalUSec", Variant("t", 0)),
+    ]
+    return (
+        automount_unit,
+        "fail",
+        [
+            ("Description", Variant("s", f"{description} (automount)")),
+            ("Where", Variant("s", where)),
+        ],
+        [(mount_unit, mount_properties)],
+    )

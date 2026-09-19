@@ -18,7 +18,15 @@ from securetar import SecureTarArchive, SecureTarFile
 from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel
-from supervisor.const import ATTR_ADVANCED, ATTR_LOCATION, AppBoot, AppState, BusEvent
+from supervisor.const import (
+    ATTR_ADVANCED,
+    ATTR_LOCATION,
+    ATTR_PORTS,
+    AppBoot,
+    AppState,
+    BusEvent,
+    FeatureFlag,
+)
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -26,15 +34,24 @@ from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AppFileReadError,
+    AppNotRunningError,
     AppPortConflict,
     AppPrePostBackupCommandReturnedError,
+    AppsError,
     AppsJobError,
+    AppStatsTimeoutError,
     AppUnknownError,
     AudioUpdateError,
+    DockerAPIError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
+    DockerError,
     DockerRegistryAuthError,
+    DockerStatsTimeoutError,
     HassioError,
 )
 from supervisor.hardware.helper import HwHelper
+from supervisor.homeassistant.const import WSType
 from supervisor.ingress import Ingress
 from supervisor.resolution.const import (
     ContextType,
@@ -136,30 +153,68 @@ async def test_app_state_listener(coresys: CoreSys, install_app_ssh: App) -> Non
 
     with patch.object(App, "watchdog_container"):
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
         )
         assert install_app_ssh.state == AppState.STARTED
 
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
         assert install_app_ssh.state == AppState.STOPPED
 
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
         )
         assert install_app_ssh.state == AppState.STARTED
 
-        await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
-        )
+        await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.FAILED)
         assert install_app_ssh.state == AppState.ERROR
 
         # Test other apps are ignored
         await _fire_test_event(
-            coresys, "addon_local_non_installed", ContainerState.RUNNING
+            coresys, "app_local_non_installed", ContainerState.RUNNING
         )
         assert install_app_ssh.state == AppState.ERROR
+
+
+@pytest.mark.parametrize(
+    ("websocket_v2_enabled", "expected_event"),
+    [(False, "addon"), (True, "app")],
+)
+async def test_app_state_event_name_compatibility(
+    install_app_ssh: App,
+    ha_ws_client: AsyncMock,
+    websocket_v2_enabled: bool,
+    expected_event: str,
+) -> None:
+    """Test app state event uses legacy/new metadata based on WS v2 feature flag."""
+    install_app_ssh.sys_config.set_feature_flag(
+        FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, websocket_v2_enabled
+    )
+
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(DockerApp, "current_state", return_value=ContainerState.UNKNOWN),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.load()
+        ha_ws_client.async_send_command.reset_mock()
+
+        await _fire_test_event(
+            install_app_ssh.coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
+        await asyncio.sleep(0)
+
+    ha_ws_client.async_send_command.assert_any_call(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": expected_event,
+                "slug": TEST_ADDON_SLUG,
+                "state": AppState.STARTED,
+            },
+        }
+    )
 
 
 async def test_app_failed_logs_exit_code(
@@ -176,7 +231,7 @@ async def test_app_failed_logs_exit_code(
         caplog.clear()
         await _fire_test_event(
             coresys,
-            f"addon_{TEST_ADDON_SLUG}",
+            f"app_{TEST_ADDON_SLUG}",
             ContainerState.FAILED,
             exit_code=143,
         )
@@ -190,7 +245,7 @@ async def test_app_failed_logs_exit_code(
         caplog.clear()
         await _fire_test_event(
             coresys,
-            f"addon_{TEST_ADDON_SLUG}",
+            f"app_{TEST_ADDON_SLUG}",
             ContainerState.FAILED,
             exit_code=1,
         )
@@ -199,9 +254,7 @@ async def test_app_failed_logs_exit_code(
 
         # No exit code available: stay silent
         caplog.clear()
-        await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
-        )
+        await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.FAILED)
         assert not any(
             "exit code" in r.message or "SIGTERM" in r.message for r in caplog.records
         )
@@ -227,7 +280,7 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         # Restart if it becomes unhealthy
         current_state.return_value = ContainerState.UNHEALTHY
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY
         )
         restart.assert_called_once()
         start.assert_not_called()
@@ -239,7 +292,7 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         with patch.object(DockerApp, "stop") as stop:
             await _fire_test_event(
                 coresys,
-                f"addon_{TEST_ADDON_SLUG}",
+                f"app_{TEST_ADDON_SLUG}",
                 ContainerState.FAILED,
                 exit_code=1,
             )
@@ -253,7 +306,7 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         current_state.return_value = ContainerState.HEALTHY
         await _fire_test_event(
             coresys,
-            f"addon_{TEST_ADDON_SLUG}",
+            f"app_{TEST_ADDON_SLUG}",
             ContainerState.FAILED,
             exit_code=1,
         )
@@ -263,7 +316,7 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         # Other apps ignored
         current_state.return_value = ContainerState.UNHEALTHY
         await _fire_test_event(
-            coresys, "addon_local_non_installed", ContainerState.UNHEALTHY
+            coresys, "app_local_non_installed", ContainerState.UNHEALTHY
         )
         restart.assert_not_called()
         start.assert_not_called()
@@ -292,7 +345,7 @@ async def test_watchdog_port_conflict_does_not_retry(
         caplog.clear()
         await _fire_test_event(
             coresys,
-            f"addon_{TEST_ADDON_SLUG}",
+            f"app_{TEST_ADDON_SLUG}",
             ContainerState.FAILED,
             exit_code=1,
         )
@@ -324,20 +377,20 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
     ):
         # Do not restart when app stopped by user
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
         )
         await install_app_ssh.stop()
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
         restart.assert_not_called()
 
         # Do restart app if it stops and user didn't do it
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
         )
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
         restart.assert_called_once()
 
@@ -365,7 +418,7 @@ async def test_listener_attached_on_install(coresys: CoreSys):
     # Normally this would be defaulted to False on start of the app but test skips that
     coresys.apps.get_local_only(TEST_ADDON_SLUG).watchdog = False
 
-    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     assert coresys.apps.get(TEST_ADDON_SLUG).state == AppState.STARTED
 
 
@@ -405,7 +458,7 @@ async def test_watchdog_during_attach(
 
         await app.load()
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
 
         assert restart.call_count == restart_count
@@ -489,7 +542,7 @@ async def test_start(coresys: CoreSys, install_app_ssh: App) -> None:
     start_task = await install_app_ssh.start()
     assert start_task
 
-    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await start_task
     assert install_app_ssh.state == AppState.STARTED
 
@@ -512,12 +565,12 @@ async def test_start_wait_healthcheck(
     start_task = await install_app_ssh.start()
     assert start_task
 
-    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
 
     assert not start_task.done()
     assert install_app_ssh.state == AppState.STARTUP
 
-    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", state)
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", state)
 
     assert start_task.done()
     assert install_app_ssh.state == AppState.STARTED
@@ -556,9 +609,32 @@ async def test_restart(coresys: CoreSys, install_app_ssh: App) -> None:
     start_task = await install_app_ssh.restart()
     assert start_task
 
-    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await start_task
     assert install_app_ssh.state == AppState.STARTED
+
+
+@pytest.mark.parametrize(
+    ("docker_error", "expected_error"),
+    [
+        (DockerContainerNotFoundError(name="app_local_ssh"), AppNotRunningError),
+        (DockerContainerNotRunningError(name="app_local_ssh"), AppNotRunningError),
+        (DockerStatsTimeoutError(name="app_local_ssh"), AppStatsTimeoutError),
+        (DockerAPIError(), AppUnknownError),
+    ],
+)
+async def test_stats_failures(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    docker_error: DockerError,
+    expected_error: type[AppsError],
+) -> None:
+    """Test container stats errors are translated to app-flavored errors."""
+    with (
+        patch.object(DockerAPI, "container_stats", AsyncMock(side_effect=docker_error)),
+        pytest.raises(expected_error),
+    ):
+        await install_app_ssh.stats()
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
@@ -635,7 +711,7 @@ async def test_backup_with_pre_post_command(
 
 @pytest.mark.parametrize(
     (
-        "container_get_side_effect",
+        "exec_side_effect",
         "exec_start_side_effect",
         "exec_inspect_side_effect",
         "exc_type_raised",
@@ -672,13 +748,13 @@ async def test_backup_with_pre_post_command(
 async def test_backup_with_pre_command_error(
     coresys: CoreSys,
     install_app_ssh: App,
-    container_get_side_effect: aiodocker.DockerError | None,
+    exec_side_effect: aiodocker.DockerError | None,
     exec_start_side_effect: aiodocker.DockerError | None,
     exec_inspect_side_effect: aiodocker.DockerError | list[dict[str, Any]] | None,
     exc_type_raised: type[HassioError],
 ) -> None:
     """Test backing up an app with error running pre command."""
-    coresys.docker.containers.get.side_effect = container_get_side_effect
+    coresys.docker.containers.get.return_value.exec.side_effect = exec_side_effect
     coresys.docker.containers.get.return_value.exec.return_value.start.side_effect = (
         exec_start_side_effect
     )
@@ -756,7 +832,7 @@ async def test_backup_cold_mode_with_watchdog(
         container.show.return_value["State"]["Status"] = "stopped"
         container.show.return_value["State"]["Running"] = False
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
 
     # Patching out the normal end of backup process leaves the container in a stopped state
@@ -842,7 +918,7 @@ async def test_restore_while_running_with_watchdog(
         container.show.return_value["State"]["Status"] = "stopped"
         container.show.return_value["State"]["Running"] = False
         await _fire_test_event(
-            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
 
     # We restore a stopped backup so restore will not restart it
@@ -977,6 +1053,22 @@ async def test_local_example_ingress_port_set(install_app_example: App):
     await install_app_example.load()
 
     assert install_app_example.ingress_port != 0
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_ports_merge_config_defaults_with_user_overrides(install_app_ssh: App):
+    """Test custom ports don't hide config-declared ports left unpublished."""
+    app = install_app_ssh
+    # Simulate a multi-port add-on (e.g. NGINX proxy) with optional ports
+    app.data[ATTR_PORTS] = {"22/tcp": None, "443/tcp": 443, "443/udp": None}
+
+    # Without user customization the config ports are returned as-is
+    assert app.ports == {"22/tcp": None, "443/tcp": 443, "443/udp": None}
+
+    # Publishing a single port must not drop the other config-declared ports,
+    # otherwise they can no longer be enabled from the UI
+    app.ports = {"443/tcp": 8443}
+    assert app.ports == {"22/tcp": None, "443/tcp": 8443, "443/udp": None}
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
@@ -1291,6 +1383,17 @@ async def test_app_manual_only_boot(install_app_example: App):
             ),
             [SuggestionType.EXECUTE_RESTART],
         ),
+        (
+            AppState.ERROR,
+            AppState.STARTED,
+            Issue(
+                IssueType.APP_PORT_CONFLICT,
+                ContextType.ADDON,
+                reference=TEST_ADDON_SLUG,
+                reference_extra={"port": 2222},
+            ),
+            [SuggestionType.CLEAR_PORT_CONFIG, SuggestionType.EXECUTE_START],
+        ),
     ],
 )
 async def test_app_state_dismisses_issue(
@@ -1329,15 +1432,15 @@ async def test_app_disable_boot_dismisses_boot_fail(
     ("docker_message", "port"),
     [
         (
-            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:2222:172.30.33.4:22/tcp: address already in use",
+            "failed to set up container networking: driver failed programming external connectivity on endpoint app_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:2222:172.30.33.4:22/tcp: address already in use",
             2222,
         ),
         (
-            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): Bind for 0.0.0.0:2222 failed: port is already allocated",
+            "failed to set up container networking: driver failed programming external connectivity on endpoint app_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): Bind for 0.0.0.0:2222 failed: port is already allocated",
             2222,
         ),
         (
-            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port 0.0.0.0:2222/tcp: address already in use",
+            "failed to set up container networking: driver failed programming external connectivity on endpoint app_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port 0.0.0.0:2222/tcp: address already in use",
             2222,
         ),
     ],
@@ -1354,6 +1457,7 @@ async def test_app_start_port_conflict_error(
 ):
     """Test port conflict error when trying to start app."""
     install_app_ssh.data["image"] = "test/amd64-addon-ssh"
+    install_app_ssh.persist["network"] = {"22/tcp": port}
     coresys.docker.containers.create.return_value.start.side_effect = (
         aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, docker_message)
     )
@@ -1370,8 +1474,170 @@ async def test_app_start_port_conflict_error(
         await install_app_ssh.start()
 
     assert (
-        f"Cannot start container addon_local_ssh because port {port} is already in use"
+        f"Cannot start container app_local_ssh because port {port} is already in use"
         in caplog.text
+    )
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": port}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+
+
+@pytest.mark.usefixtures(
+    "container", "mock_amd64_arch_supported", "path_extern", "tmp_supervisor_data"
+)
+async def test_app_restart_port_conflict_creates_issue(
+    coresys: CoreSys,
+    install_app_ssh: App,
+):
+    """Test restart path creates conflict issue and suggestion when port is explicit."""
+    port = 2222
+    docker_message = (
+        "failed to set up container networking: driver failed programming external "
+        "connectivity on endpoint app_local_ssh: failed to bind host port for "
+        "0.0.0.0:2222:172.30.33.4:22/tcp: address already in use"
+    )
+    install_app_ssh.data["image"] = "test/amd64-addon-ssh"
+    install_app_ssh.persist["network"] = {"22/tcp": port}
+    coresys.docker.containers.create.return_value.start.side_effect = (
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, docker_message)
+    )
+    await install_app_ssh.load()
+
+    with (
+        patch.object(App, "stop", AsyncMock()),
+        patch.object(App, "write_options"),
+        pytest.raises(
+            AppPortConflict,
+            check=lambda exc: exc.extra_fields == {"name": "local_ssh", "port": port},
+        ),
+    ):
+        await install_app_ssh.restart()
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": port}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+
+
+@pytest.mark.usefixtures(
+    "container", "mock_amd64_arch_supported", "path_extern", "tmp_supervisor_data"
+)
+async def test_app_start_port_conflict_without_configured_ports(
+    coresys: CoreSys,
+    install_app_ssh: App,
+):
+    """Test port conflict during start with no configured ports suggests start only."""
+    port = 1234
+    docker_message = (
+        "failed to set up container networking: driver failed programming external "
+        "connectivity on endpoint app_local_ssh: failed to bind host port for "
+        "0.0.0.0:1234:172.30.33.4:1234/tcp: address already in use"
+    )
+    install_app_ssh.data["image"] = "test/amd64-addon-ssh"
+    install_app_ssh.data.pop(ATTR_PORTS, None)
+    install_app_ssh.persist.pop("network", None)
+    coresys.docker.containers.create.return_value.start.side_effect = (
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, docker_message)
+    )
+    await install_app_ssh.load()
+
+    with (
+        patch.object(App, "write_options"),
+        pytest.raises(
+            AppPortConflict,
+            check=lambda exc: exc.extra_fields == {"name": "local_ssh", "port": port},
+        ),
+    ):
+        await install_app_ssh.start()
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": port}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+    assert not any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": port}
+        for suggestion in coresys.resolution.suggestions
+    )
+
+
+async def test_create_port_conflict_issue_non_user_port_suggestion(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test port conflict on non-user-mapped default port suggests clear+start."""
+    install_app_ssh.data[ATTR_PORTS] = {"80/tcp": 80, "22/tcp": None}
+    install_app_ssh.persist.pop("network", None)
+
+    install_app_ssh.create_port_conflict_issue(80)
+
+    assert any(
+        issue.type == IssueType.APP_PORT_CONFLICT
+        and issue.context == ContextType.ADDON
+        and issue.reference == install_app_ssh.slug
+        and issue.reference_extra == {"port": 80}
+        for issue in coresys.resolution.issues
+    )
+    assert any(
+        suggestion.type == SuggestionType.EXECUTE_START
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": 80}
+        for suggestion in coresys.resolution.suggestions
+    )
+    assert any(
+        suggestion.type == SuggestionType.CLEAR_PORT_CONFIG
+        and suggestion.context == ContextType.ADDON
+        and suggestion.reference == install_app_ssh.slug
+        and suggestion.reference_extra == {"port": 80}
+        for suggestion in coresys.resolution.suggestions
     )
 
 

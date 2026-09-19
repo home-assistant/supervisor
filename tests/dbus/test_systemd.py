@@ -169,6 +169,25 @@ async def test_list_units(dbus_session_bus: MessageBus):
     assert units[3][2] == "loaded"
 
 
+async def test_list_units_filtered(
+    systemd_service: SystemdService, dbus_session_bus: MessageBus
+):
+    """Test list units filtered by state."""
+    systemd_service.ListUnitsFiltered.calls.clear()
+    systemd = Systemd()
+
+    with pytest.raises(DBusNotConnectedError):
+        await systemd.list_units_filtered(["failed"])
+
+    await systemd.connect(dbus_session_bus)
+
+    units = await systemd.list_units_filtered(["not-found"])
+    assert len(units) == 1
+    assert units[0][0] == "firewalld.service"
+    assert units[0][2] == "not-found"
+    assert systemd_service.ListUnitsFiltered.calls == [(["not-found"],)]
+
+
 async def test_start_transient_unit(
     systemd_service: SystemdService, dbus_session_bus: MessageBus
 ):

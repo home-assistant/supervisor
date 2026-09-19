@@ -18,7 +18,7 @@ _RE_BOOT_TIME: re.Pattern = re.compile(r"btime (\d+)")
 
 _RE_HIDE_SYSFS: re.Pattern = re.compile(r"/sys/devices/virtual/(?:tty|block|vc)/.*")
 
-# Candidate sysfs paths to expose to GPIO-enabled add-ons. Which subset
+# Candidate sysfs paths to expose to GPIO-enabled apps. Which subset
 # exists is determined by the kernel at boot and does not change at runtime,
 # so we resolve it once during hardware load.
 _GPIO_CANDIDATE_PATHS: tuple[str, ...] = (
@@ -48,7 +48,7 @@ class HwHelper(CoreSysAttributes):
 
     @property
     def gpio_mount_paths(self) -> tuple[str, ...]:
-        """Return existing sysfs paths to mount for GPIO add-ons."""
+        """Return existing sysfs paths to mount for GPIO apps."""
         return self._gpio_mount_paths
 
     async def load(self) -> None:

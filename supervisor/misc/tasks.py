@@ -1,13 +1,12 @@
 """A collection of tasks."""
 
-from contextlib import suppress
 from datetime import datetime, timedelta
 import logging
 from typing import cast
 
 from ..apps.const import APP_UPDATE_CONDITIONS
 from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
-from ..const import ATTR_TYPE, AppState
+from ..const import ATTR_APP, ATTR_BACKUP, ATTR_TYPE, AppState
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
     AppsError,
@@ -15,10 +14,8 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantWSError,
     ObserverError,
-    SupervisorUpdateError,
 )
 from ..homeassistant.const import LANDINGPAGE, WSType
-from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.dt import utcnow
@@ -31,23 +28,23 @@ HASS_WATCHDOG_REANIMATE_FAILURES = "HASS_WATCHDOG_REANIMATE_FAILURES"
 HASS_WATCHDOG_MAX_API_ATTEMPTS = 2
 HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS = 5
 
-RUN_UPDATE_ADDONS = 57600
+RUN_UPDATE_APPS = 57600
 RUN_UPDATE_CLI = 43200  # 12h, staggered +2min per plugin
 RUN_UPDATE_DNS = 43320
 RUN_UPDATE_AUDIO = 43440
 RUN_UPDATE_MULTICAST = 43560
 RUN_UPDATE_OBSERVER = 43680
 
-RUN_RELOAD_ADDONS = 10800
+RUN_RELOAD_APPS = 10800
 RUN_RELOAD_BACKUPS = 72000
+RUN_RELOAD_MOUNTS = 900
 RUN_RELOAD_HOST = 7600
 RUN_RELOAD_UPDATER = 86400  # 24h
 RUN_RELOAD_INGRESS = 930
-RUN_RELOAD_MOUNTS = 900
 
 RUN_WATCHDOG_HOMEASSISTANT_API = 120
 
-RUN_WATCHDOG_ADDON_APPLICATON = 120
+RUN_WATCHDOG_APP_APPLICATION = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
 RUN_CORE_BACKUP_CLEANUP = 86200
@@ -71,7 +68,7 @@ class Tasks(CoreSysAttributes):
     async def load(self):
         """Add Tasks to scheduler."""
         # Update
-        self.sys_scheduler.register_task(self._update_apps, RUN_UPDATE_ADDONS)
+        self.sys_scheduler.register_task(self._update_apps, RUN_UPDATE_APPS)
         self.sys_scheduler.register_task(self._update_cli, RUN_UPDATE_CLI)
         self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
         self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
@@ -79,12 +76,12 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self._update_observer, RUN_UPDATE_OBSERVER)
 
         # Reload
-        self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_ADDONS)
-        self.sys_scheduler.register_task(self._reload_updater, RUN_RELOAD_UPDATER)
+        self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_APPS)
+        self.sys_scheduler.register_task(self.sys_updater.reload, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
-        self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
         self.sys_scheduler.register_task(self.sys_mounts.reload, RUN_RELOAD_MOUNTS)
+        self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
 
         # Watchdog
         self.sys_scheduler.register_task(
@@ -94,7 +91,7 @@ class Tasks(CoreSysAttributes):
             self._watchdog_observer_application, RUN_WATCHDOG_OBSERVER_APPLICATION
         )
         self.sys_scheduler.register_task(
-            self._watchdog_app_application, RUN_WATCHDOG_ADDON_APPLICATON
+            self._watchdog_app_application, RUN_WATCHDOG_APP_APPLICATION
         )
 
         # Cleanup
@@ -105,8 +102,9 @@ class Tasks(CoreSysAttributes):
         _LOGGER.info("All core tasks are scheduled")
 
     @Job(
-        name="tasks_update_addons",
+        name="tasks_update_apps",
         conditions=APP_UPDATE_CONDITIONS + [JobCondition.RUNNING],
+        internal=True,
     )
     async def _update_apps(self):
         """Check if an update is available for an App and update it."""
@@ -144,9 +142,9 @@ class Tasks(CoreSysAttributes):
             # Ultimately auto updates should be handled by Home Assistant Core itself
             # through a update entity feature.
             message = {
-                ATTR_TYPE: WSType.HASSIO_UPDATE_ADDON,
-                "addon": app.slug,
-                "backup": True,
+                ATTR_TYPE: WSType.HASSIO_UPDATE_APP,
+                ATTR_APP: app.slug,
+                ATTR_BACKUP: True,
             }
             _LOGGER.debug(
                 "Sending update app WebSocket command to Home Assistant Core: %s",
@@ -235,7 +233,11 @@ class Tasks(CoreSysAttributes):
         finally:
             self._cache[HASS_WATCHDOG_API_FAILURES] = 0
 
-    @Job(name="tasks_update_cli", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_cli",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_cli(self):
         """Check and run update of cli."""
         if not self.sys_plugins.cli.need_update:
@@ -246,7 +248,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.cli.update()
 
-    @Job(name="tasks_update_dns", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_dns",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
         if not self.sys_plugins.dns.need_update:
@@ -258,7 +264,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.dns.update()
 
-    @Job(name="tasks_update_audio", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_audio",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
         if not self.sys_plugins.audio.need_update:
@@ -270,7 +280,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.audio.update()
 
-    @Job(name="tasks_update_observer", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_observer",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_observer(self):
         """Check and run update of Observer plugin."""
         if not self.sys_plugins.observer.need_update:
@@ -282,7 +296,11 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.observer.update()
 
-    @Job(name="tasks_update_multicast", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(
+        name="tasks_update_multicast",
+        conditions=PLUGIN_AUTO_UPDATE_CONDITIONS,
+        internal=True,
+    )
     async def _update_multicast(self):
         """Check and run update of multicast."""
         if not self.sys_plugins.multicast.need_update:
@@ -348,46 +366,17 @@ class Tasks(CoreSysAttributes):
             JobCondition.OS_SUPPORTED,
             JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
         ],
+        internal=True,
     )
     async def _reload_store(self) -> None:
         """Reload store and check for app updates."""
         await self.sys_store.reload()
 
-    @Job(name="tasks_reload_updater")
-    async def _reload_updater(self) -> None:
-        """Check for new versions of Home Assistant, Supervisor, OS, etc."""
-        await self.sys_updater.reload()
-
-        # If there's a new version of supervisor, update immediately
-        if self.sys_supervisor.need_update:
-            await self._auto_update_supervisor()
-
     @Job(
-        name="tasks_update_supervisor",
-        conditions=[
-            JobCondition.AUTO_UPDATE,
-            JobCondition.FREE_SPACE,
-            JobCondition.HEALTHY,
-            JobCondition.INTERNET_HOST,
-            JobCondition.OS_SUPPORTED,
-            JobCondition.RUNNING,
-            JobCondition.ARCHITECTURE_SUPPORTED,
-        ],
-        concurrency=JobConcurrency.REJECT,
+        name="tasks_core_backup_cleanup",
+        conditions=[JobCondition.HEALTHY],
+        internal=True,
     )
-    async def _auto_update_supervisor(self):
-        """Auto update Supervisor if enabled."""
-        if not self.sys_supervisor.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new Supervisor version %s, updating",
-            self.sys_supervisor.latest_version,
-        )
-        with suppress(SupervisorUpdateError):
-            await self.sys_supervisor.update()
-
-    @Job(name="tasks_core_backup_cleanup", conditions=[JobCondition.HEALTHY])
     async def _core_backup_cleanup(self) -> None:
         """Core backup is intended for transient use, remove any old backups that got left behind."""
         old_backups = [

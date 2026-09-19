@@ -9,6 +9,7 @@ from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 from ...jobs.const import JobCondition, JobThrottle
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Issue
 from .base import CheckBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -25,13 +26,14 @@ class CheckAppPwned(CheckBase):
     @property
     def slug(self) -> str:
         """Return the check slug."""
-        return "addon_pwned"
+        return "app_pwned"
 
     @Job(
-        name="check_addon_pwned_run",
+        name="check_app_pwned_run",
         conditions=[JobCondition.INTERNET_SYSTEM],
         throttle_period=timedelta(hours=24),
         throttle=JobThrottle.THROTTLE,
+        internal=True,
     )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
@@ -72,14 +74,18 @@ class CheckAppPwned(CheckBase):
                 except PwnedError:
                     pass
 
-    @Job(name="check_addon_pwned_approve", conditions=[JobCondition.INTERNET_SYSTEM])
-    async def approve_check(self, reference: str | None = None) -> bool:
+    @Job(
+        name="check_app_pwned_approve",
+        conditions=[JobCondition.INTERNET_SYSTEM],
+        internal=True,
+    )
+    async def approve_check(self, issue: Issue) -> bool:
         """Approve check if it is affected by issue."""
-        if not reference:
+        if not issue.reference:
             return False
 
         # Uninstalled
-        if not (app := self.sys_apps.get_local_only(reference)):
+        if not (app := self.sys_apps.get_local_only(issue.reference)):
             return False
 
         # Not in use anymore

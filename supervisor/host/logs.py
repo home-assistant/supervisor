@@ -20,9 +20,9 @@ from aiohttp.hdrs import ACCEPT, RANGE
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     ConfigurationFileError,
+    HostJournalGatewaydConnectionError,
     HostLogError,
     HostNotSupportedError,
-    HostServiceError,
 )
 from ..utils.json import read_json_file
 from ..utils.systemd_journal import journal_boots_reader
@@ -247,6 +247,6 @@ class LogsControl(CoreSysAttributes):
                 ) as client_response:
                     yield client_response
         except UnixClientConnectorError as ex:
-            raise HostServiceError(
+            raise HostJournalGatewaydConnectionError(
                 "Unable to connect to systemd-journal-gatewayd", _LOGGER.error
             ) from ex

@@ -1,9 +1,10 @@
 """Test store manager."""
 
+import asyncio
 from datetime import datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -13,11 +14,12 @@ from supervisor.arch import CpuArchManager
 from supervisor.backups.manager import BackupManager
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AppNotSupportedError, StoreJobError
+from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store import StoreManager
 from supervisor.store.app import AppStore
 from supervisor.store.git import GitRepo
-from supervisor.store.repository import Repository
+from supervisor.store.repository import Repository, RepositoryGit
 
 from tests.common import load_yaml_fixture
 
@@ -244,6 +246,37 @@ async def test_reload(coresys: CoreSys, supervisor_internet):
         await coresys.store.reload()
 
         assert git_pull.call_count == 4
+
+
+async def test_reload_fires_store_reloaded_event(
+    coresys: CoreSys, supervisor_internet, ha_ws_client: AsyncMock
+) -> None:
+    """Test reload fires a store_reloaded event for the updated repositories."""
+    await coresys.store.load()
+
+    def _store_reloaded_events() -> list[dict[str, Any]]:
+        return [
+            call.args[0]["data"]["data"]
+            for call in ha_ws_client.async_send_command.call_args_list
+            if call.args[0].get("data", {}).get("event") == WSEvent.STORE_RELOADED
+        ]
+
+    # No repository reports an update, so no event is fired
+    with patch.object(RepositoryGit, "update", return_value=False):
+        await coresys.store.reload()
+        await asyncio.sleep(0)
+    assert _store_reloaded_events() == []
+
+    # A repository update fires exactly one event listing the updated repos
+    with patch.object(RepositoryGit, "update", return_value=True):
+        await coresys.store.reload()
+        await asyncio.sleep(0)
+
+    events = _store_reloaded_events()
+    assert len(events) == 1
+    assert set(events[0]["repositories"]) == {
+        repo.slug for repo in coresys.store.all if isinstance(repo, RepositoryGit)
+    }
 
 
 async def test_app_version_timestamp(coresys: CoreSys, install_app_example: App):

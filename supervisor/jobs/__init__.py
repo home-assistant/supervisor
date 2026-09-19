@@ -17,7 +17,7 @@ from attrs import Attribute, define, field
 from attrs.setters import convert as attr_convert, frozen, validate as attr_validate
 from attrs.validators import ge, le
 
-from ..const import BusEvent
+from ..const import BusEvent, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
@@ -34,6 +34,43 @@ from .validate import SCHEMA_JOBS_CONFIG
 _CURRENT_JOB: ContextVar[str | None] = ContextVar("current_job", default=None)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+LEGACY_BACKUP_RESTORE_STAGE_MAP: dict[str, str] = {
+    "app_repositories": "addon_repositories",
+    "apps": "addons",
+    "await_app_restarts": "await_addon_restarts",
+    "remove_delta_apps": "remove_delta_addons",
+}
+
+BACKUP_RESTORE_JOB_NAMES: set[str] = {
+    "backup_manager_full_restore",
+    "backup_manager_partial_restore",
+    "backup_manager_full_backup",
+    "backup_manager_partial_backup",
+}
+
+
+def process_job_dict_for_legacy_compatibility(
+    job_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Map new job names to legacy names for API compatibility."""
+    # Home Assistant Core's hassio integration listens for this specific job name
+    # via the Supervisor websocket API. Core v2026.8 supports both names, so this
+    # compatibility can be removed when Core v2026.7 is no longer supported.
+    if job_data.get("name") == "app_manager_update":
+        return job_data | {"name": "addon_manager_update"}
+
+    # Home Assistant Core expects legacy backup/restore stage names on websocket
+    # v1 and REST v1. Map only backup manager jobs to avoid changing unrelated
+    # stage names.
+    if (
+        job_data.get("name") in BACKUP_RESTORE_JOB_NAMES
+        and (stage := cast(str | None, job_data.get("stage")))
+        in LEGACY_BACKUP_RESTORE_STAGE_MAP
+    ):
+        return job_data | {"stage": LEGACY_BACKUP_RESTORE_STAGE_MAP[stage]}
+
+    return job_data
 
 
 @dataclass
@@ -288,6 +325,10 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         if attribute.name == "errors":
             value = [err.as_dict() for err in value]
         job_data = job.as_dict() | {attribute.name: value}
+        if not self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            job_data = process_job_dict_for_legacy_compatibility(job_data)
 
         # Notify Home Assistant of change if its not internal
         if not job.internal:

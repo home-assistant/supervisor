@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from asyncio import Task
 from collections.abc import Callable, Coroutine
+from dataclasses import dataclass
 import logging
 from typing import Any
-
-import attr
 
 from .const import BusEvent
 from .coresys import CoreSys, CoreSysAttributes
@@ -15,12 +14,12 @@ from .coresys import CoreSys, CoreSysAttributes
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-@attr.s(slots=True, frozen=True)
+@dataclass(slots=True, frozen=True)
 class EventListener:
     """Event listener."""
 
-    event_type: BusEvent = attr.ib()
-    callback: Callable[[Any], Coroutine[Any, Any, None]] = attr.ib()
+    event_type: BusEvent
+    callback: Callable[[Any], Coroutine[Any, Any, None]]
 
 
 class Bus(CoreSysAttributes):

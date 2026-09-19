@@ -33,11 +33,14 @@ from ..const import (
     ATTR_UPDATE_PENDING,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
+    ATTR_VERSION_PENDING,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, BoardInvalidError
+from ..homeassistant.const import LANDINGPAGE
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..resolution.data import Issue
+from ..utils import version_is_new_enough
 from ..validate import version_tag
 from .const import (
     ATTR_BOOT_SLOT,
@@ -46,6 +49,8 @@ from .const import (
     ATTR_DEV_PATH,
     ATTR_DEVICE,
     ATTR_DISKS,
+    ATTR_KEY,
+    ATTR_KEYS,
     ATTR_MODEL,
     ATTR_STATUS,
     ATTR_SYSTEM_HEALTH_LED,
@@ -59,6 +64,16 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Raspberry Pi firmware management requires the io.hass.os.Boards.RaspberryPi
 # .Firmware D-Bus interface first shipped in this OS Agent release.
 RPI_FIRMWARE_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.9.0")
+
+# First Core nightly whose update entity consumes version_pending to finalize
+# the OS update state (home-assistant/core#177155).
+CORE_VERSION_PENDING_MIN_VERSION: AwesomeVersion = AwesomeVersion(
+    "2026.8.0.dev202607250310"
+)
+
+# Listing SSH authorized keys requires the ListSSHAuthKeys D-Bus method
+# first shipped in this OS Agent release.
+SSH_KEYS_LIST_MIN_OS_AGENT_VERSION: AwesomeVersion = AwesomeVersion("1.11.0")
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
@@ -88,18 +103,65 @@ SCHEMA_SWAP_OPTIONS = vol.Schema(
         vol.Optional(ATTR_SWAPPINESS): vol.All(int, vol.Range(min=0, max=200)),
     }
 )
+
+# dropbear, which consumes authorized_keys on Home Assistant OS, ignores
+# lines longer than 3000 bytes
+SSH_AUTH_KEY_MAX_LENGTH = 3000
+
+RE_SSH_KEY_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def ssh_auth_key(value: Any) -> str:
+    """Run a basic sanity check on an SSH authorized key entry.
+
+    Proper key validation is done by OS Agent; reject only what could write
+    more than one authorized_keys line per key (control characters) or
+    produce a line dropbear ignores (too long).
+    """
+    if not isinstance(value, str):
+        raise vol.Invalid("SSH public key must be a string")
+
+    key = value.strip()
+    # dropbear and OS Agent limit the line length in bytes, not characters
+    if not key or len(key.encode()) > SSH_AUTH_KEY_MAX_LENGTH:
+        raise vol.Invalid("SSH public key is empty or too long")
+    if RE_SSH_KEY_CONTROL_CHARS.search(key):
+        raise vol.Invalid("SSH public key contains control characters")
+
+    return key
+
+
+SCHEMA_SSH_AUTHORIZED_KEY = vol.Schema({vol.Required(ATTR_KEY): ssh_auth_key})
 # pylint: enable=no-value-for-parameter
 
 
 class APIOS(CoreSysAttributes):
     """Handle RESTful API for OS functions."""
 
+    @property
+    def _core_handles_version_pending(self) -> bool:
+        """Return True if the installed Core consumes version_pending."""
+        return (
+            self.sys_homeassistant.version is not None
+            and self.sys_homeassistant.version != LANDINGPAGE
+            and version_is_new_enough(
+                self.sys_homeassistant.version, CORE_VERSION_PENDING_MIN_VERSION
+            )
+        )
+
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return OS information."""
         return {
-            ATTR_VERSION: self.sys_os.version,
+            # For Core versions unaware of version_pending, report an installed
+            # update pending activation as the current version: the Core update
+            # entity compares version with version_latest, so it would offer
+            # the update again otherwise.
+            ATTR_VERSION: self.sys_os.version
+            if self._core_handles_version_pending
+            else self.sys_os.version_pending or self.sys_os.version,
             ATTR_VERSION_LATEST: self.sys_os.latest_version,
+            ATTR_VERSION_PENDING: self.sys_os.version_pending,
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
             ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
@@ -145,6 +207,32 @@ class APIOS(CoreSysAttributes):
         """Change the active boot slot and reboot into it."""
         body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
         await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_SLOT]))
+
+    @api_process
+    async def ssh_authorized_keys_list(self, request: web.Request) -> dict[str, Any]:
+        """Return root's SSH authorized keys on the host."""
+        if (
+            not self.sys_dbus.agent.is_connected
+            or self.sys_dbus.agent.version < SSH_KEYS_LIST_MIN_OS_AGENT_VERSION
+        ):
+            raise APINotFound(
+                f"OS Agent {SSH_KEYS_LIST_MIN_OS_AGENT_VERSION} or newer required "
+                "to list SSH authorized keys",
+                _LOGGER.debug,
+            )
+
+        return {ATTR_KEYS: await self.sys_dbus.agent.system.list_ssh_auth_keys()}
+
+    @api_process
+    async def ssh_authorized_keys_add(self, request: web.Request) -> None:
+        """Add an SSH authorized key for root on the host."""
+        body = await api_validate(SCHEMA_SSH_AUTHORIZED_KEY, request)
+        await asyncio.shield(self.sys_os.add_ssh_authorized_key(body[ATTR_KEY]))
+
+    @api_process
+    def ssh_authorized_keys_clear(self, request: web.Request) -> Awaitable[None]:
+        """Remove all SSH authorized keys of root on the host."""
+        return asyncio.shield(self.sys_os.clear_ssh_authorized_keys())
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:

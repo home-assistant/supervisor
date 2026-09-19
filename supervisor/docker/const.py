@@ -35,13 +35,16 @@ EXIT_CODE_SIGTERM_DEFAULT = 128 + signal.SIGTERM
 class Capabilities(StrEnum):
     """Linux Capabilities."""
 
+    AUDIT_WRITE = "AUDIT_WRITE"
     BPF = "BPF"
     CHECKPOINT_RESTORE = "CHECKPOINT_RESTORE"
     DAC_READ_SEARCH = "DAC_READ_SEARCH"
     IPC_LOCK = "IPC_LOCK"
+    MKNOD = "MKNOD"
     NET_ADMIN = "NET_ADMIN"
     NET_RAW = "NET_RAW"
     PERFMON = "PERFMON"
+    SETFCAP = "SETFCAP"
     SYS_ADMIN = "SYS_ADMIN"
     SYS_MODULE = "SYS_MODULE"
     SYS_NICE = "SYS_NICE"
@@ -49,6 +52,15 @@ class Capabilities(StrEnum):
     SYS_RAWIO = "SYS_RAWIO"
     SYS_RESOURCE = "SYS_RESOURCE"
     SYS_TIME = "SYS_TIME"
+
+
+# Docker default capabilities that containerd's "reduced" profile also drops,
+# besides NET_RAW: https://github.com/containerd/containerd/pull/12588
+REDUCED_CAPABILITIES_DROP = (
+    Capabilities.AUDIT_WRITE,
+    Capabilities.MKNOD,
+    Capabilities.SETFCAP,
+)
 
 
 class ContainerState(StrEnum):
@@ -192,12 +204,15 @@ PATH_PRIVATE_DATA = PurePath("/data")
 PATH_HOMEASSISTANT_CONFIG_LEGACY = PurePath("/config")
 PATH_HOMEASSISTANT_CONFIG = PurePath("/homeassistant")
 PATH_PUBLIC_CONFIG = PurePath("/config")
-PATH_ALL_ADDON_CONFIGS = PurePath("/addon_configs")
+PATH_ALL_APP_CONFIGS = PurePath("/app_configs")
+PATH_LOCAL_APPS = PurePath("/local_apps")
 PATH_SSL = PurePath("/ssl")
-PATH_LOCAL_ADDONS = PurePath("/addons")
 PATH_BACKUP = PurePath("/backup")
 PATH_SHARE = PurePath("/share")
 PATH_MEDIA = PurePath("/media")
+# Legacy, deprecated as of 2026.07
+PATH_ALL_ADDON_CONFIGS = PurePath("/addon_configs")
+PATH_LOCAL_ADDONS = PurePath("/addons")
 
 # https://hub.docker.com/_/docker
 # Use short name as Docker stores it this way; the canonical docker.io/library/docker

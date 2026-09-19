@@ -9,14 +9,7 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
-    ATTR_BLK_READ,
-    ATTR_BLK_WRITE,
-    ATTR_CPU_PERCENT,
-    ATTR_MEMORY_LIMIT,
-    ATTR_MEMORY_PERCENT,
-    ATTR_MEMORY_USAGE,
-    ATTR_NETWORK_RX,
-    ATTR_NETWORK_TX,
+    ATTR_ONE_SHOT,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
@@ -24,7 +17,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import version_tag
-from .utils import api_process, api_validate
+from .utils import api_process, api_return_stats, api_validate, require_running_system
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -45,21 +38,20 @@ class APIMulticast(CoreSysAttributes):
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information."""
-        stats = await self.sys_plugins.multicast.stats()
-
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+        """Return resource information for v2 contract (always one-shot)."""
+        stats = await self.sys_plugins.multicast.stats(one_shot=True)
+        return api_return_stats(stats, legacy=False)
 
     @api_process
+    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return resource information."""
+        one_shot = ATTR_ONE_SHOT in request.query
+        stats = await self.sys_plugins.multicast.stats(one_shot=one_shot)
+
+        return api_return_stats(stats, legacy=True)
+
+    @api_process
+    @require_running_system
     async def update(self, request: web.Request) -> None:
         """Update Multicast plugin."""
         body = await api_validate(SCHEMA_VERSION, request)
@@ -70,6 +62,7 @@ class APIMulticast(CoreSysAttributes):
         await asyncio.shield(self.sys_plugins.multicast.update(version))
 
     @api_process
+    @require_running_system
     def restart(self, request: web.Request) -> Awaitable[None]:
         """Restart Multicast plugin."""
         return asyncio.shield(self.sys_plugins.multicast.restart())

@@ -7,6 +7,7 @@ import pytest
 from sentry_sdk.worker import BackgroundWorker
 
 from supervisor.bootstrap import initialize_coresys, warning_handler
+from supervisor.utils.sentry import async_capture_message
 
 
 @pytest.mark.usefixtures("supervisor_name", "docker")
@@ -55,3 +56,10 @@ def test_warning_handler_captures_on_main_thread():
         warning = UserWarning("test")
         warning_handler(warning, UserWarning, "test.py", 1, None, None)
         mock_capture.assert_called_once_with(warning)
+
+
+async def test_async_capture_message(capture_message):
+    """Test async capture message helper sends expected message."""
+    await async_capture_message("systemd unit failed", level="error")
+
+    capture_message.assert_called_once_with("systemd unit failed", level="error")

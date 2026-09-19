@@ -18,9 +18,15 @@ from ..docker.stats import DockerStats
 from ..exceptions import (
     AudioError,
     AudioJobError,
+    AudioNotRunningError,
+    AudioStatsTimeoutError,
+    AudioUnknownError,
     AudioUpdateError,
     ConfigurationFileError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerError,
+    DockerStatsTimeoutError,
     PluginError,
 )
 from ..jobs.const import JobThrottle
@@ -148,12 +154,17 @@ class PluginAudio(PluginBase):
         except DockerError as err:
             raise AudioError("Can't stop Audio plugin", _LOGGER.error) from err
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of Audio plugin."""
         try:
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise AudioNotRunningError(_LOGGER.warning) from err
+        except DockerStatsTimeoutError as err:
+            raise AudioStatsTimeoutError(_LOGGER.error) from err
         except DockerError as err:
-            raise AudioError from err
+            _LOGGER.error("Could not get stats of container for Audio: %s", err)
+            raise AudioUnknownError from err
 
     async def repair(self) -> None:
         """Repair Audio plugin."""

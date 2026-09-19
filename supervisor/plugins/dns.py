@@ -5,11 +5,11 @@ Code: https://github.com/home-assistant/plugin-dns
 
 import asyncio
 from contextlib import suppress
+from dataclasses import dataclass
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 
-import attr
 from awesomeversion import AwesomeVersion
 import jinja2
 import voluptuous as vol
@@ -26,8 +26,14 @@ from ..exceptions import (
     ConfigurationFileError,
     CoreDNSError,
     CoreDNSJobError,
+    CoreDNSNotRunningError,
+    CoreDNSStatsTimeoutError,
+    CoreDNSUnknownError,
     CoreDNSUpdateError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerError,
+    DockerStatsTimeoutError,
     PluginError,
 )
 from ..jobs.const import JobThrottle
@@ -55,12 +61,12 @@ RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 
-@attr.s
+@dataclass(slots=True, frozen=True)
 class HostEntry:
     """Single entry in hosts."""
 
-    ip_address: IPv4Address = attr.ib()
-    names: list[str] = attr.ib()
+    ip_address: IPv4Address
+    names: list[str]
 
 
 class PluginDns(PluginBase):
@@ -332,8 +338,11 @@ class PluginDns(PluginBase):
         await self.save_data()
 
         # Resets hosts
-        with suppress(OSError):
-            self.hosts.unlink()
+        try:
+            await self.sys_run_in_executor(self.hosts.unlink)
+        except OSError as err:
+            self.sys_resolution.check_oserror(err)
+            _LOGGER.debug("Can't remove hosts file: %s", err)
         await self._init_hosts()
 
         # Reset loop protection
@@ -498,12 +507,17 @@ class PluginDns(PluginBase):
                 return entry
         return None
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of CoreDNS."""
         try:
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise CoreDNSNotRunningError(_LOGGER.warning) from err
+        except DockerStatsTimeoutError as err:
+            raise CoreDNSStatsTimeoutError(_LOGGER.error) from err
         except DockerError as err:
-            raise CoreDNSError from err
+            _LOGGER.error("Could not get stats of container for CoreDNS: %s", err)
+            raise CoreDNSUnknownError from err
 
     async def repair(self) -> None:
         """Repair CoreDNS plugin."""

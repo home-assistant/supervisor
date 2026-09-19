@@ -97,6 +97,21 @@ async def test_network_interface_ethernet(
     assert interface.managed is True
 
 
+async def test_reapply(
+    device_eth0_service: DeviceService, dbus_session_bus: MessageBus
+):
+    """Test reapply on network interface."""
+    device_eth0_service.Reapply.calls.clear()
+
+    interface = NetworkInterface("/org/freedesktop/NetworkManager/Devices/1")
+    await interface.connect(dbus_session_bus)
+
+    await interface.reapply()
+    assert device_eth0_service.Reapply.calls == [
+        ("/org/freedesktop/NetworkManager/Devices/1", {}, 0, 0)
+    ]
+
+
 async def test_network_interface_wlan(
     device_wlan0_service: DeviceService, dbus_session_bus: MessageBus
 ):

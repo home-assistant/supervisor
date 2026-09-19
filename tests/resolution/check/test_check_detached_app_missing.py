@@ -7,12 +7,13 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.detached_app_missing import CheckDetachedAppMissing
 from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
     """Test check basics."""
     detached_app_missing = CheckDetachedAppMissing(coresys)
-    assert detached_app_missing.slug == "detached_addon_missing"
+    assert detached_app_missing.slug == "detached_app_missing"
     assert detached_app_missing.enabled
 
 
@@ -33,7 +34,7 @@ async def test_check(coresys: CoreSys, install_app_ssh: App):
     await detached_app_missing()
 
     assert len(coresys.resolution.issues) == 1
-    assert coresys.resolution.issues[0].type is IssueType.DETACHED_ADDON_MISSING
+    assert coresys.resolution.issues[0].type is IssueType.DETACHED_APP_MISSING
     assert coresys.resolution.issues[0].context is ContextType.ADDON
     assert coresys.resolution.issues[0].reference == install_app_ssh.slug
     assert len(coresys.resolution.suggestions) == 0
@@ -45,7 +46,13 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     await coresys.core.set_state(CoreState.SETUP)
 
     assert (
-        await detached_app_missing.approve_check(reference=install_app_ssh.slug)
+        await detached_app_missing.approve_check(
+            Issue(
+                IssueType.DETACHED_APP_MISSING,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
         is False
     )
 
@@ -56,7 +63,14 @@ async def test_approve(coresys: CoreSys, install_app_ssh: App):
     install_app_ssh.data["repository"] = "abc123"
 
     assert (
-        await detached_app_missing.approve_check(reference=install_app_ssh.slug) is True
+        await detached_app_missing.approve_check(
+            Issue(
+                IssueType.DETACHED_APP_MISSING,
+                ContextType.ADDON,
+                reference=install_app_ssh.slug,
+            )
+        )
+        is True
     )
 
 

@@ -33,6 +33,8 @@ IMAGE_NAME_GOOD = [
     "[::1]:5000/myimage",
     "dockeruser/nice-app-1.2",
     "ghcr.io/blakeblackshear/frigate",
+    "index.docker.io/homeassistant/amd64-homeassistant",
+    "[2001:db8::1]/myimage",
 ]
 IMAGE_NAME_BAD = [
     "ghcr.io/home-assistant/homeassistant:123",
@@ -43,6 +45,9 @@ IMAGE_NAME_BAD = [
     "homeassistant/_homeassistant",
     "homeassistant/-homeassistant",
     "GHCR.IO/home-assistant/homeassistant",
+    "myreg.local:8080/homeassistant:1.2.3",
+    "myreg.local:port/homeassistant",
+    "-badreg-.local/homeassistant",
 ]
 
 

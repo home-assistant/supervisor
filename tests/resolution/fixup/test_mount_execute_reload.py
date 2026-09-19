@@ -3,7 +3,10 @@
 import errno
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import MountActivationError
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue
@@ -63,6 +66,7 @@ async def test_fixup_error_after_reload(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     mock_is_mount: MagicMock,
+    tmp_supervisor_data,
     path_extern,
     mount_propagation,
 ):
@@ -88,12 +92,14 @@ async def test_fixup_error_after_reload(
         suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
     )
     # Probe (statvfs) fails — the mount stays unreachable through the
-    # reload -> restart cycle. Fixup catches MountError and re-raises
-    # ResolutionFixupError, which FixupBase.__call__ swallows to skip
-    # issue cleanup. Caller sees no error.
-    with patch(
-        "supervisor.mounts.mount._probe_network_mount",
-        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    # escalation. The MountActivationError propagates to the caller so
+    # the issue cleanup is skipped.
+    with (
+        patch(
+            "supervisor.mounts.mount._probe_network_mount",
+            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+        ),
+        pytest.raises(MountActivationError),
     ):
         await mount_execute_reload()
 

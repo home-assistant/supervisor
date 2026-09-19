@@ -215,6 +215,11 @@ def _versioned_path(prefix: str, path: str) -> str:
         ("post", "/addons/abc123/restart", {"admin", "manager"}),
         ("post", "/addons/abc123/security", {"admin"}),
         ("post", "/os/datadisk/wipe", {"admin"}),
+        ("get", "/os/ssh/authorized_keys", set()),
+        ("post", "/os/ssh/authorized_keys", set()),
+        ("delete", "/os/ssh/authorized_keys", set()),
+        ("get", "/time/info", set(ROLE_ALL)),
+        ("post", "/time/options", {"admin", "manager"}),
         ("post", "/addons/self/sys_options", set()),
         ("post", "/addons/abc123/sys_options", set()),
     ],
@@ -260,6 +265,13 @@ async def test_home_assistant_paths(
     )
     assert resp.status == 200
 
+    for method in ("get", "post", "delete"):
+        resp = await getattr(client, method)(
+            _versioned_path(prefix, "/os/ssh/authorized_keys"),
+            headers={"Authorization": "Bearer abc123"},
+        )
+        assert resp.status == 200
+
 
 @pytest.mark.usefixtures("plugin_tokens")
 async def test_blacklist(
@@ -277,6 +289,31 @@ async def test_blacklist(
         f"{prefix}/core/api/hassio/app", headers={"Authorization": "Bearer abc123"}
     )
     assert resp.status == 403
+
+    # The Core auth endpoints run as the Supervisor user; an add-on must not
+    # reach them through the proxy (they would allow resetting any password)
+    resp = await client.get(
+        f"{prefix}/core/api/hassio_auth", headers={"Authorization": "Bearer abc123"}
+    )
+    assert resp.status == 403
+    resp = await client.post(
+        f"{prefix}/core/api/hassio_auth/password_reset",
+        headers={"Authorization": "Bearer abc123"},
+    )
+    assert resp.status == 403
+
+    # Percent-encoded variants are matched on the fully decoded path. Only the
+    # first decode happens in aiohttp; a second one would happen downstream.
+    for encoded in (
+        "hassio%5Fauth/password_reset",
+        "hassio%255Fauth/password_reset",
+        "hassio%252Fapp",
+    ):
+        resp = await client.post(
+            f"{prefix}/core/api/{encoded}",
+            headers={"Authorization": "Bearer abc123"},
+        )
+        assert resp.status == 403, encoded
 
     # A normal (non-hassio) Core API call through the same proxy is allowed
     resp = await client.get(
@@ -299,3 +336,13 @@ async def test_blacklist_legacy_alias(
         "/homeassistant/api/hassio/app", headers={"Authorization": "Bearer abc123"}
     )
     assert resp.status == 403
+
+
+async def test_api_security_system_stopping(api_system: TestClient, coresys: CoreSys):
+    """Test API requests are rejected while the Supervisor is stopping."""
+    await coresys.core.set_state(CoreState.STOPPING)
+
+    resp = await api_system.get("/supervisor/ping")
+    result = await resp.json()
+    assert resp.status == 400
+    assert result["result"] == "error"

@@ -33,7 +33,7 @@ on:
       - setup.py
 
 env:
-  DEFAULT_PYTHON: "3.14.5"
+  DEFAULT_PYTHON: "3.14.6"
   COSIGN_VERSION: "v2.5.3"
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
@@ -59,7 +59,7 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -91,7 +91,7 @@ jobs:
 
       - name: Get build matrix
         id: matrix
-        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
         with:
           architectures: ${{ env.ARCHITECTURES }}
           image-name: ${{ env.IMAGE_NAME }}
@@ -113,7 +113,7 @@ jobs:
       WHEELS_SKIP_BINARY: aiohttp
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -127,7 +127,7 @@ jobs:
 
       - name: Build and publish wheels
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'true'
-        uses: home-assistant/wheels@34957438948e0b3dcde73c77750643dadae594f5 # 2026.06.0
+        uses: home-assistant/wheels@9e17ab1ed5c4c79d8b61e29fa63de25ca2710716 # 2026.07.0
         with:
           wheels-key: ${{ secrets.WHEELS_KEY }}
           abi: ${{ env.WHEELS_ABI }}
@@ -140,7 +140,7 @@ jobs:
 
       - name: Build local wheels
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
-        uses: home-assistant/wheels@34957438948e0b3dcde73c77750643dadae594f5 # 2026.06.0
+        uses: home-assistant/wheels@9e17ab1ed5c4c79d8b61e29fa63de25ca2710716 # 2026.07.0
         with:
           wheels-host: ""
           wheels-user: ""
@@ -164,7 +164,7 @@ jobs:
 
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         if: needs.init.outputs.publish == 'true'
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
@@ -187,12 +187,12 @@ jobs:
           cosign sign-blob --yes rootfs/supervisor.sha256 --bundle rootfs/supervisor.sha256.sig
 
       - name: Build supervisor
-        uses: home-assistant/builder/actions/build-image@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        uses: home-assistant/builder/actions/build-image@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
         with:
           arch: ${{ matrix.arch }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           cosign-base-identity: 'https://github.com/home-assistant/docker-base/.*'
-          cosign-base-verify: ghcr.io/home-assistant/base-python:3.14-alpine3.22
+          cosign-base-verify: ghcr.io/home-assistant/base-python:3.14-alpine3.24
           image: ${{ matrix.image }}
           image-tags: |
             ${{ needs.init.outputs.version }}
@@ -210,7 +210,7 @@ jobs:
       packages: write
     steps:
       - name: Publish multi-arch manifest
-        uses: home-assistant/builder/actions/publish-multi-arch-manifest@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
         with:
           architectures: ${{ env.ARCHITECTURES }}
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
@@ -226,7 +226,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Initialize git
         uses: home-assistant/actions/helpers/git-init@master
@@ -249,7 +249,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download local wheels artifact
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
@@ -261,7 +261,7 @@ jobs:
       # Build the Supervisor for non-publish runs (e.g. PRs)
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder/actions/build-image@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        uses: home-assistant/builder/actions/build-image@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
         with:
           arch: amd64
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}

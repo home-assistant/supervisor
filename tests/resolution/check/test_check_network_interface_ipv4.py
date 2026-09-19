@@ -70,13 +70,24 @@ async def test_approve(
     network_interface = CheckNetworkInterfaceIPV4(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
-    assert not await network_interface.approve_check("eth0")
+    assert not await network_interface.approve_check(
+        Issue(IssueType.IPV4_CONNECTION_PROBLEM, ContextType.SYSTEM, reference="eth0")
+    )
 
     with patch(
         "supervisor.dbus.network.connection.NetworkConnection.state_flags",
         new=PropertyMock(return_value=state_flags),
     ):
-        assert await network_interface.approve_check("eth0") is approved
+        assert (
+            await network_interface.approve_check(
+                Issue(
+                    IssueType.IPV4_CONNECTION_PROBLEM,
+                    ContextType.SYSTEM,
+                    reference="eth0",
+                )
+            )
+            is approved
+        )
 
 
 async def test_did_run(coresys: CoreSys):

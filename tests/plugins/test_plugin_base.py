@@ -141,7 +141,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
             coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
-                name="addon_local_other",
+                name="app_local_other",
                 state=ContainerState.UNHEALTHY,
                 id="abc123",
                 time=1,

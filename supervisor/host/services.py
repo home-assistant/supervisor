@@ -1,9 +1,8 @@
 """Service control for host."""
 
 from collections.abc import Awaitable
+from dataclasses import dataclass
 import logging
-
-import attr
 
 from ..coresys import CoreSysAttributes
 from ..dbus.const import StartUnitMode, StopUnitMode
@@ -102,13 +101,13 @@ class ServiceManager(CoreSysAttributes):
             _LOGGER.warning("Can't update host service information!")
 
 
-@attr.s(frozen=True)
+@dataclass(slots=True, frozen=True)
 class ServiceInfo:
     """Represent a single Service."""
 
-    name: str = attr.ib()
-    description: str = attr.ib()
-    state: str = attr.ib()
+    name: str
+    description: str
+    state: str
 
     @staticmethod
     def read_from(unit):

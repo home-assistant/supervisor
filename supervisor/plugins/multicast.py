@@ -12,9 +12,15 @@ from ..docker.const import ContainerState
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerError,
+    DockerStatsTimeoutError,
     MulticastError,
     MulticastJobError,
+    MulticastNotRunningError,
+    MulticastStatsTimeoutError,
+    MulticastUnknownError,
     MulticastUpdateError,
     PluginError,
 )
@@ -93,12 +99,17 @@ class PluginMulticast(PluginBase):
         except DockerError as err:
             raise MulticastError("Can't stop Multicast plugin", _LOGGER.error) from err
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of Multicast."""
         try:
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise MulticastNotRunningError(_LOGGER.warning) from err
+        except DockerStatsTimeoutError as err:
+            raise MulticastStatsTimeoutError(_LOGGER.error) from err
         except DockerError as err:
-            raise MulticastError from err
+            _LOGGER.error("Could not get stats of container for Multicast: %s", err)
+            raise MulticastUnknownError from err
 
     async def repair(self) -> None:
         """Repair Multicast plugin."""

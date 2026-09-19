@@ -10,7 +10,12 @@ import shutil
 from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DBusError, HostAppArmorError
+from ..exceptions import (
+    DBusError,
+    DBusFatalError,
+    HostAppArmorError,
+    HostAppArmorLoadProfileError,
+)
 from ..resolution.const import UnsupportedReason
 from ..utils.apparmor import validate_profile
 from .const import HostFeature
@@ -76,6 +81,8 @@ class AppArmorControl(CoreSysAttributes):
 
     async def load_profile(self, profile_name: str, profile_file: Path) -> None:
         """Load/Update a new/exists profile into AppArmor."""
+        # Basic name check; OS Agent 1.14+ does authoritative parser validation
+        # on load.
         if not await self.sys_run_in_executor(
             validate_profile, profile_name, profile_file
         ):
@@ -99,15 +106,39 @@ class AppArmorControl(CoreSysAttributes):
         if not self.available:
             return
 
-        await self._load_profile(profile_name)
+        try:
+            await self._load_profile(profile_name)
+        except HostAppArmorLoadProfileError:
+            # Parser rejected the profile: drop the copied file so load() does
+            # not retry it on startup. Keep the entry if removal fails so
+            # remove_profile can still reach it.
+            try:
+                await self.sys_run_in_executor(dest_profile.unlink)
+            except OSError as unlink_err:
+                _LOGGER.warning(
+                    "Can't remove rejected AppArmor profile %s: %s",
+                    profile_name,
+                    unlink_err,
+                )
+            else:
+                self._profiles.discard(profile_name)
+            raise
 
     async def remove_profile(self, profile_name: str) -> None:
         """Remove a AppArmor profile."""
         profile_file: Path = self._get_profile(profile_name)
 
-        # Unload if apparmor is enabled
+        # Remove the stored file even if the unload fails: OS Agent 1.14.0
+        # refuses to unload a rejected profile, and a lingering file would be
+        # retried on every startup.
         if self.available:
-            await self._unload_profile(profile_name)
+            try:
+                await self._unload_profile(profile_name)
+            except HostAppArmorError:
+                _LOGGER.warning(
+                    "Could not unload AppArmor profile %s, removing it anyway",
+                    profile_name,
+                )
 
         try:
             await self.sys_run_in_executor(profile_file.unlink)
@@ -139,6 +170,13 @@ class AppArmorControl(CoreSysAttributes):
                 self.sys_config.path_extern_apparmor.joinpath(profile_name),
                 self.sys_config.path_extern_apparmor_cache,
             )
+        except DBusFatalError as err:
+            # Service-specific failure: the OS Agent's parser rejected the
+            # profile. Transport errors (timeouts, no reply) map to their own
+            # DBusError subclasses and stay unexpected errors below.
+            raise HostAppArmorLoadProfileError(
+                _LOGGER.error, profile_name=profile_name, reason=str(err)
+            ) from err
         except DBusError as err:
             raise HostAppArmorError(
                 f"Can't load profile {profile_name}: {err!s}", _LOGGER.error

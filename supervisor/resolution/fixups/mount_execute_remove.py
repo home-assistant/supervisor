@@ -5,6 +5,7 @@ import logging
 from ...coresys import CoreSys
 from ...exceptions import MountNotFound
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -18,12 +19,12 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupMountExecuteRemove(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Remove the failed mount."""
         try:
-            await self.sys_mounts.remove_mount(reference)
+            await self.sys_mounts.remove_mount(suggestion.reference)
         except MountNotFound:
-            _LOGGER.warning("Can't find mount %s for fixup", reference)
+            _LOGGER.warning("Can't find mount %s for fixup", suggestion.reference)
         else:
             await self.sys_mounts.save_data()
 

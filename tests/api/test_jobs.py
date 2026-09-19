@@ -1,11 +1,12 @@
 """Test Docker API."""
 
 import asyncio
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock
 
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.const import FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import SupervisorError
 from supervisor.jobs.const import ATTR_IGNORE_CONDITIONS, JobCondition
@@ -422,3 +423,179 @@ async def test_job_with_error(
             ],
         },
     ]
+
+
+async def test_api_jobs_legacy_name_compatibility(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+):
+    """Test renamed job names are mapped back to legacy names in API outputs."""
+    api_client, prefix = api_client_with_prefix
+    job = coresys.jobs.new_job("app_manager_update", reference="local_example")
+    job.stage = "update"
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["name"] == "addon_manager_update"
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(job_event["name"] == "addon_manager_update" for job_event in job_events)
+    assert not any(
+        job_event["name"] == "app_manager_update" for job_event in job_events
+    )
+
+
+async def test_api_jobs_no_legacy_name_compatibility_when_websocket_v2_enabled(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+):
+    """Test legacy job name mapping is skipped when websocket v2 feature is enabled."""
+    api_client, prefix = api_client_with_prefix
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+
+    job = coresys.jobs.new_job("app_manager_update", reference="local_example")
+    job.stage = "update"
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["name"] == "app_manager_update"
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(job_event["name"] == "app_manager_update" for job_event in job_events)
+    assert not any(
+        job_event["name"] == "addon_manager_update" for job_event in job_events
+    )
+
+
+@pytest.mark.parametrize(
+    ("job_name", "new_stage", "legacy_stage"),
+    [
+        ("backup_manager_full_backup", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_backup", "apps", "addons"),
+        ("backup_manager_full_backup", "await_app_restarts", "await_addon_restarts"),
+        ("backup_manager_full_restore", "remove_delta_apps", "remove_delta_addons"),
+        ("backup_manager_full_restore", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_restore", "apps", "addons"),
+        (
+            "backup_manager_full_restore",
+            "await_app_restarts",
+            "await_addon_restarts",
+        ),
+    ],
+)
+async def test_api_jobs_legacy_stage_compatibility(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    job_name: str,
+    new_stage: str,
+    legacy_stage: str,
+):
+    """Test backup/restore stage names are mapped in REST+websocket v1 outputs."""
+    api_client, prefix = api_client_with_prefix
+    job = coresys.jobs.new_job(job_name, reference="test")
+    job.stage = new_stage
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["stage"] == legacy_stage
+
+    resp = await api_client.get(f"{prefix}/jobs/{job.uuid}")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["stage"] == legacy_stage
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == legacy_stage
+        for job_event in job_events
+    )
+    assert not any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == new_stage
+        for job_event in job_events
+    )
+
+
+@pytest.mark.parametrize(
+    ("job_name", "new_stage", "legacy_stage"),
+    [
+        ("backup_manager_full_backup", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_backup", "apps", "addons"),
+        ("backup_manager_full_backup", "await_app_restarts", "await_addon_restarts"),
+        ("backup_manager_full_restore", "remove_delta_apps", "remove_delta_addons"),
+        ("backup_manager_full_restore", "app_repositories", "addon_repositories"),
+        ("backup_manager_full_restore", "apps", "addons"),
+        (
+            "backup_manager_full_restore",
+            "await_app_restarts",
+            "await_addon_restarts",
+        ),
+    ],
+)
+async def test_api_jobs_no_legacy_stage_compatibility_when_websocket_v2_enabled(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    job_name: str,
+    new_stage: str,
+    legacy_stage: str,
+):
+    """Test backup/restore stage names are not mapped in REST+websocket v2 outputs."""
+    api_client, prefix = api_client_with_prefix
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+
+    job = coresys.jobs.new_job(job_name, reference="test")
+    job.stage = new_stage
+    job.progress = 50
+    with job.start():
+        pass
+
+    resp = await api_client.get(f"{prefix}/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["stage"] == new_stage
+
+    resp = await api_client.get(f"{prefix}/jobs/{job.uuid}")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["stage"] == new_stage
+
+    job_events = [
+        evt.args[0]["data"]["data"]
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0] and evt.args[0]["data"]["event"] == "job"
+    ]
+    assert any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == new_stage
+        for job_event in job_events
+    )
+    assert not any(
+        job_event["uuid"] == job.uuid and job_event["stage"] == legacy_stage
+        for job_event in job_events
+    )

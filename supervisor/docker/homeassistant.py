@@ -256,6 +256,10 @@ class DockerHomeAssistant(DockerInterface):
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=False,
+                    # Receive mounts made after container start — without
+                    # this, accessing a not-yet-activated automount from
+                    # the container fails with ELOOP
+                    bind_options=MountBindOptions(propagation=PropagationMode.RSLAVE),
                 ),
             ],
             environment={ENV_TIME: self.sys_timezone},

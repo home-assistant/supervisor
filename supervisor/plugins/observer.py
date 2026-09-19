@@ -15,11 +15,17 @@ from ..docker.const import ContainerState
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerContainerPortConflict,
     DockerError,
+    DockerStatsTimeoutError,
     ObserverError,
     ObserverJobError,
+    ObserverNotRunningError,
     ObserverPortConflict,
+    ObserverStatsTimeoutError,
+    ObserverUnknownError,
     ObserverUpdateError,
     PluginError,
 )
@@ -99,12 +105,17 @@ class PluginObserver(PluginBase):
         """Raise. Supervisor should not stop observer."""
         raise RuntimeError("Stopping observer without a restart is not supported!")
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of observer."""
         try:
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise ObserverNotRunningError(_LOGGER.warning) from err
+        except DockerStatsTimeoutError as err:
+            raise ObserverStatsTimeoutError(_LOGGER.error) from err
         except DockerError as err:
-            raise ObserverError from err
+            _LOGGER.error("Could not get stats of container for Observer: %s", err)
+            raise ObserverUnknownError from err
 
     async def check_system_runtime(self) -> bool:
         """Check if the observer is running."""

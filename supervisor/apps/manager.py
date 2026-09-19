@@ -3,10 +3,10 @@
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
+from dataclasses import replace
 import logging
 from typing import Self, Union
 
-from attr import evolve
 from securetar import SecureTarFile
 
 from ..const import FILE_HASSIO_ADDONS, FILE_HASSIO_APPS, AppBoot, AppStartup, AppState
@@ -155,7 +155,7 @@ class AppManager(CoreSysAttributes):
                     wait_boot.append(start_task)
             except HassioError:
                 self.sys_resolution.add_issue(
-                    evolve(app.boot_failed_issue),
+                    replace(app.boot_failed_issue),
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,
@@ -175,7 +175,7 @@ class AppManager(CoreSysAttributes):
         for app in tasks:
             if app.state in {AppState.ERROR, AppState.UNKNOWN}:
                 self.sys_resolution.add_issue(
-                    evolve(app.boot_failed_issue),
+                    replace(app.boot_failed_issue),
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,
@@ -205,7 +205,7 @@ class AppManager(CoreSysAttributes):
                 await async_capture_exception(err)
 
     @Job(
-        name="addon_manager_install",
+        name="app_manager_install",
         conditions=APP_UPDATE_CONDITIONS,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.QUEUE,
@@ -236,7 +236,7 @@ class AppManager(CoreSysAttributes):
 
         _LOGGER.info("App '%s' successfully installed", slug)
 
-    @Job(name="addon_manager_uninstall")
+    @Job(name="app_manager_uninstall")
     async def uninstall(self, slug: str, *, remove_config: bool = False) -> None:
         """Remove an app."""
         if slug not in self.local:
@@ -256,7 +256,7 @@ class AppManager(CoreSysAttributes):
         _LOGGER.info("App '%s' successfully removed", slug)
 
     @Job(
-        name="addon_manager_update",
+        name="app_manager_update",
         conditions=APP_UPDATE_CONDITIONS,
         on_condition=AppsJobError,
         # We assume for now the docker image pull is 100% of this task for progress
@@ -312,7 +312,7 @@ class AppManager(CoreSysAttributes):
         return task
 
     @Job(
-        name="addon_manager_rebuild",
+        name="app_manager_rebuild",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
@@ -345,7 +345,7 @@ class AppManager(CoreSysAttributes):
         return await app.rebuild()
 
     @Job(
-        name="addon_manager_restore",
+        name="app_manager_restore",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
@@ -385,7 +385,7 @@ class AppManager(CoreSysAttributes):
         return wait_for_start
 
     @Job(
-        name="addon_manager_repair",
+        name="app_manager_repair",
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST],
     )
     async def repair(self) -> None:

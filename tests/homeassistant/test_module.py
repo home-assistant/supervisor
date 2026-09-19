@@ -10,7 +10,7 @@ import pytest
 
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
-from supervisor.const import CoreState
+from supervisor.const import ATTR_PORT, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 from supervisor.exceptions import (
@@ -19,6 +19,7 @@ from supervisor.exceptions import (
 )
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.homeassistant.secrets import HomeAssistantSecrets
+from supervisor.homeassistant.validate import SCHEMA_HASS_CONFIG
 from supervisor.homeassistant.websocket import HomeAssistantWebSocket
 from supervisor.utils.dt import utcnow
 
@@ -56,6 +57,16 @@ async def test_load(
     await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
     assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
+
+
+async def test_api_port_default(coresys: CoreSys):
+    """Test a fresh config defaults to the port Core and the landingpage serve on."""
+    assert coresys.homeassistant.api_port == 80
+
+
+def test_api_port_kept_from_config():
+    """Test an existing installation keeps the port it was set up with."""
+    assert SCHEMA_HASS_CONFIG({"port": 8123})[ATTR_PORT] == 8123
 
 
 async def test_list_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):

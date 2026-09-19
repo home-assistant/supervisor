@@ -16,7 +16,7 @@ from aiodocker.execs import Exec
 from aiodocker.networks import DockerNetwork, DockerNetworks
 from aiodocker.system import DockerSystem
 from aiodocker.volumes import DockerVolumes
-from aiohttp import ClientSession, web
+from aiohttp import ClientSession, web, web_app as aiohttp_web_app
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from blockbuster import BlockBuster, BlockBusterFunction
@@ -51,6 +51,7 @@ from supervisor.const import (
     CpuArch,
 )
 from supervisor.coresys import CoreSys
+from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import HostLogError
@@ -107,6 +108,28 @@ def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
     blockbuster.activate()
     yield blockbuster
     blockbuster.deactivate()
+
+
+@pytest.fixture(autouse=True)
+def _clear_aiohttp_middleware_cache() -> Generator[None]:
+    """Clear aiohttp's process-wide middleware-build cache after each test.
+
+    ``aiohttp.web_app._build_middlewares`` is memoized via a module-level
+    ``functools.lru_cache(maxsize=1024)`` (``_cached_build_middleware``)
+    keyed on the route handler and the chain of ``Application`` instances
+    involved. This test suite builds a fresh ``RestAPI``/``web.Application``
+    (with route handlers bound to a fresh ``CoreSys``) for nearly every
+    test, so each test populates new cache entries that are never reused by
+    later tests. Left uncleared, up to 1024 stale entries accumulate over a
+    full test run, each one pinning an entire ``CoreSys`` object graph
+    (docker mocks, D-Bus proxies, aiohttp routes, etc.) in memory - causing
+    steady memory growth that can OOM long/full suite runs. Use ``getattr``
+    defensively since this reaches into an aiohttp private implementation
+    detail that could change/disappear in a future aiohttp release.
+    """
+    yield
+    if cache := getattr(aiohttp_web_app, "_cached_build_middleware", None):
+        cache.cache_clear()
 
 
 @pytest.fixture
@@ -230,11 +253,28 @@ async def docker() -> DockerAPI:
         docker_containers.get.return_value = docker_container = MagicMock(
             spec=DockerContainer, id=container_inspect["Id"]
         )
+        # container() is the sync, no-I/O counterpart to get(); alias it to
+        # the same mock so callers get consistent container state either way.
+        docker_containers.container.return_value = docker_container
         docker_containers.list.return_value = [docker_container]
         docker_containers.create.return_value = docker_container
         docker_container.show.return_value = container_inspect
         docker_container.wait.return_value = {"StatusCode": 0}
         docker_container.log = AsyncMock(return_value=[])
+        # Default stats response looks like Docker's stub for a stopped
+        # container (no online_cpus in cpu_stats), matching the default
+        # "stopped" state above. Tests for a running container should
+        # override this with a full stats payload.
+        docker_container.stats = AsyncMock(
+            return_value=[
+                {
+                    "id": container_inspect["Id"],
+                    "name": "mycontainer",
+                    "cpu_stats": {"cpu_usage": {"total_usage": 0}},
+                    "memory_stats": {},
+                }
+            ]
+        )
 
         docker_container.exec.return_value = docker_exec = MagicMock(spec=Exec)
         # start() with detach=False returns a Stream (not async)
@@ -442,6 +482,7 @@ async def fixture_os_agent_services(
             "agent_datadisk": None,
             "agent_swap": None,
             "agent_system": None,
+            "agent_timesyncd": None,
             "agent_boards": None,
             "agent_boards_rpi_firmware": None,
             "agent_boards_yellow": None,
@@ -593,7 +634,6 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
     with patch.object(
         su_config.CoreConfig, "path_supervisor", new=PropertyMock(return_value=tmp_path)
     ):
-        coresys.config.path_emergency.mkdir()
         coresys.config.path_media.mkdir()
         coresys.config.path_mounts.mkdir()
         coresys.config.path_mounts_credentials.mkdir()
@@ -922,6 +962,28 @@ async def capture_exception() -> Mock:
 
 
 @pytest.fixture
+async def capture_message() -> Mock:
+    """Mock capture message method for testing."""
+    with (
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.capture_message") as capture_message,
+    ):
+        yield capture_message
+
+
+@pytest.fixture
+async def os_agent_version(request: pytest.FixtureRequest) -> None:
+    """Mock OS Agent version."""
+    version = (
+        AwesomeVersion(request.param)
+        if hasattr(request, "param")
+        else AwesomeVersion("1.9.0")
+    )
+    with patch.object(OSAgent, "version", new=PropertyMock(return_value=version)):
+        yield
+
+
+@pytest.fixture
 async def os_available(request: pytest.FixtureRequest) -> None:
     """Mock os as available."""
     version = (
@@ -955,6 +1017,10 @@ def create_mock_exec_stream(output: bytes = b"") -> AsyncMock:
 async def container(docker: DockerAPI) -> DockerContainer:
     """Mock attrs and status for container on attach."""
     container_mock = docker.containers.get.return_value
+    # container_stats() uses containers.container() (no I/O) instead of
+    # containers.get() for the windowed stats path, so alias it to the same
+    # mock to keep both entry points in sync for tests.
+    docker.containers.container.return_value = container_mock
 
     # Set up exec mock to return a mock stream
     # Note: This must be a regular function, not async, to match aiodocker's start() behavior

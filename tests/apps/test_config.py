@@ -1,5 +1,7 @@
 """Validate App configs."""
 
+import logging
+
 import pytest
 import voluptuous as vol
 
@@ -122,6 +124,51 @@ def test_invalid_repository():
         vd.SCHEMA_APP_CONFIG(config)
 
 
+def test_dynamic_ingress_port_rejects_reserved_port():
+    """Validate dynamic ingress port rejects mapping a reserved port."""
+    config = load_json_fixture("basic-app-config.json")
+    config["ingress"] = True
+    config["ingress_port"] = 0
+
+    # A port inside the dynamic ingress range is rejected.
+    config["ports"] = {"63000/tcp": 8080}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_APP_CONFIG(config)
+
+    # The range boundaries are inclusive.
+    config["ports"] = {"62000/tcp": 8080}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_APP_CONFIG(config)
+
+    config["ports"] = {"65500/tcp": 8080}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_APP_CONFIG(config)
+
+
+def test_dynamic_ingress_port_allows_other_ports():
+    """Validate dynamic ingress port allows ports outside the reserved range."""
+    config = load_json_fixture("basic-app-config.json")
+    config["ingress"] = True
+    config["ingress_port"] = 0
+    config["ports"] = {"8080/tcp": 8080, "61999/tcp": 61999, "65501/tcp": 65501}
+
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
+
+    assert valid_config["ingress_port"] == 0
+
+
+def test_static_ingress_port_allows_reserved_port():
+    """Validate a static ingress port may still map a port in the range."""
+    config = load_json_fixture("basic-app-config.json")
+    config["ingress"] = True
+    config["ingress_port"] = 8099
+    config["ports"] = {"63000/tcp": 8080}
+
+    valid_config = vd.SCHEMA_APP_CONFIG(config)
+
+    assert valid_config["ingress_port"] == 8099
+
+
 def test_valid_repository():
     """Validate basic config with different valid repositories."""
     config = load_json_fixture("basic-app-config.json")
@@ -210,7 +257,7 @@ def test_warn_legacy_arch_values(caplog: pytest.LogCaptureFixture):
 
     vd.SCHEMA_APP_CONFIG(config)
 
-    assert "App config 'arch' uses deprecated values" in caplog.text
+    assert "uses deprecated 'arch' values" in caplog.text
 
 
 def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
@@ -220,7 +267,7 @@ def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
 
     vd.SCHEMA_APP_CONFIG(config)
 
-    assert "App config 'machine' uses deprecated values" in caplog.text
+    assert "uses deprecated 'machine' values" in caplog.text
 
 
 def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
@@ -230,7 +277,77 @@ def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
 
     vd.SCHEMA_APP_CONFIG(config)
 
-    assert "uses deprecated 'advanced' field in config" in caplog.text
+    assert "uses the deprecated 'advanced' config field" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("legacy_mapping", "app_mapping"),
+    [
+        ("addons", "local_apps"),
+        ("all_addon_configs", "all_app_configs"),
+        ("addon_config", "app_config"),
+    ],
+)
+def test_warn_legacy_map_types(
+    legacy_mapping: str,
+    app_mapping: str,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Warn when legacy map types are used."""
+    config = load_json_fixture("basic-app-config.json")
+    config["map"] = [legacy_mapping]
+
+    vd.SCHEMA_APP_CONFIG(config)
+
+    assert f"uses legacy map type '{legacy_mapping}'" in caplog.text
+    assert f"use '{app_mapping}' instead" in caplog.text
+
+
+def test_quiet_schema_logs_advisories_at_debug(caplog: pytest.LogCaptureFixture):
+    """SCHEMA_APP_CONFIG_QUIET emits the same advisories, but at debug level."""
+    config = load_json_fixture("basic-app-config.json")
+    config["advanced"] = True
+    config["arch"] = ["armv7", "amd64"]
+
+    with caplog.at_level(logging.DEBUG, logger="supervisor.apps.validate"):
+        vd.SCHEMA_APP_CONFIG_QUIET(config)
+
+    # The advisories are still emitted, so they remain available in debug logs.
+    assert "uses the deprecated 'advanced' config field" in caplog.text
+    assert "uses deprecated 'arch' values" in caplog.text
+
+    # But never at warning level, so regular users don't see them.
+    assert not [
+        record
+        for record in caplog.records
+        if record.name == "supervisor.apps.validate"
+        and record.levelno >= logging.WARNING
+    ]
+
+
+@pytest.mark.parametrize(
+    ("legacy_mapping", "app_mapping"),
+    [
+        ("addons", "local_apps"),
+        ("all_addon_configs", "all_app_configs"),
+        ("addon_config", "app_config"),
+    ],
+)
+def test_warn_incompatible_map_types_legacy_ignored(
+    legacy_mapping: str,
+    app_mapping: str,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Warn when both app and legacy map types are present; legacy is ignored."""
+    config = load_json_fixture("basic-app-config.json")
+    config["map"] = [legacy_mapping, app_mapping]
+
+    vd.SCHEMA_APP_CONFIG(config)
+
+    assert "uses incompatible map options" in caplog.text
+    assert f"'{app_mapping}'" in caplog.text
+    assert f"'{legacy_mapping}'" in caplog.text
+    assert f"legacy option '{legacy_mapping}' will be ignored" in caplog.text
 
 
 async def test_valid_manifest_build():

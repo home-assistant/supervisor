@@ -21,7 +21,7 @@ DNS_DOCKER_NAME: str = f"{DOCKER_PREFIX}_dns"
 OBSERVER_DOCKER_NAME: str = f"{DOCKER_PREFIX}_observer"
 SUPERVISOR_DOCKER_NAME: str = f"{DOCKER_PREFIX}_supervisor"
 
-URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
+URL_HASSIO_APPS = "https://github.com/home-assistant/addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor_{channel}.txt"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 
@@ -56,6 +56,10 @@ DOCKER_NETWORK_DRIVER = "bridge"
 DOCKER_IPV6_NETWORK_MASK = IPv6Network("fd0c:ac1e:2100::/48")
 DOCKER_IPV4_NETWORK_MASK = IPv4Network("172.30.32.0/23")
 DOCKER_IPV4_NETWORK_RANGE = IPv4Network("172.30.33.0/24")
+
+# Range used for dynamically assigned ingress ports (ingress_port: 0).
+INGRESS_DYNAMIC_PORT_MIN = 62000
+INGRESS_DYNAMIC_PORT_MAX = 65500
 
 # This needs to match the dockerd --cpu-rt-runtime= argument.
 DOCKER_CPU_RUNTIME_TOTAL = 950_000
@@ -128,6 +132,7 @@ ATTR_APPARMOR = "apparmor"
 ATTR_APPLICATION = "application"
 ATTR_ARCH = "arch"
 ATTR_ARGS = "args"
+ATTR_ALL_FEATURES = "all_features"
 ATTR_AUDIO = "audio"
 ATTR_AUDIO_INPUT = "audio_input"
 ATTR_AUDIO_OUTPUT = "audio_output"
@@ -167,6 +172,8 @@ ATTR_CONTENT_TRUST = "content_trust"
 ATTR_COUNTRY = "country"
 ATTR_CPE = "cpe"
 ATTR_CPU_PERCENT = "cpu_percent"
+ATTR_CPU_SYSTEM_USAGE = "cpu_system_usage"
+ATTR_CPU_USAGE = "cpu_usage"
 ATTR_CURRENT_VERSION = "current_version"
 ATTR_DATA = "data"
 ATTR_DATE = "date"
@@ -290,6 +297,8 @@ ATTR_NETWORK_DESCRIPTION = "network_description"
 ATTR_NETWORK_RX = "network_rx"
 ATTR_NETWORK_TX = "network_tx"
 ATTR_OBSERVER = "observer"
+ATTR_ONE_SHOT = "one_shot"
+ATTR_ONLINE_CPUS = "online_cpus"
 ATTR_OPERATING_SYSTEM = "operating_system"
 ATTR_OPTIONS = "options"
 ATTR_OTA = "ota"
@@ -387,6 +396,7 @@ ATTR_VALUE = "value"
 ATTR_VERSION = "version"
 ATTR_VERSION_TIMESTAMP = "version_timestamp"
 ATTR_VERSION_LATEST = "version_latest"
+ATTR_VERSION_PENDING = "version_pending"
 ATTR_VIDEO = "video"
 ATTR_VLAN = "vlan"
 ATTR_VOLUME = "volume"
@@ -537,6 +547,7 @@ class HostFeature(StrEnum):
     HASSOS = "hassos"
     HOSTNAME = "hostname"
     NETWORK = "network"
+    NTP = "ntp"
     REBOOT = "reboot"
     SERVICES = "services"
     SHUTDOWN = "shutdown"
@@ -566,7 +577,10 @@ class CpuArch(StrEnum):
 class FeatureFlag(StrEnum):
     """Development features that can be toggled."""
 
+    APP_DROP_NET_RAW = "app_drop_net_raw"
+    APP_REDUCED_CAPABILITIES = "app_reduced_capabilities"
     SUPERVISOR_V2_API = "supervisor_v2_api"
+    SUPERVISOR_WEBSOCKET_V2_API = "supervisor_websocket_v2_api"
 
 
 @dataclass

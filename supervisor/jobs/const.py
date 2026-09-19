@@ -9,7 +9,7 @@ FILE_CONFIG_JOBS = Path(SUPERVISOR_DATA, "jobs.json")
 
 ATTR_IGNORE_CONDITIONS = "ignore_conditions"
 
-JOB_GROUP_ADDON = "addon_{slug}"
+JOB_GROUP_APP = "app_{slug}"
 JOB_GROUP_BACKUP = "backup_{slug}"
 JOB_GROUP_BACKUP_MANAGER = "backup_manager"
 JOB_GROUP_DOCKER_INTERFACE = "container_{name}"

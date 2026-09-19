@@ -8,7 +8,8 @@ from supervisor.backups.backup import Backup
 from supervisor.const import ATTR_DATE, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.backups import CheckBackups
-from supervisor.resolution.const import IssueType
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 from supervisor.utils.dt import utcnow
 
 
@@ -27,7 +28,9 @@ async def test_check_no_backups(coresys: CoreSys):
     assert len(coresys.resolution.issues) == 0
     await backups.run_check()
     assert coresys.resolution.issues[-1].type == IssueType.NO_CURRENT_BACKUP
-    assert await backups.approve_check()
+    assert await backups.approve_check(
+        Issue(IssueType.NO_CURRENT_BACKUP, ContextType.SYSTEM)
+    )
 
 
 async def test_check_only_partial_backups(
@@ -40,7 +43,9 @@ async def test_check_only_partial_backups(
     assert len(coresys.resolution.issues) == 0
     await backups.run_check()
     assert coresys.resolution.issues[-1].type == IssueType.NO_CURRENT_BACKUP
-    assert await backups.approve_check()
+    assert await backups.approve_check(
+        Issue(IssueType.NO_CURRENT_BACKUP, ContextType.SYSTEM)
+    )
 
 
 async def test_check_with_backup(coresys: CoreSys, mock_full_backup: Backup):
@@ -51,12 +56,16 @@ async def test_check_with_backup(coresys: CoreSys, mock_full_backup: Backup):
     assert len(coresys.resolution.issues) == 0
     await backups.run_check()
     assert len(coresys.resolution.issues) == 0
-    assert not await backups.approve_check()
+    assert not await backups.approve_check(
+        Issue(IssueType.NO_CURRENT_BACKUP, ContextType.SYSTEM)
+    )
 
     mock_full_backup._data[ATTR_DATE] = (utcnow() - timedelta(days=30)).isoformat()
     await backups.run_check()
     assert coresys.resolution.issues[-1].type == IssueType.NO_CURRENT_BACKUP
-    assert await backups.approve_check()
+    assert await backups.approve_check(
+        Issue(IssueType.NO_CURRENT_BACKUP, ContextType.SYSTEM)
+    )
 
 
 async def test_did_run(coresys: CoreSys):

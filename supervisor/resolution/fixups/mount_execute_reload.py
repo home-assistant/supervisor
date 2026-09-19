@@ -3,8 +3,9 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import MountError, MountNotFound, ResolutionFixupError
+from ...exceptions import MountNotFound
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -18,17 +19,15 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupMountExecuteReload(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Attempt to remount using the same config to fix failure."""
+        # A reload failure (e.g. unreachable server) propagates to the
+        # caller and leaves the issue/suggestion in place so the user can
+        # try again once the underlying problem is fixed.
         try:
-            await self.sys_mounts.reload_mount(reference)
+            await self.sys_mounts.reload_mount(suggestion.reference)
         except MountNotFound:
-            _LOGGER.warning("Can't find mount %s for fixup", reference)
-        except MountError as err:
-            # Leave the issue/suggestion in place so the user can try again
-            # once the underlying problem (e.g. unreachable server) is fixed.
-            _LOGGER.warning("Reload fixup for mount %s failed: %s", reference, err)
-            raise ResolutionFixupError from err
+            _LOGGER.warning("Can't find mount %s for fixup", suggestion.reference)
 
     @property
     def suggestion(self) -> SuggestionType:

@@ -14,7 +14,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Final, cast
+from typing import Any, Final, Literal, cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -75,15 +75,19 @@ from ..exceptions import (
     AppPrePostBackupCommandReturnedError,
     AppsError,
     AppsJobError,
+    AppStatsTimeoutError,
     AppUnknownError,
     BackupInvalidError,
     BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
     DockerContainerPortConflict,
     DockerError,
     DockerNotFound,
     DockerRegistryAuthError,
+    DockerStatsTimeoutError,
     HostAppArmorError,
     StoreAppNotFoundError,
 )
@@ -135,7 +139,7 @@ _OPTIONS_MERGER: Final = Merger(
 
 # Backups just need to know if an app was running or not
 # Map other app states to those two
-_MAP_ADDON_STATE = {
+_MAP_APP_STATE = {
     AppState.STARTUP: AppState.STARTED,
     AppState.ERROR: AppState.STOPPED,
     AppState.UNKNOWN: AppState.STOPPED,
@@ -238,22 +242,27 @@ class App(AppModel):
         if new_state == AppState.STARTED or old_state == AppState.STARTUP:
             self._startup_event.set()
 
-        # Dismiss boot failed issue if present and we started
-        if new_state == AppState.STARTED and (
-            issue := self.sys_resolution.get_issue_if_present(self.boot_failed_issue)
-        ):
-            self.sys_resolution.dismiss_issue(issue)
+        # Dismiss boot failed or port conflict issue if present and we started
+        if new_state == AppState.STARTED:
+            for issue in self.sys_resolution.issues:
+                if (
+                    issue == self.boot_failed_issue
+                    or issue.type == IssueType.APP_PORT_CONFLICT
+                    and issue.context == ContextType.ADDON
+                    and issue.reference == self.slug
+                ):
+                    self.sys_resolution.dismiss_issue(issue)
 
         # Dismiss device access missing issue if present and we stopped
         if new_state == AppState.STOPPED and (
-            issue := self.sys_resolution.get_issue_if_present(
+            access_issue := self.sys_resolution.get_issue_if_present(
                 self.device_access_missing_issue
             )
         ):
-            self.sys_resolution.dismiss_issue(issue)
+            self.sys_resolution.dismiss_issue(access_issue)
 
         self.sys_homeassistant.websocket.supervisor_event_custom(
-            WSEvent.ADDON,
+            WSEvent.APP,
             {
                 ATTR_SLUG: self.slug,
                 ATTR_STATE: new_state,
@@ -288,7 +297,7 @@ class App(AppModel):
             self.has_deprecated_machine and not self.has_supported_machine
         ):
             self.sys_resolution.create_issue(
-                IssueType.DEPRECATED_ARCH_ADDON,
+                IssueType.DEPRECATED_ARCH_APP,
                 ContextType.ADDON,
                 reference=self.slug,
                 suggestions=[SuggestionType.EXECUTE_REMOVE],
@@ -586,8 +595,21 @@ class App(AppModel):
 
     @property
     def ports(self) -> dict[str, int | None] | None:
-        """Return ports of app."""
-        return self.persist.get(ATTR_NETWORK, super().ports)
+        """Return effective ports, merging user overrides over config defaults.
+
+        This keeps every config-declared port visible even when the user only
+        remapped a subset, so optional ports left unpublished (and ports newly
+        added by an app update) stay visible and keep applying their defaults.
+        """
+        config_ports = super().ports
+        if config_ports is None:
+            return self.persist.get(ATTR_NETWORK)
+
+        persisted = self.persist.get(ATTR_NETWORK, {})
+        return {
+            container_port: persisted.get(container_port, default_host_port)
+            for container_port, default_host_port in config_ports.items()
+        }
 
     @ports.setter
     def ports(self, value: dict[str, int | None] | None) -> None:
@@ -603,6 +625,14 @@ class App(AppModel):
                 new_ports[container_port] = host_port
 
         self.persist[ATTR_NETWORK] = new_ports
+
+    def user_ports(self) -> dict[str, int | None]:
+        """Return only the user's persisted port overrides.
+
+        Unlike ``ports`` this excludes config defaults the user never touched,
+        so callers persisting a change only write back real user overrides.
+        """
+        return dict(self.persist.get(ATTR_NETWORK) or {})
 
     @property
     def ingress_url(self) -> str | None:
@@ -737,7 +767,10 @@ class App(AppModel):
     @property
     def app_config_used(self) -> bool:
         """App is using its public config folder."""
-        return MappingType.ADDON_CONFIG in self.map_volumes
+        return (
+            MappingType.APP_CONFIG in self.map_volumes
+            or MappingType.ADDON_CONFIG in self.map_volumes
+        )
 
     @property
     def path_config(self) -> Path:
@@ -855,7 +888,7 @@ class App(AppModel):
         _LOGGER.debug("App %s write options: %s", self.slug, options)
 
     @Job(
-        name="addon_unload",
+        name="app_unload",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -888,7 +921,7 @@ class App(AppModel):
             )
 
     @Job(
-        name="addon_install",
+        name="app_install",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -942,7 +975,7 @@ class App(AppModel):
             await self.sys_ingress.reload()
 
     @Job(
-        name="addon_uninstall",
+        name="app_uninstall",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1010,7 +1043,7 @@ class App(AppModel):
             await self.sys_ingress.reload()
 
     @Job(
-        name="addon_update",
+        name="app_update",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1028,7 +1061,11 @@ class App(AppModel):
         store = self.app_store.clone()
 
         try:
-            await self.instance.update(store.version, store.image, arch=self.arch)
+            # Use the store's architecture list to pick the image architecture. The
+            # installed version may not support any of the system's architectures
+            # anymore (e.g. after 32-bit support was dropped), while the new version
+            # does — availability of the store version was validated by the caller.
+            await self.instance.update(store.version, store.image, arch=store.arch)
         except DockerBuildError as err:
             _LOGGER.error("Could not build image for app %s: %s", self.slug, err)
             raise AppBuildFailedUnknownError(app=self.slug) from err
@@ -1070,7 +1107,7 @@ class App(AppModel):
         return out
 
     @Job(
-        name="addon_rebuild",
+        name="app_rebuild",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1227,8 +1264,31 @@ class App(AppModel):
             if self._wait_for_startup_task is asyncio.current_task():
                 self._wait_for_startup_task = None
 
+    def create_port_conflict_issue(
+        self, port: int, source: Literal["core"] | None = None
+    ) -> None:
+        """Create a port conflict issue for the given port.
+
+        Source can only be "core" or None currently, may be extended in future.
+        If problematic port is mapped for this app (by user override or config
+        default), suggest clearing the mapping and then starting the app again.
+        Otherwise suggest starting the app again.
+        """
+        ports = self.ports or {}
+        suggestions = [SuggestionType.EXECUTE_START]
+        if any(public_port == port for public_port in ports.values()):
+            suggestions.insert(0, SuggestionType.CLEAR_PORT_CONFIG)
+
+        self.sys_resolution.create_issue(
+            IssueType.APP_PORT_CONFLICT,
+            ContextType.ADDON,
+            reference=self.slug,
+            reference_extra={"port": port},
+            suggestions=suggestions,
+        )
+
     @Job(
-        name="addon_start",
+        name="app_start",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1275,11 +1335,9 @@ class App(AppModel):
         try:
             await self.instance.run()
         except DockerContainerPortConflict as err:
-            raise AppPortConflict(
-                _LOGGER.error,
-                name=self.slug,
-                port=cast(dict[str, Any], err.extra_fields)["port"],
-            ) from err
+            port = cast(dict[str, Any], err.extra_fields)["port"]
+            self.create_port_conflict_issue(port)
+            raise AppPortConflict(_LOGGER.error, name=self.slug, port=port) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for app %s: %s", self.slug, err)
             self._update_state(operation_error=True)
@@ -1289,7 +1347,7 @@ class App(AppModel):
         return self._wait_for_startup_task
 
     @Job(
-        name="addon_stop",
+        name="app_stop",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1304,7 +1362,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="addon_restart",
+        name="app_restart",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1324,13 +1382,14 @@ class App(AppModel):
         """
         return self.instance.is_running()
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of container."""
         try:
-            if not await self.is_running():
-                raise AppNotRunningError(_LOGGER.warning, app=self.slug)
-
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise AppNotRunningError(_LOGGER.warning, app=self.slug) from err
+        except DockerStatsTimeoutError as err:
+            raise AppStatsTimeoutError(_LOGGER.error, app=self.slug) from err
         except DockerError as err:
             _LOGGER.error(
                 "Could not get stats of container for app %s: %s", self.slug, err
@@ -1338,7 +1397,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="addon_write_stdin",
+        name="app_write_stdin",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1376,7 +1435,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="addon_begin_backup",
+        name="app_begin_backup",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1398,7 +1457,7 @@ class App(AppModel):
         return True
 
     @Job(
-        name="addon_end_backup",
+        name="app_end_backup",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1436,7 +1495,7 @@ class App(AppModel):
         return False
 
     @Job(
-        name="addon_backup",
+        name="app_backup",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1507,7 +1566,7 @@ class App(AppModel):
             ATTR_USER: self.persist,
             ATTR_SYSTEM: self.data,
             ATTR_VERSION: self.version,
-            ATTR_STATE: _MAP_ADDON_STATE.get(self.state, self.state),
+            ATTR_STATE: _MAP_APP_STATE.get(self.state, self.state),
         }
         apparmor_profile = (
             self.slug if self.sys_host.apparmor.exists(self.slug) else None
@@ -1549,7 +1608,7 @@ class App(AppModel):
         return wait_for_start
 
     @Job(
-        name="addon_restore",
+        name="app_restore",
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1698,11 +1757,12 @@ class App(AppModel):
         return wait_for_start
 
     @Job(
-        name="addon_restart_after_problem",
+        name="app_restart_after_problem",
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         on_condition=AppsJobError,
         throttle=JobThrottle.GROUP_RATE_LIMIT,
+        internal=True,
     )
     async def _restart_after_problem(
         self, state: ContainerState, exit_code: int | None = None

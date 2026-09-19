@@ -13,7 +13,7 @@ from ..exceptions import HassioError, HostLogError, PulseAudioError
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from .apparmor import AppArmorControl
-from .const import HostFeature
+from .const import NTP_MIN_OS_AGENT_VERSION, HostFeature
 from .control import SystemControl
 from .firewall import FirewallManager
 from .info import InfoCenter
@@ -135,6 +135,14 @@ class HostManager(CoreSysAttributes):
             )
         ):
             features.append(HostFeature.MOUNT)
+
+        if (
+            self.sys_os.available
+            and self.sys_dbus.agent.timesyncd.is_connected
+            and self.sys_dbus.systemd.is_connected
+            and self.sys_dbus.agent.version >= NTP_MIN_OS_AGENT_VERSION
+        ):
+            features.append(HostFeature.NTP)
 
         return features
 

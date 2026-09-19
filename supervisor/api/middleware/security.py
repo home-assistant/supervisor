@@ -38,10 +38,14 @@ _V2_FRONTEND_PATHS: Final = (
 
 
 # Block Anytime
+# The boundary after "hassio" must match both the loopback proxy (hassio/...)
+# and the Core auth endpoints (hassio_auth, hassio_auth/password_reset).
+# Matching only "hassio/" would let an add-on reach /core/api/hassio_auth via
+# the proxy, which runs as the Supervisor user and can reset any user's password.
 BLACKLIST: Final = re.compile(
     r"^(?:/v2)?(?:"  # both implicit v1 and v2 paths
-    r"|/homeassistant/api/hassio/.*"
-    r"|/core/api/hassio/.*"
+    r"|/homeassistant/api/hassio(?:/|_).*"
+    r"|/core/api/hassio(?:/|_).*"
     r")$"
 )
 
@@ -105,6 +109,7 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
     core_only=re.compile(
         r"^(?:"
         r"/addons/" + RE_SLUG + r"/sys_options"
+        r"|/os/ssh/authorized_keys"
         r")$"
     ),
     role_access={
@@ -146,13 +151,14 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
             r"|/multicast/.+"
             r"|/network/.+"
             r"|/observer/.+"
-            r"|/os/(?!datadisk/wipe).+"
+            r"|/os/(?!datadisk/wipe|ssh/authorized_keys).+"
             r"|/refresh_updates"
             r"|/resolution/.+"
             r"|/security/.+"
             r"|/snapshots.*"
             r"|/store.*"
             r"|/supervisor/.+"
+            r"|/time/.+"
             r")$"
         ),
         ROLE_ADMIN: re.compile(r".*"),
@@ -186,6 +192,7 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
     core_only=re.compile(
         r"^/v2(?:"
         r"/apps/" + RE_SLUG + r"/sys_options"
+        r"|/os/ssh/authorized_keys"
         r")$"
     ),
     role_access={
@@ -226,12 +233,13 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
             r"|/multicast/.+"
             r"|/network/.+"
             r"|/observer/.+"
-            r"|/os/(?!datadisk/wipe).+"
+            r"|/os/(?!datadisk/wipe|ssh/authorized_keys).+"
             r"|/reload_updates"
             r"|/resolution/.+"
             r"|/security/.+"
             r"|/store.*"
             r"|/supervisor/.+"
+            r"|/time/.+"
             r")$"
         ),
         ROLE_ADMIN: re.compile(r".*"),
@@ -254,6 +262,17 @@ def _get_app_security_patterns(request: Request) -> _AppSecurityPatterns:
     return _V1_PATTERNS
 
 
+def recursive_unquote(value: str) -> str:
+    """Percent-decode a value until it no longer changes.
+
+    Use this to canonicalize a path before matching it against a deny pattern,
+    so that multiply-encoded variants (e.g. %255F for "_") can't slip past.
+    """
+    while (unquoted := unquote(value)) != value:
+        value = unquoted
+    return value
+
+
 class SecurityMiddleware(CoreSysAttributes):
     """Security middleware functions."""
 
@@ -261,24 +280,18 @@ class SecurityMiddleware(CoreSysAttributes):
         """Initialize security middleware."""
         self.coresys: CoreSys = coresys
 
-    def _recursive_unquote(self, value: str) -> str:
-        """Handle values that are encoded multiple times."""
-        if (unquoted := unquote(value)) != value:
-            unquoted = self._recursive_unquote(unquoted)
-        return unquoted
-
     @middleware
     async def block_bad_requests(
         self, request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]
     ) -> StreamResponse:
         """Process request and tblock commonly known exploit attempts."""
-        if FILTERS.search(self._recursive_unquote(request.path)):
+        if FILTERS.search(recursive_unquote(request.path)):
             _LOGGER.warning(
                 "Filtered a potential harmful request to: %s", request.raw_path
             )
             raise HTTPBadRequest
 
-        if FILTERS.search(self._recursive_unquote(request.query_string)):
+        if FILTERS.search(recursive_unquote(request.query_string)):
             _LOGGER.warning(
                 "Filtered a request with a potential harmful query string: %s",
                 request.raw_path,
@@ -294,7 +307,7 @@ class SecurityMiddleware(CoreSysAttributes):
         """Check if core is ready to response."""
         if self.sys_core.state not in VALID_API_STATES:
             return api_return_error(
-                message=f"System is not ready with state: {self.sys_core.state}"
+                message=f"System is not ready with state: {self.sys_core.state}",
             )
 
         return await handler(request)
@@ -308,8 +321,10 @@ class SecurityMiddleware(CoreSysAttributes):
         supervisor_token = extract_supervisor_token(request)
         patterns = _get_app_security_patterns(request)
 
-        # Blacklist
-        if BLACKLIST.match(request.path):
+        # Blacklist. Match the fully decoded path: request.path is only decoded
+        # once, so a double-encoded variant would otherwise pass here and be
+        # re-decoded downstream.
+        if BLACKLIST.match(recursive_unquote(request.path)):
             _LOGGER.error("%s is blacklisted!", request.path)
             raise HTTPForbidden
 

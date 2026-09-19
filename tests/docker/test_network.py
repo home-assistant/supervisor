@@ -18,6 +18,7 @@ from supervisor.docker.network import (
     DOCKER_NETWORK_PARAMS,
     DockerNetwork,
 )
+from supervisor.exceptions import DockerTimeoutError
 
 
 @pytest.mark.parametrize(
@@ -251,3 +252,67 @@ async def test_network_mtu_no_change(docker: DockerAPI):
 
     # Verify network was NOT recreated since MTU is the same
     docker.docker.networks.create.assert_not_called()
+
+
+async def test_post_init_get_network_timeout(docker: DockerAPI):
+    """Test post_init raises DockerTimeoutError on network get timeout."""
+    docker.docker.networks.get.side_effect = TimeoutError()
+
+    with pytest.raises(DockerTimeoutError, match="Timeout getting network from Docker"):
+        await DockerNetwork(docker.docker).post_init()
+
+
+async def test_reload_timeout(docker: DockerAPI):
+    """Test reload raises DockerTimeoutError on network show timeout."""
+    docker_network = await DockerNetwork(docker.docker).post_init()
+    docker_network.network.show.side_effect = TimeoutError()
+
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout getting network metadata from Docker"
+    ):
+        await docker_network.reload()
+
+
+async def test_attach_container_timeout(docker: DockerAPI):
+    """Test attach_container raises DockerTimeoutError on connect timeout."""
+    docker_network = await DockerNetwork(docker.docker).post_init()
+    docker_network.network.connect.side_effect = TimeoutError()
+
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout connecting test to Supervisor network"
+    ):
+        await docker_network.attach_container("abc123", "test")
+
+
+async def test_attach_container_by_name_timeout(docker: DockerAPI):
+    """Test attach_container_by_name raises DockerTimeoutError on get timeout."""
+    docker_network = await DockerNetwork(docker.docker).post_init()
+    docker.docker.containers.get.side_effect = TimeoutError()
+
+    with pytest.raises(DockerTimeoutError, match="Timeout finding test"):
+        await docker_network.attach_container_by_name("test")
+
+
+async def test_detach_default_bridge_timeout(docker: DockerAPI):
+    """Test detach_default_bridge raises DockerTimeoutError on disconnect timeout."""
+    docker_network = await DockerNetwork(docker.docker).post_init()
+    default_network = MagicMock(spec=AiodockerNetwork)
+    default_network.disconnect.side_effect = TimeoutError()
+    docker.docker.networks.get.return_value = default_network
+
+    with pytest.raises(
+        DockerTimeoutError,
+        match="Timeout disconnecting test from default network",
+    ):
+        await docker_network.detach_default_bridge("abc123", name="test")
+
+
+async def test_stale_cleanup_timeout(docker: DockerAPI):
+    """Test stale_cleanup raises DockerTimeoutError on disconnect timeout."""
+    docker_network = await DockerNetwork(docker.docker).post_init()
+    docker_network.network.disconnect.side_effect = TimeoutError()
+
+    with pytest.raises(
+        DockerTimeoutError, match="Timeout disconnecting test from Supervisor network"
+    ):
+        await docker_network.stale_cleanup("test")

@@ -2,24 +2,24 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 
-import attr
 import pyudev
 
 
-@attr.s(slots=True, frozen=True)
+@dataclass(slots=True, frozen=True)
 class Device:
     """Represent a device."""
 
-    name: str = attr.ib(eq=False)
-    path: Path = attr.ib(eq=False)
-    sysfs: Path = attr.ib(eq=True)
-    subsystem: str = attr.ib(eq=False)
-    parent: Path | None = attr.ib(eq=False)
-    links: list[Path] = attr.ib(eq=False)
-    attributes: dict[str, str] = attr.ib(eq=False)
-    children: list[Path] = attr.ib(eq=False)
+    name: str = field(compare=False)
+    path: Path = field(compare=False)
+    sysfs: Path
+    subsystem: str = field(compare=False)
+    parent: Path | None = field(compare=False)
+    links: list[Path] = field(compare=False)
+    attributes: dict[str, str] = field(compare=False)
+    children: list[Path] = field(compare=False)
 
     @property
     def major(self) -> int:

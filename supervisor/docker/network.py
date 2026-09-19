@@ -21,7 +21,7 @@ from ..const import (
     OBSERVER_DOCKER_NAME,
     SUPERVISOR_DOCKER_NAME,
 )
-from ..exceptions import DockerError, DockerNotFound
+from ..exceptions import DockerError, DockerNotFound, DockerTimeoutError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -64,6 +64,10 @@ class DockerNetwork:
         """Post init actions that must be done in event loop."""
         try:
             self._network = network = await self.docker.networks.get(DOCKER_NETWORK)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout getting network from Docker", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             # If network was not found, create it instead. Can skip further checks since it's new
             if err.status == HTTPStatus.NOT_FOUND:
@@ -115,6 +119,13 @@ class DockerNetwork:
         for c_id, meta in containers.items():
             try:
                 await network.disconnect({"Container": c_id, "Force": True})
+            except TimeoutError:
+                _LOGGER.warning(
+                    "Cannot apply Supervisor network changes because container %s "
+                    "could not be disconnected. Reboot your system to apply change.",
+                    meta.get("Name"),
+                )
+                return self
             except aiodocker.DockerError:
                 _LOGGER.warning(
                     "Cannot apply Supervisor network changes because container %s "
@@ -126,6 +137,12 @@ class DockerNetwork:
         # Remove the network
         try:
             await network.delete()
+        except TimeoutError:
+            _LOGGER.warning(
+                "Cannot apply Supervisor network changes because Supervisor network "
+                "could not be removed and recreated. Reboot your system to apply change."
+            )
+            return self
         except aiodocker.DockerError:
             _LOGGER.warning(
                 "Cannot apply Supervisor network changes because Supervisor network "
@@ -208,6 +225,10 @@ class DockerNetwork:
 
         try:
             self._network = await self.docker.networks.create(network_params)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout creating Supervisor network", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't create Supervisor network: {err}", _LOGGER.error
@@ -253,6 +274,10 @@ class DockerNetwork:
         """Get and cache metadata for supervisor network."""
         try:
             self._network_meta = await self.network.show()
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout getting network metadata from Docker", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Could not get network metadata from Docker: {err!s}", _LOGGER.error
@@ -288,6 +313,11 @@ class DockerNetwork:
                     "EndpointConfig": endpoint_config,
                 }
             )
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout connecting {name or container_id} to Supervisor network",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't connect {name or container_id} to Supervisor network: {err}",
@@ -300,6 +330,8 @@ class DockerNetwork:
         """Attach container to Supervisor network."""
         try:
             container = await self.docker.containers.get(name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(f"Timeout finding {name}") from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(f"Can't find {name}") from err
@@ -315,6 +347,11 @@ class DockerNetwork:
         try:
             default_network = await self.docker.networks.get(DOCKER_NETWORK_DRIVER)
             await default_network.disconnect({"Container": container_id})
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout disconnecting {name or container_id} from default network",
+                _LOGGER.warning,
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 return
@@ -330,6 +367,11 @@ class DockerNetwork:
         """
         try:
             await self.network.disconnect({"Container": name, "Force": True})
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout disconnecting {name} from Supervisor network",
+                _LOGGER.warning,
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't disconnect {name} from Supervisor network: {err}",

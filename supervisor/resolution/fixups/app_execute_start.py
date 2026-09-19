@@ -4,8 +4,9 @@ import logging
 
 from ...const import AppState
 from ...coresys import CoreSys
-from ...exceptions import AppsError, ResolutionFixupError
+from ...exceptions import AppsError
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -19,27 +20,27 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupAppExecuteStart(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
-        if not reference:
+        if not suggestion.reference:
             return
 
-        if not (app := self.sys_apps.get_local_only(reference)):
-            _LOGGER.info("Cannot start app %s as it does not exist", reference)
+        if not (app := self.sys_apps.get_local_only(suggestion.reference)):
+            _LOGGER.info(
+                "Cannot start app %s as it does not exist", suggestion.reference
+            )
             return
 
         # Start app
-        try:
-            start_task = await app.start()
-        except AppsError as err:
-            _LOGGER.error("Could not start %s due to %s", reference, err)
-            raise ResolutionFixupError from None
+        start_task = await app.start()
 
         # Wait for app start. If it ends up in error or unknown state it's not fixed
         await start_task
         if app.state in {AppState.ERROR, AppState.UNKNOWN}:
-            _LOGGER.error("App %s could not start successfully", reference)
-            raise ResolutionFixupError
+            raise AppsError(
+                f"App {suggestion.reference} could not start successfully",
+                _LOGGER.error,
+            )
 
     @property
     def suggestion(self) -> SuggestionType:
@@ -54,7 +55,7 @@ class FixupAppExecuteStart(FixupBase):
     @property
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.BOOT_FAIL]
+        return [IssueType.BOOT_FAIL, IssueType.APP_PORT_CONFLICT]
 
     @property
     def auto(self) -> bool:

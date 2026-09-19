@@ -117,6 +117,7 @@ async def test_api_create_dbus_error_mount_not_added(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    caplog: pytest.LogCaptureFixture,
 ):
     """Test mount not added to list of mounts if a dbus error occurs."""
     api_client, prefix = api_client_with_prefix
@@ -143,20 +144,32 @@ async def test_api_create_dbus_error_mount_not_added(
         assert resp.status == 400
         result = await resp.json()
         assert result["result"] == "error"
-        assert result["message"] == "Could not mount backup_test due to: fail"
+        # User-facing message is generic and translatable...
+        assert (
+            result["message"]
+            == "Could not set up mount backup_test. Check the Supervisor logs for details"
+        )
+        assert result["error_key"] == "mount_setup_error"
+        assert result["extra_fields"] == {"name": "backup_test"}
         capture_exception.assert_not_called()
+
+    # ...while the D-Bus detail is only in the log
+    assert "Could not mount backup_test due to: fail" in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
     assert result["data"]["mounts"] == []
 
+    caplog.clear()
     systemd_service.response_get_unit = [
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
-    systemd_unit_service.active_state = ["failed", "failed", "inactive"]
+    systemd_unit_service.active_state = ["failed", "failed"]
 
     with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
         resp = await api_client.post(
@@ -174,9 +187,16 @@ async def test_api_create_dbus_error_mount_not_added(
         assert result["result"] == "error"
         assert (
             result["message"]
-            == "Mounting backup_test did not succeed. Check host logs for errors from mount or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details."
+            == "Mount backup_test is not reachable. Check the Supervisor logs for details"
         )
+        assert result["error_key"] == "mount_activation_error"
+        assert result["extra_fields"] == {"name": "backup_test"}
         capture_exception.assert_not_called()
+
+    assert (
+        "Mounting backup_test did not succeed. Check host logs for errors from mount "
+        "or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details"
+    ) in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
@@ -287,14 +307,19 @@ async def test_api_update_dbus_error_mount_remains(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    caplog: pytest.LogCaptureFixture,
 ):
     """Test mount remains in list with unsuccessful state if dbus error occurs during update."""
     api_client, prefix = api_client_with_prefix
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_unit_service.active_state = ["failed", "inactive"]
+    # Sequence: old-mount unmount lookup, then .mount/.automount/legacy
+    # lookups of the fresh setup (all gone after the unmount).
     systemd_service.response_get_unit = [
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
     ]
     systemd_service.response_start_transient_unit = DBusError(ErrorType.FAILED, "fail")
@@ -311,7 +336,14 @@ async def test_api_update_dbus_error_mount_remains(
     assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
-    assert result["message"] == "Could not mount backup_test due to: fail"
+    # User-facing message is generic and translatable, detail stays in the log
+    assert (
+        result["message"]
+        == "Could not set up mount backup_test. Check the Supervisor logs for details"
+    )
+    assert result["error_key"] == "mount_setup_error"
+    assert result["extra_fields"] == {"name": "backup_test"}
+    assert "Could not mount backup_test due to: fail" in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
@@ -332,17 +364,18 @@ async def test_api_update_dbus_error_mount_remains(
     systemd_service.response_get_unit = [
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
     systemd_unit_service.active_state = [
         "failed",
-        "inactive",
-        "inactive",
         "failed",
-        "inactive",
+        "failed",
     ]
+    caplog.clear()
 
     resp = await api_client.put(
         f"{prefix}/mounts/backup_test",
@@ -358,8 +391,14 @@ async def test_api_update_dbus_error_mount_remains(
     assert result["result"] == "error"
     assert (
         result["message"]
-        == "Mounting backup_test did not succeed. Check host logs for errors from mount or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details."
+        == "Mount backup_test is not reachable. Check the Supervisor logs for details"
     )
+    assert result["error_key"] == "mount_activation_error"
+    assert result["extra_fields"] == {"name": "backup_test"}
+    assert (
+        "Mounting backup_test did not succeed. Check host logs for errors from mount "
+        "or systemd unit mnt-data-supervisor-mounts-backup_test.mount for details"
+    ) in caplog.text
 
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
@@ -384,30 +423,34 @@ async def test_api_reload_mount(
     mount,
     mock_is_mount,
 ):
-    """Test reloading a mount via API."""
+    """Test reloading a mount via API.
+
+    With autofs handling re-activation, "reload" reduces to a probe of the
+    mount's health. Neither a healthy nor an unreachable mount is reloaded
+    or restarted through systemd.
+    """
     api_client, prefix = api_client_with_prefix
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
 
-    # Healthy mount (probe passes): API reload completes without touching
-    # systemd — the periodic refresh + probe-as-fast-path means a healthy
-    # mount only gets reloaded when the share has actually gone bad.
+    # Healthy mount (probe passes): API reload returns ok and dismisses
+    # any failed-mount resolution issue.
     resp = await api_client.post(f"{prefix}/mounts/backup_test/reload")
     result = await resp.json()
     assert result["result"] == "ok"
     assert systemd_service.ReloadOrRestartUnit.calls == []
 
-    # Probe failure forces the reload to actually go to systemd.
+    # Probe failure: API reload returns an error response. The escalation
+    # stops the .mount unit to discard the dead session, but never
+    # reloads or restarts it.
     with patch(
         "supervisor.mounts.mount._probe_network_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         resp = await api_client.post(f"{prefix}/mounts/backup_test/reload")
-        await resp.json()
-
-    assert systemd_service.ReloadOrRestartUnit.calls == [
-        ("mnt-data-supervisor-mounts-backup_test.mount", "fail")
-    ]
+        result = await resp.json()
+    assert result["result"] == "error"
+    assert systemd_service.ReloadOrRestartUnit.calls == []
 
 
 async def test_api_delete_mount(

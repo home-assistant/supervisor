@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
+from dataclasses import replace
 from http import HTTPStatus
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
+import re
 import tempfile
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import aiodocker
-from attr import evolve
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 
 from ..apps.build import AppBuild
@@ -25,6 +28,7 @@ from ..const import (
     SYSTEMD_JOURNAL_VOLATILE,
     BusEvent,
     CpuArch,
+    FeatureFlag,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -34,6 +38,7 @@ from ..exceptions import (
     DockerError,
     DockerJobError,
     DockerNotFound,
+    DockerTimeoutError,
     HardwareNotFound,
 )
 from ..hardware.const import PolicyGroup
@@ -41,6 +46,7 @@ from ..hardware.data import Device
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
+from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
 from .const import (
     ADDON_BUILDER_IMAGE,
@@ -52,15 +58,18 @@ from .const import (
     MOUNT_DOCKER,
     MOUNT_UDEV,
     PATH_ALL_ADDON_CONFIGS,
+    PATH_ALL_APP_CONFIGS,
     PATH_BACKUP,
     PATH_HOMEASSISTANT_CONFIG,
     PATH_HOMEASSISTANT_CONFIG_LEGACY,
     PATH_LOCAL_ADDONS,
+    PATH_LOCAL_APPS,
     PATH_MEDIA,
     PATH_PRIVATE_DATA,
     PATH_PUBLIC_CONFIG,
     PATH_SHARE,
     PATH_SSL,
+    REDUCED_CAPABILITIES_DROP,
     Capabilities,
     DockerMount,
     MountBindOptions,
@@ -92,12 +101,86 @@ class DockerApp(DockerInterface):
     @staticmethod
     def slug_to_name(slug: str) -> str:
         """Convert slug to container name."""
-        return f"addon_{slug}"
+        return f"app_{slug}"
 
     @property
     def image(self) -> str | None:
         """Return name of Docker image."""
         return self.app.image
+
+    @Job(name="docker_app_attach", concurrency=JobConcurrency.GROUP_QUEUE)
+    async def attach(
+        self,
+        version: AwesomeVersion,
+        *,
+        skip_state_event_if_down: bool = False,
+    ) -> None:
+        """Attach to running Docker container with legacy name migration."""
+        docker_container: DockerContainer | None | type[DEFAULT] = DEFAULT
+        try:
+            docker_container = await self.sys_docker.containers.get(self.name)
+
+        # DockerInterface.attach behavior handles errors getting the container by fetching
+        # image metadata instead. Maintain that by not raising on errors here
+        except TimeoutError:
+            _LOGGER.error("Timeout while retrieving docker container %s", self.name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                docker_container = await self._migrate_legacy_container_name()
+            else:
+                _LOGGER.error(
+                    "Error while retrieving docker container %s: %s", self.name, err
+                )
+
+        await self._attach(
+            version=version,
+            skip_state_event_if_down=skip_state_event_if_down,
+            docker_container=docker_container,
+        )
+
+    async def _migrate_legacy_container_name(
+        self,
+    ) -> DockerContainer | None | type[DEFAULT]:
+        """Rename a legacy addon_* container to app_* if present."""
+        legacy_name = f"addon_{self.app.slug}"
+
+        try:
+            legacy_container = await self.sys_docker.containers.get(legacy_name)
+        except TimeoutError:
+            _LOGGER.error("Timeout checking for legacy app container %s", legacy_name)
+            return DEFAULT
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                return None
+            _LOGGER.error(
+                "Error checking for legacy app container %s: %s", legacy_name, err
+            )
+            return DEFAULT
+
+        # Raise on a rename fail. This means we found the legacy container and could not rename it
+        # so follow-up actions like attach will not work properly regardless
+        try:
+            await legacy_container.rename(self.name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout renaming legacy app container {legacy_name} to {self.name}",
+                _LOGGER.error,
+            ) from err
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                # Legacy container removed between lookup and rename, nothing to migrate
+                return None
+            raise DockerError(
+                f"Can't rename legacy app container {legacy_name} to {self.name}: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+        _LOGGER.info(
+            "Migrated legacy app container name from %s to %s",
+            legacy_name,
+            self.name,
+        )
+        return legacy_container
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -308,6 +391,23 @@ class DockerApp(DockerInterface):
         return None
 
     @property
+    def dropped_capabilities(self) -> list[Capabilities] | None:
+        """Generate capabilities to drop from the Docker default set."""
+        candidates: list[Capabilities] = []
+        # NET_RAW allows ARP and MAC spoofing on the shared internal network.
+        if self.sys_config.feature_flags.get(FeatureFlag.APP_DROP_NET_RAW, False):
+            candidates.append(Capabilities.NET_RAW)
+        if self.sys_config.feature_flags.get(
+            FeatureFlag.APP_REDUCED_CAPABILITIES, False
+        ):
+            candidates.extend(REDUCED_CAPABILITIES_DROP)
+
+        # Keep whatever the app explicitly asked for
+        requested = set(self.capabilities or [])
+        dropped = [cap for cap in candidates if cap not in requested]
+        return dropped or None
+
+    @property
     def ulimits(self) -> list[Ulimit] | None:
         """Generate ulimits for app."""
         limits: list[Ulimit] = []
@@ -381,13 +481,18 @@ class DockerApp(DockerInterface):
         else:
             # Map app's public config folder if not using deprecated config option
             if self.app.app_config_used:
+                config_mapping_type = (
+                    MappingType.APP_CONFIG
+                    if MappingType.APP_CONFIG in app_mapping
+                    else MappingType.ADDON_CONFIG
+                )
                 mounts.append(
                     DockerMount(
                         type=MountType.BIND,
                         source=self.app.path_extern_config.as_posix(),
-                        target=app_mapping[MappingType.ADDON_CONFIG].path
+                        target=app_mapping[config_mapping_type].path
                         or PATH_PUBLIC_CONFIG.as_posix(),
-                        read_only=app_mapping[MappingType.ADDON_CONFIG].read_only,
+                        read_only=app_mapping[config_mapping_type].read_only,
                     )
                 )
 
@@ -405,14 +510,24 @@ class DockerApp(DockerInterface):
                     )
                 )
 
-        if MappingType.ALL_ADDON_CONFIGS in app_mapping:
+        all_app_configs_mapping_type: MappingType | None = None
+        if MappingType.ALL_APP_CONFIGS in app_mapping:
+            all_app_configs_mapping_type = MappingType.ALL_APP_CONFIGS
+        elif MappingType.ALL_ADDON_CONFIGS in app_mapping:
+            all_app_configs_mapping_type = MappingType.ALL_ADDON_CONFIGS
+
+        if all_app_configs_mapping_type:
             mounts.append(
                 DockerMount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_app_configs.as_posix(),
-                    target=app_mapping[MappingType.ALL_ADDON_CONFIGS].path
-                    or PATH_ALL_ADDON_CONFIGS.as_posix(),
-                    read_only=app_mapping[MappingType.ALL_ADDON_CONFIGS].read_only,
+                    target=app_mapping[all_app_configs_mapping_type].path
+                    or (
+                        PATH_ALL_APP_CONFIGS.as_posix()
+                        if all_app_configs_mapping_type == MappingType.ALL_APP_CONFIGS
+                        else PATH_ALL_ADDON_CONFIGS.as_posix()
+                    ),
+                    read_only=app_mapping[all_app_configs_mapping_type].read_only,
                 )
             )
 
@@ -426,14 +541,24 @@ class DockerApp(DockerInterface):
                 )
             )
 
-        if MappingType.ADDONS in app_mapping:
+        apps_mapping_type = None
+        if MappingType.LOCAL_APPS in app_mapping:
+            apps_mapping_type = MappingType.LOCAL_APPS
+        elif MappingType.ADDONS in app_mapping:
+            apps_mapping_type = MappingType.ADDONS
+
+        if apps_mapping_type:
             mounts.append(
                 DockerMount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_apps_local.as_posix(),
-                    target=app_mapping[MappingType.ADDONS].path
-                    or PATH_LOCAL_ADDONS.as_posix(),
-                    read_only=app_mapping[MappingType.ADDONS].read_only,
+                    target=app_mapping[apps_mapping_type].path
+                    or (
+                        PATH_LOCAL_APPS.as_posix()
+                        if apps_mapping_type == MappingType.LOCAL_APPS
+                        else PATH_LOCAL_ADDONS.as_posix()
+                    ),
+                    read_only=app_mapping[apps_mapping_type].read_only,
                 )
             )
 
@@ -561,9 +686,10 @@ class DockerApp(DockerInterface):
         return mounts
 
     @Job(
-        name="docker_addon_run",
+        name="docker_app_run",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def run(self) -> None:
         """Run Docker image."""
@@ -590,6 +716,7 @@ class DockerApp(DockerInterface):
                 extra_hosts=self.network_mapping,
                 device_cgroup_rules=self.cgroups_rules,
                 cap_add=self.capabilities,
+                cap_drop=self.dropped_capabilities,
                 ulimits=self.ulimits,
                 cpu_rt_runtime=self.cpu_rt_runtime,
                 security_opt=self.security_opt,
@@ -626,9 +753,10 @@ class DockerApp(DockerInterface):
             )
 
     @Job(
-        name="docker_addon_update",
+        name="docker_app_update",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def update(
         self,
@@ -654,9 +782,10 @@ class DockerApp(DockerInterface):
         )
 
     @Job(
-        name="docker_addon_install",
+        name="docker_app_install",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def install(
         self,
@@ -688,18 +817,32 @@ class DockerApp(DockerInterface):
             f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
         )
 
-        builder_name = f"addon_builder_{self.app.slug}"
+        # app_builder is the new name used for the builder container but existing containers
+        # created by older versions of Supervisor might still use addon_builder
+        builder_name = f"app_builder_{self.app.slug}"
+        builder_name_pattern = rf"^(?:app|addon)_builder_{re.escape(self.app.slug)}$"
 
-        # Remove dangling builder container if it exists by any chance
+        # Remove dangling builder containers if they exist by any chance
         # E.g. because of an abrupt host shutdown/reboot during a build
         try:
-            container = await self.sys_docker.containers.get(builder_name)
-            await container.delete(force=True, v=True)
+            containers = await self.sys_docker.containers.list(
+                all=True,
+                filters={"name": [builder_name_pattern]},
+            )
+            if containers:
+                await asyncio.gather(
+                    *(container.delete(force=True, v=True) for container in containers)
+                )
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                "Timeout cleaning up existing builder container",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
-            if err.status != HTTPStatus.NOT_FOUND:
-                raise DockerBuildError(
-                    f"Can't clean up existing builder container: {err!s}", _LOGGER.error
-                ) from err
+            raise DockerBuildError(
+                f"Can't clean up existing builder container: {err!s}",
+                _LOGGER.error,
+            ) from err
 
         # Generate Docker config with registry credentials for base image if needed
         docker_config_content = build_env.get_docker_config_json()
@@ -762,6 +905,10 @@ class DockerApp(DockerInterface):
         try:
             # Update meta data
             self._meta = await self.sys_docker.images.inspect(app_image_tag)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout getting image metadata for {app_image_tag} after build"
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerBuildError(
                 f"Can't get image metadata for {app_image_tag} after build: {err!s}"
@@ -769,7 +916,7 @@ class DockerApp(DockerInterface):
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
-        # Clean up old add-on builder images from previous Docker versions.
+        # Clean up old app builder images from previous Docker versions.
         # Done here after build because cleanup_old_images needs the current
         # image to exist, and the builder image is only pulled on first build
         # (in run_command) after a Docker engine update.
@@ -785,9 +932,10 @@ class DockerApp(DockerInterface):
         await self.sys_docker.export_image(self.image, self.version, tar_file)
 
     @Job(
-        name="docker_addon_import_image",
+        name="docker_app_import_image",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def import_image(self, tar_file: Path) -> None:
         """Import a tar file as image."""
@@ -798,7 +946,11 @@ class DockerApp(DockerInterface):
             with suppress(DockerError):
                 await self.cleanup()
 
-    @Job(name="docker_addon_cleanup", concurrency=JobConcurrency.GROUP_QUEUE)
+    @Job(
+        name="docker_app_cleanup",
+        concurrency=JobConcurrency.GROUP_QUEUE,
+        internal=True,
+    )
     async def cleanup(
         self,
         old_image: str | None = None,
@@ -825,35 +977,38 @@ class DockerApp(DockerInterface):
         )
 
     @Job(
-        name="docker_addon_write_stdin",
+        name="docker_app_write_stdin",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def write_stdin(self, data: bytes) -> None:
         """Write to app stdin."""
-        try:
-            # Load needed docker objects
-            container = await self.sys_docker.containers.get(self.name)
-            socket = container.attach(stdin=True)
-        except aiodocker.DockerError as err:
-            raise DockerError(
-                f"Can't attach to {self.name} stdin: {err!s}", _LOGGER.error
-            ) from err
+        # container() builds the handle from the name with no I/O; attach()
+        # below addresses it by name/id directly.
+        container = self.sys_docker.containers.container(self.name)
+        socket = container.attach(stdin=True)
 
         try:
             await socket.write_in(data + b"\n")
             await socket.close()
-        # Seems to raise very generic exceptions like RuntimeError or AssertionError
-        # So we catch all exceptions and re-raise them as DockerError
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout writing to {self.name} stdin", _LOGGER.error
+            ) from err
+        # Seems to also raise very generic exceptions like RuntimeError or
+        # AssertionError, so we catch all remaining exceptions and re-raise
+        # them as DockerError
         except Exception as err:
             raise DockerError(
                 f"Can't write to {self.name} stdin: {err!s}", _LOGGER.error
             ) from err
 
     @Job(
-        name="docker_addon_stop",
+        name="docker_app_stop",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
@@ -881,7 +1036,7 @@ class DockerApp(DockerInterface):
             self.sys_resolution.dismiss_issue(issue)
 
     @Job(
-        name="docker_addon_hardware_events",
+        name="docker_app_hardware_events",
         conditions=[JobCondition.OS_AGENT],
         internal=True,
         concurrency=JobConcurrency.QUEUE,
@@ -903,6 +1058,11 @@ class DockerApp(DockerInterface):
 
         try:
             docker_container = await self.sys_docker.containers.get(self.name)
+        except TimeoutError as err:
+            raise DockerTimeoutError(
+                f"Timeout processing Hardware Event on {self.name}",
+                _LOGGER.error,
+            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 if self._hw_listener:
@@ -918,7 +1078,7 @@ class DockerApp(DockerInterface):
             and not self.sys_os.available
         ):
             self.sys_resolution.add_issue(
-                evolve(self.app.device_access_missing_issue),
+                replace(self.app.device_access_missing_issue),
                 suggestions=[SuggestionType.EXECUTE_RESTART],
             )
             return

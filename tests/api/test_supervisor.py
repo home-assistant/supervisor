@@ -1,6 +1,7 @@
 """Test Supervisor API."""
 
 # pylint: disable=protected-access
+import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -14,7 +15,13 @@ import pytest
 from supervisor.const import CoreState, FeatureFlag
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HassioError, HostNotSupportedError, StoreGitError
+from supervisor.docker.manager import DockerAPI
+from supervisor.exceptions import (
+    HassioError,
+    HostJournalGatewaydConnectionError,
+    HostNotSupportedError,
+    StoreGitError,
+)
 from supervisor.homeassistant.const import WSEvent
 from supervisor.store.repository import Repository
 from supervisor.supervisor import Supervisor
@@ -39,13 +46,38 @@ async def test_api_supervisor_options_debug(
     assert coresys.config.debug
 
 
+async def test_api_supervisor_info_v1_includes_deprecated_fields(
+    api_client: TestClient,
+):
+    """Test v1 /supervisor/info includes deprecated contract fields."""
+    resp = await api_client.get("/supervisor/info")
+    assert resp.status == 200
+
+    data = (await resp.json())["data"]
+    assert "wait_boot" in data
+    assert "addons" in data
+    assert "addons_repositories" in data
+
+
+async def test_api_supervisor_info_v2_excludes_deprecated_fields(
+    api_client_v2: TestClient,
+):
+    """Test v2 /supervisor/info excludes deprecated contract fields."""
+    resp = await api_client_v2.get("/v2/supervisor/info")
+    assert resp.status == 200
+
+    data = (await resp.json())["data"]
+    assert "wait_boot" not in data
+    assert "addons" not in data
+    assert "addons_repositories" not in data
+
+
 async def test_api_supervisor_options_add_repository(
-    api_client_with_prefix: tuple[TestClient, str],
+    api_client: TestClient,
     coresys: CoreSys,
     supervisor_internet: AsyncMock,
 ):
     """Test add a repository via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     assert REPO_URL not in coresys.store.repository_urls
 
     with (
@@ -53,7 +85,7 @@ async def test_api_supervisor_options_add_repository(
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
     ):
         response = await api_client.post(
-            f"{prefix}/supervisor/options", json={"addons_repositories": [REPO_URL]}
+            "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )
 
     assert response.status == 200
@@ -61,17 +93,16 @@ async def test_api_supervisor_options_add_repository(
 
 
 async def test_api_supervisor_options_remove_repository(
-    api_client_with_prefix: tuple[TestClient, str],
+    api_client: TestClient,
     coresys: CoreSys,
     test_repository: Repository,
 ):
     """Test remove a repository via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     assert test_repository.source in coresys.store.repository_urls
     assert test_repository.slug in coresys.store.repositories
 
     response = await api_client.post(
-        f"{prefix}/supervisor/options", json={"addons_repositories": []}
+        "/supervisor/options", json={"addons_repositories": []}
     )
 
     assert response.status == 200
@@ -79,21 +110,47 @@ async def test_api_supervisor_options_remove_repository(
     assert test_repository.slug not in coresys.store.repositories
 
 
+async def test_api_supervisor_options_v1_accepts_deprecated_fields(
+    api_client: TestClient,
+    coresys: CoreSys,
+):
+    """Test v1 /supervisor/options accepts deprecated request fields."""
+    with patch.object(coresys.store, "update_repositories", new=AsyncMock()) as update:
+        response = await api_client.post(
+            "/supervisor/options",
+            json={"wait_boot": 42, "addons_repositories": []},
+        )
+
+    assert response.status == 200
+    assert coresys.config.wait_boot == 42
+    update.assert_awaited_once_with(set())
+
+
+async def test_api_supervisor_options_v2_rejects_deprecated_fields(
+    api_client_v2: TestClient,
+):
+    """Test v2 /supervisor/options rejects deprecated request fields."""
+    response = await api_client_v2.post("/v2/supervisor/options", json={"wait_boot": 7})
+    assert response.status == 400
+
+    response = await api_client_v2.post(
+        "/v2/supervisor/options", json={"addons_repositories": []}
+    )
+    assert response.status == 400
+
+
 @pytest.mark.parametrize("git_error", [None, StoreGitError()])
 async def test_api_supervisor_options_repositories_skipped_on_error(
-    api_client_with_prefix: tuple[TestClient, str],
-    coresys: CoreSys,
-    git_error: StoreGitError,
+    api_client: TestClient, coresys: CoreSys, git_error: StoreGitError
 ):
     """Test repositories skipped on error via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     with (
         patch("supervisor.store.repository.RepositoryGit.load", side_effect=git_error),
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=False),
         patch("supervisor.store.repository.RepositoryCustom.remove"),
     ):
         response = await api_client.post(
-            f"{prefix}/supervisor/options", json={"addons_repositories": [REPO_URL]}
+            "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )
 
     assert response.status == 400
@@ -102,17 +159,16 @@ async def test_api_supervisor_options_repositories_skipped_on_error(
 
 
 async def test_api_supervisor_options_repo_error_with_config_change(
-    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+    api_client: TestClient, coresys: CoreSys
 ):
     """Test config change with add repository error via POST /supervisor/options REST API."""
-    api_client, prefix = api_client_with_prefix
     assert not coresys.config.debug
 
     with patch(
         "supervisor.store.repository.RepositoryGit.load", side_effect=StoreGitError()
     ):
         response = await api_client.post(
-            f"{prefix}/supervisor/options",
+            "/supervisor/options",
             json={"debug": True, "addons_repositories": [REPO_URL]},
         )
 
@@ -244,6 +300,16 @@ async def test_api_supervisor_fallback_log_capture(
     api_client, prefix = api_client_with_prefix
     journald_logs.side_effect = HostNotSupportedError(
         "No systemd-journal-gatewayd Unix socket available!"
+    )
+
+    with patch("supervisor.api.async_capture_exception") as capture_exception:
+        await api_client.get(f"{prefix}/supervisor/logs")
+        capture_exception.assert_not_called()
+
+    journald_logs.reset_mock()
+
+    journald_logs.side_effect = HostJournalGatewaydConnectionError(
+        "Unable to connect to systemd-journal-gatewayd"
     )
 
     with patch("supervisor.api.async_capture_exception") as capture_exception:
@@ -476,6 +542,32 @@ async def test_api_supervisor_update_no_update_available(
     update.assert_not_called()
 
 
+async def test_api_supervisor_update_already_running(
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test an update request while one is already running awaits and reports its result."""
+    api_client, prefix = api_client_with_prefix
+
+    async def _already_running_update() -> None:
+        """Simulate the shared, already-in-progress update completing successfully."""
+
+    with (
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(
+            Supervisor,
+            "update",
+            AsyncMock(
+                return_value=asyncio.get_event_loop().create_task(
+                    _already_running_update()
+                )
+            ),
+        ),
+    ):
+        resp = await api_client.post(f"{prefix}/supervisor/update")
+
+    assert resp.status == 200
+
+
 async def test_api_supervisor_update_dev_explicit_version(
     api_client_with_prefix: tuple[TestClient, str],
 ):
@@ -485,7 +577,7 @@ async def test_api_supervisor_update_dev_explicit_version(
     with (
         patch.object(CoreSys, "dev", new=PropertyMock(return_value=True)),
         patch.object(Supervisor, "need_update", new=PropertyMock(return_value=False)),
-        patch.object(Supervisor, "update") as update,
+        patch.object(Supervisor, "update", AsyncMock(return_value=None)) as update,
     ):
         resp = await api_client.post(
             f"{prefix}/supervisor/update", json={"version": "2025.08.3"}
@@ -502,14 +594,29 @@ async def test_api_supervisor_stats(
     api_client, prefix = api_client_with_prefix
     container.show.return_value["State"]["Status"] = "running"
     container.show.return_value["State"]["Running"] = True
-    container.stats = AsyncMock(
-        return_value=[load_json_fixture("container_stats.json")]
-    )
 
-    resp = await api_client.get(f"{prefix}/supervisor/stats")
+    if prefix == "/v2":
+        # V2 always requests one-shot stats
+        stats_fixture = load_json_fixture("container_stats.json")
+        del stats_fixture["precpu_stats"]
+        with patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(return_value=stats_fixture),
+        ):
+            resp = await api_client.get(f"{prefix}/supervisor/stats")
+    else:
+        container.stats = AsyncMock(
+            return_value=[load_json_fixture("container_stats.json")]
+        )
+        resp = await api_client.get(f"{prefix}/supervisor/stats")
+
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["cpu_percent"] == 90.0
+    if prefix == "/v2":
+        assert "cpu_percent" not in result["data"]
+    else:
+        assert result["data"]["cpu_percent"] == 90.0
     assert result["data"]["memory_usage"] == 59700000
     assert result["data"]["memory_limit"] == 4000000000
     assert result["data"]["memory_percent"] == 1.49
@@ -522,11 +629,21 @@ async def test_supervisor_api_stats_failure(
 ):
     """Test supervisor stats failure."""
     api_client, prefix = api_client_with_prefix
-    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
-        500, {"message": "fail"}
-    )
 
-    resp = await api_client.get(f"{prefix}/supervisor/stats")
+    if prefix == "/v2":
+        # V2 always requests one-shot stats, which doesn't call containers.container
+        with patch.object(
+            DockerAPI,
+            "_query_one_shot_stats",
+            AsyncMock(side_effect=aiodocker.DockerError(500, {"message": "fail"})),
+        ):
+            resp = await api_client.get(f"{prefix}/supervisor/stats")
+    else:
+        coresys.docker.containers.container.return_value.stats.side_effect = (
+            aiodocker.DockerError(500, {"message": "fail"})
+        )
+        resp = await api_client.get(f"{prefix}/supervisor/stats")
+
     assert resp.status == 500
     body = await resp.json()
     assert (
@@ -534,11 +651,11 @@ async def test_supervisor_api_stats_failure(
         == "An unknown error occurred with Supervisor. Check Supervisor logs for details"
     )
     assert body["error_key"] == "supervisor_unknown_error"
-    assert "extra_fields" not in body
-    assert (
-        "Could not inspect container 'hassio_supervisor': [500] {'message': 'fail'}"
-        in caplog.text
-    )
+    if prefix != "/v2":
+        assert (
+            "Can't read stats from hassio_supervisor: [500] {'message': 'fail'}"
+            in caplog.text
+        )
 
 
 async def test_api_supervisor_info_feature_flags(

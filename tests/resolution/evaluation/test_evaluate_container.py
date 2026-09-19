@@ -1,7 +1,7 @@
 """Test evaluation base."""
 
 # pylint: disable=import-error,protected-access
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
@@ -53,6 +53,24 @@ async def test_evaluation(coresys: CoreSys):
     assert container.reason not in coresys.resolution.unsupported
 
     assert coresys.resolution.evaluate.cached_images == set()
+
+
+async def test_evaluation_registry_with_port(coresys: CoreSys):
+    """Test an app image from a registry with a port is not flagged unsupported."""
+    container = EvaluateContainer(coresys)
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    image = "gitlab.example.com:5005/home-assistant/addon-connector/aarch64"
+    with patch.object(
+        EvaluateContainer, "known_images", new=PropertyMock(return_value={image})
+    ):
+        coresys.docker.containers.list.return_value = [
+            _make_image_attr(f"{image}:0.3.3-dev1")
+        ]
+        await container()
+
+    assert container.reason not in coresys.resolution.unsupported
+    assert UnhealthyReason.DOCKER not in coresys.resolution.unhealthy
 
 
 async def test_corrupt_docker(coresys: CoreSys):

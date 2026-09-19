@@ -24,7 +24,7 @@ async def test_fixup(coresys: CoreSys, install_app_ssh: App):
     )
     coresys.resolution.add_issue(
         Issue(
-            IssueType.DETACHED_ADDON_REMOVED,
+            IssueType.DETACHED_APP_REMOVED,
             ContextType.ADDON,
             reference=install_app_ssh.slug,
         )
@@ -52,7 +52,7 @@ async def test_fixup_deprecated_arch_app(coresys: CoreSys, install_app_ssh: App)
     )
     coresys.resolution.add_issue(
         Issue(
-            IssueType.DEPRECATED_ARCH_ADDON,
+            IssueType.DEPRECATED_ARCH_APP,
             ContextType.ADDON,
             reference=install_app_ssh.slug,
         )

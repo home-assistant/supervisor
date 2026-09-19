@@ -19,7 +19,7 @@ DEFAULT_LOG_RANGE_FOLLOW = "entries=:-99:18446744073709551615"
 
 async def _common_test_api_advanced_logs(
     path_prefix: str,
-    syslog_identifier: str,
+    syslog_identifier: str | list[str],
     formatter: LogFormatter,
     api_client: TestClient,
     journald_logs: MagicMock,
@@ -81,13 +81,13 @@ async def _common_test_api_advanced_logs(
 
     assert journald_logs.call_count == 2
 
-    # Check the first call for getting epoch
+    # Check the call for getting epoch(s)
     epoch_call = journald_logs.call_args_list[0]
     assert epoch_call[1]["params"] == {"CONTAINER_NAME": syslog_identifier}
     assert epoch_call[1]["range_header"] == "entries=:-1:2"
 
     # Check the second call for getting logs with the epoch
-    logs_call = journald_logs.call_args_list[1]
+    logs_call = journald_logs.call_args_list[-1]
     assert logs_call[1]["params"]["SYSLOG_IDENTIFIER"] == syslog_identifier
     assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"
     assert logs_call[1]["range_header"] == "entries=:0:18446744073709551615"
@@ -143,7 +143,7 @@ async def advanced_logs_tester(
 
     async def test_logs(
         path_prefix: str,
-        syslog_identifier: str,
+        syslog_identifier: str | list[str],
         formatter: LogFormatter = LogFormatter.PLAIN,
         *,
         v2_path_prefix: str | None = None,

@@ -3,15 +3,11 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import (
-    ResolutionFixupError,
-    ResolutionFixupJobError,
-    StoreError,
-    StoreNotFound,
-)
+from ...exceptions import ResolutionFixupJobError, StoreInvalidAppRepo, StoreNotFound
 from ...jobs.const import JobCondition
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
+from ..data import Suggestion
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -30,22 +26,27 @@ class FixupStoreExecuteReset(FixupBase):
         conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.FREE_SPACE],
         on_condition=ResolutionFixupJobError,
     )
-    async def process_fixup(self, reference: str | None = None) -> None:
+    async def process_fixup(self, suggestion: Suggestion) -> None:
         """Initialize the fixup class."""
-        if not reference:
+        if not suggestion.reference:
             return
 
-        _LOGGER.info("Reset corrupt Store: %s", reference)
+        _LOGGER.info("Reset corrupt Store: %s", suggestion.reference)
         try:
-            repository = self.sys_store.get(reference)
+            repository = self.sys_store.get(suggestion.reference)
         except StoreNotFound:
-            _LOGGER.warning("Can't find store %s for fixup", reference)
+            _LOGGER.warning("Can't find store %s for fixup", suggestion.reference)
             return
 
         try:
             await repository.reset()
-        except StoreError:
-            raise ResolutionFixupError from None
+        except StoreInvalidAppRepo:
+            # The repository re-cloned fine but still isn't valid, so the
+            # problem is upstream and retrying won't help. Drop the reset
+            # suggestion to stop the hourly auto-retry, while leaving the
+            # issue (and its remove suggestion) so the user stays informed.
+            self.sys_resolution.dismiss_suggestion(suggestion)
+            raise
 
     @property
     def suggestion(self) -> SuggestionType:

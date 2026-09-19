@@ -14,7 +14,19 @@ from ..coresys import CoreSys
 from ..docker.cli import DockerCli
 from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
-from ..exceptions import CliError, CliJobError, CliUpdateError, DockerError, PluginError
+from ..exceptions import (
+    CliError,
+    CliJobError,
+    CliNotRunningError,
+    CliStatsTimeoutError,
+    CliUnknownError,
+    CliUpdateError,
+    DockerContainerNotFoundError,
+    DockerContainerNotRunningError,
+    DockerError,
+    DockerStatsTimeoutError,
+    PluginError,
+)
 from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
 from ..utils.sentry import async_capture_exception
@@ -90,12 +102,17 @@ class PluginCli(PluginBase):
         except DockerError as err:
             raise CliError("Can't stop cli plugin", _LOGGER.error) from err
 
-    async def stats(self) -> DockerStats:
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
         """Return stats of cli."""
         try:
-            return await self.instance.stats()
+            return await self.instance.stats(one_shot=one_shot)
+        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
+            raise CliNotRunningError(_LOGGER.warning) from err
+        except DockerStatsTimeoutError as err:
+            raise CliStatsTimeoutError(_LOGGER.error) from err
         except DockerError as err:
-            raise CliError from err
+            _LOGGER.error("Could not get stats of container for HA cli: %s", err)
+            raise CliUnknownError from err
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

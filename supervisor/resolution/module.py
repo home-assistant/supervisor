@@ -1,24 +1,29 @@
 """Supervisor resolution center."""
 
+from collections.abc import Iterable
+from dataclasses import asdict
 import errno
 import logging
 from typing import Any
 
-import attr
-
 from ..bus import EventListener
+from ..const import FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     ResolutionError,
     ResolutionIssueNotFound,
     ResolutionSuggestionNotFound,
 )
-from ..homeassistant.const import WSEvent
+from ..homeassistant.const import LANDINGPAGE, WSEvent
+from ..utils import version_is_new_enough
 from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
 from .const import (
     FILE_CONFIG_RESOLUTION,
+    LEGACY_ISSUE_TYPE_MAP,
+    OUTGOING_LEGACY_CHECK_SLUG_MAP,
     SCHEDULED_HEALTHCHECK,
+    SUGGESTION_MIN_CORE_VERSION,
     ContextType,
     IssueType,
     SuggestionType,
@@ -27,10 +32,28 @@ from .const import (
 )
 from .data import HealthChanged, Issue, Suggestion, SupportedChanged
 from .evaluate import ResolutionEvaluation
-from .fixup import ResolutionFixup
+from .fixup import ResolutionFixup, apply_fixup_safely
 from .validate import SCHEMA_RESOLUTION_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def process_issue_dict_for_legacy_compatibility(
+    issue_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Map new issue type values to legacy values for API compatibility."""
+    if (issue_type := issue_data.get("type")) in LEGACY_ISSUE_TYPE_MAP:
+        return issue_data | {"type": LEGACY_ISSUE_TYPE_MAP[issue_type]}
+    return issue_data
+
+
+def process_check_dict_for_legacy_compatibility(
+    check_data: dict[str, Any],
+) -> dict[str, Any]:
+    """Map new check slug values to legacy values for API compatibility."""
+    if (slug := check_data.get("slug")) in OUTGOING_LEGACY_CHECK_SLUG_MAP:
+        return check_data | {"slug": OUTGOING_LEGACY_CHECK_SLUG_MAP[slug]}
+    return check_data
 
 
 class ResolutionManager(FileConfiguration, CoreSysAttributes):
@@ -113,7 +136,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             if fixup.auto and fixup.bus_event:
 
                 def event_callback(reference, fixup=fixup):
-                    return fixup(suggestion)
+                    return apply_fixup_safely(fixup, suggestion)
 
                 listener = self.sys_bus.register_event(fixup.bus_event, event_callback)
                 listeners.append(listener)
@@ -138,7 +161,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._unsupported.add(reason)
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.SUPPORTED_CHANGED,
-            attr.asdict(SupportedChanged(False, sorted(self.unsupported))),
+            asdict(SupportedChanged(False, sorted(self.unsupported))),
         )
 
     @property
@@ -153,7 +176,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._unhealthy.add(reason)
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.HEALTH_CHANGED,
-            attr.asdict(HealthChanged(False, sorted(self.unhealthy))),
+            asdict(HealthChanged(False, sorted(self.unhealthy))),
         )
 
     _OSERROR_UNHEALTHY_REASONS: dict[int, UnhealthyReason] = {
@@ -170,13 +193,59 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             self.add_unhealthy_reason(self._OSERROR_UNHEALTHY_REASONS[err.errno])
 
     def _make_issue_message(self, issue: Issue) -> dict[str, Any]:
-        """Make issue into message for core."""
-        return attr.asdict(issue) | {
-            "suggestions": [
-                attr.asdict(suggestion)
-                for suggestion in self.suggestions_for_issue(issue)
-            ]
-        }
+        """Make issue into message for core.
+
+        Applies legacy compatibility shim when SUPERVISOR_WEBSOCKET_V2_API is
+        disabled (backward compatible with Home Assistant Core v2026.7 and
+        earlier).
+        """
+        return self._issue_event_data(issue, with_suggestions=True)
+
+    def core_compatible_suggestions(
+        self, suggestions: Iterable[Suggestion]
+    ) -> list[Suggestion]:
+        """Filter suggestions to those the current Core version can present.
+
+        Newer suggestions have no fix flow translation in older Core
+        frontends and would render as empty menu entries. Only used for
+        Core-facing output; other API consumers get the full list.
+        """
+        version = self.sys_homeassistant.version
+        return [
+            suggestion
+            for suggestion in suggestions
+            if (min_version := SUGGESTION_MIN_CORE_VERSION.get(suggestion.type)) is None
+            or (
+                version is not None
+                and version != LANDINGPAGE
+                and version_is_new_enough(version, min_version)
+            )
+        ]
+
+    def _issue_event_data(
+        self, issue: Issue, *, with_suggestions: bool = False
+    ) -> dict[str, Any]:
+        """Build issue payload and apply legacy compatibility if needed."""
+        v2_api = self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        )
+
+        if with_suggestions:
+            suggestions: Iterable[Suggestion] = self.suggestions_for_issue(issue)
+            if not v2_api:
+                # Core versions predating the v2 API render suggestions
+                # without fix flow translation as empty menu entries. Any
+                # Core new enough to enable v2 filters those itself.
+                suggestions = self.core_compatible_suggestions(suggestions)
+            data = asdict(issue) | {
+                "suggestions": [asdict(suggestion) for suggestion in suggestions]
+            }
+        else:
+            data = asdict(issue)
+
+        if not v2_api:
+            data = process_issue_dict_for_legacy_compatibility(data)
+        return data
 
     def get_suggestion_by_id(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid."""
@@ -216,9 +285,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         context: ContextType,
         reference: str | None = None,
         suggestions: list[SuggestionType] | None = None,
+        reference_extra: dict[str, Any] | None = None,
     ) -> None:
         """Create issues and suggestion."""
-        self.add_issue(Issue(issue, context, reference), suggestions)
+        self.add_issue(Issue(issue, context, reference, reference_extra), suggestions)
 
     def add_issue(
         self, issue: Issue, suggestions: list[SuggestionType] | None = None
@@ -227,7 +297,12 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         if suggestions:
             for suggestion in suggestions:
                 self.add_suggestion(
-                    Suggestion(suggestion, issue.context, issue.reference)
+                    Suggestion(
+                        suggestion,
+                        issue.context,
+                        issue.reference,
+                        issue.reference_extra,
+                    )
                 )
 
         if issue in self._issues:
@@ -287,7 +362,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Event on issue removal
         self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.ISSUE_REMOVED, attr.asdict(issue)
+            WSEvent.ISSUE_REMOVED, self._issue_event_data(issue)
         )
 
         # Clean up any orphaned suggestions
@@ -302,7 +377,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._unsupported.remove(reason)
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.SUPPORTED_CHANGED,
-            attr.asdict(
+            asdict(
                 SupportedChanged(
                     self.sys_core.supported, sorted(self.unsupported) or None
                 )
@@ -316,6 +391,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             for fix in self.fixup.fixes_for_issue(issue)
             for suggestion in fix.all_suggestions
             if suggestion.reference == issue.reference
+            and suggestion.reference_extra == issue.reference_extra
         }
 
     def issues_for_suggestion(self, suggestion: Suggestion) -> set[Issue]:
@@ -325,4 +401,5 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             for fix in self.fixup.fixes_for_suggestion(suggestion)
             for issue in fix.all_issues
             if issue.reference == suggestion.reference
+            and issue.reference_extra == suggestion.reference_extra
         }

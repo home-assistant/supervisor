@@ -9,22 +9,36 @@ import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
 
-from ..coresys import CoreSys, CoreSysAttributes
+from ..coresys import CoreSys
 from ..dbus.agent.boards.const import BOARD_NAME_SUPERVISED
 from ..dbus.rauc import RaucState, SlotStatusDataType
 from ..exceptions import (
     DBusError,
+    DBusNotConnectedError,
+    HassOSError,
     HassOSJobError,
     HassOSSlotNotFound,
     HassOSSlotUpdateError,
     HassOSUpdateError,
+    HostError,
 )
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
+from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# SSH service on Home Assistant OS consuming /root/.ssh/authorized_keys
+DROPBEAR_SERVICE = "dropbear.service"
+
+# OS Agent releases before this return the os.Remove error when clearing an
+# already absent authorized_keys file (inverted error check)
+CLEAR_SSH_AUTH_KEYS_FIXED_VERSION = AwesomeVersion("1.10.0")
+CLEAR_SSH_AUTH_KEYS_MISSING_FILE_ERROR = (
+    "remove /root/.ssh/authorized_keys: no such file or directory"
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -79,15 +93,16 @@ class SlotStatus:
         )
 
 
-class OSManager(CoreSysAttributes):
+class OSManager(JobGroup):
     """OS interface inside supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize HassOS handler."""
-        self.coresys: CoreSys = coresys
+        super().__init__(coresys, "os_manager")
         self._datadisk: DataDisk = DataDisk(coresys)
         self._available: bool = False
         self._version: AwesomeVersion | None = None
+        self._version_pending: AwesomeVersion | None = None
         self._board: str | None = None
         self._os_name: str | None = None
         self._slots: dict[str, SlotStatus] | None = None
@@ -113,6 +128,11 @@ class OSManager(CoreSysAttributes):
         return self.sys_updater.version_hassos_unrestricted
 
     @property
+    def version_pending(self) -> AwesomeVersion | None:
+        """Return version of an installed update that awaits a reboot to activate."""
+        return self._version_pending
+
+    @property
     def need_update(self) -> bool:
         """Return true if a HassOS update is available."""
         try:
@@ -120,6 +140,10 @@ class OSManager(CoreSysAttributes):
                 self.version is not None
                 and self.latest_version is not None
                 and self.version < self.latest_version
+                and (
+                    self.version_pending is None
+                    or self.latest_version != self.version_pending
+                )
             )
         except AwesomeVersionException, TypeError:
             return False
@@ -257,6 +281,51 @@ class OSManager(CoreSysAttributes):
             self.sys_dbus.rauc.boot_slot,
         )
 
+    async def _detect_pending_update(self) -> None:
+        """Detect an installed update that still requires a reboot to activate.
+
+        A successful rauc install makes the target slot the primary boot slot
+        while the old version keeps running until reboot. Supervisor may
+        restart in that window, so recover the pending state from rauc.
+
+        Must run after the booted slot was marked good: rauc's GRUB backend
+        only treats a slot as primary once it has no boot attempts pending,
+        so until the boot attempt counter of the booted slot is reset,
+        GetPrimary reports the previous slot as primary on every boot.
+        """
+        try:
+            primary = await self.sys_dbus.rauc.get_primary()
+        except DBusError, DBusNotConnectedError:
+            _LOGGER.warning("Can't get primary boot slot from rauc")
+            return
+
+        if (
+            not self._slots
+            or (status := self._slots.get(primary)) is None
+            or not status.bundle_version
+            or not status.bootname
+        ):
+            return
+
+        # Nothing pending if the primary slot is the booted one or holds
+        # the same version as the running system
+        if (
+            status.bootname == self.sys_dbus.rauc.boot_slot
+            or status.bundle_version == self.version
+        ):
+            return
+
+        self._version_pending = status.bundle_version
+        _LOGGER.info(
+            "Home Assistant Operating System %s is installed and pending a reboot to activate",
+            status.bundle_version,
+        )
+        self.sys_resolution.create_issue(
+            IssueType.REBOOT_REQUIRED,
+            ContextType.SYSTEM,
+            suggestions=[SuggestionType.EXECUTE_REBOOT],
+        )
+
     @Job(
         name="os_manager_config_sync",
         conditions=[JobCondition.HAOS],
@@ -301,6 +370,11 @@ class OSManager(CoreSysAttributes):
             raise HassOSUpdateError(
                 f"Version {version!s} is already installed", _LOGGER.warning
             )
+        if self.version_pending is not None and version == self.version_pending:
+            raise HassOSUpdateError(
+                f"Version {version!s} is already installed, reboot the system to activate it",
+                _LOGGER.warning,
+            )
 
         # Fetch files from internet
         ota_url = self._get_download_url(version)
@@ -325,9 +399,15 @@ class OSManager(CoreSysAttributes):
         # Update success
         if 0 in completed:
             _LOGGER.info(
-                "Install of Home Assistant Operating System %s success", version
+                "Install of Home Assistant Operating System %s success; reboot required",
+                version,
             )
-            self.sys_create_task(self.sys_host.control.reboot())
+            self._version_pending = version
+            self.sys_resolution.create_issue(
+                IssueType.REBOOT_REQUIRED,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.EXECUTE_REBOOT],
+            )
             return
 
         # Update failed
@@ -336,6 +416,9 @@ class OSManager(CoreSysAttributes):
             "Home Assistant Operating System update failed with: %s",
             self.sys_dbus.rauc.last_error,
         )
+        # The failed install overwrote the target slot, so a previously
+        # installed update pending activation is gone as well
+        self._version_pending = None
         raise HassOSUpdateError
 
     @Job(
@@ -384,20 +467,31 @@ class OSManager(CoreSysAttributes):
     async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:
-            responses = [
-                await self.sys_dbus.rauc.mark(RaucState.ACTIVE, "booted"),
-                await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted"),
-            ]
+            # Marking the booted slot good resets its boot attempt counter,
+            # which the pending update detection below relies on: rauc's GRUB
+            # backend only treats a slot as primary once it has no boot
+            # attempts pending.
+            response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")
         except DBusError:
             _LOGGER.exception("Can't mark booted partition as healthy!")
-        else:
-            _LOGGER.info(
-                "Rauc: slot %s - %s, %s",
-                self.sys_dbus.rauc.boot_slot,
-                responses[0][1],
-                responses[1][1],
-            )
-            await self.reload()
+            return
+        _LOGGER.info("Rauc: slot %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
+
+        await self.reload()
+        await self._detect_pending_update()
+
+        try:
+            # Marking the booted slot as active makes it the primary boot
+            # slot again, which would cancel an installed update that still
+            # awaits a reboot to activate.
+            if not self.version_pending:
+                response = await self.sys_dbus.rauc.mark(RaucState.ACTIVE, "booted")
+                await self.reload()
+                _LOGGER.info(
+                    "Rauc: slot %s - %s", self.sys_dbus.rauc.boot_slot, response[1]
+                )
+        except DBusError:
+            _LOGGER.exception("Can't mark booted partition as active!")
 
     @Job(
         name="os_manager_set_boot_slot",
@@ -420,3 +514,73 @@ class OSManager(CoreSysAttributes):
 
         _LOGGER.info("Rebooting into new boot slot now")
         await self.sys_host.control.reboot()
+
+    @Job(
+        name="os_manager_add_ssh_authorized_key",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        concurrency=JobConcurrency.GROUP_QUEUE,
+        internal=True,
+    )
+    async def add_ssh_authorized_key(self, key: str) -> None:
+        """Add an SSH authorized key for root on the host and start dropbear.
+
+        OS Agent validates the key since 1.10.0; older releases append it to
+        the authorized_keys file as submitted.
+        """
+        _LOGGER.info("Adding SSH authorized key on host")
+        try:
+            await self.sys_dbus.agent.system.add_ssh_auth_key(key)
+        except DBusError as err:
+            raise HassOSError(
+                f"Can't add SSH authorized key: {err!s}", _LOGGER.error
+            ) from err
+
+        # dropbear on Home Assistant OS is gated by
+        # ConditionFileNotEmpty=/root/.ssh/authorized_keys, which systemd only
+        # evaluates when the unit starts. A running dropbear re-reads the file
+        # on every authentication attempt and starting an active unit is a
+        # no-op, so only the stopped service needs this.
+        try:
+            await self.sys_host.services.start(DROPBEAR_SERVICE)
+        except (HostError, DBusError) as err:
+            raise HassOSError(
+                f"SSH authorized key written, but can't start dropbear: {err!s}",
+                _LOGGER.error,
+            ) from err
+
+    @Job(
+        name="os_manager_clear_ssh_authorized_keys",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        concurrency=JobConcurrency.GROUP_QUEUE,
+        internal=True,
+    )
+    async def clear_ssh_authorized_keys(self) -> None:
+        """Remove all SSH authorized keys of root on the host and stop dropbear."""
+        _LOGGER.info("Clearing SSH authorized keys on host")
+        try:
+            await self.sys_dbus.agent.system.clear_ssh_auth_keys()
+        except DBusError as err:
+            # On affected OS Agent releases the missing-file error is the
+            # empty state clearing aims for, so treat it as success there.
+            if (
+                self.sys_dbus.agent.version >= CLEAR_SSH_AUTH_KEYS_FIXED_VERSION
+                or CLEAR_SSH_AUTH_KEYS_MISSING_FILE_ERROR not in str(err)
+            ):
+                raise HassOSError(
+                    f"Can't clear SSH authorized keys: {err!s}", _LOGGER.error
+                ) from err
+
+        # Mirror the USB config import (haos-config), which stops dropbear
+        # when the imported authorized_keys file is removed. Clearing all
+        # keys is a revocation, so also terminate established sessions,
+        # which survive until the service stops. Stopping an inactive unit
+        # is a no-op.
+        try:
+            await self.sys_host.services.stop(DROPBEAR_SERVICE)
+        except (HostError, DBusError) as err:
+            raise HassOSError(
+                f"SSH authorized keys cleared, but can't stop dropbear: {err!s}",
+                _LOGGER.error,
+            ) from err
