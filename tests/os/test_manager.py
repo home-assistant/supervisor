@@ -11,7 +11,7 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import RaucState
-from supervisor.exceptions import HassOSJobError, HassOSUpdateError
+from supervisor.exceptions import HassOSJobError, HassOSUpdatePendingRebootError
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
@@ -190,7 +190,7 @@ async def test_update_pending_version_blocked(
     ) as download:
         await coresys.os.update()
 
-        with pytest.raises(HassOSUpdateError):
+        with pytest.raises(HassOSUpdatePendingRebootError):
             await coresys.os.update()
 
     download.assert_called_once()
