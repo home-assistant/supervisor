@@ -2,6 +2,7 @@
 
 from ctypes import c_uint32
 from dataclasses import dataclass
+import weakref
 
 from dbus_fast import DBusError, Variant
 from dbus_fast.service import PropertyAccess, dbus_property, signal
@@ -17,6 +18,18 @@ DEFAULT_OBJECT_PATH = ETHERNET_DEVICE_OBJECT_PATH
 def setup(object_path: str | None = None) -> DBusServiceMock:
     """Create dbus mock object."""
     return Device(object_path if object_path else DEFAULT_OBJECT_PATH)
+
+
+# Populated by Device.__init__, keyed by object path. Lets other service
+# mocks (e.g. NetworkManager.DeactivateConnection) find the device that owns
+# a given active connection without a real D-Bus round trip. A weak-value
+# dict so entries don't outlive the test that created them: once a test's
+# fixtures are torn down and nothing else references its `Device` instances,
+# the entry is dropped automatically instead of lingering as stale state
+# visible to later, unrelated tests.
+DEVICES_BY_OBJECT_PATH: weakref.WeakValueDictionary[str, "Device"] = (
+    weakref.WeakValueDictionary()
+)
 
 
 @dataclass(slots=True)
@@ -284,6 +297,7 @@ class Device(DBusServiceMock):
         self.object_path = object_path
         self.fixture: DeviceFixture = FIXTURES[object_path]
         self.reapply_error: DBusError | None = None
+        DEVICES_BY_OBJECT_PATH[object_path] = self
 
     @dbus_property(access=PropertyAccess.READ)
     def Udi(self) -> "s":
