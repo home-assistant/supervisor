@@ -12,4 +12,4 @@ pytest==9.1.1
 ruff==0.16.8
 time-machine==3.5.1
 types-pyyaml==6.0.12.20260906
-urllib3==2.7.0
+urllib3==2.8.0
