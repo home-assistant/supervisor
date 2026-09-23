@@ -92,6 +92,7 @@ async def test_generate_from_vlan(network_manager: NetworkManager):
     assert connection_payload["ipv6"]["ip6-privacy"].value == -1
 
     assert connection_payload["vlan"]["id"].value == 1
+    assert connection_payload["vlan"]["flags"].value == 1
     assert (
         connection_payload["vlan"]["parent"].value
         == "0c23631e-2118-355c-bbb0-8943229cb0d6"

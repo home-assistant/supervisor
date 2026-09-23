@@ -20,6 +20,7 @@ from ...const import (
     InterfaceAddrGenMode as NMInterfaceAddrGenMode,
     InterfaceIp6Privacy as NMInterfaceIp6Privacy,
     MulticastDnsValue,
+    VlanFlags,
 )
 from .. import NetworkManager
 from . import (
@@ -53,6 +54,7 @@ from . import (
     CONF_ATTR_MATCH,
     CONF_ATTR_MATCH_PATH,
     CONF_ATTR_VLAN,
+    CONF_ATTR_VLAN_FLAGS,
     CONF_ATTR_VLAN_ID,
     CONF_ATTR_VLAN_PARENT,
 )
@@ -267,6 +269,7 @@ def get_connection_from_interface(
         conn[CONF_ATTR_VLAN] = {
             CONF_ATTR_VLAN_ID: Variant("u", cast(VlanConfig, interface.vlan).id),
             CONF_ATTR_VLAN_PARENT: Variant("s", parent),
+            CONF_ATTR_VLAN_FLAGS: Variant("u", VlanFlags.REORDER_HEADERS.value),
         }
     elif interface.type == InterfaceType.WIRELESS:
         wireless = {
