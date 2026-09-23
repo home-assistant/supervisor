@@ -299,6 +299,15 @@ class ConnectionStateFlags(IntEnum):
     EXTERNAL = 0x80
 
 
+class VlanFlags(IntEnum):
+    """NetworkManager VLAN flags.
+
+    https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMVlanFlags
+    """
+
+    REORDER_HEADERS = 0x1
+
+
 class ConnectivityState(DBusIntEnum):
     """Network connectvity.
 
