@@ -1,7 +1,8 @@
 """Init file for Supervisor util for RESTful API."""
 
 import asyncio
-from collections.abc import Callable, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
+from contextlib import asynccontextmanager
 import json
 import logging
 from typing import Any, cast
@@ -54,6 +55,8 @@ from ..utils.sentry import async_capture_exception
 from . import const
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+DISCONNECT_CHECK_INTERVAL = 10
 
 # V1 compatibility shim for three AppNotSupported* errors whose legacy
 # addon_* keys are still consumed by the Supervisor client library.
@@ -379,3 +382,32 @@ async def background_task(
     if event_task in pending:
         event_task.cancel()
     return (task, job.uuid)
+
+
+@asynccontextmanager
+async def stop_on_disconnect(request: web.Request) -> AsyncIterator[None]:
+    """Stop the wrapped streaming block once the client has disconnected.
+
+    aiohttp does not cancel handlers on client disconnect, so a handler waiting
+    on an idle upstream stream would otherwise keep it open indefinitely.
+    """
+    task = asyncio.current_task()
+    assert task
+    disconnected = False
+
+    async def _watch() -> None:
+        nonlocal disconnected
+        while (transport := request.transport) and not transport.is_closing():
+            await asyncio.sleep(DISCONNECT_CHECK_INTERVAL)
+        disconnected = True
+        task.cancel()
+
+    watcher = asyncio.create_task(_watch())
+    try:
+        yield
+    except asyncio.CancelledError:
+        if not disconnected:
+            raise
+        task.uncancel()
+    finally:
+        watcher.cancel()
