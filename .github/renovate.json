@@ -1,0 +1,74 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": [
+    "custom.regex",
+    "github-actions",
+    "pep621",
+    "pip_requirements",
+    "pre-commit"
+  ],
+  "pre-commit": {
+    "enabled": true
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "uv installed in the Dockerfile",
+      "managerFilePatterns": ["/^Dockerfile$/"],
+      "matchStrings": ["pip3 install uv==(?<currentValue>[\\d.]+)"],
+      "depNameTemplate": "uv",
+      "datasourceTemplate": "pypi"
+    }
+  ],
+  "minimumReleaseAge": "3 days",
+  "semanticCommits": "disabled",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Label Python updates like Dependabot did",
+      "matchManagers": [
+        "custom.regex",
+        "pep621",
+        "pip_requirements",
+        "pre-commit"
+      ],
+      "addLabels": ["python"]
+    },
+    {
+      "description": "Label GitHub Actions updates like Dependabot did",
+      "matchManagers": ["github-actions"],
+      "addLabels": ["github_actions"]
+    },
+    {
+      "description": "Leave runner labels and action version inputs alone, Dependabot never updated those",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["github-runner", "uses-with"],
+      "enabled": false
+    },
+    {
+      "description": "Group the ruff pre-commit hook with its PyPI twin into one PR",
+      "matchPackageNames": ["astral-sh/ruff-pre-commit", "ruff"],
+      "groupName": "ruff",
+      "groupSlug": "ruff"
+    },
+    {
+      "description": "Group pylint with astroid (their versions are linked and must move together)",
+      "matchPackageNames": ["pylint", "astroid"],
+      "groupName": "pylint",
+      "groupSlug": "pylint"
+    },
+    {
+      "description": "Only patch releases of astroid on its own. pylint pins the astroid minor it supports, so a newer astroid minor comes in with the pylint release that needs it.",
+      "matchPackageNames": ["astroid"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "description": "Group setuptools in requirements.txt with the build requirement in pyproject.toml",
+      "matchPackageNames": ["setuptools"],
+      "groupName": "setuptools",
+      "groupSlug": "setuptools"
+    }
+  ]
+}
