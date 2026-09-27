@@ -369,11 +369,10 @@ class Job(CoreSysAttributes):
                     record_call()
                     return await execute()
 
-            # Jobs that weren't started are always cleaned up. Also clean up done jobs if required.
             # A detached job cleans up after itself once its task completes.
             finally:
-                if not detached and (job.done is None or cleanup):
-                    self.sys_jobs.remove_job(job)
+                if not detached:
+                    self._cleanup_job(job, cleanup)
 
         return wrapper
 
@@ -576,8 +575,16 @@ class Job(CoreSysAttributes):
             return await execute
         finally:
             self._release_concurrency_control(job_group, job)
-            if job.done is None or cleanup:
-                self.sys_jobs.remove_job(job)
+            self._cleanup_job(job, cleanup)
+
+    def _cleanup_job(self, job: SupervisorJob, cleanup: bool) -> None:
+        """Remove a job now or, if kept for its result, once retention expires."""
+        # Jobs that weren't started are always cleaned up
+        if job.done is None or cleanup:
+            self.sys_jobs.remove_job(job)
+        # Sub jobs are removed along with their root job
+        elif job.parent_id is None:
+            self.sys_jobs.schedule_job_removal(job)
 
     def _release_concurrency_control(
         self, job_group: JobGroup | None, job: SupervisorJob
