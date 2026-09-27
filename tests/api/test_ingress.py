@@ -233,3 +233,51 @@ async def test_ingress_proxy_no_content_type_for_empty_body_responses(
 
     finally:
         await app_server.close()
+
+
+async def test_ingress_proxy_streams_response(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    real_websession: aiohttp.ClientSession,
+):
+    """Test responses without a content length are streamed to the client."""
+    api_client, prefix = api_client_with_prefix
+
+    async def mock_app_handler(request: web.Request) -> web.StreamResponse:
+        """Stream a response in chunks without a content length."""
+        response = web.StreamResponse()
+        response.content_type = "text/event-stream"
+        await response.prepare(request)
+        for chunk in (b"data: one\n\n", b"data: two\n\n"):
+            await response.write(chunk)
+        await response.write_eof()
+        return response
+
+    app = web.Application()
+    app.router.add_get("/stream", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        resp = await api_client.post(f"{prefix}/ingress/session")
+        session = (await resp.json())["data"]["session"]
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_addon"
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+        mock_app.ingress_stream = False
+
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_app):
+            resp = await api_client.get(
+                f"{prefix}/ingress/{ingress_token}/stream",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 200
+            assert resp.headers["X-Accel-Buffering"] == "no"
+            assert resp.headers[hdrs.CONTENT_TYPE] == "text/event-stream"
+            assert await resp.read() == b"data: one\n\ndata: two\n\n"
+
+    finally:
+        await app_server.close()
