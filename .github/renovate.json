@@ -19,6 +19,25 @@
       "matchStrings": ["pip3 install uv==(?<currentValue>[\\d.]+)"],
       "depNameTemplate": "uv",
       "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "The base-python image in the Dockerfile",
+      "managerFilePatterns": ["/^Dockerfile$/"],
+      "matchStrings": [
+        "ARG BUILD_FROM=(?<depName>ghcr\\.io/home-assistant/base-python):(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "regex:^(?<compatibility>.+)-(?<major>\\d{4})\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "DEFAULT_PYTHON in the workflows",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": ["DEFAULT_PYTHON: \"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "python-version",
+      "versioningTemplate": "python"
     }
   ],
   "minimumReleaseAge": "3 days",
@@ -39,6 +58,32 @@
       "description": "Label GitHub Actions updates like Dependabot did",
       "matchManagers": ["github-actions"],
       "addLabels": ["github_actions"]
+    },
+    {
+      "description": "The base-python image and the Python version in the workflows move together, as one Python update. The image date moves within its Python and Alpine line (like 3.14-alpine3.24). ghcr.io returns no release timestamps, so the image is exempt from the minimum release age. The branch topic is fixed, so the Python patch release and the image date bump share one branch.",
+      "matchDepNames": ["ghcr.io/home-assistant/base-python", "python"],
+      "groupName": "Python and base image",
+      "groupSlug": "python-base-image",
+      "separateMajorMinor": false,
+      "group": {
+        "branchTopic": "python-base-image"
+      }
+    },
+    {
+      "description": "No cooldown for the base-python image, ghcr.io returns no release timestamps",
+      "matchDepNames": ["ghcr.io/home-assistant/base-python"],
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "Stay on the current Python minor in the workflows; a new Python minor comes with a new base image line. Minor and patch are separated, otherwise Renovate only proposes the newest minor, which is disabled here.",
+      "matchDepNames": ["python"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "description": "Offer Python patch releases in the workflows",
+      "matchDepNames": ["python"],
+      "separateMinorPatch": true
     },
     {
       "description": "Leave runner labels and action version inputs alone, Dependabot never updated those",
