@@ -78,6 +78,7 @@ from .const import (
     LOCATION_CLOUD_BACKUP,
     SECURETAR_CREATE_VERSION,
     SECURETAR_V3_CREATE_VERSION,
+    STREAM_BUF_SIZE,
     BackupType,
 )
 from .validate import SCHEMA_BACKUP
@@ -174,6 +175,11 @@ class Backup(JobGroup):
     def compressed(self) -> bool:
         """Return whether backup is compressed."""
         return self._data[ATTR_COMPRESSED]
+
+    @property
+    def _restore_bufsize(self) -> int:
+        """Return buffer size for reading tars from the backup."""
+        return STREAM_BUF_SIZE if self._password else BUF_SIZE
 
     @property
     def apps(self) -> list[dict[str, Any]]:
@@ -704,7 +710,7 @@ class Backup(JobGroup):
         app_file = SecureTarFile(
             tar_path,
             gzip=self.compressed,
-            bufsize=BUF_SIZE,
+            bufsize=self._restore_bufsize,
             password=self._password,
         )
 
@@ -872,7 +878,7 @@ class Backup(JobGroup):
                 with SecureTarFile(
                     tar_name,
                     gzip=self.compressed,
-                    bufsize=BUF_SIZE,
+                    bufsize=self._restore_bufsize,
                     password=self._password,
                 ) as tar_file:
                     # The tar filter rejects path traversal and absolute names,
@@ -992,7 +998,7 @@ class Backup(JobGroup):
         homeassistant_file = SecureTarFile(
             tar_name,
             gzip=self.compressed,
-            bufsize=BUF_SIZE,
+            bufsize=self._restore_bufsize,
             password=self._password,
         )
 
@@ -1123,7 +1129,7 @@ class Backup(JobGroup):
             with SecureTarFile(
                 tar_name,
                 gzip=self.compressed,
-                bufsize=BUF_SIZE,
+                bufsize=self._restore_bufsize,
                 password=self._password,
             ) as tar_file:
                 # Encrypted tars are opened in streaming mode by securetar since

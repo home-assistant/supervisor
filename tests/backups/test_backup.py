@@ -9,11 +9,16 @@ import tarfile
 from unittest.mock import MagicMock, patch
 
 import pytest
-from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
+from securetar import (
+    AddFileError,
+    InvalidPasswordError,
+    SecureTarFile,
+    SecureTarReadError,
+)
 
 from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation
-from supervisor.backups.const import BackupType
+from supervisor.backups.const import BUF_SIZE, STREAM_BUF_SIZE, BackupType
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     AppsError,
@@ -445,6 +450,42 @@ def test_set_password_empty_string_is_none(
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.set_password(password)
     assert backup._password == expected_password  # pylint: disable=protected-access
+
+
+@pytest.mark.parametrize(
+    ("password", "expected_bufsize"),
+    [
+        pytest.param(None, BUF_SIZE, id="unprotected"),
+        pytest.param("backup_password", STREAM_BUF_SIZE, id="protected"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_restore_folder_bufsize(
+    coresys: CoreSys,
+    tmp_path: Path,
+    password: str | None,
+    expected_bufsize: int,
+):
+    """Test encrypted tars are restored with a small buffer, plain ones with a large one."""
+    test_file = coresys.config.path_media / "test.txt"
+    test_file.write_text("backup content")
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new(
+        "test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL, password=password
+    )
+    async with backup.create():
+        await backup.store_folders(["media"])
+
+    test_file.unlink()
+    async with backup.open(None):
+        with patch(
+            "supervisor.backups.backup.SecureTarFile", wraps=SecureTarFile
+        ) as secure_tar_mock:
+            assert await backup.restore_folders(["media"])
+
+    assert secure_tar_mock.call_args.kwargs["bufsize"] == expected_bufsize
+    assert test_file.read_text() == "backup content"
 
 
 async def test_store_supervisor_config_nothing_to_backup(
