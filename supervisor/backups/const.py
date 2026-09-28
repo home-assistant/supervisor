@@ -1,6 +1,7 @@
 """Backup consts."""
 
 from enum import StrEnum
+import tarfile
 from typing import Literal
 
 from awesomeversion import AwesomeVersion
@@ -8,6 +9,10 @@ from awesomeversion import AwesomeVersion
 from ..mounts.mount import Mount
 
 BUF_SIZE = 2**20 * 4  # 4MB
+# Encrypted tars are read in stream mode, where tarfile decompresses a whole
+# buffer at once and copies the remainder on every read. A large buffer makes
+# extracting highly compressible data quadratic, so use the tar record size.
+STREAM_BUF_SIZE = tarfile.RECORDSIZE
 SECURETAR_CREATE_VERSION = 2
 SECURETAR_V3_CREATE_VERSION = 3
 CORE_SECURETAR_V3_MIN_VERSION: AwesomeVersion = AwesomeVersion("2026.3.0")
