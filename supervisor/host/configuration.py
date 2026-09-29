@@ -353,6 +353,9 @@ class Interface:
                 case "wpa-psk":
                     auth = AuthMethod.WPA_PSK
                     psk = inet.settings.wireless_security.psk
+                case "sae":
+                    auth = AuthMethod.WPA3_SAE
+                    psk = inet.settings.wireless_security.psk
                 case _:
                     _LOGGER.warning(
                         "Auth method %s for network interface %s unsupported, skipping",

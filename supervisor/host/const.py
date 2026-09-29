@@ -54,7 +54,8 @@ class AuthMethod(StrEnum):
     OPEN = "open"
     WEP = "wep"
     WPA_PSK = "wpa-psk"
-
+    WPA2_PSK = "wpa-psk"
+    WPA3_SAE = "sae"
 
 class WifiMode(StrEnum):
     """Wifi mode."""
