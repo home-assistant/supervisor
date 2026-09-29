@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from shutil import copy
 import tarfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
@@ -14,6 +14,8 @@ from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
 from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import BackupType
+from supervisor.config import CoreConfig
+from supervisor.const import FOLDER_ADDONS
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     AppsError,
@@ -26,6 +28,7 @@ from supervisor.exceptions import (
 )
 from supervisor.jobs import JobSchedulerOptions
 from supervisor.mounts.mount import Mount
+from supervisor.utils import remove_folder
 
 from tests.common import get_fixture_path
 
@@ -105,6 +108,45 @@ async def test_backup_error_app(coresys: CoreSys, install_app_ssh: App, tmp_path
         ]
         assert len(child_jobs) == 1
         assert child_jobs[0].errors[0].message == str(err)
+
+
+async def test_backup_folder_addons_local_maps_to_apps_local(
+    coresys: CoreSys, tmp_supervisor_data: Path, tmp_path: Path
+):
+    """Test backup/restore of FOLDER_ADDONS uses the apps/local on-disk path.
+
+    The local apps folder moved from addons/local to apps/local, but the
+    backup folder name FOLDER_ADDONS ("addons/local") is kept for API and
+    existing backup compatibility. Backup/restore must resolve it to the
+    current on-disk location instead of the now-nonexistent old path.
+    """
+    apps_local = tmp_path / "apps_local"
+    apps_local.mkdir()
+    (apps_local / "test_app").mkdir()
+    (apps_local / "test_app" / "config.yaml").write_text("name: Test App")
+
+    backup_file = tmp_path / "my_backup.tar"
+    backup = Backup(coresys, backup_file, "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    with patch.object(
+        CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_local)
+    ):
+        async with backup.create():
+            await backup.store_folders([FOLDER_ADDONS])
+
+        assert FOLDER_ADDONS in backup.folders
+
+        # Simulate a fresh system: remove the on-disk folder before restoring
+        await coresys.run_in_executor(remove_folder, apps_local, True)
+        assert not list(apps_local.iterdir())
+
+        async with backup.open(None):
+            await backup.restore_folders([FOLDER_ADDONS])
+
+        restored_config = apps_local / "test_app" / "config.yaml"
+        assert restored_config.is_file()
+        assert restored_config.read_text() == "name: Test App"
 
 
 async def test_backup_error_folder(
