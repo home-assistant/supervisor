@@ -19,7 +19,7 @@ from supervisor.apps.model import AppModel
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
 from supervisor.backups.manager import BackupManager
-from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AppState, CoreState
+from supervisor.const import FOLDER_HOMEASSISTANT, AppState, CoreState, Folder
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -198,7 +198,7 @@ async def test_do_backup_partial_maximal(coresys: CoreSys, install_app_ssh: App)
     # backup_mock fixture causes Backup() to be a MagicMock
     backup_instance: MagicMock = await manager.do_backup_partial(
         apps=[TEST_ADDON_SLUG],
-        folders=[FOLDER_SHARE, FOLDER_HOMEASSISTANT],
+        folders=[Folder.SHARE, FOLDER_HOMEASSISTANT],
         homeassistant=True,
     )
 
@@ -376,7 +376,7 @@ async def test_do_restore_partial_maximal(
     assert await manager.do_restore_partial(
         backup_instance,
         apps=[TEST_ADDON_SLUG],
-        folders=[FOLDER_SHARE, FOLDER_HOMEASSISTANT],
+        folders=[Folder.SHARE, FOLDER_HOMEASSISTANT],
         homeassistant=True,
     )
 

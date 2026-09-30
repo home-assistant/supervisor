@@ -48,6 +48,7 @@ from ..const import (
     ATTR_TYPE,
     ATTR_VERSION,
     FOLDER_ADDONS,
+    Folder,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -758,17 +759,6 @@ class Backup(JobGroup):
 
         return success
 
-    def _folder_origin_dir(self, name: str) -> Path:
-        """Resolve the on-disk path backing a backup folder name.
-
-        FOLDER_ADDONS ("addons/local") is kept as the backup/API name for
-        compatibility with existing backups, but the local apps folder now
-        lives at path_apps_local ("apps/local") on disk.
-        """
-        if name == FOLDER_ADDONS:
-            return self.sys_config.path_apps_local
-        return Path(self.sys_config.path_supervisor, name)
-
     @Job(name="backup_folder_save", cleanup=False)
     async def _folder_save(self, name: str):
         """Take backup of a folder."""
@@ -781,7 +771,7 @@ class Backup(JobGroup):
         outer_secure_tarfile = self._outer_secure_tarfile
         slug_name = name.replace("/", "_")
         tar_name = f"{slug_name}.tar{'.gz' if self.compressed else ''}"
-        origin_dir = self._folder_origin_dir(name)
+        origin_dir = Folder(name).origin_dir(self.sys_config)
 
         def _save() -> bool:
             # Check if exists
@@ -861,16 +851,20 @@ class Backup(JobGroup):
         if not self._tmp:
             raise RuntimeError("Cannot restore components without opening backup tar")
 
-        slug_name = name.replace("/", "_")
-        tar_name = Path(
-            self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
-        )
-        origin_dir = self._folder_origin_dir(name)
+        ext = ".tar.gz" if self.compressed else ".tar"
+        tar_candidates = [Path(self._tmp.name, f"{name.replace('/', '_')}{ext}")]
+        if name == Folder.APPS:
+            # Backups created before the addons/local -> apps/local rename
+            # archived this folder under the legacy slug.
+            legacy_slug = FOLDER_ADDONS.replace("/", "_")
+            tar_candidates.append(Path(self._tmp.name, f"{legacy_slug}{ext}"))
+        origin_dir = Folder(name).origin_dir(self.sys_config)
 
         # Perform a restore
         def _restore() -> None:
             # Check if exists inside backup
-            if not tar_name.exists():
+            tar_name = next((c for c in tar_candidates if c.exists()), None)
+            if tar_name is None:
                 raise BackupInvalidError(
                     f"Can't find restore folder {name}", _LOGGER.warning
                 )
