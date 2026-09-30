@@ -143,7 +143,7 @@ async def test_backup_folder_addons_local_maps_to_apps_local(
         async with backup.open(None):
             # Simulate a pre-migration backup: archived under the legacy slug.
             ext = ".tar.gz" if backup.compressed else ".tar"
-            tmp_dir = Path(backup._tmp.name)
+            tmp_dir = Path(backup._tmp.name)  # pylint: disable=protected-access
             (tmp_dir / f"apps_local{ext}").rename(
                 tmp_dir / f"{FOLDER_ADDONS.replace('/', '_')}{ext}"
             )
