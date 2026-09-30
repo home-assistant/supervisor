@@ -50,6 +50,8 @@ async def test_info(api_client: TestClient, coresys: CoreSys, tmp_path: Path):
     assert result["data"]["backups"][0]["content"]["homeassistant"] is True
     assert len(result["data"]["backups"][0]["content"]["addons"]) == 1
     assert result["data"]["backups"][0]["content"]["addons"][0] == "local_ssh"
+    assert "addons/local" in result["data"]["backups"][0]["content"]["folders"]
+    assert "apps/local" not in result["data"]["backups"][0]["content"]["folders"]
     assert result["data"]["backups"][0]["size"] == 0.01
     assert result["data"]["backups"][0]["size_bytes"] == 10240
 
@@ -72,6 +74,8 @@ async def test_backup_more_info(
         "slug": "local_ssh",
         "version": "1.0.0",
     }
+    assert "addons/local" in result["data"]["folders"]
+    assert "apps/local" not in result["data"]["folders"]
     assert result["data"]["size"] == 0.01
     assert result["data"]["size_bytes"] == 10240
     assert result["data"]["homeassistant_exclude_database"] is False
@@ -89,6 +93,8 @@ async def test_list(api_client: TestClient, coresys: CoreSys, tmp_path: Path):
     assert result["data"]["backups"][0]["content"]["homeassistant"] is True
     assert len(result["data"]["backups"][0]["content"]["addons"]) == 1
     assert result["data"]["backups"][0]["content"]["addons"][0] == "local_ssh"
+    assert "addons/local" in result["data"]["backups"][0]["content"]["folders"]
+    assert "apps/local" not in result["data"]["backups"][0]["content"]["folders"]
     assert result["data"]["backups"][0]["size"] == 0.01
     assert result["data"]["backups"][0]["size_bytes"] == 10240
 
@@ -336,7 +342,7 @@ async def test_api_backup_restore_background(
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
-    (tmp_supervisor_data / "addons/local").mkdir(parents=True)
+    (tmp_supervisor_data / "apps/local").mkdir(parents=True)
 
     assert coresys.jobs.jobs == []
 
@@ -359,7 +365,7 @@ async def test_api_backup_restore_background(
     assert job["child_jobs"][1]["name"] == "backup_store_folders"
     assert job["child_jobs"][1]["reference"] == backup_slug
     assert {j["reference"] for j in job["child_jobs"][1]["child_jobs"]} == {
-        "addons/local",
+        "apps/local",
         "media",
         "share",
         "ssl",
@@ -383,7 +389,7 @@ async def test_api_backup_restore_background(
     assert job["child_jobs"][0]["name"] == "backup_restore_folders"
     assert job["child_jobs"][0]["reference"] == backup_slug
     assert {j["reference"] for j in job["child_jobs"][0]["child_jobs"]} == {
-        "addons/local",
+        "apps/local",
         "media",
         "share",
         "ssl",
@@ -422,7 +428,7 @@ async def test_api_backup_errors(
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
-    (tmp_supervisor_data / "addons/local").mkdir(parents=True)
+    (tmp_supervisor_data / "apps/local").mkdir(parents=True)
 
     assert coresys.jobs.jobs == []
 
@@ -460,7 +466,7 @@ async def test_api_backup_errors(
     assert job["child_jobs"][2]["name"] == "backup_store_folders"
     assert job["child_jobs"][2]["reference"] == slug
     assert {j["reference"] for j in job["child_jobs"][2]["child_jobs"]} == {
-        "addons/local",
+        "apps/local",
         "media",
         "share",
         "ssl",
@@ -1701,6 +1707,50 @@ async def test_v1_partial_restore_accepts_homeassistant_folder(
     assert call_kwargs["folders"] == ["homeassistant"]
 
 
+async def test_v1_partial_backup_renames_addons_local_folder(
+    api_client: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V1 partial backup accepts legacy 'addons/local' folder and passes 'apps/local' internally."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(
+        BackupManager, "do_backup_partial", return_value=mock_partial_backup
+    ) as mock_backup:
+        resp = await api_client.post(
+            "/backups/new/partial",
+            json={"folders": ["addons/local"]},
+        )
+
+    assert resp.status == 200
+    mock_backup.assert_called_once()
+    _, call_kwargs = mock_backup.call_args
+    assert call_kwargs["folders"] == ["apps/local"]
+
+
+async def test_v1_partial_restore_renames_addons_local_folder(
+    api_client: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V1 partial restore accepts legacy 'addons/local' folder and passes 'apps/local' internally."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(
+        BackupManager, "do_restore_partial", return_value=True
+    ) as mock_restore:
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"folders": ["addons/local"]},
+        )
+
+    assert resp.status == 200
+    mock_restore.assert_called_once()
+    _, call_kwargs = mock_restore.call_args
+    assert call_kwargs["folders"] == ["apps/local"]
+
+
 # ── V2 API tests ──────────────────────────────────────────────────────────────
 
 
@@ -1731,6 +1781,8 @@ async def test_v2_info_uses_apps_key(
     assert "apps" in content
     assert "addons" not in content
     assert content["apps"] == ["local_ssh"]
+    assert "apps/local" in content["folders"]
+    assert "addons/local" not in content["folders"]
 
 
 @pytest.mark.usefixtures("mock_full_backup")
@@ -1747,6 +1799,8 @@ async def test_v2_list_uses_apps_key(
     assert "apps" in content
     assert "addons" not in content
     assert content["apps"] == ["local_ssh"]
+    assert "apps/local" in content["folders"]
+    assert "addons/local" not in content["folders"]
 
 
 @pytest.mark.usefixtures("mock_full_backup")
@@ -1762,6 +1816,8 @@ async def test_v2_backup_info_uses_apps_key(
     assert "apps" in result["data"]
     assert "addons" not in result["data"]
     assert result["data"]["apps"][0]["slug"] == "local_ssh"
+    assert "apps/local" in result["data"]["folders"]
+    assert "addons/local" not in result["data"]["folders"]
 
 
 async def test_v2_backup_partial_accepts_apps_key(
@@ -1867,3 +1923,86 @@ async def test_v2_partial_restore_rejects_homeassistant_folder(
     result = await resp.json()
     assert result["result"] == "error"
     assert "homeassistant" in result["message"]
+
+
+async def test_v2_partial_backup_accepts_apps_local_folder(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V2 partial backup accepts 'apps/local' folder and passes it through unchanged."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        BackupManager, "do_backup_partial", return_value=mock_partial_backup
+    ) as mock_backup:
+        resp = await api_client_v2.post(
+            "/v2/backups/new/partial",
+            json={"folders": ["apps/local"]},
+        )
+
+    assert resp.status == 200
+    mock_backup.assert_called_once()
+    _, call_kwargs = mock_backup.call_args
+    assert call_kwargs["folders"] == ["apps/local"]
+
+
+async def test_v2_partial_backup_rejects_addons_local_folder(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+):
+    """V2 partial backup rejects the legacy 'addons/local' folder name."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    resp = await api_client_v2.post(
+        "/v2/backups/new/partial",
+        json={"folders": ["addons/local"]},
+    )
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert "addons/local" in result["message"]
+
+
+async def test_v2_partial_restore_accepts_apps_local_folder(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V2 partial restore accepts 'apps/local' folder and passes it through unchanged."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        BackupManager, "do_restore_partial", return_value=True
+    ) as mock_restore:
+        resp = await api_client_v2.post(
+            f"/v2/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"folders": ["apps/local"]},
+        )
+
+    assert resp.status == 200
+    mock_restore.assert_called_once()
+    _, call_kwargs = mock_restore.call_args
+    assert call_kwargs["folders"] == ["apps/local"]
+
+
+async def test_v2_partial_restore_rejects_addons_local_folder(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """V2 partial restore rejects the legacy 'addons/local' folder name."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    resp = await api_client_v2.post(
+        f"/v2/backups/{mock_partial_backup.slug}/restore/partial",
+        json={"folders": ["addons/local"]},
+    )
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert "addons/local" in result["message"]
