@@ -1707,12 +1707,14 @@ async def test_v1_partial_restore_accepts_homeassistant_folder(
     assert call_kwargs["folders"] == ["homeassistant"]
 
 
+@pytest.mark.parametrize("folder", ["addons/local", "apps/local"])
 async def test_v1_partial_backup_renames_addons_local_folder(
     api_client: TestClient,
     coresys: CoreSys,
     mock_partial_backup: Backup,
+    folder: str,
 ):
-    """V1 partial backup accepts legacy 'addons/local' folder and passes 'apps/local' internally."""
+    """V1 partial backup accepts legacy 'addons/local' and 'apps/local', passing 'apps/local' internally."""
     await coresys.core.set_state(CoreState.RUNNING)
 
     with patch.object(
@@ -1720,7 +1722,7 @@ async def test_v1_partial_backup_renames_addons_local_folder(
     ) as mock_backup:
         resp = await api_client.post(
             "/backups/new/partial",
-            json={"folders": ["addons/local"]},
+            json={"folders": [folder]},
         )
 
     assert resp.status == 200
@@ -1729,12 +1731,14 @@ async def test_v1_partial_backup_renames_addons_local_folder(
     assert call_kwargs["folders"] == ["apps/local"]
 
 
+@pytest.mark.parametrize("folder", ["addons/local", "apps/local"])
 async def test_v1_partial_restore_renames_addons_local_folder(
     api_client: TestClient,
     coresys: CoreSys,
     mock_partial_backup: Backup,
+    folder: str,
 ):
-    """V1 partial restore accepts legacy 'addons/local' folder and passes 'apps/local' internally."""
+    """V1 partial restore accepts legacy 'addons/local' and 'apps/local', passing 'apps/local' internally."""
     await coresys.core.set_state(CoreState.RUNNING)
 
     with patch.object(
@@ -1742,7 +1746,7 @@ async def test_v1_partial_restore_renames_addons_local_folder(
     ) as mock_restore:
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
-            json={"folders": ["addons/local"]},
+            json={"folders": [folder]},
         )
 
     assert resp.status == 200

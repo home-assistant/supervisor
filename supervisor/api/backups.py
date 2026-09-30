@@ -73,10 +73,10 @@ RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
 
 # Backwards compatible
 # Remove: 2022.08
-# V1 API contract keeps the legacy "addons/local" folder name.
-_ALL_FOLDERS_V1 = replace_folder(ALL_FOLDERS, Folder.APPS, FOLDER_ADDONS) + [
-    FOLDER_HOMEASSISTANT
-]
+# V1 API contract keeps accepting the legacy "addons/local" folder name, but
+# also accepts the new "apps/local" name so clients can migrate ahead of the
+# v1 API's removal.
+_ALL_FOLDERS_V1 = ALL_FOLDERS + [FOLDER_ADDONS, FOLDER_HOMEASSISTANT]
 
 
 def _ensure_list(item: Any) -> list:
