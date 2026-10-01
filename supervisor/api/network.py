@@ -12,7 +12,9 @@ from ..const import (
     ATTR_ACCESSPOINTS,
     ATTR_ADDR_GEN_MODE,
     ATTR_ADDRESS,
+    ATTR_ADDRESSES,
     ATTR_AUTH,
+    ATTR_CONFIG,
     ATTR_CONNECTED,
     ATTR_DNS,
     ATTR_DOCKER,
@@ -26,19 +28,24 @@ from ..const import (
     ATTR_IP6_PRIVACY,
     ATTR_IPV4,
     ATTR_IPV6,
+    ATTR_JOB_ID,
     ATTR_LLMNR,
     ATTR_MAC,
     ATTR_MDNS,
     ATTR_METHOD,
     ATTR_MODE,
+    ATTR_NAME,
     ATTR_NAMESERVERS,
     ATTR_PARENT,
+    ATTR_PATH,
     ATTR_PRIMARY,
     ATTR_PSK,
+    ATTR_PSK_SET,
     ATTR_READY,
     ATTR_ROUTE_METRIC,
     ATTR_SIGNAL,
     ATTR_SSID,
+    ATTR_STATE,
     ATTR_SUPERVISOR_INTERNET,
     ATTR_TYPE,
     ATTR_VLAN,
@@ -47,7 +54,12 @@ from ..const import (
     DOCKER_NETWORK,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APINotFound, HostNetworkNotFound
+from ..exceptions import (
+    APIError,
+    APINotFound,
+    HostNetworkNotFound,
+    HostNetworkWifiPskRequiredError,
+)
 from ..host.configuration import (
     AccessPoint,
     Interface,
@@ -58,6 +70,7 @@ from ..host.configuration import (
     IpConfig,
     IpSetting,
     MulticastDnsMode,
+    ResolvedInterface,
     VlanConfig,
     WifiConfig,
 )
@@ -109,6 +122,134 @@ SCHEMA_UPDATE = vol.Schema(
 )
 
 
+def _validate_ip_config_v2(schema_key: str):
+    """Return a validator rejecting cross-field contradictions in a v2 IP config block."""
+
+    def validator(config: dict[str, Any]) -> dict[str, Any]:
+        addresses = config.get(ATTR_ADDRESSES) or []
+
+        if config[ATTR_METHOD] == InterfaceMethod.STATIC and not addresses:
+            raise vol.Invalid(
+                f"{schema_key}: at least one address is required when method is static"
+            )
+
+        if config[ATTR_METHOD] != InterfaceMethod.STATIC and (
+            addresses or config.get(ATTR_GATEWAY)
+        ):
+            # Not supported/configurable via Supervisor today - an externally
+            # managed profile with a non-static method plus manual
+            # addresses/gateway isn't something we can round-trip (only
+            # `static` is serialized back out), see #7110. This also
+            # supersedes (and subsumes) the old "gateway requires an
+            # address" check below: with `static` required for either field
+            # to be set at all, and `static` itself requiring a non-empty
+            # `addresses`, a gateway can no longer be supplied without one.
+            raise vol.Invalid(
+                f"{schema_key}: addresses and gateway are only supported when method is static"
+            )
+
+        return config
+
+    return validator
+
+
+def _validate_wifi_config_v2(config: dict[str, Any]) -> dict[str, Any]:
+    """Reject a psk supplied without a matching auth method."""
+    if config[ATTR_AUTH] == AuthMethod.UNSUPPORTED:
+        # Read-only value reported for a stored profile whose auth method
+        # Supervisor doesn't understand (see `AuthMethod.UNSUPPORTED`) - not
+        # something a client can meaningfully (re)create; such an interface
+        # must either supply a supported auth method or omit `wifi` entirely
+        # to leave the existing profile untouched (see `update_config()`).
+        raise vol.Invalid(f"{ATTR_AUTH} unsupported is read-only and cannot be set")
+    if config.get(ATTR_PSK) and config[ATTR_AUTH] != AuthMethod.WPA_PSK:
+        raise vol.Invalid(f"{ATTR_PSK} is only valid when {ATTR_AUTH} is wpa-psk")
+
+    return config
+
+
+def _require_psk_for_wpa_psk(
+    resolved: ResolvedInterface, wifi: dict[str, Any] | None
+) -> None:
+    """Require a psk when (re)creating a wpa-psk profile, unless one is kept.
+
+    GET never returns the actual `psk` (only whether one is set, via
+    `psk_set`), so a client echoing back a fetched config can't supply it.
+    Omitting `psk` is therefore only valid when an existing wpa-psk profile
+    is being kept as-is; a brand new profile, or switching from a different
+    auth method, must supply one. Without this, a `psk`-less `wpa-psk`
+    request would pass schema validation, get persisted, and only fail at
+    activation time with a much less obvious error - while GET would still
+    report `psk_set: true` (inferred from `auth`), leaving a client with no
+    signal to ever re-prompt for the secret.
+    """
+    if not wifi or wifi[ATTR_AUTH] != AuthMethod.WPA_PSK or wifi.get(ATTR_PSK):
+        return
+
+    existing = resolved.interface.wifi if resolved.has_profile else None
+    if existing and existing.auth == AuthMethod.WPA_PSK:
+        return
+
+    raise HostNetworkWifiPskRequiredError
+
+
+_SCHEMA_IPV4_CONFIG_V2 = vol.All(
+    vol.Schema(
+        {
+            vol.Required(ATTR_METHOD): vol.Coerce(InterfaceMethod),
+            vol.Optional(ATTR_ADDRESSES, default=list): [vol.Coerce(IPv4Interface)],
+            vol.Optional(ATTR_GATEWAY): vol.Any(vol.Coerce(IPv4Address), None),
+            vol.Optional(ATTR_ROUTE_METRIC): vol.Any(vol.Coerce(int), None),
+            vol.Optional(ATTR_NAMESERVERS, default=list): [vol.Coerce(IPv4Address)],
+        }
+    ),
+    _validate_ip_config_v2(ATTR_IPV4),
+)
+
+_SCHEMA_IPV6_CONFIG_V2 = vol.All(
+    vol.Schema(
+        {
+            vol.Required(ATTR_METHOD): vol.Coerce(InterfaceMethod),
+            vol.Optional(ATTR_ADDR_GEN_MODE): vol.Coerce(InterfaceAddrGenMode),
+            vol.Optional(ATTR_IP6_PRIVACY): vol.Coerce(InterfaceIp6Privacy),
+            vol.Optional(ATTR_ADDRESSES, default=list): [vol.Coerce(IPv6Interface)],
+            vol.Optional(ATTR_GATEWAY): vol.Any(vol.Coerce(IPv6Address), None),
+            vol.Optional(ATTR_ROUTE_METRIC): vol.Any(vol.Coerce(int), None),
+            vol.Optional(ATTR_NAMESERVERS, default=list): [vol.Coerce(IPv6Address)],
+        }
+    ),
+    _validate_ip_config_v2(ATTR_IPV6),
+)
+
+_SCHEMA_WIFI_CONFIG_V2 = vol.All(
+    vol.Schema(
+        {
+            vol.Required(ATTR_MODE): vol.Coerce(WifiMode),
+            vol.Required(ATTR_SSID): vol.All(str, vol.Length(min=1)),
+            vol.Required(ATTR_AUTH): vol.Coerce(AuthMethod),
+            vol.Optional(ATTR_PSK): str,
+            # Read-only marker returned by GET, accepted (and ignored) here so
+            # an unchanged `config` round-trips through PUT (R1).
+            vol.Optional(ATTR_PSK_SET): vol.Boolean(),
+        }
+    ),
+    _validate_wifi_config_v2,
+)
+
+
+# pylint: disable=no-value-for-parameter
+SCHEMA_CONFIG_V2 = vol.Schema(
+    {
+        vol.Required(ATTR_ENABLED): vol.Boolean(),
+        vol.Required(ATTR_IPV4): _SCHEMA_IPV4_CONFIG_V2,
+        vol.Required(ATTR_IPV6): _SCHEMA_IPV6_CONFIG_V2,
+        vol.Optional(ATTR_WIFI): vol.Any(_SCHEMA_WIFI_CONFIG_V2, None),
+        vol.Required(ATTR_MDNS): vol.Coerce(MulticastDnsMode),
+        vol.Required(ATTR_LLMNR): vol.Coerce(MulticastDnsMode),
+    }
+)
+
+
 def ip4config_struct(config: IpConfig, setting: IpSetting) -> dict[str, Any]:
     """Return a dict with information about IPv4 configuration."""
     return {
@@ -153,7 +294,7 @@ def vlan_struct(config: VlanConfig) -> dict[str, Any]:
     }
 
 
-def interface_struct(interface: Interface) -> dict[str, Any]:
+def interface_struct_v1(interface: Interface) -> dict[str, Any]:
     """Return a dict with information of a interface to be used in th API."""
     return {
         ATTR_INTERFACE: interface.name,
@@ -172,6 +313,115 @@ def interface_struct(interface: Interface) -> dict[str, Any]:
         ATTR_VLAN: vlan_struct(interface.vlan) if interface.vlan else None,
         ATTR_MDNS: interface.mdns,
         ATTR_LLMNR: interface.llmnr,
+    }
+
+
+def interface_state_struct(interface: Interface) -> dict[str, Any]:
+    """Return a dict with the observed state of an interface (v2)."""
+    return {
+        ATTR_CONNECTED: interface.connected,
+        ATTR_IPV4: {
+            ATTR_ADDRESSES: [
+                address.with_prefixlen for address in interface.ipv4.address
+            ],
+            ATTR_GATEWAY: str(interface.ipv4.gateway)
+            if interface.ipv4.gateway
+            else None,
+            ATTR_NAMESERVERS: [str(address) for address in interface.ipv4.nameservers],
+            ATTR_READY: interface.ipv4.ready,
+        }
+        if interface.ipv4
+        else None,
+        ATTR_IPV6: {
+            ATTR_ADDRESSES: [
+                address.with_prefixlen for address in interface.ipv6.address
+            ],
+            ATTR_GATEWAY: str(interface.ipv6.gateway)
+            if interface.ipv6.gateway
+            else None,
+            ATTR_NAMESERVERS: [str(address) for address in interface.ipv6.nameservers],
+            ATTR_READY: interface.ipv6.ready,
+        }
+        if interface.ipv6
+        else None,
+        ATTR_WIFI: {
+            ATTR_SSID: interface.wifi.active_ssid,
+            ATTR_SIGNAL: interface.wifi.signal,
+        }
+        if interface.wifi
+        else None,
+    }
+
+
+def interface_config_struct(resolved: ResolvedInterface) -> dict[str, Any] | None:
+    """Return a dict with the desired configuration of an interface (v2).
+
+    Returns `None` if no stored connection profile could be resolved for the
+    interface at all (as opposed to v1, which always returns a dummy
+    `disabled`/empty config in that case).
+    """
+    if not resolved.has_profile:
+        return None
+
+    interface = resolved.interface
+    return {
+        ATTR_ENABLED: resolved.enabled,
+        ATTR_IPV4: {
+            ATTR_METHOD: interface.ipv4setting.method,
+            ATTR_ADDRESSES: [
+                address.with_prefixlen for address in interface.ipv4setting.address
+            ],
+            ATTR_GATEWAY: str(interface.ipv4setting.gateway)
+            if interface.ipv4setting.gateway
+            else None,
+            ATTR_ROUTE_METRIC: interface.ipv4setting.route_metric,
+            ATTR_NAMESERVERS: [
+                str(address) for address in interface.ipv4setting.nameservers
+            ],
+        }
+        if interface.ipv4setting
+        else None,
+        ATTR_IPV6: {
+            ATTR_METHOD: interface.ipv6setting.method,
+            ATTR_ADDR_GEN_MODE: interface.ipv6setting.addr_gen_mode,
+            ATTR_IP6_PRIVACY: interface.ipv6setting.ip6_privacy,
+            ATTR_ADDRESSES: [
+                address.with_prefixlen for address in interface.ipv6setting.address
+            ],
+            ATTR_GATEWAY: str(interface.ipv6setting.gateway)
+            if interface.ipv6setting.gateway
+            else None,
+            ATTR_ROUTE_METRIC: interface.ipv6setting.route_metric,
+            ATTR_NAMESERVERS: [
+                str(address) for address in interface.ipv6setting.nameservers
+            ],
+        }
+        if interface.ipv6setting
+        else None,
+        ATTR_WIFI: {
+            ATTR_MODE: interface.wifi.mode,
+            ATTR_SSID: interface.wifi.ssid,
+            ATTR_AUTH: interface.wifi.auth,
+            ATTR_PSK_SET: interface.wifi.auth == AuthMethod.WPA_PSK,
+        }
+        if interface.wifi
+        else None,
+        ATTR_MDNS: interface.mdns,
+        ATTR_LLMNR: interface.llmnr,
+    }
+
+
+def interface_struct(resolved: ResolvedInterface) -> dict[str, Any]:
+    """Return a dict with information of an interface for the v2 API."""
+    interface = resolved.interface
+    return {
+        ATTR_NAME: interface.name,
+        ATTR_TYPE: interface.type,
+        ATTR_MAC: interface.mac,
+        ATTR_PATH: interface.path,
+        ATTR_PRIMARY: interface.primary,
+        ATTR_STATE: interface_state_struct(interface),
+        ATTR_CONFIG: interface_config_struct(resolved),
     }
 
 
@@ -206,11 +456,11 @@ class APINetwork(CoreSysAttributes):
         raise APINotFound(f"Interface {name} does not exist") from None
 
     @api_process
-    async def info(self, _: web.Request) -> dict[str, Any]:
+    async def info_v1(self, _: web.Request) -> dict[str, Any]:
         """Return network information."""
         return {
             ATTR_INTERFACES: [
-                interface_struct(interface)
+                interface_struct_v1(interface)
                 for interface in self.sys_host.network.interfaces
             ],
             ATTR_DOCKER: {
@@ -224,11 +474,148 @@ class APINetwork(CoreSysAttributes):
         }
 
     @api_process
-    async def interface_info(self, request: web.Request) -> dict[str, Any]:
+    async def interface_info_v1(self, request: web.Request) -> dict[str, Any]:
         """Return network information for a interface."""
         interface = self._get_interface(request.match_info[ATTR_INTERFACE])
 
-        return interface_struct(interface)
+        return interface_struct_v1(interface)
+
+    async def _get_resolved_interface(self, name: str) -> ResolvedInterface:
+        """Get a resolved interface (state+config) by name for the v2 API.
+
+        Unlike `_get_interface()`, this does not support the `default` alias
+        (dropped in v2) and excludes VLAN interfaces (not shown in v2 for now).
+        """
+        try:
+            resolved = await self.sys_host.network.get_with_config(name)
+        except HostNetworkNotFound:
+            raise APINotFound(f"Interface {name} does not exist") from None
+
+        if resolved.interface.type == InterfaceType.VLAN:
+            raise APINotFound(f"Interface {name} does not exist") from None
+
+        return resolved
+
+    @api_process
+    async def info(self, _: web.Request) -> dict[str, Any]:
+        """Return network information (v2)."""
+        return {
+            ATTR_INTERFACES: [
+                interface_struct(resolved)
+                for resolved in await self.sys_host.network.interfaces_with_config()
+                if resolved.interface.type != InterfaceType.VLAN
+            ],
+            ATTR_DOCKER: {
+                ATTR_INTERFACE: DOCKER_NETWORK,
+                ATTR_ADDRESS: str(DOCKER_IPV4_NETWORK_MASK),
+                ATTR_GATEWAY: str(self.sys_docker.network.gateway),
+                ATTR_DNS: str(self.sys_docker.network.dns),
+            },
+            ATTR_HOST_INTERNET: self.sys_host.network.connectivity,
+            ATTR_SUPERVISOR_INTERNET: self.sys_supervisor.connectivity,
+        }
+
+    @api_process
+    async def interface_info(self, request: web.Request) -> dict[str, Any]:
+        """Return network information for an interface (v2)."""
+        resolved = await self._get_resolved_interface(request.match_info[ATTR_NAME])
+
+        return interface_struct(resolved)
+
+    @api_process
+    async def update_config(self, request: web.Request) -> dict[str, Any]:
+        """Replace the desired configuration of an interface (v2).
+
+        Returns `{"job_id": ..., "interface": {...}}` - `interface` matches
+        the GET response shape exactly, `job_id` tracks a backgrounded
+        activation (None if none was needed).
+        """
+        resolved = await self._get_resolved_interface(request.match_info[ATTR_NAME])
+        interface = resolved.interface
+
+        body = await api_validate(SCHEMA_CONFIG_V2, request)
+
+        if not resolved.has_profile and not body[ATTR_ENABLED]:
+            # No stored connection profile exists for this interface at all
+            # (GET reports `config: null`), and this PUT wouldn't create one
+            # since disabling never activates a new connection - it would
+            # just report success while leaving `config: null` unchanged,
+            # breaking the full-document replace contract. Creating a
+            # profile that starts out disabled isn't a feature we need to
+            # support, so reject this combination as an explicit exception
+            # to round-tripping for now; revisit with `config_source` (#7110).
+            raise APIError(
+                f"Interface {interface.name} has no existing configuration; "
+                "it cannot be replaced with a disabled one"
+            )
+
+        if (
+            interface.type == InterfaceType.WIRELESS
+            and body.get(ATTR_WIFI) is None
+            and not (interface.wifi and interface.wifi.auth == AuthMethod.UNSUPPORTED)
+        ):
+            # Omitting `wifi` is also allowed (in addition to the type check
+            # below) when the existing stored profile's auth method isn't
+            # one we understand (see `AuthMethod.UNSUPPORTED`) - the only way
+            # to change unrelated settings (e.g. `mdns`) without being forced
+            # to overwrite a working security section we can't reconstruct.
+            raise APIError(
+                f"Interface {interface.name} is wireless and requires a wifi configuration"
+            )
+        if interface.type != InterfaceType.WIRELESS and body.get(ATTR_WIFI) is not None:
+            raise APIError(
+                f"Interface {interface.name} is not wireless and does not support a wifi configuration"
+            )
+        _require_psk_for_wpa_psk(resolved, body.get(ATTR_WIFI))
+
+        ipv4 = body[ATTR_IPV4]
+        interface.ipv4setting = IpSetting(
+            method=ipv4[ATTR_METHOD],
+            address=ipv4[ATTR_ADDRESSES],
+            gateway=ipv4.get(ATTR_GATEWAY),
+            route_metric=ipv4.get(ATTR_ROUTE_METRIC),
+            nameservers=ipv4[ATTR_NAMESERVERS],
+        )
+
+        ipv6 = body[ATTR_IPV6]
+        interface.ipv6setting = Ip6Setting(
+            method=ipv6[ATTR_METHOD],
+            addr_gen_mode=ipv6.get(ATTR_ADDR_GEN_MODE, InterfaceAddrGenMode.DEFAULT),
+            ip6_privacy=ipv6.get(ATTR_IP6_PRIVACY, InterfaceIp6Privacy.DEFAULT),
+            address=ipv6[ATTR_ADDRESSES],
+            gateway=ipv6.get(ATTR_GATEWAY),
+            route_metric=ipv6.get(ATTR_ROUTE_METRIC),
+            nameservers=ipv6[ATTR_NAMESERVERS],
+        )
+
+        if body.get(ATTR_WIFI) is not None:
+            wifi = body[ATTR_WIFI]
+            interface.wifi = WifiConfig(
+                mode=wifi[ATTR_MODE],
+                ssid=wifi[ATTR_SSID],
+                auth=wifi[ATTR_AUTH],
+                psk=wifi.get(ATTR_PSK),
+                signal=None,
+            )
+
+        interface.enabled = body[ATTR_ENABLED]
+        interface.mdns = body[ATTR_MDNS]
+        interface.llmnr = body[ATTR_LLMNR]
+
+        job_id = await asyncio.shield(self.sys_host.network.apply_changes_v2(interface))
+
+        updated = await self.sys_host.network.get_with_config(interface.name)
+        # Settings are always persisted by this point; activation (if any was
+        # needed) runs in the background instead of blocking this request -
+        # see `NetworkManager.apply_changes_v2()`. `job_id` is None if no
+        # activation was needed, otherwise the client can poll it for the
+        # outcome (including any activation error) once it completes. Kept
+        # as a wrapper around the interface struct (matching the GET
+        # response) rather than merged into it, so the two stay consistent.
+        return {
+            ATTR_JOB_ID: job_id,
+            ATTR_INTERFACE: interface_struct(updated),
+        }
 
     @api_process
     async def interface_update(self, request: web.Request) -> None:

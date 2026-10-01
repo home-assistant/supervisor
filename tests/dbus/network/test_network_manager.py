@@ -9,8 +9,11 @@ import pytest
 from supervisor.dbus.const import ConnectionState
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
+from supervisor.dbus.network.setting import NetworkSetting
 from supervisor.exceptions import (
     DBusFatalError,
+    DBusInterfaceMethodError,
+    DBusObjectError,
     DBusParseError,
     DBusServiceUnkownError,
     HostNotSupportedError,
@@ -124,6 +127,69 @@ async def test_add_and_activate_connection(
     assert network_manager_service.AddAndActivateConnection.calls == [
         (SETTINGS_1_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1", "/")
     ]
+
+
+async def test_deactivate_connection(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
+    """Test deactivate connection."""
+    network_manager_service.DeactivateConnection.calls.clear()
+
+    await network_manager.deactivate_connection(
+        "/org/freedesktop/NetworkManager/ActiveConnection/1"
+    )
+
+    assert network_manager_service.DeactivateConnection.calls == [
+        ("/org/freedesktop/NetworkManager/ActiveConnection/1",)
+    ]
+
+
+async def test_find_connection_settings(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
+    """Test finding stored connection settings for a device via enumeration."""
+    inet = network_manager.get(TEST_INTERFACE_ETH_NAME)
+
+    settings = await network_manager.find_connection_settings(inet)
+
+    assert settings is not None
+    assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
+    settings.shutdown()
+
+
+async def test_find_connection_settings_no_match(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
+    """Test finding stored connection settings when none match the device."""
+    inet = network_manager.get(TEST_INTERFACE_WLAN_NAME)
+
+    assert await network_manager.find_connection_settings(inet) is None
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        DBusObjectError("UnknownObject"),
+        DBusInterfaceMethodError("UnknownMethod"),
+    ],
+)
+async def test_find_connection_settings_vanished_profile(
+    network_manager_service: NetworkManagerService,
+    network_manager: NetworkManager,
+    error: Exception,
+):
+    """Test a profile vanishing between list_connections and connect is skipped.
+
+    `DBusObjectError`/`DBusInterfaceMethodError` derive from
+    `HassioNotSupportedError`, not `DBusError` - a race where another client
+    removes the profile right after `ListConnections` (e.g. `nmcli con
+    delete`, or a v1 destructive disable) surfaces as one of these instead,
+    and must be skipped rather than propagated.
+    """
+    inet = network_manager.get(TEST_INTERFACE_ETH_NAME)
+
+    with patch.object(NetworkSetting, "connect", side_effect=error):
+        assert await network_manager.find_connection_settings(inet) is None
 
 
 async def test_removed_devices_disconnect(

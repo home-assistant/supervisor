@@ -26,6 +26,7 @@ class ConnectionProperties:
     interface_name: str | None
     mdns: int | None
     llmnr: int | None
+    autoconnect: bool | None
 
 
 @dataclass(slots=True)
