@@ -110,8 +110,9 @@ async def test_backup_error_app(coresys: CoreSys, install_app_ssh: App, tmp_path
         assert child_jobs[0].errors[0].message == str(err)
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
 async def test_backup_folder_addons_local_maps_to_apps_local(
-    coresys: CoreSys, tmp_supervisor_data: Path, tmp_path: Path
+    coresys: CoreSys, tmp_path: Path
 ):
     """Test backup/restore of FOLDER_ADDONS uses the apps/local on-disk path.
 
