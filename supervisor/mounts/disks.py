@@ -12,7 +12,7 @@ from ..os.const import (
     PARTITION_NAME_EXTERNAL_DATA_DISK,
     PARTITION_NAME_OLD_EXTERNAL_DATA_DISK,
 )
-from .const import HASSOS_LABEL_PREFIX, ID_USAGE_FILESYSTEM, SUPPORTED_LOCAL_FILESYSTEMS
+from .const import HAOS_LABEL_PREFIX, ID_USAGE_FILESYSTEM, SUPPORTED_LOCAL_FILESYSTEMS
 
 # Partition names HAOS uses for an external data disk. Mounting one would
 # race the OS for the same partition on the next boot.
@@ -45,7 +45,7 @@ def validate_block_for_mount(
         raise MountDeviceProtectedError(device=device)
 
     # hassos-data-old reports HintSystem=False but is still ours.
-    if (block.id_label or "").startswith(HASSOS_LABEL_PREFIX):
+    if (block.id_label or "").startswith(HAOS_LABEL_PREFIX):
         raise MountDeviceProtectedError(device=device)
 
     if block.partition and block.partition.name_ in PROTECTED_PARTITION_NAMES:

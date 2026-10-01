@@ -43,7 +43,7 @@ KERNEL_FILESYSTEM_MAP = {"ext2": "ext4", "ext3": "ext4", "ntfs": "ntfs3"}
 # Filesystem labels starting with this prefix belong to Home Assistant OS
 # (hassos-data, hassos-data-old, hassos-boot, ...) and must not be offered
 # as a user mount.
-HASSOS_LABEL_PREFIX = "hassos"
+HAOS_LABEL_PREFIX = "hassos"
 
 # UDisks2 Block.IdUsage for a mountable filesystem (not swap, LUKS, RAID, or
 # a partition table).
