@@ -25,7 +25,7 @@ from ..resolution.const import (
 )
 from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
-from . import ChildJobSyncFilter, SupervisorJob
+from . import ChildJobSyncFilter, SupervisorJob, retrieve_job_task_error
 from .const import JobConcurrency, JobCondition, JobThrottle
 from .job_group import JobGroup
 
@@ -550,17 +550,9 @@ class Job(CoreSysAttributes):
     def _clear_detached_task(self, task: asyncio.Task[Any]) -> None:
         """Drop the reference to a finished detached task and consume its error.
 
-        A caller that does not await the task must not trigger asyncio's
-        "Task exception was never retrieved" report, so retrieve the error
-        here. Callers that do await the task still receive it. A HassioError
-        is only logged if it was raised with a logger, so log one line naming
-        the job to keep the failure observable. A JobException was already
-        logged with its traceback by the wrapper. Guarded by identity so an
-        older task cannot clear a newer one.
+        Guarded by identity so an older task cannot clear a newer one.
         """
-        if not task.cancelled() and (err := task.exception()) is not None:
-            if not isinstance(err, JobException):
-                _LOGGER.warning("Detached job %s failed: %s", self.name, err)
+        retrieve_job_task_error(self.name, task)
         if self._detached_task is task:
             self._detached_task = None
 

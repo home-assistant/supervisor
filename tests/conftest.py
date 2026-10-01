@@ -1102,3 +1102,14 @@ def no_job_throttle():
     """Remove job throttle for tests."""
     with patch("supervisor.jobs.decorator.Job.last_call", return_value=datetime.min):
         yield
+
+
+@pytest.fixture
+async def loop_exception_handler() -> AsyncGenerator[Mock]:
+    """Capture reports to the event loop's exception handler."""
+    loop = asyncio.get_running_loop()
+    previous_handler = loop.get_exception_handler()
+    handler = Mock()
+    loop.set_exception_handler(handler)
+    yield handler
+    loop.set_exception_handler(previous_handler)
