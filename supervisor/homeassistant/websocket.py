@@ -300,7 +300,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
             client = await self.sys_homeassistant.api.connect_websocket()
 
-            self.sys_create_task(client.start_listener())
+            self.sys_create_background_task(client.start_listener())
             return client
 
     async def _ensure_connected(self) -> None:
