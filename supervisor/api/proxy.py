@@ -352,8 +352,10 @@ class APIProxy(CoreSysAttributes):
         logger = AppLoggerAdapter(_LOGGER, {"app_name": app_name})
         logger.info("Home Assistant WebSocket API proxy running")
 
-        client_task = self.sys_create_task(self._proxy_message(client, server, logger))
-        server_task = self.sys_create_task(
+        client_task = self.sys_create_background_task(
+            self._proxy_message(client, server, logger)
+        )
+        server_task = self.sys_create_background_task(
             self._proxy_message(server, client, logger, filter_app_commands=True)
         )
 

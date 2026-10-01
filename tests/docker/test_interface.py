@@ -29,7 +29,7 @@ from supervisor.exceptions import (
     GithubContainerRegistryRateLimitExceeded,
 )
 from supervisor.homeassistant.const import WSEvent, WSType
-from supervisor.jobs import ChildJobSyncFilter, JobSchedulerOptions, SupervisorJob
+from supervisor.jobs import ChildJobSyncFilter, JobSchedulerOptions
 from supervisor.jobs.decorator import Job
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
@@ -608,23 +608,15 @@ async def test_install_progress_rounding_does_not_cause_misses(
     ]
     coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
-    # Schedule job so we can listen for the end. Then we can assert against the WS mock
-    event = asyncio.Event()
-    job, install_task = coresys.jobs.schedule_job(
+    # Let the job and its events finish so we can assert against the WS mock
+    _, install_task = coresys.jobs.schedule_job(
         test_docker_interface.install,
         JobSchedulerOptions(),
         AwesomeVersion("1.2.3"),
         "test",
     )
-
-    async def listen_for_job_end(reference: SupervisorJob):
-        if reference.uuid != job.uuid:
-            return
-        event.set()
-
-    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
     await install_task
-    await event.wait()
+    await coresys.block_till_done()
 
     capture_exception.assert_not_called()
 
@@ -695,23 +687,15 @@ async def test_install_progress_handles_download_restart(
             type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
         ),
     ):
-        # Schedule job so we can listen for the end. Then we can assert against the WS mock
-        event = asyncio.Event()
-        job, install_task = coresys.jobs.schedule_job(
+        # Let the job and its events finish so we can assert against the WS mock
+        _, install_task = coresys.jobs.schedule_job(
             test_docker_interface.install,
             JobSchedulerOptions(),
             AwesomeVersion("1.2.3"),
             "test",
         )
-
-        async def listen_for_job_end(reference: SupervisorJob):
-            if reference.uuid != job.uuid:
-                return
-            event.set()
-
-        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
         await install_task
-        await event.wait()
+        await coresys.block_till_done()
 
     capture_exception.assert_not_called()
 
@@ -812,22 +796,14 @@ async def test_install_progress_handles_layers_skipping_download(
         return original_on_job_change(job_obj, attribute, value)
 
     with patch.object(coresys.jobs, "_on_job_change", side_effect=capture_and_forward):
-        event = asyncio.Event()
         job, install_task = coresys.jobs.schedule_job(
             test_docker_interface.install,
             JobSchedulerOptions(),
             AwesomeVersion("1.2.3"),
             "test",
         )
-
-        async def listen_for_job_end(reference: SupervisorJob):
-            if reference.uuid != job.uuid:
-                return
-            event.set()
-
-        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
         await install_task
-        await event.wait()
+        await coresys.block_till_done()
 
         # With the new progress calculation approach:
         # - Progress is weighted by layer size
@@ -886,23 +862,15 @@ async def test_missing_total_handled_gracefully(
     ]
     coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
-    # Schedule job so we can listen for the end. Then we can assert against the WS mock
-    event = asyncio.Event()
-    job, install_task = coresys.jobs.schedule_job(
+    # Let the job and its events finish so we can assert against the WS mock
+    _, install_task = coresys.jobs.schedule_job(
         test_docker_interface.install,
         JobSchedulerOptions(),
         AwesomeVersion("1.2.3"),
         "test",
     )
-
-    async def listen_for_job_end(reference: SupervisorJob):
-        if reference.uuid != job.uuid:
-            return
-        event.set()
-
-    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
     await install_task
-    await event.wait()
+    await coresys.block_till_done()
 
     capture_exception.assert_not_called()
 

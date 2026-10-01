@@ -1,17 +1,15 @@
 """Test updater files."""
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import ATTR_HASSOS_UNRESTRICTED, BusEvent, CoreState
+from supervisor.const import ATTR_HASSOS_UNRESTRICTED, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
 from supervisor.exceptions import UpdaterJobError
-from supervisor.jobs import SupervisorJob
 from supervisor.resolution.const import UnsupportedReason
 from supervisor.supervisor import Supervisor
 
@@ -110,16 +108,6 @@ async def test_delayed_fetch_for_connectivity(
     )
     coresys.websession.head = AsyncMock()
 
-    # Network connectivity change causes a series of async tasks to eventually do a version fetch
-    # Rather then use some kind of sleep loop, set up listener for start of fetch data job
-    event = asyncio.Event()
-
-    async def find_fetch_data_job_start(job: SupervisorJob):
-        if job.name == "updater_fetch_data":
-            event.set()
-
-    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_START, find_fetch_data_job_start)
-
     # Start with no connectivity and confirm there is no version fetch on load
     coresys.supervisor._connectivity = False  # pylint: disable=protected-access
     network_manager_service.connectivity = ConnectivityState.CONNECTIVITY_NONE.value
@@ -130,14 +118,13 @@ async def test_delayed_fetch_for_connectivity(
     await coresys.updater.reload()
     coresys.websession.get.assert_not_called()
 
-    # Now signal host has connectivity and wait for fetch data to complete to assert
+    # Now signal host has connectivity. This causes a series of async tasks to
+    # eventually do a version fetch, wait for all of them to complete to assert
     network_manager_service.emit_properties_changed(
         {"Connectivity": ConnectivityState.CONNECTIVITY_FULL}
     )
     await network_manager_service.ping()
-    async with asyncio.timeout(5):
-        await event.wait()
-    await asyncio.sleep(0)
+    await coresys.block_till_done()
 
     coresys.websession.get.assert_called_once()
     assert (
@@ -228,14 +215,6 @@ async def test_reload_triggers_supervisor_update(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await coresys.core.set_state(CoreState.RUNNING)
 
-    update_done = asyncio.Event()
-
-    async def find_update_job_end(job: SupervisorJob):
-        if job.name == "supervisor_auto_update":
-            update_done.set()
-
-    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, find_update_job_end)
-
     with (
         patch.object(
             Supervisor,
@@ -246,14 +225,13 @@ async def test_reload_triggers_supervisor_update(
     ):
         await coresys.updater.reload()
         assert coresys.supervisor.latest_version == AwesomeVersion("2024.10.0")
-        await asyncio.sleep(0)
+        await coresys.block_till_done()
         update.assert_not_called()
 
         version_data = await mock_update_data.text()
         mock_update_data.update_text(version_data.replace("2024.10.0", "2024.10.1"))
         await coresys.updater.reload()
-        async with asyncio.timeout(5):
-            await update_done.wait()
+        await coresys.block_till_done()
         update.assert_called_once()
 
 
@@ -278,5 +256,5 @@ async def test_reload_skips_supervisor_update_during_startup(
     ):
         await coresys.updater.reload()
         assert coresys.supervisor.need_update
-        await asyncio.sleep(0)
+        await coresys.block_till_done()
         update.assert_not_called()
