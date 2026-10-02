@@ -5,8 +5,10 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 import logging
+from pathlib import Path
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
+import voluptuous as vol
 
 from ..const import ATTR_ENABLED, ATTR_IMAGE, ATTR_VERSION, BusEvent
 from ..coresys import CoreSysAttributes
@@ -26,6 +28,12 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     slug: str
     instance: DockerInterface
+
+    def __init__(self, file_path: Path, schema: vol.Schema) -> None:
+        """Initialize plugin."""
+        super().__init__(file_path, schema)
+        # Serializes enable/disable so the two transitions cannot interleave
+        self._lifecycle_lock = asyncio.Lock()
 
     @property
     def version(self) -> AwesomeVersion | None:
@@ -204,47 +212,63 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                 await self.start()
 
     async def install(self) -> None:
-        """Install system plugin."""
+        """Install system plugin, retrying until it succeeds."""
         _LOGGER.info("Setup %s plugin", self.slug)
         while True:
-            # read plugin tag and install it
-            if not self.latest_version:
-                await self.sys_updater.reload()
-
-            if to_version := self.latest_version:
-                with suppress(DockerError):
-                    await self.instance.install(to_version, image=self.default_image)
-                    self.version = self.instance.version or to_version
-                    break
-            _LOGGER.warning(
-                "Error on installing %s plugin, retrying in 30sec", self.slug
-            )
-            await asyncio.sleep(30)
+            try:
+                await self._install()
+            except PluginError:
+                _LOGGER.warning(
+                    "Error on installing %s plugin, retrying in 30sec", self.slug
+                )
+                await asyncio.sleep(30)
+            else:
+                break
 
         _LOGGER.info("%s plugin now installed", self.slug)
+
+    async def _install(self) -> None:
+        """Install the latest version of the system plugin once."""
+        if not self.latest_version:
+            await self.sys_updater.reload()
+
+        if not (to_version := self.latest_version):
+            raise PluginError(f"Cannot determine latest version of plugin {self.slug}")
+
+        try:
+            await self.instance.install(to_version, image=self.default_image)
+        except DockerError as err:
+            raise PluginError(f"Can't install {self.slug} plugin") from err
+
+        self.version = self.instance.version or to_version
         self.image = self.default_image
         await self.save_data()
 
     async def enable(self) -> None:
         """Enable, install and start system plugin."""
-        if self.enabled:
-            return
+        async with self._lifecycle_lock:
+            if self.enabled and await self.is_running():
+                return
 
-        _LOGGER.info("Enabling %s plugin", self.slug)
-        self._data[ATTR_ENABLED] = True
-        await self.save_data()
+            if not self.enabled:
+                _LOGGER.info("Enabling %s plugin", self.slug)
+                self._data[ATTR_ENABLED] = True
+                await self.save_data()
 
-        await self.install()
-        await self.start()
+            # Fail fast, the retrying install is only for boot
+            if not self.version:
+                await self._install()
+            await self.start()
 
     async def disable(self) -> None:
         """Disable system plugin and remove its container and image."""
-        if self.enabled:
-            _LOGGER.info("Disabling %s plugin", self.slug)
-            self._data[ATTR_ENABLED] = False
-            await self.save_data()
+        async with self._lifecycle_lock:
+            if self.enabled:
+                _LOGGER.info("Disabling %s plugin", self.slug)
+                self._data[ATTR_ENABLED] = False
+                await self.save_data()
 
-        await self._remove()
+            await self._remove()
 
     async def _remove(self) -> None:
         """Remove container and image of the plugin and forget the version."""

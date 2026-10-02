@@ -1,5 +1,6 @@
 """Test base plugin functionality."""
 
+import asyncio
 from unittest.mock import ANY, Mock, PropertyMock, call, patch
 
 from aiodocker.containers import DockerContainer
@@ -550,7 +551,6 @@ async def test_plugin_enable(coresys: CoreSys, plugin: PluginBase) -> None:
         patch.object(type(plugin.instance), "install") as install,
         patch.object(type(plugin), "start") as start,
         patch.object(type(plugin), "save_data") as save_data,
-        patch.object(PluginDns, "write_hosts"),
     ):
         await plugin.enable()
 
@@ -560,11 +560,131 @@ async def test_plugin_enable(coresys: CoreSys, plugin: PluginBase) -> None:
     assert plugin.enabled is True
     assert plugin.version == AwesomeVersion("2024.01.0")
 
-    # Enabling again is a no-op
-    with patch.object(type(plugin.instance), "install") as install:
+    # Enabling a running plugin again is a no-op
+    with (
+        patch.object(type(plugin.instance), "is_running", return_value=True),
+        patch.object(type(plugin.instance), "install") as install,
+        patch.object(type(plugin), "start") as start,
+    ):
         await plugin.enable()
 
     install.assert_not_called()
+    start.assert_not_called()
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_enable_start_failure_retried(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test a failed start after enabling is retried on the next enable."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin._data.pop("version", None)  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+        ),
+        patch.object(type(plugin.instance), "install"),
+        patch.object(type(plugin), "start", side_effect=PluginError("boom")),
+        patch.object(type(plugin), "save_data"),
+        pytest.raises(PluginError),
+    ):
+        await plugin.enable()
+
+    assert plugin.enabled is True
+    assert plugin.version == AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(plugin.instance), "is_running", return_value=False),
+        patch.object(type(plugin.instance), "install") as install,
+        patch.object(type(plugin), "start") as start,
+    ):
+        await plugin.enable()
+
+    install.assert_not_called()
+    start.assert_called_once()
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_enable_install_failure(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test an install failure while enabling is raised instead of retried."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin._data.pop("version", None)  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+        ),
+        patch.object(
+            type(plugin.instance), "install", side_effect=DockerError("boom")
+        ) as install,
+        patch.object(type(plugin), "start") as start,
+        patch.object(type(plugin), "save_data"),
+        pytest.raises(PluginError),
+    ):
+        await plugin.enable()
+
+    install.assert_called_once()
+    start.assert_not_called()
+    assert plugin.version is None
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_enable_disable_serialized(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test a disable waits for an in-progress enable to finish."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin._data.pop("version", None)  # pylint: disable=protected-access
+    install_started = asyncio.Event()
+    finish_install = asyncio.Event()
+
+    async def _install(*args, **kwargs) -> None:
+        install_started.set()
+        await finish_install.wait()
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+        ),
+        patch.object(type(plugin.instance), "install", new=_install),
+        patch.object(type(plugin), "start") as start,
+        patch.object(type(plugin.instance), "stop") as stop,
+        patch.object(DockerAPI, "remove_image") as remove_image,
+        patch.object(type(plugin), "save_data"),
+    ):
+        enable_task = asyncio.create_task(plugin.enable())
+        await install_started.wait()
+        disable_task = asyncio.create_task(plugin.disable())
+        await asyncio.sleep(0)
+
+        # Disable is blocked until enable completes
+        assert not disable_task.done()
+        stop.assert_not_called()
+        assert plugin.enabled is True
+
+        finish_install.set()
+        await asyncio.gather(enable_task, disable_task)
+
+    start.assert_called_once()
+    stop.assert_called_once()
+    remove_image.assert_called_once_with(plugin.image, AwesomeVersion("2024.01.0"))
+    assert plugin.enabled is False
+    assert plugin.version is None
 
 
 @pytest.mark.parametrize(
