@@ -69,8 +69,10 @@ class DockerMonitor(CoreSysAttributes):
         """Start docker events monitor."""
         events = self.docker.events.subscribe()
         self._event_tasks = asyncio.Queue()
-        self._monitor_task = self.sys_create_task(self._run(events), eager_start=True)
-        self._await_task = self.sys_create_task(
+        self._monitor_task = self.sys_create_background_task(
+            self._run(events), eager_start=True
+        )
+        self._await_task = self.sys_create_background_task(
             self._await_event_tasks(), eager_start=True
         )
         _LOGGER.info("Started docker events monitor")

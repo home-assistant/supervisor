@@ -1019,7 +1019,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         # Create thaw task first to ensure we eventually undo freezes even if the below fails
         self._thaw_task = asyncio.shield(
-            self.sys_create_task(self._thaw_all(running_apps, timeout))
+            self.sys_create_background_task(self._thaw_all(running_apps, timeout))
         )
 
         # Tell Home Assistant to freeze for a backup

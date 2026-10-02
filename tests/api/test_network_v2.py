@@ -1,6 +1,5 @@
 """Test network v2 API."""
 
-import asyncio
 from unittest.mock import AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -34,20 +33,6 @@ async def fixture_device_eth0_service(
     return network_manager_services["network_device"][
         "/org/freedesktop/NetworkManager/Devices/1"
     ]
-
-
-async def _wait_for_background_job(coresys: CoreSys, job_id: str) -> None:
-    """Wait for a job scheduled by `apply_changes_v2` to finish.
-
-    Creating a new connection profile always triggers a full activation
-    cycle, which now runs as a background job (see `apply_changes_v2`)
-    instead of blocking the request. Tests that don't care about the outcome
-    still need to let it finish before the test ends, or the dbus session
-    bus gets disconnected on teardown while it's mid-flight.
-    """
-    job = coresys.jobs.get_job(job_id)
-    while not job.done:
-        await asyncio.sleep(0)
 
 
 async def test_api_network_info_v2(api_client_v2: TestClient, coresys: CoreSys):
@@ -510,8 +495,7 @@ async def test_api_network_update_config_v2_wifi(
 
     # New connections always activate, which now runs as a background job
     # (see apply_changes_v2). Let it finish instead of leaving it dangling.
-    result = await resp.json()
-    await _wait_for_background_job(coresys, result["data"]["job_id"])
+    await coresys.block_till_done()
 
 
 async def test_api_network_update_config_v2_wifi_open_auth_create(
@@ -561,8 +545,7 @@ async def test_api_network_update_config_v2_wifi_open_auth_create(
 
     # New connections always activate, which now runs as a background job
     # (see apply_changes_v2). Let it finish instead of leaving it dangling.
-    result = await resp.json()
-    await _wait_for_background_job(coresys, result["data"]["job_id"])
+    await coresys.block_till_done()
 
 
 async def test_api_network_update_config_v2_wifi_psk_required_for_new_profile(
@@ -661,8 +644,7 @@ async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
 
     # New connections always activate, which now runs as a background job
     # (see apply_changes_v2). Let it finish instead of leaving it dangling.
-    result = await resp.json()
-    await _wait_for_background_job(coresys, result["data"]["job_id"])
+    await coresys.block_till_done()
 
 
 async def test_api_network_update_config_v2_mdns_llmnr(
@@ -760,7 +742,7 @@ async def test_api_network_update_config_v2_no_carrier_does_not_block(
 
             # The background job eventually times out on its own; the PUT
             # above never waited on it.
-            await _wait_for_background_job(coresys, job_id)
+            await coresys.block_till_done()
     finally:
         active_connection_service.fixture.state = original_state
         active_connection_service.emit_properties_changed({"State": original_state})

@@ -211,8 +211,12 @@ class APIIngress(CoreSysAttributes):
                 # Proxy requests
                 await asyncio.wait(
                     [
-                        self.sys_create_task(_websocket_forward(ws_server, ws_client)),
-                        self.sys_create_task(_websocket_forward(ws_client, ws_server)),
+                        self.sys_create_background_task(
+                            _websocket_forward(ws_server, ws_client)
+                        ),
+                        self.sys_create_background_task(
+                            _websocket_forward(ws_client, ws_server)
+                        ),
                     ],
                     return_when=asyncio.FIRST_COMPLETED,
                 )
