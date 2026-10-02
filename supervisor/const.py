@@ -6,10 +6,13 @@ from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
 from pathlib import Path
 from sys import version_info as systemversion
-from typing import Any, NotRequired, Self, TypedDict
+from typing import TYPE_CHECKING, Any, NotRequired, Self, TypedDict
 
 from aiohttp import __version__ as aiohttpversion
 from aiohttp.web import RequestKey
+
+if TYPE_CHECKING:
+    from .config import CoreConfig
 
 SUPERVISOR_VERSION = "9999.09.9.dev9999"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
@@ -435,10 +438,31 @@ REPOSITORY_CORE = "core"
 REPOSITORY_LOCAL = "local"
 
 FOLDER_HOMEASSISTANT = "homeassistant"
-FOLDER_SHARE = "share"
+# Legacy v1 name, kept for v1 API/backup compatibility. Replaced by Folder.APPS.
 FOLDER_ADDONS = "addons/local"
-FOLDER_SSL = "ssl"
-FOLDER_MEDIA = "media"
+
+
+class Folder(StrEnum):
+    """Backup folder enum."""
+
+    SHARE = "share"
+    APPS = "apps/local"
+    SSL = "ssl"
+    MEDIA = "media"
+
+    def origin_dir(self, config: CoreConfig) -> Path:
+        """Return the on-disk path backing this folder."""
+        match self:
+            case Folder.SHARE:
+                return config.path_share
+            case Folder.APPS:
+                return config.path_apps_local
+            case Folder.SSL:
+                return config.path_ssl
+            case Folder.MEDIA:
+                return config.path_media
+        raise ValueError(f"Unknown folder: {self}")
+
 
 SECURITY_PROFILE = "profile"
 SECURITY_DEFAULT = "default"
