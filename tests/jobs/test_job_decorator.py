@@ -2163,3 +2163,46 @@ async def test_scheduled_job_group_concurrency(coresys: CoreSys):
     await task
     assert test.active_job is None
     assert job.done
+
+
+async def test_delayed_scheduled_job_rejection_is_logged(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a delayed job rejected when its timer fires is logged, not silently dropped."""
+    event = asyncio.Event()
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_delayed_scheduled_job_rejection_is_logged_execute",
+            concurrency=JobConcurrency.REJECT,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            await event.wait()
+
+    test = TestClass(coresys)
+    running_job, task = await coresys.jobs.schedule_job(
+        test.execute, JobSchedulerOptions()
+    )
+    with patch("asyncio.base_events.logger") as asyncio_logger:
+        rejected_job, _ = await coresys.jobs.schedule_job(
+            test.execute, JobSchedulerOptions(delayed_start=0.01)
+        )
+        await asyncio.sleep(0.05)
+        gc.collect()
+
+    asyncio_logger.error.assert_not_called()
+    assert (
+        f"Background job {rejected_job.name} failed: Another job is running"
+        in caplog.text
+    )
+    assert coresys.jobs.jobs == [running_job]
+
+    event.set()
+    await task
