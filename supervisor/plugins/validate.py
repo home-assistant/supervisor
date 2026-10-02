@@ -2,7 +2,13 @@
 
 import voluptuous as vol
 
-from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION
+from ..const import (
+    ATTR_ACCESS_TOKEN,
+    ATTR_ENABLED,
+    ATTR_IMAGE,
+    ATTR_SERVERS,
+    ATTR_VERSION,
+)
 from ..validate import dns_server_list, docker_image, token, version_tag
 from .const import ATTR_FALLBACK
 
@@ -35,7 +41,11 @@ SCHEMA_CLI_CONFIG = vol.Schema(
 
 
 SCHEMA_MULTICAST_CONFIG = vol.Schema(
-    {vol.Optional(ATTR_VERSION): version_tag, vol.Optional(ATTR_IMAGE): docker_image},
+    {
+        vol.Optional(ATTR_VERSION): version_tag,
+        vol.Optional(ATTR_IMAGE): docker_image,
+        vol.Optional(ATTR_ENABLED, default=True): vol.Boolean(),
+    },
     extra=vol.REMOVE_EXTRA,
 )
 
