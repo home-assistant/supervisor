@@ -19,7 +19,7 @@ from attrs.validators import ge, le
 
 from ..const import BusEvent, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, JobException, JobNotFound, JobStartException
+from ..exceptions import HassioError, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
@@ -77,14 +77,12 @@ def retrieve_job_task_error(job_name: str | None, task: asyncio.Task) -> None:
     """Consume the error of a finished job task nobody may await.
 
     Prevents asyncio's "Task exception was never retrieved" report. Callers
-    that do await the task still receive the error. A HassioError is only
-    logged if it was raised with a logger, so log one line naming the job to
-    keep the failure observable. A JobException was already logged with its
-    traceback by the job wrapper.
+    that do await the task still receive the error. Not every error logs
+    itself when raised (a concurrency rejection at timer fire does not), so
+    log one line naming the job to keep the failure observable.
     """
     if not task.cancelled() and (err := task.exception()) is not None:
-        if not isinstance(err, JobException):
-            _LOGGER.warning("Background job %s failed: %s", job_name, err)
+        _LOGGER.warning("Background job %s failed: %s", job_name, err)
 
 
 @dataclass
