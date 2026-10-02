@@ -6,6 +6,7 @@ from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.manager import DockerAPI
 from supervisor.host.const import LogFormatter
@@ -100,6 +101,7 @@ async def test_api_multicast_disabled_actions(
 ):
     """Test restart and update are rejected while the plugin is disabled."""
     api_client, prefix = api_client_with_prefix
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.plugins.multicast._data["enabled"] = False  # pylint: disable=protected-access
 
     resp = await api_client.post(f"{prefix}/multicast/restart")
