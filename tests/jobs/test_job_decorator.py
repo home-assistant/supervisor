@@ -1891,7 +1891,9 @@ async def test_detach_drops_finished_task_reference(coresys: CoreSys):
 
 
 async def test_detach_unawaited_error_is_retrieved(
-    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    loop_exception_handler: Mock,
 ):
     """Test a failed detached task nobody awaits is logged once, not reported by asyncio."""
 
@@ -1908,16 +1910,53 @@ async def test_detach_unawaited_error_is_retrieved(
             raise HassioError("boom")
 
     test = TestClass(coresys)
-    with patch("asyncio.base_events.logger") as asyncio_logger:
-        task = await test.execute()
-        assert task is not None
-        await asyncio.sleep(0)
-        assert task.done()
-        del task
-        gc.collect()
+    task = await test.execute()
+    assert task is not None
+    await asyncio.sleep(0)
+    assert task.done()
+    del task
+    gc.collect()
 
-    asyncio_logger.error.assert_not_called()
+    loop_exception_handler.assert_not_called()
     assert (
-        "Detached job test_detach_unawaited_error_is_retrieved_execute failed: boom"
+        "Background job test_detach_unawaited_error_is_retrieved_execute failed: boom"
         in caplog.text
     )
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        pytest.param(JobSchedulerOptions(), id="immediate"),
+        pytest.param(JobSchedulerOptions(delayed_start=0.01), id="delayed"),
+    ],
+)
+async def test_scheduled_job_unawaited_error_is_retrieved(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    loop_exception_handler: Mock,
+    options: JobSchedulerOptions,
+):
+    """Test a failed scheduled job nobody awaits is logged once, not reported by asyncio."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name=f"test_scheduled_job_unawaited_error_is_retrieved_{uuid4()}")
+        async def execute(self) -> None:
+            """Execute the class method."""
+            raise HassioError("boom")
+
+    test = TestClass(coresys)
+    job, handle = coresys.jobs.schedule_job(test.execute, options)
+    await asyncio.sleep(0.05)
+    assert job.done
+    del handle
+    gc.collect()
+
+    loop_exception_handler.assert_not_called()
+    assert f"Background job {job.name} failed: boom" in caplog.text
