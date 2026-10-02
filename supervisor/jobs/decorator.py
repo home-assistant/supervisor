@@ -15,6 +15,7 @@ from ..exceptions import (
     JobConditionException,
     JobException,
     JobGroupExecutionLimitExceeded,
+    JobStartException,
 )
 from ..host.const import HostFeature
 from ..resolution.const import (
@@ -25,7 +26,7 @@ from ..resolution.const import (
 )
 from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
-from . import ChildJobSyncFilter, SupervisorJob
+from . import ChildJobSyncFilter, SupervisorJob, retrieve_job_task_error
 from .const import JobConcurrency, JobCondition, JobThrottle
 from .job_group import JobGroup
 
@@ -66,7 +67,7 @@ class Job(CoreSysAttributes):
             throttle_max_calls (int | None): Maximum number of calls allowed within the throttle period (for rate-limited jobs).
             internal (bool): Whether the job is internal (not exposed through the Supervisor API). Defaults to False.
             child_job_syncs (list[ChildJobSyncFilter] | None): Use if jobs progress should be kept in sync with progress of one or more of its child jobs.
-            detach (bool): Run the method in a separate task once conditions, concurrency and throttling allow it. The call then returns the task, or None if the job was refused. With REJECT concurrency a call while the job runs returns the running task. Not supported with group concurrency.
+            detach (bool): Run the method in a separate task once conditions, concurrency and throttling allow it. The call then returns the task, or None if the job was refused. With REJECT concurrency a call while the job runs returns the running task. Not supported with group concurrency. `JobManager.schedule_job` enables this per call instead.
 
         Raises:
             RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected throttle policy.
@@ -259,6 +260,7 @@ class Job(CoreSysAttributes):
             *args,
             _job__use_existing: SupervisorJob | None = None,
             _job_override__cleanup: bool | None = None,
+            _job_override__detach: bool | None = None,
             **kwargs,
         ) -> Any:
             """Wrap the method.
@@ -268,6 +270,9 @@ class Job(CoreSysAttributes):
             """
             job_group = self._post_init(obj)
             group_name: str | None = job_group.group_name if job_group else None
+            detach = (
+                self._detach if _job_override__detach is None else _job_override__detach
+            )
             if _job__use_existing:
                 job = _job__use_existing
                 job.name = self.name
@@ -283,7 +288,7 @@ class Job(CoreSysAttributes):
                     job_group.job_reference if job_group else None,
                     internal=self._internal,
                     child_job_syncs=self._child_job_syncs,
-                    parent_id=None if self._detach else DEFAULT,
+                    parent_id=None if detach else DEFAULT,
                 )
 
             cleanup = (
@@ -328,10 +333,20 @@ class Job(CoreSysAttributes):
                     except JobConditionException as err:
                         return self._handle_job_condition_exception(err)
 
-                if self._detach:
-                    # A running detached job is returned instead of rejected
+                if detach:
+                    # The group lock is handed down to nested calls, which only
+                    # works while the caller waits for the nested job to finish.
+                    if job_group and job_group.has_lock:
+                        raise JobStartException(
+                            f"Job {self.name} cannot be detached while the current job holds the group lock"
+                        )
+
+                    # A running detached job is returned instead of rejected.
+                    # Only for jobs declared detached: a scheduled job must
+                    # not hand out a job that was never started.
                     if (
-                        self.concurrency == JobConcurrency.REJECT
+                        self._detach
+                        and self.concurrency == JobConcurrency.REJECT
                         and self._detached_task
                         and not self._detached_task.done()
                     ):
@@ -550,17 +565,9 @@ class Job(CoreSysAttributes):
     def _clear_detached_task(self, task: asyncio.Task[Any]) -> None:
         """Drop the reference to a finished detached task and consume its error.
 
-        A caller that does not await the task must not trigger asyncio's
-        "Task exception was never retrieved" report, so retrieve the error
-        here. Callers that do await the task still receive it. A HassioError
-        is only logged if it was raised with a logger, so log one line naming
-        the job to keep the failure observable. A JobException was already
-        logged with its traceback by the wrapper. Guarded by identity so an
-        older task cannot clear a newer one.
+        Guarded by identity so an older task cannot clear a newer one.
         """
-        if not task.cancelled() and (err := task.exception()) is not None:
-            if not isinstance(err, JobException):
-                _LOGGER.warning("Detached job %s failed: %s", self.name, err)
+        retrieve_job_task_error(self.name, task)
         if self._detached_task is task:
             self._detached_task = None
 
