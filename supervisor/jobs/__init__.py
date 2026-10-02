@@ -19,7 +19,7 @@ from attrs.validators import ge, le
 
 from ..const import BusEvent, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, JobNotFound, JobStartException
+from ..exceptions import HassioError, JobException, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
@@ -455,13 +455,30 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         *args,
         **kwargs,
     ) -> tuple[SupervisorJob, asyncio.Task | asyncio.TimerHandle]:
-        """Schedule a job to run later and return job and task or timer handle."""
+        """Schedule a job to run later and return job and task or timer handle.
+
+        The caller may drop the returned task, for example an API request that
+        returns the job ID while the job keeps running in the background. The
+        job wrapper has already captured any error on the job, so retrieve it
+        from the finished task to keep asyncio from reporting it as never
+        retrieved. Callers that await the task still receive the exception. A
+        HassioError is only logged if it was raised with a logger, so log one
+        line naming the job to keep the failure observable. A JobException
+        was already logged with its traceback by the wrapper.
+        """
         job = self.new_job(parent_id=None)
 
+        def _consume_error(task: asyncio.Task) -> None:
+            if not task.cancelled() and (err := task.exception()) is not None:
+                if not isinstance(err, JobException):
+                    _LOGGER.warning("Scheduled job %s failed: %s", job.name, err)
+
         def _wrap_task() -> asyncio.Task:
-            return self.sys_create_task(
+            task = self.sys_create_task(
                 job_method(*args, _job__use_existing=job, **kwargs)
             )
+            task.add_done_callback(_consume_error)
+            return task
 
         if options.start_at:
             return (job, self.sys_call_at(options.start_at, _wrap_task))
