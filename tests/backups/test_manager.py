@@ -642,7 +642,7 @@ async def test_backup_error_homeassistant(coresys: CoreSys, backup_mock: MagicMo
         err := BackupError("Error while storing homeassistant")
     )
 
-    job, backup_task = coresys.jobs.schedule_job(
+    job, backup_task = await coresys.jobs.schedule_job(
         coresys.backups.do_backup_full, JobSchedulerOptions()
     )
     assert await backup_task is None
@@ -679,7 +679,7 @@ async def test_backup_existing_filename_not_deleted(coresys: CoreSys):
     existing = coresys.config.path_backup / "nightly.tar"
     existing.write_bytes(b"existing backup")
 
-    job, backup_task = coresys.jobs.schedule_job(
+    job, backup_task = await coresys.jobs.schedule_job(
         partial(coresys.backups.do_backup_full, filename="nightly.tar"),
         JobSchedulerOptions(),
     )

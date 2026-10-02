@@ -618,7 +618,7 @@ class NetworkManager(CoreSysAttributes):
         job_id: str | None = None
         if con:
             if background_activation:
-                job, _ = self.sys_jobs.schedule_job(
+                job, _ = await self.sys_jobs.schedule_job(
                     self._activate_connection_job,
                     JobSchedulerOptions(),
                     con,
