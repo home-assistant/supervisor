@@ -24,7 +24,12 @@ from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
-from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
+from .const import (
+    ATTR_IGNORE_CONDITIONS,
+    FILE_CONFIG_JOBS,
+    JOB_DONE_RETENTION,
+    JobCondition,
+)
 from .validate import SCHEMA_JOBS_CONFIG
 
 # Context vars only act as a global within the same asyncio task
@@ -447,6 +452,15 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         for sub_job in self.jobs:
             if sub_job.parent_id == job.uuid and job.done:
                 self.remove_job(sub_job)
+
+    def schedule_job_removal(self, job: SupervisorJob) -> None:
+        """Remove a finished job once its retention period has passed."""
+
+        def _remove() -> None:
+            if job.uuid in self._jobs:
+                self.remove_job(job)
+
+        self.sys_call_later(JOB_DONE_RETENTION.total_seconds(), _remove)
 
     def schedule_job(
         self,

@@ -837,6 +837,44 @@ async def test_job_skip_cleanup(coresys: CoreSys):
     assert test.job.done
 
 
+async def test_job_skip_cleanup_removed_after_retention(coresys: CoreSys):
+    """Test a kept job and its sub jobs are removed once retention expires."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name="test_job_skip_cleanup_retention_child", cleanup=False)
+        async def child(self):
+            """Execute the child job."""
+
+        @Job(name="test_job_skip_cleanup_retention_parent", cleanup=False)
+        async def execute(self):
+            """Execute the parent job."""
+            await self.child()
+
+    test = TestClass(coresys)
+    with patch.object(coresys.jobs, "sys_call_later") as call_later:
+        await test.execute()
+
+    assert [job.name for job in coresys.jobs.jobs] == [
+        "test_job_skip_cleanup_retention_parent",
+        "test_job_skip_cleanup_retention_child",
+    ]
+    call_later.assert_called_once()
+    delay, remove = call_later.call_args.args
+    assert delay == timedelta(hours=1).total_seconds()
+
+    remove()
+    assert coresys.jobs.jobs == []
+
+    # Job removed in the meantime (e.g. through the API) is ignored
+    remove()
+
+
 async def test_group_throttle(coresys: CoreSys):
     """Test the group throttle."""
 

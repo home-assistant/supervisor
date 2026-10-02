@@ -1,5 +1,6 @@
 """Jobs constants."""
 
+from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
 
@@ -8,6 +9,9 @@ from ..const import SUPERVISOR_DATA
 FILE_CONFIG_JOBS = Path(SUPERVISOR_DATA, "jobs.json")
 
 ATTR_IGNORE_CONDITIONS = "ignore_conditions"
+
+# How long finished jobs without cleanup stay available for clients to read their result
+JOB_DONE_RETENTION = timedelta(hours=1)
 
 JOB_GROUP_APP = "app_{slug}"
 JOB_GROUP_BACKUP = "backup_{slug}"
