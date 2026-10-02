@@ -342,10 +342,10 @@ class Job(CoreSysAttributes):
                         )
 
                     # A running detached job is returned instead of rejected.
-                    # Only for jobs declared detached: a scheduled job must
-                    # not hand out a job that was never started.
+                    # Not for scheduled calls: they must not hand out a job
+                    # that was never started.
                     if (
-                        self._detach
+                        _job_override__detach is None
                         and self.concurrency == JobConcurrency.REJECT
                         and self._detached_task
                         and not self._detached_task.done()

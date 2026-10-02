@@ -2051,7 +2051,8 @@ async def test_scheduled_job_not_started_raises(coresys: CoreSys):
     assert coresys.jobs.jobs == []
 
 
-async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys):
+@pytest.mark.parametrize("detach", [False, True], ids=["regular", "declared_detach"])
+async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys, detach: bool):
     """Test scheduling a REJECT job while it runs raises instead of returning the running task."""
     event = asyncio.Event()
 
@@ -2063,8 +2064,9 @@ async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys):
             self.coresys = coresys
 
         @Job(
-            name="test_scheduled_job_reject_concurrency_raises_execute",
+            name=f"test_scheduled_job_reject_concurrency_raises_execute_{detach}",
             concurrency=JobConcurrency.REJECT,
+            detach=detach,
         )
         async def execute(self) -> None:
             """Execute the class method."""
