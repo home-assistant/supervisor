@@ -116,3 +116,23 @@ async def test_api_multicast_disabled_actions(
     ):
         resp = await api_client.post(f"{prefix}/multicast/update")
     assert resp.status == 400
+
+
+async def test_api_multicast_update_not_installed(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test update is rejected when enabling did not finish installing."""
+    api_client, prefix = api_client_with_prefix
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.plugins.multicast._data.pop("version", None)  # pylint: disable=protected-access
+
+    with patch.object(
+        PluginMulticast,
+        "latest_version",
+        new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+    ):
+        resp = await api_client.post(f"{prefix}/multicast/update")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["message"] == "Multicast plugin is not installed"

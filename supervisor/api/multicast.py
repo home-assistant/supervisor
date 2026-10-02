@@ -74,6 +74,8 @@ class APIMulticast(CoreSysAttributes):
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.sys_plugins.multicast.latest_version)
 
+        if not self.sys_plugins.multicast.version:
+            raise APIError("Multicast plugin is not installed")
         if version == self.sys_plugins.multicast.version:
             raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_plugins.multicast.update(version))

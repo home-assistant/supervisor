@@ -574,6 +574,33 @@ async def test_plugin_enable(coresys: CoreSys, plugin: PluginBase) -> None:
 
 @pytest.mark.usefixtures("supervisor_internet")
 @pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_enable_leftover_version_reinstalls(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test enabling a disabled plugin with a leftover version installs latest."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin.version = AwesomeVersion("2023.01.0")
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+        ),
+        patch.object(type(plugin.instance), "install") as install,
+        patch.object(type(plugin), "start") as start,
+        patch.object(type(plugin), "save_data"),
+    ):
+        await plugin.enable()
+
+    install.assert_called_once()
+    start.assert_called_once()
+    assert plugin.version == AwesomeVersion("2024.01.0")
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
 async def test_plugin_enable_start_failure_retried(
     coresys: CoreSys, plugin: PluginBase
 ) -> None:

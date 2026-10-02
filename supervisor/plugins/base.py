@@ -250,13 +250,17 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
             if self.enabled and await self.is_running():
                 return
 
+            # A stored version on a disabled plugin is a leftover from a
+            # failed removal, install the latest version instead of using it
+            install = not self.enabled or not self.version
+
             if not self.enabled:
                 _LOGGER.info("Enabling %s plugin", self.slug)
                 self._data[ATTR_ENABLED] = True
                 await self.save_data()
 
             # Fail fast, the retrying install is only for boot
-            if not self.version:
+            if install:
                 await self._install()
             await self.start()
 
