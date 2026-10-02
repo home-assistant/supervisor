@@ -16,6 +16,7 @@ from supervisor.exceptions import (
     AudioUpdateError,
     HassioError,
     JobException,
+    JobStartException,
     PluginJobError,
 )
 from supervisor.host.const import HostFeature
@@ -1169,7 +1170,7 @@ async def test_job_scheduled_delay(coresys: CoreSys):
         @Job(name="test_job_scheduled_delay_job_scheduler")
         async def job_scheduler(self) -> tuple[SupervisorJob, asyncio.TimerHandle]:
             """Schedule a job to run after delay."""
-            return self.coresys.jobs.schedule_job(
+            return await self.coresys.jobs.schedule_job(
                 self.job_task, JobSchedulerOptions(delayed_start=0.1)
             )
 
@@ -1220,7 +1221,7 @@ async def test_job_scheduled_at(coresys: CoreSys):
             self, scheduled_time: datetime
         ) -> tuple[SupervisorJob, asyncio.TimerHandle]:
             """Schedule a job to run at specified time."""
-            return self.coresys.jobs.schedule_job(
+            return await self.coresys.jobs.schedule_job(
                 self.job_task, JobSchedulerOptions(start_at=scheduled_time)
             )
 
@@ -1503,7 +1504,7 @@ async def test_progress_syncing(coresys: CoreSys):
             coresys.jobs.current.progress = 100
 
     test = TestClass(coresys)
-    job, task = coresys.jobs.schedule_job(
+    job, task = await coresys.jobs.schedule_job(
         test.test_progress_syncing_execute, JobSchedulerOptions()
     )
 
@@ -1918,6 +1919,252 @@ async def test_detach_unawaited_error_is_retrieved(
 
     asyncio_logger.error.assert_not_called()
     assert (
-        "Detached job test_detach_unawaited_error_is_retrieved_execute failed: boom"
+        "Background job test_detach_unawaited_error_is_retrieved_execute failed: boom"
         in caplog.text
     )
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        pytest.param(JobSchedulerOptions(), id="immediate"),
+        pytest.param(JobSchedulerOptions(delayed_start=0.01), id="delayed"),
+    ],
+)
+async def test_scheduled_job_unawaited_error_is_retrieved(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, options: JobSchedulerOptions
+):
+    """Test a failed scheduled job nobody awaits is logged once, not reported by asyncio."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name=f"test_scheduled_job_unawaited_error_is_retrieved_{uuid4()}")
+        async def execute(self) -> None:
+            """Execute the class method."""
+            raise HassioError("boom")
+
+    test = TestClass(coresys)
+    with patch("asyncio.base_events.logger") as asyncio_logger:
+        job, handle = await coresys.jobs.schedule_job(test.execute, options)
+        await asyncio.sleep(0.05)
+        assert job.done
+        del handle
+        gc.collect()
+
+    asyncio_logger.error.assert_not_called()
+    assert f"Background job {job.name} failed: boom" in caplog.text
+
+
+async def test_scheduled_job_runs_in_returned_task(coresys: CoreSys):
+    """Test an immediately scheduled job runs detached in the returned task."""
+    event = asyncio.Event()
+    running_task: asyncio.Task | None = None
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name="test_scheduled_job_runs_in_returned_task_execute")
+        async def execute(self) -> str:
+            """Execute the class method."""
+            nonlocal running_task
+            running_task = asyncio.current_task()
+            await event.wait()
+            return "done"
+
+    test = TestClass(coresys)
+    job, task = await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+
+    assert isinstance(task, asyncio.Task)
+    assert task is running_task
+    assert job.parent_id is None
+    assert not coresys.jobs.is_job
+
+    event.set()
+    assert await task == "done"
+    assert job.done
+
+
+async def test_scheduled_job_condition_failure_raises(coresys: CoreSys):
+    """Test a scheduled job refused by a condition raises to the caller."""
+    executed = False
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_scheduled_job_condition_failure_raises_execute",
+            conditions=[JobCondition.RUNNING],
+            on_condition=JobException,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            nonlocal executed
+            executed = True
+
+    test = TestClass(coresys)
+    await coresys.core.set_state(CoreState.FREEZE)
+    with pytest.raises(JobException):
+        await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+
+    assert not executed
+    assert coresys.jobs.jobs == []
+
+
+async def test_scheduled_job_not_started_raises(coresys: CoreSys):
+    """Test a scheduled job that is throttled raises instead of returning a dead job."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_scheduled_job_not_started_raises_execute",
+            throttle=JobThrottle.THROTTLE,
+            throttle_period=timedelta(hours=1),
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+
+    test = TestClass(coresys)
+    _, task = await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+    await task
+
+    with pytest.raises(JobStartException, match="was not started"):
+        await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+
+    assert coresys.jobs.jobs == []
+
+
+@pytest.mark.parametrize("detach", [False, True], ids=["regular", "declared_detach"])
+async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys, detach: bool):
+    """Test scheduling a REJECT job while it runs raises instead of returning the running task."""
+    event = asyncio.Event()
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name=f"test_scheduled_job_reject_concurrency_raises_execute_{detach}",
+            concurrency=JobConcurrency.REJECT,
+            detach=detach,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            await event.wait()
+
+    test = TestClass(coresys)
+    job, task = await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+
+    with pytest.raises(JobException, match="Another job is running"):
+        await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+    assert coresys.jobs.jobs == [job]
+
+    event.set()
+    await task
+
+
+async def test_scheduled_job_group_concurrency(coresys: CoreSys):
+    """Test a group concurrency job can be scheduled unless the caller holds the group lock."""
+    event = asyncio.Event()
+
+    class TestClass(JobGroup):
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            super().__init__(coresys, "test_scheduled_job_group_concurrency")
+
+        @Job(
+            name="test_scheduled_job_group_concurrency_execute",
+            concurrency=JobConcurrency.GROUP_REJECT,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            await event.wait()
+
+        @Job(
+            name="test_scheduled_job_group_concurrency_schedule_nested",
+            concurrency=JobConcurrency.GROUP_REJECT,
+        )
+        async def schedule_nested(self) -> None:
+            """Schedule the group job while holding the group lock."""
+            await self.coresys.jobs.schedule_job(self.execute, JobSchedulerOptions())
+
+    test = TestClass(coresys)
+    with pytest.raises(JobStartException, match="holds the group lock"):
+        await test.schedule_nested()
+    assert coresys.jobs.jobs == []
+    assert test.active_job is None
+
+    job, task = await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+    assert test.active_job == job
+    with pytest.raises(JobException):
+        await coresys.jobs.schedule_job(test.execute, JobSchedulerOptions())
+
+    event.set()
+    await task
+    assert test.active_job is None
+    assert job.done
+
+
+async def test_delayed_scheduled_job_rejection_is_logged(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a delayed job rejected when its timer fires is logged, not silently dropped."""
+    event = asyncio.Event()
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_delayed_scheduled_job_rejection_is_logged_execute",
+            concurrency=JobConcurrency.REJECT,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            await event.wait()
+
+    test = TestClass(coresys)
+    running_job, task = await coresys.jobs.schedule_job(
+        test.execute, JobSchedulerOptions()
+    )
+    with patch("asyncio.base_events.logger") as asyncio_logger:
+        rejected_job, _ = await coresys.jobs.schedule_job(
+            test.execute, JobSchedulerOptions(delayed_start=0.01)
+        )
+        await asyncio.sleep(0.05)
+        gc.collect()
+
+    asyncio_logger.error.assert_not_called()
+    assert (
+        f"Background job {rejected_job.name} failed: Another job is running"
+        in caplog.text
+    )
+    assert coresys.jobs.jobs == [running_job]
+
+    event.set()
+    await task
