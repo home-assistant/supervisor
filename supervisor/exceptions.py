@@ -338,6 +338,18 @@ class PluginJobError(PluginError, JobException):
     """Raise on job error with plugin."""
 
 
+class PluginDisabledError(PluginError, APIError):
+    """Raise when an action requires a disabled plugin."""
+
+    error_key = "plugin_disabled_error"
+    message_template = "Plugin {plugin} is disabled"
+
+    def __init__(self, plugin: str, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        self.extra_fields = {"plugin": plugin}
+        super().__init__(None, logger)
+
+
 # HaCli
 
 
@@ -453,7 +465,7 @@ class MulticastJobError(MulticastError, PluginJobError):
     """Raise on job error with multicast plugin."""
 
 
-class MulticastDisabledError(MulticastError, APIError):
+class MulticastDisabledError(MulticastError, PluginDisabledError):
     """Raise when an action requires the disabled Multicast plugin."""
 
     error_key = "multicast_disabled_error"
@@ -461,7 +473,7 @@ class MulticastDisabledError(MulticastError, APIError):
 
     def __init__(self, logger: Callable[..., None] | None = None) -> None:
         """Raise & log."""
-        super().__init__(None, logger)
+        super().__init__("multicast", logger)
 
 
 class MulticastNotRunningError(MulticastError, APIError):

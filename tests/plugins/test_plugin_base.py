@@ -15,15 +15,21 @@ from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AudioError,
     AudioJobError,
+    AudioUpdateError,
     CliError,
     CliJobError,
+    CliUpdateError,
     CoreDNSError,
     CoreDNSJobError,
+    CoreDNSUpdateError,
     DockerError,
+    MulticastDisabledError,
     MulticastError,
     MulticastJobError,
     ObserverError,
     ObserverJobError,
+    ObserverUpdateError,
+    PluginDisabledError,
     PluginError,
     PluginJobError,
 )
@@ -396,3 +402,199 @@ async def test_default_image_fallback(coresys: CoreSys, plugin: PluginBase):
     """Test default image falls back to hard-coded constant if we fail to fetch version file."""
     assert getattr(coresys.updater, f"image_{plugin.slug}") is None
     assert plugin.default_image == f"ghcr.io/home-assistant/amd64-hassio-{plugin.slug}"
+
+
+ALL_PLUGINS = [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver]
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_enabled_default(plugin: PluginBase) -> None:
+    """Test plugins are enabled by default."""
+    assert plugin.enabled is True
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_load_disabled(coresys: CoreSys, plugin: PluginBase) -> None:
+    """Test load skips install and start but cleans up leftovers when disabled."""
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin.version = AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(coresys.bus), "register_event") as register_event,
+        patch.object(type(plugin.instance), "attach") as attach,
+        patch.object(type(plugin.instance), "stop") as stop,
+        patch.object(DockerAPI, "remove_image") as remove_image,
+        patch.object(type(plugin), "install") as install,
+        patch.object(type(plugin), "start") as start,
+        patch.object(type(plugin), "save_data"),
+    ):
+        await plugin.load()
+
+    register_event.assert_any_call(
+        BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
+    )
+    attach.assert_not_called()
+    install.assert_not_called()
+    start.assert_not_called()
+    stop.assert_called_once()
+    remove_image.assert_called_once_with(plugin.image, AwesomeVersion("2024.01.0"))
+    assert plugin.version is None
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_load_disabled_cleanup_failure(plugin: PluginBase) -> None:
+    """Test load tolerates a failing leftover cleanup when disabled."""
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin.version = AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(plugin.instance), "stop", side_effect=DockerError("boom")),
+        patch.object(DockerAPI, "remove_image") as remove_image,
+    ):
+        await plugin.load()
+
+    remove_image.assert_not_called()
+    assert plugin.version == AwesomeVersion("2024.01.0")
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_watchdog_ignored_when_disabled(plugin: PluginBase) -> None:
+    """Test the watchdog does not restart the plugin while disabled."""
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+
+    with patch.object(type(plugin), "_restart_after_problem") as restart_after_problem:
+        await plugin.watchdog_container(
+            DockerContainerStateEvent(
+                name=plugin.instance.name,
+                state=ContainerState.FAILED,
+                id="abc123",
+                time=1,
+            )
+        )
+
+    restart_after_problem.assert_not_called()
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_disable(plugin: PluginBase) -> None:
+    """Test disabling removes container and image and forgets the version."""
+    plugin.version = AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(plugin.instance), "stop") as stop,
+        patch.object(DockerAPI, "remove_image") as remove_image,
+        patch.object(type(plugin), "save_data") as save_data,
+    ):
+        await plugin.disable()
+
+    stop.assert_called_once()
+    remove_image.assert_called_once_with(plugin.image, AwesomeVersion("2024.01.0"))
+    assert save_data.called
+    assert plugin.enabled is False
+    assert plugin.version is None
+    assert plugin.need_update is False
+
+    # Disabling again only makes sure the container is gone
+    with (
+        patch.object(type(plugin.instance), "stop") as stop,
+        patch.object(DockerAPI, "remove_image") as remove_image,
+    ):
+        await plugin.disable()
+
+    stop.assert_called_once()
+    remove_image.assert_not_called()
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_disable_remove_failure_retried(plugin: PluginBase) -> None:
+    """Test a failed removal persists the disabled state and is retried."""
+    plugin.version = AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(plugin.instance), "stop"),
+        patch.object(DockerAPI, "remove_image", side_effect=DockerError("boom")),
+        patch.object(type(plugin), "save_data"),
+        pytest.raises(PluginError),
+    ):
+        await plugin.disable()
+
+    assert plugin.enabled is False
+    # Version is kept so the leftover image can be cleaned up on retry
+    assert plugin.version == AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(plugin.instance), "stop"),
+        patch.object(DockerAPI, "remove_image") as remove_image,
+        patch.object(type(plugin), "save_data"),
+    ):
+        await plugin.disable()
+
+    remove_image.assert_called_once()
+    assert plugin.version is None
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_enable(coresys: CoreSys, plugin: PluginBase) -> None:
+    """Test enabling installs and starts the plugin."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin._data.pop("version", None)  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+        ),
+        patch.object(type(plugin.instance), "install") as install,
+        patch.object(type(plugin), "start") as start,
+        patch.object(type(plugin), "save_data") as save_data,
+        patch.object(PluginDns, "write_hosts"),
+    ):
+        await plugin.enable()
+
+    install.assert_called_once()
+    start.assert_called_once()
+    assert save_data.called
+    assert plugin.enabled is True
+    assert plugin.version == AwesomeVersion("2024.01.0")
+
+    # Enabling again is a no-op
+    with patch.object(type(plugin.instance), "install") as install:
+        await plugin.enable()
+
+    install.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("plugin", "error"),
+    [
+        (PluginAudio, AudioUpdateError),
+        (PluginCli, CliUpdateError),
+        (PluginDns, CoreDNSUpdateError),
+        (PluginMulticast, MulticastDisabledError),
+        (PluginObserver, ObserverUpdateError),
+    ],
+    indirect=["plugin"],
+)
+async def test_plugin_update_rejected_when_disabled(
+    coresys: CoreSys, plugin: PluginBase, error: type[PluginError]
+) -> None:
+    """Test update refuses to run while disabled."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+        ),
+        patch.object(type(plugin.instance), "update") as update,
+        pytest.raises(error) as exc_info,
+    ):
+        await plugin.update()
+
+    update.assert_not_called()
+    assert check_exception_chain(exc_info.value, PluginDisabledError)

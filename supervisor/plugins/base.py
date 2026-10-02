@@ -8,12 +8,12 @@ import logging
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from ..const import ATTR_IMAGE, ATTR_VERSION, BusEvent
+from ..const import ATTR_ENABLED, ATTR_IMAGE, ATTR_VERSION, BusEvent
 from ..coresys import CoreSysAttributes
 from ..docker.const import ContainerState
 from ..docker.interface import DockerInterface
 from ..docker.monitor import DockerContainerStateEvent
-from ..exceptions import DockerError, PluginError
+from ..exceptions import DockerError, PluginDisabledError, PluginError
 from ..utils.common import FileConfiguration
 from ..utils.sentry import async_capture_exception
 from .const import WATCHDOG_MAX_ATTEMPTS, WATCHDOG_RETRY_SECONDS
@@ -36,6 +36,11 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     def version(self, value: AwesomeVersion) -> None:
         """Set current version of the plugin."""
         self._data[ATTR_VERSION] = value
+
+    @property
+    def enabled(self) -> bool:
+        """Return True if the plugin is enabled."""
+        return self._data.get(ATTR_ENABLED, True)
 
     @property
     def default_image(self) -> str:
@@ -61,10 +66,11 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     @property
     def need_update(self) -> bool:
-        """Return True if an update is available."""
+        """Return True if the plugin is enabled and an update is available."""
         try:
             return (
-                self.version is not None
+                self.enabled
+                and self.version is not None
                 and self.latest_version is not None
                 and self.version < self.latest_version
             )
@@ -98,7 +104,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in plugin container and restart if necessary."""
-        if event.name != self.instance.name:
+        if not self.enabled or event.name != self.instance.name:
             return
 
         if event.state in {ContainerState.FAILED, ContainerState.UNHEALTHY}:
@@ -158,7 +164,15 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     async def load(self) -> None:
         """Load system plugin."""
+        # Registered even when disabled so the plugin can be enabled at runtime
         self.start_watchdog()
+
+        if not self.enabled:
+            _LOGGER.info("%s plugin is disabled", self.slug)
+            # Retry the cleanup of a disable that did not finish
+            with suppress(PluginError):
+                await self._remove()
+            return
 
         # Check plugin state
         try:
@@ -211,8 +225,48 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         self.image = self.default_image
         await self.save_data()
 
+    async def enable(self) -> None:
+        """Enable, install and start system plugin."""
+        if self.enabled:
+            return
+
+        _LOGGER.info("Enabling %s plugin", self.slug)
+        self._data[ATTR_ENABLED] = True
+        await self.save_data()
+
+        await self.install()
+        await self.start()
+
+    async def disable(self) -> None:
+        """Disable system plugin and remove its container and image."""
+        if self.enabled:
+            _LOGGER.info("Disabling %s plugin", self.slug)
+            self._data[ATTR_ENABLED] = False
+            await self.save_data()
+
+        await self._remove()
+
+    async def _remove(self) -> None:
+        """Remove container and image of the plugin and forget the version."""
+        try:
+            await self.instance.stop()
+            if self.version:
+                await self.sys_docker.remove_image(self.image, self.version)
+        except DockerError as err:
+            raise PluginError(
+                f"Can't remove {self.slug} plugin", _LOGGER.error
+            ) from err
+
+        # Forget the version so a later enable installs the current one
+        if self.version:
+            self._data.pop(ATTR_VERSION, None)
+            await self.save_data()
+
     async def update(self, version: str | None = None) -> None:
         """Update system plugin."""
+        if not self.enabled:
+            raise PluginDisabledError(self.slug, _LOGGER.error)
+
         to_version = AwesomeVersion(version) if version else self.latest_version
         if not to_version:
             raise PluginError(
