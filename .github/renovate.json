@@ -43,6 +43,7 @@
   "minimumReleaseAge": "3 days",
   "semanticCommits": "disabled",
   "labels": ["dependencies"],
+  "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}",
   "packageRules": [
     {
       "description": "Label Python updates like Dependabot did",
