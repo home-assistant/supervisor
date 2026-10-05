@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.06.1
+ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.08.0
 FROM ${BUILD_FROM} AS supervisor-base
 
 ENV \
