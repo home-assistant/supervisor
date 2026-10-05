@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 import aiohttp
-from aiohttp import ClientTimeout, hdrs, web
+from aiohttp import ClientTimeout, ClientWSTimeout, WSCloseCode, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
     HTTPServiceUnavailable,
@@ -29,6 +29,8 @@ from ..const import (
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
+    WEBSOCKET_CLOSE_TIMEOUT,
+    CoreState,
     HomeAssistantUser,
     IngressSessionData,
 )
@@ -189,6 +191,10 @@ class APIIngress(CoreSysAttributes):
         )
         await ws_server.prepare(request)
         request.config_dict[WEBSOCKETS].add(ws_server)
+        # The upgrade may complete after API stop closed the tracked websockets
+        if self.sys_core.state in (CoreState.STOPPING, CoreState.CLOSE):
+            await ws_server.close(code=WSCloseCode.GOING_AWAY)
+            return ws_server
 
         # Preparing
         url = self._create_url(app, path)
@@ -208,6 +214,7 @@ class APIIngress(CoreSysAttributes):
                 autoclose=False,
                 autoping=False,
                 max_msg_size=MAX_WEBSOCKET_MESSAGE_SIZE,
+                timeout=ClientWSTimeout(ws_close=WEBSOCKET_CLOSE_TIMEOUT),
             ) as ws_client:
                 # Proxy requests
                 await asyncio.wait(

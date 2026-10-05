@@ -18,7 +18,6 @@ COOKIE_INGRESS = "ingress_session"
 # Open proxied websockets, closed on API stop as they outlive aiohttp's
 # graceful shutdown timeout otherwise
 WEBSOCKETS = web.AppKey[weakref.WeakSet[web.WebSocketResponse]]("websockets")
-WEBSOCKET_CLOSE_TIMEOUT = 5
 
 ATTR_ADDITIONAL_LOCATIONS = "additional_locations"
 ATTR_AGENT_VERSION = "agent_version"

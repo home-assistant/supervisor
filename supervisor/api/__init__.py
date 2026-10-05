@@ -11,7 +11,12 @@ import weakref
 from aiohttp import WSCloseCode, hdrs, web
 
 from ..apps.app import App
-from ..const import SUPERVISOR_DOCKER_NAME, AppState, FeatureFlag
+from ..const import (
+    SUPERVISOR_DOCKER_NAME,
+    WEBSOCKET_CLOSE_TIMEOUT,
+    AppState,
+    FeatureFlag,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     APIAppNotInstalled,
@@ -24,7 +29,7 @@ from .audio import APIAudio
 from .auth import APIAuth
 from .backups import APIBackups
 from .cli import APICli
-from .const import CONTENT_TYPE_TEXT, WEBSOCKET_CLOSE_TIMEOUT, WEBSOCKETS, AppVersion
+from .const import CONTENT_TYPE_TEXT, WEBSOCKETS, AppVersion
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
 from .docker import APIDocker

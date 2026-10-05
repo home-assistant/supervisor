@@ -18,7 +18,7 @@ import pytest
 from supervisor.api.const import WEBSOCKETS
 from supervisor.api.proxy import APIProxy
 from supervisor.apps.app import App
-from supervisor.const import ATTR_ACCESS_TOKEN
+from supervisor.const import ATTR_ACCESS_TOKEN, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.homeassistant.api import HomeAssistantAPI
 
@@ -176,6 +176,19 @@ async def test_proxy_websocket_closed_on_api_stop(
     assert msg.type == WSMsgType.CLOSE
     assert msg.data == WSCloseCode.GOING_AWAY
     assert ha_ws_server.closed
+
+
+async def test_proxy_websocket_closed_when_stopping(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test websocket upgrades completing after API stop began are closed."""
+    await coresys.core.set_state(CoreState.STOPPING)
+
+    websocket = await api_client.ws_connect("/core/websocket")
+    msg = await websocket.receive()
+
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.GOING_AWAY
 
 
 async def test_proxy_binary_message(

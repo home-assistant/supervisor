@@ -11,6 +11,7 @@ import pytest
 
 from supervisor.api.const import WEBSOCKETS
 from supervisor.apps.app import App
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 
 
@@ -339,3 +340,28 @@ async def test_ingress_websocket_closed_on_api_stop(
             await upstream_closed.wait()
     finally:
         await app_server.close()
+
+
+async def test_ingress_websocket_closed_when_stopping(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test websocket upgrades completing after API stop began are closed."""
+    resp = await api_client.post("/ingress/session")
+    session = (await resp.json())["data"]["session"]
+
+    mock_app = MagicMock(spec=App)
+    mock_app.slug = "test_app"
+    mock_app.ip_address = "127.0.0.1"
+    mock_app.ingress_port = 1
+
+    await coresys.core.set_state(CoreState.STOPPING)
+    ingress_token = coresys.ingress.create_session()
+    with patch.object(coresys.ingress, "get", return_value=mock_app):
+        websocket = await api_client.ws_connect(
+            f"/ingress/{ingress_token}/ws",
+            headers={hdrs.COOKIE: f"ingress_session={session}"},
+        )
+    msg = await websocket.receive()
+
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.GOING_AWAY

@@ -14,6 +14,7 @@ from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
 from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPForbidden, HTTPUnauthorized
 
+from ..const import CoreState
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
@@ -304,6 +305,10 @@ class APIProxy(CoreSysAttributes):
         server = web.WebSocketResponse(heartbeat=30)
         await server.prepare(request)
         request.config_dict[WEBSOCKETS].add(server)
+        # The upgrade may complete after API stop closed the tracked websockets
+        if self.sys_core.state in (CoreState.STOPPING, CoreState.CLOSE):
+            await server.close(code=WSCloseCode.GOING_AWAY)
+            return server
         app_name = None
 
         # handle authentication
