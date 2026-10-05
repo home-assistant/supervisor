@@ -74,6 +74,7 @@ COPY rootfs /
 FROM supervisor-base
 
 # Copy everything from the build stage as a single layer
+# hadolint ignore=DL3067
 COPY --from=supervisor-build / /
 
 LABEL \
