@@ -32,7 +32,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     def __init__(self, file_path: Path, schema: vol.Schema) -> None:
         """Initialize plugin."""
         super().__init__(file_path, schema)
-        # Serializes enable/disable so the two transitions cannot interleave
+        # Serializes enable/disable against each other and update/restart/repair
         self._lifecycle_lock = asyncio.Lock()
 
     @property
@@ -123,7 +123,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     ):
         """Restart unhealthy or failed plugin."""
         attempts = 0
-        while await self.instance.current_state() == state:
+        while self.enabled and await self.instance.current_state() == state:
             if not self.in_progress:
                 if state == ContainerState.FAILED:
                     _LOGGER.warning(
@@ -292,35 +292,36 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     async def update(self, version: str | None = None) -> None:
         """Update system plugin."""
-        if not self.enabled:
-            raise PluginDisabledError(self.slug, _LOGGER.error)
+        async with self._lifecycle_lock:
+            if not self.enabled:
+                raise PluginDisabledError(self.slug, _LOGGER.error)
 
-        to_version = AwesomeVersion(version) if version else self.latest_version
-        if not to_version:
-            raise PluginError(
-                f"Cannot determine latest version of plugin {self.slug} for update",
-                _LOGGER.error,
-            )
+            to_version = AwesomeVersion(version) if version else self.latest_version
+            if not to_version:
+                raise PluginError(
+                    f"Cannot determine latest version of plugin {self.slug} for update",
+                    _LOGGER.error,
+                )
 
-        old_image = self.image
+            old_image = self.image
 
-        if to_version == self.version:
-            _LOGGER.warning(
-                "Version %s is already installed for %s", to_version, self.slug
-            )
-            return
+            if to_version == self.version:
+                _LOGGER.warning(
+                    "Version %s is already installed for %s", to_version, self.slug
+                )
+                return
 
-        await self.instance.update(to_version, image=self.default_image)
-        self.version = self.instance.version or to_version
-        self.image = self.default_image
-        await self.save_data()
+            await self.instance.update(to_version, image=self.default_image)
+            self.version = self.instance.version or to_version
+            self.image = self.default_image
+            await self.save_data()
 
-        # Cleanup
-        with suppress(DockerError):
-            await self.instance.cleanup(old_image=old_image)
+            # Cleanup
+            with suppress(DockerError):
+                await self.instance.cleanup(old_image=old_image)
 
-        # Start plugin
-        await self.start()
+            # Start plugin
+            await self.start()
 
     @abstractmethod
     async def repair(self) -> None:

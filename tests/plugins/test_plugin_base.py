@@ -763,3 +763,21 @@ async def test_plugin_update_rejected_when_disabled(
 
     update.assert_not_called()
     assert check_exception_chain(exc_info.value, PluginDisabledError)
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_watchdog_stops_when_disabled(plugin: PluginBase) -> None:
+    """Test the watchdog restart loop gives up once the plugin is disabled."""
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            type(plugin.instance),
+            "current_state",
+            return_value=ContainerState.FAILED,
+        ),
+        patch.object(type(plugin), "rebuild") as rebuild,
+    ):
+        await plugin._restart_after_problem(ContainerState.FAILED, 1)  # pylint: disable=protected-access
+
+    rebuild.assert_not_called()
