@@ -18,6 +18,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
 from ..utils.logging import AppLoggerAdapter
+from .const import WEBSOCKETS
 from .middleware.security import recursive_unquote
 from .utils import stop_on_disconnect
 
@@ -264,15 +265,15 @@ class APIProxy(CoreSysAttributes):
                     await target.send_str(msg.data)
                 case WSMsgType.BINARY:
                     await target.send_bytes(msg.data)
-                case WSMsgType.CLOSE | WSMsgType.CLOSED:
+                # CLOSING is received when the source is closed locally from another
+                # task (e.g. on API stop), the other leg must be closed as well then
+                case WSMsgType.CLOSE | WSMsgType.CLOSING | WSMsgType.CLOSED:
                     logger.debug(
                         "Received WebSocket message type %r from %s.",
                         msg.type,
                         "app" if type(source) is web.WebSocketResponse else "Core",
                     )
                     await target.close()
-                case WSMsgType.CLOSING:
-                    pass
                 case WSMsgType.ERROR:
                     logger.warning(
                         "Error WebSocket message received while proxying: %r", msg.data
@@ -302,6 +303,7 @@ class APIProxy(CoreSysAttributes):
         # init server
         server = web.WebSocketResponse(heartbeat=30)
         await server.prepare(request)
+        request.config_dict[WEBSOCKETS].add(server)
         app_name = None
 
         # handle authentication

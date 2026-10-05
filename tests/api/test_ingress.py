@@ -1,13 +1,15 @@
 """Test ingress API."""
 
+import asyncio
 from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
-from aiohttp import hdrs, web
+from aiohttp import WSCloseCode, WSMsgType, hdrs, web
 from aiohttp.test_utils import TestClient, TestServer
 import pytest
 
+from supervisor.api.const import WEBSOCKETS
 from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
 
@@ -279,5 +281,61 @@ async def test_ingress_proxy_streams_response(
             assert resp.headers[hdrs.CONTENT_TYPE] == "text/event-stream"
             assert await resp.read() == b"data: one\n\ndata: two\n\n"
 
+    finally:
+        await app_server.close()
+
+
+async def test_ingress_websocket_closed_on_api_stop(
+    api_client: TestClient,
+    coresys: CoreSys,
+    real_websession: aiohttp.ClientSession,
+):
+    """Test ingress websockets are closed when the API stops."""
+    upstream_closed = asyncio.Event()
+
+    async def mock_app_handler(request: web.Request) -> web.WebSocketResponse:
+        """Mock app websocket handler that stays open until closed."""
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        async for _ in websocket:
+            pass
+        upstream_closed.set()
+        return websocket
+
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        resp = await api_client.post("/ingress/session")
+        session = (await resp.json())["data"]["session"]
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_app"
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_app):
+            websocket = await api_client.ws_connect(
+                f"/ingress/{ingress_token}/ws",
+                headers={hdrs.COOKIE: f"ingress_session={session}"},
+            )
+        assert len(api_client.server.app[WEBSOCKETS]) == 1
+
+        with (
+            patch.object(coresys.api, "webapp", api_client.server.app),
+            patch.object(coresys.api, "_site", AsyncMock()),
+            patch.object(coresys.api, "_runner", AsyncMock()),
+        ):
+            stop_task = asyncio.create_task(coresys.api.stop())
+            msg = await websocket.receive()
+            await stop_task
+
+        assert msg.type == WSMsgType.CLOSE
+        assert msg.data == WSCloseCode.GOING_AWAY
+        async with asyncio.timeout(1):
+            await upstream_closed.wait()
     finally:
         await app_server.close()

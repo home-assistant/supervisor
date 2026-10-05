@@ -34,7 +34,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
-from .const import COOKIE_INGRESS
+from .const import COOKIE_INGRESS, WEBSOCKETS
 from .utils import api_process, api_validate, require_home_assistant, stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -188,6 +188,7 @@ class APIIngress(CoreSysAttributes):
             max_msg_size=MAX_WEBSOCKET_MESSAGE_SIZE,
         )
         await ws_server.prepare(request)
+        request.config_dict[WEBSOCKETS].add(ws_server)
 
         # Preparing
         url = self._create_url(app, path)

@@ -15,9 +15,11 @@ from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.api.const import WEBSOCKETS
 from supervisor.api.proxy import APIProxy
 from supervisor.apps.app import App
 from supervisor.const import ATTR_ACCESS_TOKEN
+from supervisor.coresys import CoreSys
 from supervisor.homeassistant.api import HomeAssistantAPI
 
 
@@ -146,6 +148,34 @@ async def test_proxy_message(
     assert await client.receive_json() == {"world": "received", "id": 1}
 
     assert await client.close()
+
+
+async def test_proxy_websocket_closed_on_api_stop(
+    api_client: TestClient,
+    coresys: CoreSys,
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+):
+    """Test proxied websockets are closed when the API stops."""
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+    assert len(api_client.server.app[WEBSOCKETS]) == 1
+
+    with (
+        patch.object(coresys.api, "webapp", api_client.server.app),
+        patch.object(coresys.api, "_site", AsyncMock()),
+        patch.object(coresys.api, "_runner", AsyncMock()),
+    ):
+        stop_task = asyncio.create_task(coresys.api.stop())
+        msg = await client.receive()
+        await stop_task
+
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.GOING_AWAY
+    assert ha_ws_server.closed
 
 
 async def test_proxy_binary_message(
