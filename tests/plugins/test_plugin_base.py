@@ -577,7 +577,7 @@ async def test_plugin_enable(coresys: CoreSys, plugin: PluginBase) -> None:
 async def test_plugin_enable_leftover_version_reinstalls(
     coresys: CoreSys, plugin: PluginBase
 ) -> None:
-    """Test enabling a disabled plugin with a leftover version installs latest."""
+    """Test enabling a disabled plugin with a leftover version cleans it up first."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     plugin._data["enabled"] = False  # pylint: disable=protected-access
     plugin.version = AwesomeVersion("2023.01.0")
@@ -588,15 +588,33 @@ async def test_plugin_enable_leftover_version_reinstalls(
             "latest_version",
             new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
         ),
+        patch.object(type(plugin.instance), "stop") as stop,
+        patch.object(DockerAPI, "remove_image") as remove_image,
         patch.object(type(plugin.instance), "install") as install,
         patch.object(type(plugin), "start") as start,
         patch.object(type(plugin), "save_data"),
     ):
         await plugin.enable()
 
+    stop.assert_called_once()
+    remove_image.assert_called_once_with(plugin.image, AwesomeVersion("2023.01.0"))
     install.assert_called_once()
     start.assert_called_once()
     assert plugin.version == AwesomeVersion("2024.01.0")
+
+    # A failing cleanup keeps the plugin disabled so enable can be retried
+    plugin._data["enabled"] = False  # pylint: disable=protected-access
+    plugin.version = AwesomeVersion("2023.01.0")
+    with (
+        patch.object(type(plugin.instance), "stop", side_effect=DockerError("boom")),
+        patch.object(type(plugin.instance), "install") as install,
+        pytest.raises(PluginError),
+    ):
+        await plugin.enable()
+
+    install.assert_not_called()
+    assert plugin.enabled is False
+    assert plugin.version == AwesomeVersion("2023.01.0")
 
 
 @pytest.mark.usefixtures("supervisor_internet")
