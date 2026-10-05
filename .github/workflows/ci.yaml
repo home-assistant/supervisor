@@ -285,7 +285,7 @@ jobs:
       - name: Run pylint
         run: |
           . venv/bin/activate
-          pylint supervisor tests
+          pylint
 
   mypy:
     name: Check mypy

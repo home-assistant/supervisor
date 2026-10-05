@@ -88,7 +88,7 @@
     {
       "label": "Pylint",
       "type": "shell",
-      "command": "pylint supervisor",
+      "command": "pylint",
       "dependsOn": ["Install all Requirements"],
       "group": {
         "kind": "test",

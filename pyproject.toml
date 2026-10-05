@@ -32,6 +32,7 @@ include = ["supervisor*"]
 
 [tool.pylint.MAIN]
 py-version = "3.14"
+files = ["supervisor", "tests"]
 # Use a conservative default here; 2 should speed up most setups and not hurt
 # any too bad. Override on command line as appropriate.
 jobs = 2

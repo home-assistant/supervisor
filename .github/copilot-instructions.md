@@ -10,7 +10,7 @@ This repository contains the Home Assistant Supervisor, a Python 3 based contain
 
 - Install development dependencies with `pip install -r requirements.txt -r requirements_tests.txt`.
 - `.vscode/tasks.json` contains useful commands used for development.
-- Lint and format with `ruff check --fix supervisor tests`, `ruff format supervisor tests` and `pylint supervisor`.
+- Lint and format with `ruff check --fix supervisor tests`, `ruff format supervisor tests` and `pylint`.
 - Type check with `mypy --ignore-missing-imports supervisor/`.
 - After finishing a code session, run `pre-commit run --all-files` to check for linting and formatting issues.
 
