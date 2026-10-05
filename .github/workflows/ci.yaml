@@ -159,7 +159,7 @@ jobs:
         run: |
           echo "::add-matcher::.github/workflows/matchers/hadolint.json"
       - name: Check Dockerfile
-        uses: docker://hadolint/hadolint:v1.23.0
+        uses: docker://hadolint/hadolint:v2.15.1
         with:
           args: hadolint Dockerfile
 
