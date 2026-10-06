@@ -1930,7 +1930,7 @@ async def test_detach_drops_finished_task_reference(coresys: CoreSys):
 
 
 async def test_detach_unawaited_error_is_retrieved(
-    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, loop_exception_handler: Mock
 ):
     """Test a failed detached task nobody awaits is logged once, not reported by asyncio."""
 
@@ -1947,15 +1947,14 @@ async def test_detach_unawaited_error_is_retrieved(
             raise HassioError("boom")
 
     test = TestClass(coresys)
-    with patch("asyncio.base_events.logger") as asyncio_logger:
-        task = await test.execute()
-        assert task is not None
-        await asyncio.sleep(0)
-        assert task.done()
-        del task
-        gc.collect()
+    task = await test.execute()
+    assert task is not None
+    await asyncio.sleep(0)
+    assert task.done()
+    del task
+    gc.collect()
 
-    asyncio_logger.error.assert_not_called()
+    loop_exception_handler.assert_not_called()
     assert (
         "Background job test_detach_unawaited_error_is_retrieved_execute failed: boom"
         in caplog.text
@@ -1970,7 +1969,10 @@ async def test_detach_unawaited_error_is_retrieved(
     ],
 )
 async def test_scheduled_job_unawaited_error_is_retrieved(
-    coresys: CoreSys, caplog: pytest.LogCaptureFixture, options: JobSchedulerOptions
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    options: JobSchedulerOptions,
+    loop_exception_handler: Mock,
 ):
     """Test a failed scheduled job nobody awaits is logged once, not reported by asyncio."""
 
@@ -1987,14 +1989,13 @@ async def test_scheduled_job_unawaited_error_is_retrieved(
             raise HassioError("boom")
 
     test = TestClass(coresys)
-    with patch("asyncio.base_events.logger") as asyncio_logger:
-        job, handle = await coresys.jobs.schedule_job(test.execute, options)
-        await asyncio.sleep(0.05)
-        assert job.done
-        del handle
-        gc.collect()
+    job, handle = await coresys.jobs.schedule_job(test.execute, options)
+    await asyncio.sleep(0.05)
+    assert job.done
+    del handle
+    gc.collect()
 
-    asyncio_logger.error.assert_not_called()
+    loop_exception_handler.assert_not_called()
     assert f"Background job {job.name} failed: boom" in caplog.text
 
 
@@ -2166,7 +2167,7 @@ async def test_scheduled_job_group_concurrency(coresys: CoreSys):
 
 
 async def test_delayed_scheduled_job_rejection_is_logged(
-    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, loop_exception_handler: Mock
 ):
     """Test a delayed job rejected when its timer fires is logged, not silently dropped."""
     event = asyncio.Event()
@@ -2190,14 +2191,13 @@ async def test_delayed_scheduled_job_rejection_is_logged(
     running_job, task = await coresys.jobs.schedule_job(
         test.execute, JobSchedulerOptions()
     )
-    with patch("asyncio.base_events.logger") as asyncio_logger:
-        rejected_job, _ = await coresys.jobs.schedule_job(
-            test.execute, JobSchedulerOptions(delayed_start=0.01)
-        )
-        await asyncio.sleep(0.05)
-        gc.collect()
+    rejected_job, _ = await coresys.jobs.schedule_job(
+        test.execute, JobSchedulerOptions(delayed_start=0.01)
+    )
+    await asyncio.sleep(0.05)
+    gc.collect()
 
-    asyncio_logger.error.assert_not_called()
+    loop_exception_handler.assert_not_called()
     assert (
         f"Background job {rejected_job.name} failed: Another job is running"
         in caplog.text
