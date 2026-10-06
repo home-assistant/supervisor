@@ -478,6 +478,64 @@ async def test_http_config_reset_when_unavailable(
     assert coresys.homeassistant.http_server_host is None
 
 
+@pytest.mark.parametrize(
+    "slow_request",
+    [
+        pytest.param("get_core_state", id="core_state"),
+        pytest.param("_get_json", id="http_config"),
+    ],
+)
+async def test_connect_discarded_on_container_stop_in_flight(
+    coresys: CoreSys,
+    real_get_api_state: HomeAssistantAPI,
+    caplog: pytest.LogCaptureFixture,
+    slow_request: str,
+):
+    """Test a Core stop during the connect requests does not mark Core connected."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.8.0")
+    coresys.homeassistant.save_data = AsyncMock()
+    coresys.homeassistant.api_port = 8123
+    mocks = {
+        "get_core_state": AsyncMock(
+            return_value={"state": "RUNNING", "recorder_state": {}}
+        ),
+        "_get_json": AsyncMock(return_value=TEST_HTTP_CONFIG),
+    }
+    started = asyncio.Event()
+    release = asyncio.Event()
+    response = mocks[slow_request].return_value
+
+    async def slow(*_: str) -> dict:
+        started.set()
+        await release.wait()
+        return response
+
+    mocks[slow_request].side_effect = slow
+
+    with (
+        patch.object(type(api), "use_unix_socket", True),
+        patch.multiple(api, **mocks),
+    ):
+        state = asyncio.create_task(api.get_api_state())
+        await started.wait()
+        await api.container_state_changed(core_state_event(ContainerState.STOPPED))
+        release.set()
+
+        assert await state == APIState("RUNNING", False)
+        assert "Connected to Core" not in caplog.text
+        assert coresys.homeassistant.api_port == 8123
+        assert coresys.homeassistant.http_server_host is None
+        coresys.homeassistant.save_data.assert_not_awaited()
+
+        # The next check connects and refreshes the HTTP config.
+        assert await api.get_api_state() == APIState("RUNNING", False)
+        assert "Connected to Core via Unix socket" in caplog.text
+        assert coresys.homeassistant.api_port == 80
+        assert coresys.homeassistant.http_server_host == ["0.0.0.0", "::"]
+        coresys.homeassistant.save_data.assert_awaited_once()
+
+
 # --- make_request ---
 
 

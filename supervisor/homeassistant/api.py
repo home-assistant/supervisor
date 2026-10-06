@@ -426,13 +426,12 @@ class HomeAssistantAPI(CoreSysAttributes):
             _LOGGER.warning("Malformed Core HTTP config response: %s", err)
             return None
 
-    async def _update_http_config(self) -> None:
-        """Refresh the connection parameters from Core's HTTP config.
+    async def _update_http_config(self, config: CoreHTTPConfig | None) -> None:
+        """Apply the connection parameters from Core's HTTP config.
 
         Replaces relying on Core pushing port/SSL via the Supervisor options
         API, which races with Supervisor's own startup checks.
         """
-        config = await self.get_http_config()
         homeassistant = self.sys_homeassistant
         # Reset to unknown when the config cannot be fetched (older Core, TCP
         # fallback), so reachability decisions never use another Core's binds.
@@ -464,6 +463,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         ):
             return None
 
+        generation = self._api_state_generation
         # Check if API is up
         try:
             # get_core_state is available since 2023.8.0 and preferred
@@ -477,14 +477,21 @@ class HomeAssistantAPI(CoreSysAttributes):
                 data = await self.get_config()
 
             if not self._core_connected:
-                self._core_connected = True
-                transport = (
-                    f"Unix socket {SOCKET_CORE}"
-                    if self.use_unix_socket
-                    else f"TCP {self.sys_homeassistant.api_url}"
-                )
-                _LOGGER.info("Connected to Core via %s", transport)
-                await self._update_http_config()
+                http_config = await self.get_http_config()
+                # Responses racing a Core container state change are stale and
+                # must not mark Core connected or apply the HTTP config.
+                if (
+                    not self._core_connected
+                    and generation == self._api_state_generation
+                ):
+                    self._core_connected = True
+                    transport = (
+                        f"Unix socket {SOCKET_CORE}"
+                        if self.use_unix_socket
+                        else f"TCP {self.sys_homeassistant.api_url}"
+                    )
+                    _LOGGER.info("Connected to Core via %s", transport)
+                    await self._update_http_config(http_config)
 
             state = data.get("state", "RUNNING")
             # Recorder state was added in HA Core 2024.8
