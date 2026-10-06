@@ -55,6 +55,7 @@ from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
 from ..utils.sentry import async_capture_exception
 from .const import (
+    FILESYSTEM_MOUNT_OPTIONS,
     KERNEL_FILESYSTEM_MAP,
     SUPPORTED_LOCAL_FILESYSTEMS,
     MountCifsVersion,
@@ -1067,6 +1068,13 @@ class DiskMount(Mount):
     def filesystem(self) -> str | None:
         """Get filesystem as probed by UDisks2 (e.g. "ntfs", never "ntfs3")."""
         return self._data.get("filesystem")
+
+    @property
+    def options(self) -> list[str]:
+        """List of options to use to mount."""
+        if self.filesystem is None:
+            return super().options
+        return super().options + FILESYSTEM_MOUNT_OPTIONS.get(self.filesystem, [])
 
     @property
     def fs_type(self) -> str:

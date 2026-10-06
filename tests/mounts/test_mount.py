@@ -1006,6 +1006,41 @@ async def test_disk_mount_ntfs_uses_kernel_driver(
 
 
 @pytest.mark.parametrize(
+    ("read_only", "expected_options"), [(False, "utf8"), (True, "ro,utf8")]
+)
+async def test_disk_mount_vfat_decodes_names_as_utf8(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+    read_only: bool,
+    expected_options: str,
+):
+    """Test vfat is mounted with utf8 so non-Latin names are not mangled."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount: DiskMount = Mount.from_dict(
+        coresys, DISK_TEST_DATA | {"filesystem": "vfat", "read_only": read_only}
+    )
+
+    await mount.mount()
+
+    assert systemd_service.StartTransientUnit.calls == [
+        mount_start_transient_unit_call(
+            automount_unit="mnt-data-supervisor-media-test.automount",
+            mount_unit="mnt-data-supervisor-media-test.mount",
+            where="/mnt/data/supervisor/media/test",
+            description="Supervisor disk mount: test",
+            what="/mnt/data/supervisor/.mounts_devices/test",
+            fstype="vfat",
+            options=expected_options,
+        )
+    ]
+
+
+@pytest.mark.parametrize(
     ("probed_filesystem", "expected_unit_type"),
     [
         ("ext2", "ext4"),

@@ -40,6 +40,11 @@ SUPPORTED_LOCAL_FILESYSTEMS = {
 # is persisted and returned by the API.
 KERNEL_FILESYSTEM_MAP = {"ext2": "ext4", "ext3": "ext4", "ntfs": "ntfs3"}
 
+# vfat decodes long names with FAT_DEFAULT_IOCHARSET, iso8859-1 unless the
+# kernel overrides it (most HAOS boards do not), so non-Latin names show as
+# "?". exfat and ntfs3 already default to UTF-8.
+FILESYSTEM_MOUNT_OPTIONS = {"vfat": ["utf8"]}
+
 # Filesystem labels starting with this prefix belong to Home Assistant OS
 # (hassos-data, hassos-data-old, hassos-boot, ...) and must not be offered
 # as a user mount.
