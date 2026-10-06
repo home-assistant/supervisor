@@ -6,7 +6,7 @@ import logging
 
 from ..const import ATTR_FORCE_SECURITY, ATTR_PWNED, FILE_HASSIO_SECURITY
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import PwnedError
+from ..exceptions import PwnedError, PwnedSecret
 from ..utils.common import FileConfiguration
 from ..utils.pwned import check_pwned_password
 from ..validate import SCHEMA_SECURITY_CONFIG
@@ -50,6 +50,8 @@ class Security(FileConfiguration, CoreSysAttributes):
 
         try:
             await check_pwned_password(self.sys_websession, pwned_hash)
+        except PwnedSecret:
+            raise
         except PwnedError:
             if self.force:
                 raise

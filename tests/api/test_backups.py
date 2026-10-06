@@ -734,12 +734,12 @@ async def test_upload_download(
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 @pytest.mark.parametrize(
-    ("backup_type", "inputs", "locations"),
+    ("backup_type", "inputs", "locations", "size_bytes"),
     [
-        ("full", {}, [None, ".cloud_backup"]),
-        ("full", {}, [".cloud_backup", None]),
-        ("partial", {"folders": ["ssl"]}, [None, ".cloud_backup"]),
-        ("partial", {"folders": ["ssl"]}, [".cloud_backup", None]),
+        ("full", {}, [None, ".cloud_backup"], 20480),
+        ("full", {}, [".cloud_backup", None], 20480),
+        ("partial", {"folders": ["ssl"]}, [None, ".cloud_backup"], 10240),
+        ("partial", {"folders": ["ssl"]}, [".cloud_backup", None], 10240),
     ],
 )
 async def test_backup_to_multiple_locations(
@@ -748,6 +748,7 @@ async def test_backup_to_multiple_locations(
     backup_type: str,
     inputs: dict[str, Any],
     locations: list[str | None],
+    size_bytes: int,
 ):
     """Test making a backup to multiple locations."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -767,9 +768,9 @@ async def test_backup_to_multiple_locations(
     assert orig_backup.exists()
     assert copy_backup.exists()
     assert coresys.backups.get(slug).all_locations == {
-        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=size_bytes),
         ".cloud_backup": BackupLocation(
-            path=copy_backup, protected=False, size_bytes=10240
+            path=copy_backup, protected=False, size_bytes=size_bytes
         ),
     }
     assert coresys.backups.get(slug).location is None
@@ -777,13 +778,15 @@ async def test_backup_to_multiple_locations(
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 @pytest.mark.parametrize(
-    ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
+    ("backup_type", "inputs", "size_bytes"),
+    [("full", {}, 20480), ("partial", {"folders": ["ssl"]}, 10240)],
 )
 async def test_backup_to_multiple_locations_error_on_copy(
     api_client: TestClient,
     coresys: CoreSys,
     backup_type: str,
     inputs: dict[str, Any],
+    size_bytes: int,
 ):
     """Test making a backup to multiple locations that fails during copy stage."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -806,7 +809,7 @@ async def test_backup_to_multiple_locations_error_on_copy(
     orig_backup = coresys.config.path_backup / f"{slug}.tar"
     assert await coresys.run_in_executor(orig_backup.exists)
     assert coresys.backups.get(slug).all_locations == {
-        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=size_bytes),
     }
     assert coresys.backups.get(slug).location is None
 

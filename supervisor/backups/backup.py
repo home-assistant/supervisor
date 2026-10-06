@@ -47,6 +47,7 @@ from ..const import (
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
+    FOLDER_ADDONS,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -757,6 +758,17 @@ class Backup(JobGroup):
 
         return success
 
+    def _folder_origin_dir(self, name: str) -> Path:
+        """Resolve the on-disk path backing a backup folder name.
+
+        FOLDER_ADDONS ("addons/local") is kept as the backup/API name for
+        compatibility with existing backups, but the local apps folder now
+        lives at path_apps_local ("apps/local") on disk.
+        """
+        if name == FOLDER_ADDONS:
+            return self.sys_config.path_apps_local
+        return Path(self.sys_config.path_supervisor, name)
+
     @Job(name="backup_folder_save", cleanup=False)
     async def _folder_save(self, name: str):
         """Take backup of a folder."""
@@ -769,7 +781,7 @@ class Backup(JobGroup):
         outer_secure_tarfile = self._outer_secure_tarfile
         slug_name = name.replace("/", "_")
         tar_name = f"{slug_name}.tar{'.gz' if self.compressed else ''}"
-        origin_dir = Path(self.sys_config.path_supervisor, name)
+        origin_dir = self._folder_origin_dir(name)
 
         def _save() -> bool:
             # Check if exists
@@ -853,7 +865,7 @@ class Backup(JobGroup):
         tar_name = Path(
             self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
         )
-        origin_dir = Path(self.sys_config.path_supervisor, name)
+        origin_dir = self._folder_origin_dir(name)
 
         # Perform a restore
         def _restore() -> None:

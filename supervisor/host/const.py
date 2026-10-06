@@ -54,6 +54,11 @@ class AuthMethod(StrEnum):
     OPEN = "open"
     WEP = "wep"
     WPA_PSK = "wpa-psk"
+    # A stored profile's auth method that Supervisor doesn't (yet) understand
+    # (e.g. WPA3/sae, wpa-eap, owe). Reported on GET so the profile and its
+    # observed state (SSID/signal) stay visible, but never accepted on write
+    # - see `_map_nm_wifi()` and `_validate_wifi_config_v2()`.
+    UNSUPPORTED = "unsupported"
 
 
 class WifiMode(StrEnum):

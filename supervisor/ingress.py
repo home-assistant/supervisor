@@ -149,14 +149,13 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             self.sessions[session] = (utcnow() + timedelta(minutes=15)).timestamp()
             return True
 
-        # Is still valid?
-        if valid_until < utcnow():
-            _LOGGER.debug("Session is no longer valid (%f/%f)", valid_until, utcnow())
+        now = utcnow()
+        if valid_until < now:
+            _LOGGER.debug("Session is no longer valid (%s/%s)", valid_until, now)
             return False
 
-        # Update time
-        valid_until = valid_until + timedelta(minutes=15)
-        self.sessions[session] = valid_until.timestamp()
+        # Sliding window, renewed from now on every request
+        self.sessions[session] = (now + timedelta(minutes=15)).timestamp()
 
         return True
 

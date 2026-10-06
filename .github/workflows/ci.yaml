@@ -8,7 +8,7 @@ on:
   pull_request: ~
 
 env:
-  DEFAULT_PYTHON: "3.14.6"
+  DEFAULT_PYTHON: "3.14.8"
   PRE_COMMIT_CACHE: ~/.cache/pre-commit
   MYPY_CACHE_VERSION: 1
 
@@ -159,7 +159,7 @@ jobs:
         run: |
           echo "::add-matcher::.github/workflows/matchers/hadolint.json"
       - name: Check Dockerfile
-        uses: docker://hadolint/hadolint:v1.18.0
+        uses: docker://hadolint/hadolint:v2.15.1
         with:
           args: hadolint Dockerfile
 
@@ -285,7 +285,7 @@ jobs:
       - name: Run pylint
         run: |
           . venv/bin/activate
-          pylint supervisor tests
+          pylint
 
   mypy:
     name: Check mypy

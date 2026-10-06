@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.06.1
+ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.08.0
 FROM ${BUILD_FROM} AS supervisor-base
 
 ENV \
@@ -22,7 +22,7 @@ RUN \
         openssl \
         yaml \
     \
-    && pip3 install uv==0.10.9
+    && pip3 install uv==0.12.22
 
 #############################################
 # Install requirements and build Supervisor #
@@ -74,6 +74,7 @@ COPY rootfs /
 FROM supervisor-base
 
 # Copy everything from the build stage as a single layer
+# hadolint ignore=DL3067
 COPY --from=supervisor-build / /
 
 LABEL \

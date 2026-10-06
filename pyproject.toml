@@ -32,6 +32,7 @@ include = ["supervisor*"]
 
 [tool.pylint.MAIN]
 py-version = "3.14"
+files = ["supervisor", "tests"]
 # Use a conservative default here; 2 should speed up most setups and not hurt
 # any too bad. Override on command line as appropriate.
 jobs = 2
@@ -339,6 +340,7 @@ lint.ignore = [
   "PLR0911", # Too many return statements ({returns} > {max_returns})
   "PLR0912", # Too many branches ({branches} > {max_branches})
   "PLR0913", # Too many arguments to function call ({c_args} > {max_args})
+  "PLR0917", # Too many positional arguments defined for a function ({p_args} > {max_args})
   "PLR0915", # Too many statements ({statements} > {max_statements})
   "PLR2004", # Magic value used in comparison, consider replacing {value} with a constant variable
   "PLW2901", # Outer {outer_kind} variable {name} overwritten by inner {inner_kind} target
@@ -389,9 +391,6 @@ combine-as-imports = true
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
-
-# Pytest tests often accept many fixture parameters by design.
-"tests/**/*.py" = ["PLR0917"]
 
 # DBus Service Mocks must use typing and names understood by dbus-fast
 "tests/dbus_service_mocks/*.py" = ["F722", "F821", "N815", "UP037"]

@@ -241,8 +241,15 @@ class HomeAssistantAPIError(HomeAssistantError):
     """Home Assistant API exception."""
 
 
-class HomeAssistantAuthError(HomeAssistantAPIError):
-    """Home Assistant Auth API exception."""
+class HomeAssistantAuthError(HomeAssistantAPIError, APIError):
+    """Supervisor could not authenticate itself against Home Assistant."""
+
+    status = 500
+    error_key = "home_assistant_auth_error"
+    message_template = (
+        "Supervisor could not authenticate with Home Assistant. "
+        "Check Supervisor logs for details"
+    )
 
 
 class HomeAssistantWSError(HomeAssistantAPIError):
@@ -334,6 +341,36 @@ class HassOSUpdateError(HassOSError):
     """Error on update of a HassOS."""
 
 
+class HassOSUpdateAlreadyInstalledError(HassOSUpdateError, APIError):
+    """Raise when the requested OS version is already installed."""
+
+    error_key = "hassos_update_already_installed_error"
+    message_template = "Version {version} is already installed"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
+
+
+class HassOSUpdatePendingRebootError(HassOSUpdateError, APIError):
+    """Raise when the requested OS version is installed and awaits a reboot."""
+
+    error_key = "hassos_update_pending_reboot_error"
+    message_template = (
+        "Version {version} is already installed, reboot the system to activate it"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
+
+
 class HassOSJobError(HassOSError, JobException):
     """Function not supported by HassOS."""
 
@@ -359,6 +396,18 @@ class PluginError(HassioError):
 
 class PluginJobError(PluginError, JobException):
     """Raise on job error with plugin."""
+
+
+class PluginDisabledError(PluginError, APIError):
+    """Raise when an action requires a disabled plugin."""
+
+    error_key = "plugin_disabled_error"
+    message_template = "Plugin {plugin} is disabled"
+
+    def __init__(self, plugin: str, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        self.extra_fields = {"plugin": plugin}
+        super().__init__(None, logger)
 
 
 # HaCli
@@ -474,6 +523,17 @@ class MulticastUpdateError(MulticastError):
 
 class MulticastJobError(MulticastError, PluginJobError):
     """Raise on job error with multicast plugin."""
+
+
+class MulticastDisabledError(MulticastError, PluginDisabledError):
+    """Raise when an action requires the disabled Multicast plugin."""
+
+    error_key = "multicast_disabled_error"
+    message_template = "Multicast plugin is disabled"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__("multicast", logger)
 
 
 class MulticastNotRunningError(MulticastError, APIError):
@@ -1053,6 +1113,147 @@ class HostNetworkError(HostError):
 
 class HostNetworkNotFound(HostError):
     """Return if host interface is not found."""
+
+
+class HostNetworkInterfaceUpdateError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when a requested network interface update cannot be resolved."""
+
+    error_key = "host_network_interface_update_error"
+    message_template = "Requested Network interface update is not possible"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(logger)
+
+
+class HostNetworkInterfaceUpdateNotFoundError(HostNetworkNotFound, APINotFound):
+    """Raise when an update-only request targets a missing or disabled interface."""
+
+    error_key = "host_network_interface_update_not_found_error"
+    message_template = (
+        "Requested to update interface {interface} which does not exist or is disabled"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(None, logger)
+
+
+class HostNetworkUpdateConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when updating an existing stored connection profile fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_update_config_error"
+    message_template = "Can't update config on {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkCreateConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when creating and activating a new connection profile fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_create_config_error"
+    message_template = "Can't create config and activate {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkDeleteConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when deleting a stored connection profile fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_delete_config_error"
+    message_template = "Can't delete configuration for interface {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkDeactivateConfigError(HostNetworkError, APIUnknownSupervisorError):
+    """Raise when deactivating a connection or clearing its autoconnect flag fails.
+
+    The underlying error is expected to have already been logged by the
+    caller with full details, since it can't be included in a translatable
+    message.
+    """
+
+    error_key = "host_network_deactivate_config_error"
+    message_template = "Can't deactivate interface {interface}"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, interface: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"interface": interface}
+        super().__init__(logger)
+
+
+class HostNetworkActivationFailedError(HostNetworkError, APIError):
+    """Raise when a connection deactivates instead of reaching an activated state."""
+
+    error_key = "host_network_activation_failed_error"
+    message_template = "Activating connection failed, check connection settings."
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class HostNetworkActivationTimeoutError(HostNetworkError, APIError):
+    """Raise when a connection doesn't reach a terminal state before the timeout."""
+
+    error_key = "host_network_activation_timeout_error"
+    message_template = (
+        "Timed out waiting for connection to activate, check connection settings."
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class HostNetworkWifiPskRequiredError(HostNetworkError, APIError):
+    """Raise when (re)creating a wpa-psk profile without supplying a psk."""
+
+    error_key = "host_network_wifi_psk_required_error"
+    message_template = (
+        "psk is required when auth is wpa-psk, unless an existing wpa-psk "
+        "profile is being kept unchanged"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
 
 
 class HostLogError(HostError):

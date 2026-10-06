@@ -5,15 +5,17 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 import logging
+from pathlib import Path
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
+import voluptuous as vol
 
-from ..const import ATTR_IMAGE, ATTR_VERSION, BusEvent
+from ..const import ATTR_ENABLED, ATTR_IMAGE, ATTR_VERSION, BusEvent
 from ..coresys import CoreSysAttributes
 from ..docker.const import ContainerState
 from ..docker.interface import DockerInterface
 from ..docker.monitor import DockerContainerStateEvent
-from ..exceptions import DockerError, PluginError
+from ..exceptions import DockerError, PluginDisabledError, PluginError
 from ..utils.common import FileConfiguration
 from ..utils.sentry import async_capture_exception
 from .const import WATCHDOG_MAX_ATTEMPTS, WATCHDOG_RETRY_SECONDS
@@ -27,6 +29,12 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     slug: str
     instance: DockerInterface
 
+    def __init__(self, file_path: Path, schema: vol.Schema) -> None:
+        """Initialize plugin."""
+        super().__init__(file_path, schema)
+        # Serializes enable/disable against each other and update/restart/repair
+        self._lifecycle_lock = asyncio.Lock()
+
     @property
     def version(self) -> AwesomeVersion | None:
         """Return current version of the plugin."""
@@ -36,6 +44,11 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     def version(self, value: AwesomeVersion) -> None:
         """Set current version of the plugin."""
         self._data[ATTR_VERSION] = value
+
+    @property
+    def enabled(self) -> bool:
+        """Return True if the plugin is enabled."""
+        return self._data.get(ATTR_ENABLED, True)
 
     @property
     def default_image(self) -> str:
@@ -61,10 +74,11 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     @property
     def need_update(self) -> bool:
-        """Return True if an update is available."""
+        """Return True if the plugin is enabled and an update is available."""
         try:
             return (
-                self.version is not None
+                self.enabled
+                and self.version is not None
                 and self.latest_version is not None
                 and self.version < self.latest_version
             )
@@ -98,7 +112,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in plugin container and restart if necessary."""
-        if event.name != self.instance.name:
+        if not self.enabled or event.name != self.instance.name:
             return
 
         if event.state in {ContainerState.FAILED, ContainerState.UNHEALTHY}:
@@ -109,7 +123,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     ):
         """Restart unhealthy or failed plugin."""
         attempts = 0
-        while await self.instance.current_state() == state:
+        while self.enabled and await self.instance.current_state() == state:
             if not self.in_progress:
                 if state == ContainerState.FAILED:
                     _LOGGER.warning(
@@ -158,7 +172,15 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     async def load(self) -> None:
         """Load system plugin."""
+        # Registered even when disabled so the plugin can be enabled at runtime
         self.start_watchdog()
+
+        if not self.enabled:
+            _LOGGER.info("%s plugin is disabled", self.slug)
+            # Retry the cleanup of a disable that did not finish
+            with suppress(PluginError):
+                await self._remove()
+            return
 
         # Check plugin state
         try:
@@ -190,55 +212,116 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                 await self.start()
 
     async def install(self) -> None:
-        """Install system plugin."""
+        """Install system plugin, retrying until it succeeds."""
         _LOGGER.info("Setup %s plugin", self.slug)
         while True:
-            # read plugin tag and install it
-            if not self.latest_version:
-                await self.sys_updater.reload()
-
-            if to_version := self.latest_version:
-                with suppress(DockerError):
-                    await self.instance.install(to_version, image=self.default_image)
-                    self.version = self.instance.version or to_version
-                    break
-            _LOGGER.warning(
-                "Error on installing %s plugin, retrying in 30sec", self.slug
-            )
-            await asyncio.sleep(30)
+            try:
+                await self._install()
+            except PluginError:
+                _LOGGER.warning(
+                    "Error on installing %s plugin, retrying in 30sec", self.slug
+                )
+                await asyncio.sleep(30)
+            else:
+                break
 
         _LOGGER.info("%s plugin now installed", self.slug)
-        self.image = self.default_image
-        await self.save_data()
 
-    async def update(self, version: str | None = None) -> None:
-        """Update system plugin."""
-        to_version = AwesomeVersion(version) if version else self.latest_version
-        if not to_version:
-            raise PluginError(
-                f"Cannot determine latest version of plugin {self.slug} for update",
-                _LOGGER.error,
-            )
+    async def _install(self) -> None:
+        """Install the latest version of the system plugin once."""
+        if not self.latest_version:
+            await self.sys_updater.reload()
 
-        old_image = self.image
+        if not (to_version := self.latest_version):
+            raise PluginError(f"Cannot determine latest version of plugin {self.slug}")
 
-        if to_version == self.version:
-            _LOGGER.warning(
-                "Version %s is already installed for %s", to_version, self.slug
-            )
-            return
+        try:
+            await self.instance.install(to_version, image=self.default_image)
+        except DockerError as err:
+            raise PluginError(f"Can't install {self.slug} plugin") from err
 
-        await self.instance.update(to_version, image=self.default_image)
         self.version = self.instance.version or to_version
         self.image = self.default_image
         await self.save_data()
 
-        # Cleanup
-        with suppress(DockerError):
-            await self.instance.cleanup(old_image=old_image)
+    async def enable(self) -> None:
+        """Enable, install and start system plugin."""
+        async with self._lifecycle_lock:
+            if self.enabled and await self.is_running():
+                return
 
-        # Start plugin
-        await self.start()
+            if not self.enabled:
+                # Finish the cleanup of a failed disable first
+                if self.version:
+                    await self._remove()
+
+                _LOGGER.info("Enabling %s plugin", self.slug)
+                self._data[ATTR_ENABLED] = True
+                await self.save_data()
+
+            # Fail fast, the retrying install is only for boot
+            if not self.version:
+                await self._install()
+            await self.start()
+
+    async def disable(self) -> None:
+        """Disable system plugin and remove its container and image."""
+        async with self._lifecycle_lock:
+            if self.enabled:
+                _LOGGER.info("Disabling %s plugin", self.slug)
+                self._data[ATTR_ENABLED] = False
+                await self.save_data()
+
+            await self._remove()
+
+    async def _remove(self) -> None:
+        """Remove container and image of the plugin and forget the version."""
+        try:
+            await self.instance.stop()
+            if self.version:
+                await self.sys_docker.remove_image(self.image, self.version)
+        except DockerError as err:
+            raise PluginError(
+                f"Can't remove {self.slug} plugin", _LOGGER.error
+            ) from err
+
+        # Forget the version so a later enable installs the current one
+        if self.version:
+            self._data.pop(ATTR_VERSION, None)
+            await self.save_data()
+
+    async def update(self, version: str | None = None) -> None:
+        """Update system plugin."""
+        async with self._lifecycle_lock:
+            if not self.enabled:
+                raise PluginDisabledError(self.slug, _LOGGER.error)
+
+            to_version = AwesomeVersion(version) if version else self.latest_version
+            if not to_version:
+                raise PluginError(
+                    f"Cannot determine latest version of plugin {self.slug} for update",
+                    _LOGGER.error,
+                )
+
+            old_image = self.image
+
+            if to_version == self.version:
+                _LOGGER.warning(
+                    "Version %s is already installed for %s", to_version, self.slug
+                )
+                return
+
+            await self.instance.update(to_version, image=self.default_image)
+            self.version = self.instance.version or to_version
+            self.image = self.default_image
+            await self.save_data()
+
+            # Cleanup
+            with suppress(DockerError):
+                await self.instance.cleanup(old_image=old_image)
+
+            # Start plugin
+            await self.start()
 
     @abstractmethod
     async def repair(self) -> None:

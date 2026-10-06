@@ -1,0 +1,128 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "enabledManagers": [
+    "custom.regex",
+    "github-actions",
+    "pep621",
+    "pip_requirements",
+    "pre-commit"
+  ],
+  "pre-commit": {
+    "enabled": true
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "uv installed in the Dockerfile",
+      "managerFilePatterns": ["/^Dockerfile$/"],
+      "matchStrings": ["pip3 install uv==(?<currentValue>[\\d.]+)"],
+      "depNameTemplate": "uv",
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "The base-python image in the Dockerfile",
+      "managerFilePatterns": ["/^Dockerfile$/"],
+      "matchStrings": [
+        "ARG BUILD_FROM=(?<depName>ghcr\\.io/home-assistant/base-python):(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "regex:^(?<compatibility>.+)-(?<major>\\d{4})\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "DEFAULT_PYTHON in the workflows",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": ["DEFAULT_PYTHON: \"(?<currentValue>[^\"]+)\""],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "python-version",
+      "versioningTemplate": "python"
+    }
+  ],
+  "minimumReleaseAge": "3 days",
+  "semanticCommits": "disabled",
+  "labels": ["dependencies"],
+  "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}",
+  "packageRules": [
+    {
+      "description": "Label Python updates like Dependabot did",
+      "matchManagers": [
+        "custom.regex",
+        "pep621",
+        "pip_requirements",
+        "pre-commit"
+      ],
+      "addLabels": ["python"]
+    },
+    {
+      "description": "Label GitHub Actions updates like Dependabot did",
+      "matchManagers": ["github-actions"],
+      "addLabels": ["github_actions"]
+    },
+    {
+      "description": "The base-python image and the Python version in the workflows move together, as one Python update. The image date moves within its Python and Alpine line (like 3.14-alpine3.24). ghcr.io returns no release timestamps, so the image is exempt from the minimum release age. The branch topic is fixed, so the Python patch release and the image date bump share one branch.",
+      "matchDepNames": ["ghcr.io/home-assistant/base-python", "python"],
+      "groupName": "Python and base image",
+      "groupSlug": "python-base-image",
+      "separateMajorMinor": false,
+      "group": {
+        "branchTopic": "python-base-image"
+      }
+    },
+    {
+      "description": "No cooldown for the base-python image, ghcr.io returns no release timestamps",
+      "matchDepNames": ["ghcr.io/home-assistant/base-python"],
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "Stay on the current Python minor in the workflows; a new Python minor comes with a new base image line. Minor and patch are separated, otherwise Renovate only proposes the newest minor, which is disabled here.",
+      "matchDepNames": ["python"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "description": "Offer Python patch releases in the workflows",
+      "matchDepNames": ["python"],
+      "separateMinorPatch": true
+    },
+    {
+      "description": "Leave runner labels and action version inputs alone, Dependabot never updated those",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["github-runner", "uses-with"],
+      "enabled": false
+    },
+    {
+      "description": "Our own actions that follow a branch (like home-assistant/actions@master) float on purpose. Pinning them would open a digest PR in every repository for each change to them. Our own actions on a version tag are pinned like any other.",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["home-assistant/**"],
+      "matchCurrentValue": "/^(dev|main|master)$/",
+      "pinDigests": false
+    },
+    {
+      "description": "Group the ruff pre-commit hook with its PyPI twin into one PR",
+      "matchPackageNames": ["astral-sh/ruff-pre-commit", "ruff"],
+      "groupName": "ruff",
+      "groupSlug": "ruff"
+    },
+    {
+      "description": "Group pylint with astroid (their versions are linked and must move together)",
+      "matchPackageNames": ["pylint", "astroid"],
+      "groupName": "pylint",
+      "groupSlug": "pylint",
+      "separateMinorPatch": true
+    },
+    {
+      "description": "Only move astroid to a new minor or major together with pylint. pylint pins the astroid minor it supports, so an astroid minor on its own can't be installed. The group above separates minor and patch updates, so astroid patches are still offered on their own.",
+      "matchPackageNames": ["astroid"],
+      "matchUpdateTypes": ["major", "minor"],
+      "minimumGroupSize": 2
+    },
+    {
+      "description": "Group setuptools in requirements.txt with the build requirement in pyproject.toml",
+      "matchPackageNames": ["setuptools"],
+      "groupName": "setuptools",
+      "groupSlug": "setuptools"
+    }
+  ]
+}
