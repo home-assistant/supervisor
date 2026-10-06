@@ -5,9 +5,6 @@
 .devcontainer
 .vscode
 
-# Test related files
-.tox
-
 # Temporary files
 **/__pycache__
 .pytest_cache
