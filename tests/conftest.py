@@ -85,6 +85,16 @@ from .dbus_service_mocks.network_manager import NetworkManager as NetworkManager
 
 # pylint: disable=redefined-outer-name, protected-access
 
+APPS_FIXTURES = Path(__file__).parent / "fixtures" / "apps"
+
+
+def _snapshot_tree(path: Path) -> dict[Path, tuple[int, int]]:
+    """Return inode and mtime of every entry below path."""
+    return {
+        entry: (entry.stat().st_ino, entry.stat().st_mtime_ns)
+        for entry in path.rglob("*")
+    }
+
 
 @pytest.fixture(autouse=True)
 def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
@@ -542,7 +552,6 @@ async def coresys(
     run_supervisor_state,
     supervisor_name,
     request: pytest.FixtureRequest,
-    tmp_path_factory: pytest.TempPathFactory,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with (
@@ -591,16 +600,10 @@ async def coresys(
     coresys_obj.supervisor._connectivity = True
     coresys_obj.host.network._connectivity = True
 
-    # Fix Paths. Store tests get a private copy of the apps fixtures: backup
-    # restore of the local apps folder rewrites path_apps_local in place, which
-    # must not race other xdist workers reading the shared checkout.
-    apps_fixtures = tmp_path_factory.mktemp("apps") / "fixtures" / "apps"
-    await coresys_obj.run_in_executor(
-        shutil.copytree, Path(__file__).parent / "fixtures" / "apps", apps_fixtures
-    )
-    su_config.APPS_CORE = apps_fixtures / "core"
-    su_config.APPS_LOCAL = apps_fixtures / "local"
-    su_config.APPS_GIT = apps_fixtures / "git"
+    # Fix Paths
+    su_config.APPS_CORE = APPS_FIXTURES / "core"
+    su_config.APPS_LOCAL = APPS_FIXTURES / "local"
+    su_config.APPS_GIT = APPS_FIXTURES / "git"
     su_config.APPARMOR_DATA = Path(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )
@@ -617,10 +620,25 @@ async def coresys(
         coresys_obj.init_websession = AsyncMock()
 
     # Don't remove files/folders related to apps and stores
+    apps_fixtures_before = await coresys_obj.run_in_executor(
+        _snapshot_tree, APPS_FIXTURES
+    )
     with patch("supervisor.store.git.GitRepo.remove"):
         yield coresys_obj
 
     await coresys_obj.dbus.unload()
+
+    # The apps fixtures are shared with concurrent xdist workers. A test that
+    # writes there (e.g. restoring a backup of the local apps folder) must use
+    # apps_fixtures_copy, or other workers read a half-rewritten store.
+    apps_fixtures_after = await coresys_obj.run_in_executor(
+        _snapshot_tree, APPS_FIXTURES
+    )
+    if apps_fixtures_after != apps_fixtures_before:
+        pytest.fail(
+            f"Test modified the shared apps fixtures in {APPS_FIXTURES}, "
+            "use the apps_fixtures_copy fixture"
+        )
 
 
 @pytest.fixture
@@ -635,8 +653,33 @@ async def ha_ws_client(coresys: CoreSys) -> AsyncMock:
 
 
 @pytest.fixture
-async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
-    """Patch supervisor data to be tmp_path."""
+async def apps_fixtures_copy(
+    coresys: CoreSys, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
+    """Point the app store paths at a private copy of the apps fixtures.
+
+    Required by tests that write to path_apps_local, path_apps_core or
+    path_apps_git. The copy keeps the fixtures/apps suffix for tests asserting
+    on fixture paths and lives beside tmp_path, which some tests use as an app
+    location.
+    """
+    apps_fixtures = tmp_path_factory.mktemp("apps") / "fixtures" / "apps"
+    await coresys.run_in_executor(shutil.copytree, APPS_FIXTURES, apps_fixtures)
+    su_config.APPS_CORE = apps_fixtures / "core"
+    su_config.APPS_LOCAL = apps_fixtures / "local"
+    su_config.APPS_GIT = apps_fixtures / "git"
+    return apps_fixtures
+
+
+@pytest.fixture
+async def tmp_supervisor_data(
+    coresys: CoreSys, tmp_path: Path, apps_fixtures_copy: Path
+) -> Path:
+    """Patch supervisor data to be tmp_path.
+
+    Backup and restore tests need this layout and may restore the local apps
+    folder, so they also get a private copy of the apps fixtures.
+    """
     with patch.object(
         su_config.CoreConfig, "path_supervisor", new=PropertyMock(return_value=tmp_path)
     ):
