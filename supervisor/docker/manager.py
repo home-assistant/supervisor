@@ -756,15 +756,17 @@ class DockerAPI(CoreSysAttributes):
         on the bus so listeners can use that to update status for users.
         """
         # Timeout is disabled for pull operations by default, matching docker-py behavior.
-        async for e in self.images.pull(
-            repository, tag=tag, platform=platform, auth=auth, stream=True
-        ):
-            entry = PullLogEntry.from_pull_log_dict(job_id, e)
-            if entry.error:
-                raise entry.exception
-            await asyncio.gather(
-                *self.sys_bus.fire_event(BusEvent.DOCKER_IMAGE_PULL_UPDATE, entry)
-            )
+        try:
+            async for e in self.images.pull(
+                repository, tag=tag, platform=platform, auth=auth, stream=True
+            ):
+                entry = PullLogEntry.from_pull_log_dict(job_id, e)
+                await asyncio.gather(
+                    *self.sys_bus.fire_event(BusEvent.DOCKER_IMAGE_PULL_UPDATE, entry)
+                )
+        except aiodocker.DockerStreamError as err:
+            # aiodocker raises on error chunks in the stream instead of yielding them
+            raise PullLogEntry(job_id=job_id, error=err.message).exception from err
 
         sep = "@" if tag.startswith("sha256:") else ":"
         return await self.images.inspect(f"{repository}{sep}{tag}")
@@ -1222,6 +1224,10 @@ class DockerAPI(CoreSysAttributes):
             resp: list[dict[str, Any]] = await self.images.import_image(
                 image_tar_stream
             )
+        except aiodocker.DockerStreamError as err:
+            raise DockerError(
+                f"Can't import image from tar: {err.message}", _LOGGER.error
+            ) from err
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't import image from tar: {err}", _LOGGER.error
@@ -1237,11 +1243,6 @@ class DockerAPI(CoreSysAttributes):
 
         docker_image_list: list[str] = []
         for chunk in resp:
-            if "errorDetail" in chunk:
-                raise DockerError(
-                    f"Can't import image from tar: {chunk['errorDetail']['message']}",
-                    _LOGGER.error,
-                )
             if "stream" in chunk:
                 if match := RE_IMPORT_IMAGE_STREAM.search(chunk["stream"]):
                     docker_image_list.append(match.group(2))
