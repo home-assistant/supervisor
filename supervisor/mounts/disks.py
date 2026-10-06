@@ -27,7 +27,7 @@ def validate_block_for_mount(
 ) -> None:
     """Raise if a block device cannot be used as a disk mount.
 
-    Shared by candidate listing (caught to filter) and create (propagated).
+    Shared by GET /host/disks (caught to filter) and create (propagated).
     Cheaper structural checks run first so the most fundamental reason wins.
     """
     device = block.device.as_posix() if block.device else ""

@@ -269,6 +269,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/host/reload", api_host.reload),
                 web.post("/host/options", api_host.options),
                 web.get("/host/services", api_host.services),
+                web.get("/host/disks", api_host.disks),
                 web.get(
                     "/host/disks/{disk}/usage",
                     api_host.disk_usage_v1
@@ -1006,7 +1007,6 @@ class RestAPI(CoreSysAttributes):
         app.add_routes(
             [
                 web.get("/mounts", api_mounts.info),
-                web.get("/mounts/candidates", api_mounts.candidates),
                 web.post("/mounts/options", api_mounts.options),
                 web.post("/mounts", api_mounts.create_mount),
                 web.put("/mounts/{mount}", api_mounts.update_mount),

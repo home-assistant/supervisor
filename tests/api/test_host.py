@@ -3,12 +3,13 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import suppress
+from dataclasses import replace
 from datetime import UTC, datetime
 import errno
 import gc
 import time
 from typing import Any
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 from aiohttp import ClientPayloadError, ClientSession, web
 from aiohttp.test_utils import TestClient
@@ -20,8 +21,11 @@ from supervisor.api.host import APIHost
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
 from supervisor.dbus.resolved import Resolved
+from supervisor.dbus.udisks2.block import UDisks2Block
 from supervisor.exceptions import (
+    DBusObjectError,
     HostJournalGatewaydConnectionError,
+    MountFilesystemNotSupportedError,
     MountUsageTimeoutError,
 )
 from supervisor.homeassistant.api import APIState
@@ -32,8 +36,35 @@ from supervisor.mounts.mount import Mount
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.hostname import Hostname as HostnameService
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+from tests.dbus_service_mocks.udisks2_manager import (
+    UDisks2Manager as UDisks2ManagerService,
+)
 
 DEFAULT_RANGE = "entries=:-99:100"
+SDC_OBJECT_PATH = "/org/freedesktop/UDisks2/block_devices/sdc"
+SDC1_PARTITION = {
+    "device": "/dev/sdc1",
+    "uuid": "d2f4a6c8-3b5e-4079-8a1c-6e9d2f4b7a30",
+    "label": "Backups",
+    "filesystem": "ext4",
+    "size": 2000397795328,
+    "read_only": False,
+    "mountable": True,
+}
+# sdc as listed when UDisks2 cannot name its drive
+SDC_DISK_WITHOUT_DRIVE = {
+    "name": "/dev/sdc",
+    "vendor": "",
+    "model": "",
+    "serial": "",
+    "size": 2000398934016,
+    "id": "/dev/sdc",
+    "dev_path": "/dev/sdc",
+    "connection_bus": "",
+    "removable": False,
+    "ejectable": False,
+    "partitions": [SDC1_PARTITION],
+}
 DEFAULT_RANGE_FOLLOW = "entries=:-99:18446744073709551615"
 # pylint: disable=protected-access
 
@@ -1647,3 +1678,155 @@ async def test_disk_usage_api_default_wins_over_mount_of_that_name(
     # The system disk, not the mount
     assert result["data"]["id"] == "root"
     assert result["data"]["label"] == "Root"
+
+
+async def test_api_host_disks(
+    api_client_with_prefix: tuple[TestClient, str],
+    all_dbus_services: dict[str, DBusServiceMock],
+    sdc_candidate: DBusServiceMock,
+):
+    """Test only the unmounted user disk is listed, with its mountable partition."""
+    api_client, prefix = api_client_with_prefix
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    udisks2_manager_service.GetBlockDevices.calls.clear()
+
+    resp = await api_client.get(f"{prefix}/host/disks")
+    result = await resp.json()
+
+    assert result["result"] == "ok"
+    # Re-read from the host first so a newly plugged disk shows up
+    assert len(udisks2_manager_service.GetBlockDevices.calls) == 1
+
+    # Disk fields are named as in /os/datadisk/list
+    assert result["data"]["disks"] == [
+        {
+            "name": "Seagate Expansion (1234567890)",
+            "vendor": "Seagate",
+            "model": "Expansion",
+            "serial": "1234567890",
+            "size": 2000398934016,
+            "id": "Seagate-Expansion-1234567890",
+            "dev_path": "/dev/sdc",
+            "connection_bus": "usb",
+            "removable": True,
+            "ejectable": True,
+            "partitions": [SDC1_PARTITION],
+        }
+    ]
+
+
+async def test_api_host_disks_without_udisks2(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test disks come back empty, not as an error, without UDisks2."""
+    api_client, prefix = api_client_with_prefix
+
+    with patch.object(
+        type(coresys.dbus.udisks2),
+        "is_connected",
+        new_callable=PropertyMock,
+        return_value=False,
+    ):
+        resp = await api_client.get(f"{prefix}/host/disks")
+        result = await resp.json()
+
+    assert result["result"] == "ok"
+    assert result["data"]["disks"] == []
+
+
+async def test_api_host_disks_drive_lookup_fails(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    sdc_candidate: DBusServiceMock,
+):
+    """Test a disk is still listed, by device, when its drive cannot be read."""
+    api_client, prefix = api_client_with_prefix
+
+    with patch.object(
+        coresys.dbus.udisks2, "get_drive", side_effect=DBusObjectError("gone")
+    ):
+        resp = await api_client.get(f"{prefix}/host/disks")
+        result = await resp.json()
+
+    assert result["result"] == "ok"
+    assert result["data"]["disks"] == [SDC_DISK_WITHOUT_DRIVE]
+
+
+async def test_api_host_disks_without_drive(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    sdc_candidate: DBusServiceMock,
+):
+    """Test a disk with no backing drive object is listed by device."""
+    api_client, prefix = api_client_with_prefix
+    sdc = all_dbus_services["udisks2_block"][SDC_OBJECT_PATH]
+    sdc.fixture = replace(sdc.fixture, Drive="/")
+    await coresys.dbus.udisks2.update()
+
+    resp = await api_client.get(f"{prefix}/host/disks")
+    result = await resp.json()
+
+    assert result["result"] == "ok"
+    assert result["data"]["disks"] == [SDC_DISK_WITHOUT_DRIVE]
+
+
+async def test_api_host_disks_partition_table_gone(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    sdc_candidate: DBusServiceMock,
+):
+    """Test a partition whose table disappeared mid-listing is skipped."""
+    api_client, prefix = api_client_with_prefix
+
+    with patch.object(
+        coresys.dbus.udisks2,
+        "get_block_device",
+        side_effect=DBusObjectError("gone"),
+    ):
+        resp = await api_client.get(f"{prefix}/host/disks")
+        result = await resp.json()
+
+    assert result["result"] == "ok"
+    assert result["data"]["disks"] == []
+
+
+async def test_api_host_disks_whole_disk_filesystem(
+    api_client_with_prefix: tuple[TestClient, str],
+    sdc_candidate: DBusServiceMock,
+):
+    """Test a filesystem with no partition table is its own disk."""
+    api_client, prefix = api_client_with_prefix
+
+    with patch.object(
+        UDisks2Block, "partition", new_callable=PropertyMock, return_value=None
+    ):
+        resp = await api_client.get(f"{prefix}/host/disks")
+        result = await resp.json()
+
+    assert result["result"] == "ok"
+    assert [disk["dev_path"] for disk in result["data"]["disks"]] == ["/dev/sdc1"]
+    assert result["data"]["disks"][0]["partitions"] == [SDC1_PARTITION]
+
+
+async def test_api_host_disks_groups_partitions_by_disk(
+    api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test partitions on the same partition table are nested under one disk."""
+    api_client, prefix = api_client_with_prefix
+
+    def only_mmcblk1(_coresys, block: UDisks2Block, *, used_uuids) -> None:
+        if block.device.name not in ("mmcblk1p1", "mmcblk1p3"):
+            raise MountFilesystemNotSupportedError(device=block.device.as_posix())
+
+    with patch("supervisor.api.host.validate_block_for_mount", only_mmcblk1):
+        resp = await api_client.get(f"{prefix}/host/disks")
+        result = await resp.json()
+
+    assert result["result"] == "ok"
+    assert [
+        (disk["dev_path"], [part["device"] for part in disk["partitions"]])
+        for disk in result["data"]["disks"]
+    ] == [("/dev/mmcblk1", ["/dev/mmcblk1p1", "/dev/mmcblk1p3"])]

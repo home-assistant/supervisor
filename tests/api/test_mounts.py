@@ -1,7 +1,6 @@
 """Test mounts API."""
 
 import asyncio
-from dataclasses import replace
 import errno
 from unittest.mock import PropertyMock, patch
 
@@ -11,7 +10,6 @@ import pytest
 
 from supervisor.backups.manager import BackupManager
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import DBusObjectError
 from supervisor.mounts.mount import Mount
 
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -973,49 +971,7 @@ async def test_mount_not_found(
     assert resp["message"] == "No mount exists with name bad"
 
 
-async def test_api_mounts_candidates(
-    api_client_with_prefix: tuple[TestClient, str],
-    all_dbus_services: dict[str, DBusServiceMock],
-    sdc_candidate: DBusServiceMock,
-):
-    """Test only the unmounted user disk is offered as a mount candidate."""
-    api_client, prefix = api_client_with_prefix
-    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
-        "udisks2_manager"
-    ]
-    udisks2_manager_service.GetBlockDevices.calls.clear()
-
-    resp = await api_client.get(f"{prefix}/mounts/candidates")
-    result = await resp.json()
-
-    assert result["result"] == "ok"
-    # Re-read from the host first so a newly plugged disk shows up
-    assert len(udisks2_manager_service.GetBlockDevices.calls) == 1
-
-    assert result["data"]["candidates"] == [
-        {
-            "type": "disk",
-            "device": "/dev/sdc1",
-            "uuid": SDC1_UUID,
-            "label": "Backups",
-            "filesystem": "ext4",
-            "size": 2000397795328,
-            "read_only": False,
-            "drive": {
-                "vendor": "Seagate",
-                "model": "Expansion",
-                "serial": "1234567890",
-                "id": "Seagate-Expansion-1234567890",
-                "size": 2000398934016,
-                "connection_bus": "usb",
-                "removable": True,
-                "ejectable": True,
-            },
-        }
-    ]
-
-
-async def test_api_candidates_entry_posts_back_as_mount(
+async def test_api_host_disks_partition_posts_back_as_mount(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
@@ -1025,19 +981,19 @@ async def test_api_candidates_entry_posts_back_as_mount(
     sdc_candidate: DBusServiceMock,
     mock_is_mount,
 ):
-    """Test a candidates entry plus a name is accepted by POST /mounts."""
+    """Test a /host/disks partition plus mount fields is accepted by POST /mounts."""
     api_client, prefix = api_client_with_prefix
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
     ]
     udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
 
-    resp = await api_client.get(f"{prefix}/mounts/candidates")
-    candidate = (await resp.json())["data"]["candidates"][0]
+    resp = await api_client.get(f"{prefix}/host/disks")
+    partition = (await resp.json())["data"]["disks"][0]["partitions"][0]
 
     resp = await api_client.post(
         f"{prefix}/mounts",
-        json=candidate | {"name": "media_test", "usage": "media"},
+        json=partition | {"name": "media_test", "type": "disk", "usage": "media"},
     )
     result = await resp.json()
     assert result["result"] == "ok"
@@ -1093,64 +1049,6 @@ async def test_api_create_disk_mount_device_uuid_mismatch(
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
     assert result["data"]["mounts"] == []
-
-
-async def test_api_mounts_candidates_without_udisks2(
-    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
-):
-    """Test candidates come back empty, not as an error, without UDisks2."""
-    api_client, prefix = api_client_with_prefix
-
-    with patch.object(
-        type(coresys.dbus.udisks2),
-        "is_connected",
-        new_callable=PropertyMock,
-        return_value=False,
-    ):
-        resp = await api_client.get(f"{prefix}/mounts/candidates")
-        result = await resp.json()
-
-    assert result["result"] == "ok"
-    assert result["data"]["candidates"] == []
-
-
-async def test_api_mounts_candidates_drive_lookup_fails(
-    api_client_with_prefix: tuple[TestClient, str],
-    coresys: CoreSys,
-    sdc_candidate: DBusServiceMock,
-):
-    """Test a candidate is still listed when its drive cannot be read."""
-    api_client, prefix = api_client_with_prefix
-
-    with patch.object(
-        coresys.dbus.udisks2, "get_drive", side_effect=DBusObjectError("gone")
-    ):
-        resp = await api_client.get(f"{prefix}/mounts/candidates")
-        result = await resp.json()
-
-    assert result["result"] == "ok"
-    assert len(result["data"]["candidates"]) == 1
-    assert result["data"]["candidates"][0]["device"] == "/dev/sdc1"
-    assert result["data"]["candidates"][0]["drive"] is None
-
-
-async def test_api_mounts_candidates_without_drive(
-    api_client_with_prefix: tuple[TestClient, str],
-    coresys: CoreSys,
-    sdc_candidate: DBusServiceMock,
-):
-    """Test a candidate with no backing drive object reports a null drive."""
-    api_client, prefix = api_client_with_prefix
-    sdc_candidate.fixture = replace(sdc_candidate.fixture, Drive="/")
-    await coresys.dbus.udisks2.update()
-
-    resp = await api_client.get(f"{prefix}/mounts/candidates")
-    result = await resp.json()
-
-    assert result["result"] == "ok"
-    assert len(result["data"]["candidates"]) == 1
-    assert result["data"]["candidates"][0]["device"] == "/dev/sdc1"
-    assert result["data"]["candidates"][0]["drive"] is None
 
 
 async def test_api_create_disk_mount_by_device(
@@ -1418,7 +1316,7 @@ async def test_api_create_disk_mount_rejects_system_disk(
     path_extern,
     mount_propagation,
 ):
-    """Test a disk excluded from candidates cannot be mounted by naming it."""
+    """Test a disk excluded from /host/disks cannot be mounted by naming it."""
     api_client, prefix = api_client_with_prefix
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
         "udisks2_manager"
