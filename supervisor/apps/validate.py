@@ -27,6 +27,7 @@ from ..const import (
     ATTR_BACKUP_PRE,
     ATTR_BOOT,
     ATTR_BUILD_FROM,
+    ATTR_CONFIG,
     ATTR_CONFIGURATION,
     ATTR_DESCRIPTON,
     ATTR_DEVICES,
@@ -73,6 +74,7 @@ from ..const import (
     ATTR_REALTIME,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
+    ATTR_SERVICE,
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_SQUASH,
@@ -656,12 +658,28 @@ SCHEMA_APPS_FILE = vol.Schema(
 )
 
 
+# Discovery messages of the app, stored to keep the uuid Home Assistant links
+# its config entries to. Added in 2026.09, absent in older backups.
+SCHEMA_APP_BACKUP_DISCOVERY = vol.Schema(
+    [
+        vol.Schema(
+            {
+                vol.Required(ATTR_SERVICE): str,
+                vol.Required(ATTR_UUID): uuid_match,
+                vol.Required(ATTR_CONFIG): vol.Maybe(dict),
+            },
+            extra=vol.REMOVE_EXTRA,
+        )
+    ]
+)
+
 SCHEMA_APP_BACKUP = vol.Schema(
     {
         vol.Required(ATTR_USER): SCHEMA_APP_USER,
         vol.Required(ATTR_SYSTEM): SCHEMA_APP_SYSTEM,
         vol.Required(ATTR_STATE): vol.Coerce(AppState),
         vol.Required(ATTR_VERSION): version_tag,
+        vol.Optional(ATTR_DISCOVERY, default=list): SCHEMA_APP_BACKUP_DISCOVERY,
     },
     extra=vol.REMOVE_EXTRA,
 )
