@@ -31,6 +31,7 @@ from ..utils.sentry import async_capture_exception
 from .const import (
     FILESYSTEM_LABEL_DATA_DISK,
     FILESYSTEM_LABEL_DISABLED_DATA_DISK,
+    GPT_PARTITION_MIN_OVERHEAD,
     PARTITION_NAME_EXTERNAL_DATA_DISK,
     PARTITION_NAME_OLD_EXTERNAL_DATA_DISK,
 )
@@ -260,11 +261,12 @@ class DataDisk(CoreSysAttributes):
                 else None
             )
 
-            # Check before any destructive step; the new partition is slightly
-            # smaller than the drive, so the post-format check remains as well
-            if current_block and current_block.size > target_disk[0].size:
+            # Check before any destructive step. Alignment can shrink the new
+            # partition further, so the post-format check remains as well
+            max_partition_size = target_disk[0].size - GPT_PARTITION_MIN_OVERHEAD
+            if current_block and current_block.size > max_partition_size:
                 raise HassOSDataDiskError(
-                    f"Cannot use {new_disk} as data disk as it is smaller than the current one (new: {target_disk[0].size}, current: {current_block.size})",
+                    f"Cannot use {new_disk} as data disk as it is smaller than the current one (new: {max_partition_size}, current: {current_block.size})",
                     _LOGGER.error,
                 )
 

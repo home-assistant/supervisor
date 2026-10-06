@@ -11,6 +11,7 @@ from supervisor.const import CoreState
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HassOSDataDiskError, HassOSError
+from supervisor.os.const import GPT_PARTITION_MIN_OVERHEAD
 from supervisor.os.data_disk import Disk
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
@@ -241,11 +242,19 @@ async def test_datadisk_migrate_multiple_external_data_disks(
     assert datadisk_service.MarkDataMove.calls == []
 
 
+@pytest.mark.parametrize(
+    "drive_size",
+    [
+        pytest.param(500107862016, id="comfortably-larger"),
+        pytest.param(250058113024 + GPT_PARTITION_MIN_OVERHEAD, id="exact-fit"),
+    ],
+)
 async def test_datadisk_migrate_between_external_renames(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-    os_available,
-):
+    os_available: None,
+    drive_size: int,
+) -> None:
     """Test migration from one external data disk to another renames the original."""
     sdb1_partition_service: PartitionService = all_dbus_services["udisks2_partition"][
         "/org/freedesktop/UDisks2/block_devices/sdb1"
@@ -261,7 +270,7 @@ async def test_datadisk_migrate_between_external_renames(
     sdb_drive_service: DriveService = all_dbus_services["udisks2_drive"][
         "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6"
     ]
-    sdb_drive_service.fixture = replace(sdb_drive_service.fixture, Size=500107862016)
+    sdb_drive_service.fixture = replace(sdb_drive_service.fixture, Size=drive_size)
 
     datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
     datadisk_service.MarkDataMove.calls.clear()
@@ -279,10 +288,21 @@ async def test_datadisk_migrate_between_external_renames(
     ]
 
 
+@pytest.mark.parametrize(
+    "drive_size",
+    [
+        pytest.param(8054112256, id="smaller"),
+        pytest.param(250058113024, id="equal"),
+        pytest.param(
+            250058113024 + GPT_PARTITION_MIN_OVERHEAD - 1, id="larger-within-overhead"
+        ),
+    ],
+)
 async def test_datadisk_migrate_target_drive_too_small(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
     os_available: None,
+    drive_size: int,
 ) -> None:
     """Test migration to a too small drive fails before renaming or formatting."""
     sda1_partition_service: PartitionService = all_dbus_services["udisks2_partition"][
@@ -304,6 +324,10 @@ async def test_datadisk_migrate_target_drive_too_small(
     sdb1_filesystem_service.fixture = replace(
         sdb1_filesystem_service.fixture, MountPoints=[]
     )
+    sdb_drive_service: DriveService = all_dbus_services["udisks2_drive"][
+        "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6"
+    ]
+    sdb_drive_service.fixture = replace(sdb_drive_service.fixture, Size=drive_size)
 
     datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
     datadisk_service.MarkDataMove.calls.clear()
@@ -317,7 +341,7 @@ async def test_datadisk_migrate_target_drive_too_small(
 
     with pytest.raises(
         HassOSDataDiskError,
-        match=r"Cannot use Generic-Flash-Disk-61BCDDB6 as data disk as it is smaller than the current one \(new: 8054112256, current: 250058113024\)",
+        match=rf"Cannot use Generic-Flash-Disk-61BCDDB6 as data disk as it is smaller than the current one \(new: {drive_size - GPT_PARTITION_MIN_OVERHEAD}, current: 250058113024\)",
     ):
         await coresys.os.datadisk.migrate_disk("Generic-Flash-Disk-61BCDDB6")
 
