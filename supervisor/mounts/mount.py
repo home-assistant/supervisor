@@ -1092,6 +1092,11 @@ class DiskMount(Mount):
         return self.sys_config.path_mounts_devices / self.name
 
     @property
+    def path_by_uuid(self) -> Path:
+        """Path to the host's device node for the filesystem UUID."""
+        return Path(f"/dev/disk/by-uuid/{self.uuid}")
+
+    @property
     def what(self) -> str:
         """What to mount.
 
@@ -1106,7 +1111,7 @@ class DiskMount(Mount):
 
     def _write_device_link(self) -> None:
         """Point the device link at the resolved device. Must run in executor."""
-        target = Path(f"/dev/disk/by-uuid/{self.uuid}")
+        target = self.path_by_uuid
         link = self.path_device_link
         if link.is_symlink() and link.readlink() == target:
             return
@@ -1203,7 +1208,9 @@ class DiskMount(Mount):
         # Failing here costs this one mount; rejecting it in the file schema
         # would reset every mount.
         if self.filesystem not in SUPPORTED_LOCAL_FILESYSTEMS:
-            raise MountFilesystemNotSupportedError(_LOGGER.error, device=self.what)
+            raise MountFilesystemNotSupportedError(
+                _LOGGER.error, device=self.path_by_uuid.as_posix()
+            )
 
     async def _resolve_device(self) -> None:
         """Resolve the configured device into a UUID and filesystem.

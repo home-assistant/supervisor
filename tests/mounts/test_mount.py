@@ -1088,9 +1088,13 @@ async def test_disk_mount_persisted_unsupported_filesystem(
         coresys, DISK_TEST_DATA | {"filesystem": "reiserfs"}
     )
 
-    with pytest.raises(MountFilesystemNotSupportedError):
+    with pytest.raises(MountFilesystemNotSupportedError) as err:
         await mount.mount()
 
+    # Named by its device node, not Supervisor's internal link
+    assert err.value.extra_fields == {
+        "device": f"/dev/disk/by-uuid/{DISK_TEST_DATA['uuid']}"
+    }
     # Never handed to systemd, and not re-resolved
     assert systemd_service.StartTransientUnit.calls == []
     assert udisks2_manager_service.ResolveDevice.calls == []
