@@ -555,34 +555,27 @@ async def test_advanced_logs_follow_client_disconnect(
 ):
     """Test following logs stops when the client disconnects while logs are idle."""
     journald_gateway.content.feed_data(b"__CURSOR=cursor1\nMESSAGE=Hello, world!\n\n")
-
-    def pending_handlers() -> int:
-        return sum(
-            task.get_coro().__qualname__ == "RequestHandler._handle_request"
-            for task in asyncio.all_tasks()
-        )
+    upstream_closed = asyncio.Event()
+    journald_gateway.get.return_value.__aexit__.side_effect = (
+        lambda *_: upstream_closed.set()
+    )
 
     # The test server cancels handlers on disconnect, production does not
     runner = web.AppRunner(api_client.server.app)
     await runner.setup()
-    site = web.TCPSite(runner, "127.0.0.1", 0)
-    await site.start()
-    port = site._server.sockets[0].getsockname()[1]
+    await web.TCPSite(runner, "127.0.0.1", 0).start()
+    port = runner.addresses[0][1]
 
     with patch("supervisor.api.utils.DISCONNECT_CHECK_INTERVAL", 0):
         async with ClientSession() as session:
-            resp = await session.request(
-                "GET", f"http://127.0.0.1:{port}/host/logs/identifiers/test/follow"
+            resp = await session.get(
+                f"http://127.0.0.1:{port}/host/logs/identifiers/test/follow"
             )
             assert await resp.content.readline() == b"Hello, world!\n"
-            assert pending_handlers() == 1
+            assert not upstream_closed.is_set()
             resp.close()
 
-        for _ in range(100):
-            if not pending_handlers():
-                break
-            await asyncio.sleep(0.01)
-        assert pending_handlers() == 0
+        await asyncio.wait_for(upstream_closed.wait(), 1)
 
     await runner.cleanup()
 

@@ -406,8 +406,7 @@ async def stop_on_disconnect(request: web.Request) -> AsyncIterator[None]:
     try:
         yield
     except asyncio.CancelledError:
-        if not disconnected:
-            raise
-        task.uncancel()
+    if not disconnected or task.uncancel() > 0:
+        raise
     finally:
         watcher.cancel()
