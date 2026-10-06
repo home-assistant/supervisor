@@ -10,9 +10,11 @@ import pytest
 
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
-from supervisor.const import ATTR_PORT, CoreState
+from supervisor.const import ATTR_PORT, BusEvent, CoreState
 from supervisor.coresys import CoreSys
+from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     HomeAssistantBackupError,
     HomeAssistantWSConnectionError,
@@ -57,6 +59,33 @@ async def test_load(
     await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
     assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "ha_ws_client")
+async def test_load_tracks_core_container_state(coresys: CoreSys):
+    """Test the Core API receives the container state fired while attaching."""
+
+    def attach(*_args, **_kwargs) -> None:
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name="homeassistant",
+                state=ContainerState.RUNNING,
+                id="abc123",
+                time=1234567890,
+            ),
+        )
+
+    with (
+        patch.object(DockerInterface, "attach", side_effect=attach),
+        patch.object(DockerInterface, "check_image"),
+    ):
+        await coresys.homeassistant.load()
+    await asyncio.sleep(0)
+
+    coresys.homeassistant.core.instance.is_running = AsyncMock(return_value=False)
+    await coresys.homeassistant.api._ensure_core_running()  # pylint: disable=protected-access
+    coresys.homeassistant.core.instance.is_running.assert_not_awaited()
 
 
 async def test_api_port_default(coresys: CoreSys):

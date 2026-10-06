@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
+from time import monotonic
 from typing import Any
 
 import aiohttp
@@ -33,6 +34,8 @@ GET_CORE_STATE_MIN_VERSION: AwesomeVersion = AwesomeVersion("2023.8.0.dev2023072
 # added the endpoint. Requesting it from a dev build without the endpoint
 # fails gracefully (404 -> None).
 HTTP_CONFIG_MIN_VERSION: AwesomeVersion = AwesomeVersion("2026.8.0.dev202607280000")
+# Proxied app requests and app logins check the API state before each request
+API_STATE_CACHE_SECONDS = 5
 
 
 @dataclass(frozen=True)
@@ -66,6 +69,10 @@ class HomeAssistantAPI(CoreSysAttributes):
         self._token_lock: asyncio.Lock = asyncio.Lock()
         self._unix_session: aiohttp.ClientSession | None = None
         self._core_connected: bool = False
+        self._core_container_running: bool = False
+        self._api_running_at: float | None = None
+        self._api_state_generation: int = 0
+        self._api_state_task: asyncio.Task[bool] | None = None
 
     @property
     def supports_unix_socket(self) -> bool:
@@ -143,6 +150,13 @@ class HomeAssistantAPI(CoreSysAttributes):
         """Process Core container state changes."""
         if event.name != self.sys_homeassistant.core.instance.name:
             return
+
+        self._core_container_running = event.state in (
+            ContainerState.RUNNING,
+            ContainerState.HEALTHY,
+            ContainerState.UNHEALTHY,
+        )
+        self._invalidate_api_state()
         if event.state not in (ContainerState.STOPPED, ContainerState.FAILED):
             return
 
@@ -150,6 +164,12 @@ class HomeAssistantAPI(CoreSysAttributes):
         if self._unix_session and not self._unix_session.closed:
             await self._unix_session.close()
             self._unix_session = None
+
+    def _invalidate_api_state(self) -> None:
+        """Drop the cached API state and detach any in-flight state check."""
+        self._api_running_at = None
+        self._api_state_generation += 1
+        self._api_state_task = None
 
     async def close(self) -> None:
         """Close the Unix socket session."""
@@ -207,6 +227,10 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def _ensure_core_running(self) -> None:
         """Ensure Core container is running before communicating with it."""
+        # Kept current by container state events. Without a running event,
+        # confirm with an inspect so Core is never wrongly reported down.
+        if self._core_container_running:
+            return
         try:
             if not await self.sys_homeassistant.core.instance.is_running():
                 raise HomeAssistantAPIError(
@@ -474,7 +498,32 @@ class HomeAssistantAPI(CoreSysAttributes):
         return None
 
     async def check_api_state(self) -> bool:
-        """Return Home Assistant Core state if up."""
-        if state := await self.get_api_state():
-            return state.core_state == "RUNNING" or state.offline_db_migration
-        return False
+        """Return Home Assistant Core state if up.
+
+        A positive result is cached briefly and dropped on any Core container
+        state change. Concurrent callers share a single state request.
+        """
+        if (
+            self._api_running_at is not None
+            and monotonic() - self._api_running_at < API_STATE_CACHE_SECONDS
+        ):
+            return True
+
+        if self._api_state_task is None or self._api_state_task.done():
+            self._api_state_task = self.sys_create_task(
+                self._fetch_api_state(), eager_start=True
+            )
+        return await asyncio.shield(self._api_state_task)
+
+    async def _fetch_api_state(self) -> bool:
+        """Request the API state from Core and cache it if up."""
+        generation = self._api_state_generation
+        state = await self.get_api_state()
+        running = state is not None and (
+            state.core_state == "RUNNING" or state.offline_db_migration
+        )
+        # A container state change while the request was in flight makes the
+        # result stale.
+        if running and generation == self._api_state_generation:
+            self._api_running_at = monotonic()
+        return running
