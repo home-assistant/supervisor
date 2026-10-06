@@ -866,7 +866,7 @@ async def test_job_skip_cleanup_removed_after_retention(coresys: CoreSys):
     ]
     call_later.assert_called_once()
     delay, remove = call_later.call_args.args
-    assert delay == timedelta(hours=1).total_seconds()
+    assert delay == timedelta(hours=24).total_seconds()
 
     remove()
     assert coresys.jobs.jobs == []
