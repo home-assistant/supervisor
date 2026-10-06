@@ -16,7 +16,7 @@ from awesomeversion import AwesomeVersion
 from supervisor.utils import remove_colors
 
 from ..bus import EventListener
-from ..const import ATTR_HOMEASSISTANT, BusEvent, CoreState
+from ..const import BusEvent, CoreState
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
 from ..docker.homeassistant import HASS_DOCKER_NAME, DockerHomeAssistant
@@ -397,7 +397,6 @@ class HomeAssistantCore(JobGroup):
             await self.sys_backups.do_backup_partial(
                 name=f"core_{self.instance.version}",
                 homeassistant=True,
-                folders=[ATTR_HOMEASSISTANT],
             )
 
         # process an update

@@ -75,8 +75,13 @@ RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
 # Remove: 2022.08
 # V1 API contract keeps accepting the legacy "addons/local" folder name, but
 # also accepts the new "apps/local" name so clients can migrate ahead of the
-# v1 API's removal.
-_ALL_FOLDERS_V1 = ALL_FOLDERS + [FOLDER_ADDONS, FOLDER_HOMEASSISTANT]
+# v1 API's removal. Maps each accepted name to its Folder (homeassistant is
+# converted to the homeassistant flag by the handlers).
+_FOLDERS_V1: dict[str, Folder | str] = {
+    **{folder: folder for folder in Folder},
+    FOLDER_ADDONS: Folder.APPS,
+    FOLDER_HOMEASSISTANT: FOLDER_HOMEASSISTANT,
+}
 
 
 def _ensure_list(item: Any) -> list:
@@ -94,8 +99,13 @@ def _convert_local_location(item: str | None) -> str | None:
 
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_FOLDERS_V2 = vol.All([vol.In(ALL_FOLDERS)], vol.Unique())
-SCHEMA_FOLDERS_V1 = vol.All([vol.In(_ALL_FOLDERS_V1)], vol.Unique())
+SCHEMA_FOLDERS_V2 = vol.All(
+    [vol.All(vol.In(ALL_FOLDERS), vol.Coerce(Folder))], vol.Unique()
+)
+# Unique runs after conversion so addons/local and apps/local can't both pass
+SCHEMA_FOLDERS_V1 = vol.All(
+    [vol.All(vol.In(_FOLDERS_V1), _FOLDERS_V1.__getitem__)], vol.Unique()
+)
 SCHEMA_LOCATION = vol.All(vol.Maybe(str), _convert_local_location)
 SCHEMA_LOCATION_LIST = vol.All(_ensure_list, [SCHEMA_LOCATION], vol.Unique())
 
@@ -212,13 +222,11 @@ class APIBackups(CoreSysAttributes):
         return replace_folder(folders, Folder.APPS, FOLDER_ADDONS)
 
     @staticmethod
-    def _rename_folders_addons_to_apps(body: dict[str, Any]) -> dict[str, Any]:
-        """Rename addons/local to apps/local in a v1 request body's folders list."""
-        if ATTR_FOLDERS in body:
-            body[ATTR_FOLDERS] = replace_folder(
-                body[ATTR_FOLDERS], FOLDER_ADDONS, Folder.APPS
-            )
-        return body
+    def _convert_homeassistant_folder(body: dict[str, Any]) -> None:
+        """Convert the v1 homeassistant folder in a request body to the homeassistant flag."""
+        if FOLDER_HOMEASSISTANT in (folders := body.get(ATTR_FOLDERS, [])):
+            folders.remove(FOLDER_HOMEASSISTANT)
+            body[ATTR_HOMEASSISTANT] = True
 
     @staticmethod
     def _rename_apps_to_addons_in_backups(
@@ -446,7 +454,7 @@ class APIBackups(CoreSysAttributes):
         # Rename "addons" → "apps" so _do_backup_partial receives the v2 key
         if ATTR_ADDONS in body:
             body[ATTR_APPS] = body.pop(ATTR_ADDONS)
-        self._rename_folders_addons_to_apps(body)
+        self._convert_homeassistant_folder(body)
 
         background = body.pop(ATTR_BACKGROUND)
         return await self._do_backup_partial(body, background)
@@ -510,7 +518,7 @@ class APIBackups(CoreSysAttributes):
         # Rename "addons" → "apps" so _do_restore_partial receives the v2 key
         if ATTR_ADDONS in body:
             body[ATTR_APPS] = body.pop(ATTR_ADDONS)
-        self._rename_folders_addons_to_apps(body)
+        self._convert_homeassistant_folder(body)
 
         return await self._do_restore_partial(backup, body, background)
 

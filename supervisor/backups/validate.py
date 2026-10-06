@@ -34,7 +34,7 @@ from ..validate import version_tag
 
 # FOLDER_ADDONS ("addons/local") is only used for the v1 API contract and
 # backups created before the apps/local rename.
-ALL_FOLDERS: list[str] = [str(folder) for folder in Folder]
+ALL_FOLDERS: list[Folder] = list(Folder)
 
 
 def replace_folder(folders: list[str], old: str, new: str) -> list[str]:
@@ -115,7 +115,7 @@ SCHEMA_BACKUP = vol.Schema(
             ),
         ),
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
-            v1_folderlist, [vol.In(ALL_FOLDERS)], vol.Unique()
+            v1_folderlist, [vol.Coerce(Folder)], vol.Unique()
         ),
         vol.Optional(ATTR_ADDONS, default=list): vol.All(
             [

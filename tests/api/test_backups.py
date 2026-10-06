@@ -16,7 +16,7 @@ import pytest
 from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.manager import BackupManager
-from supervisor.const import CoreState
+from supervisor.const import CoreState, Folder
 from supervisor.coresys import CoreSys
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import (
@@ -1682,7 +1682,8 @@ async def test_v1_partial_backup_accepts_homeassistant_folder(
     assert resp.status == 200
     mock_backup.assert_called_once()
     _, call_kwargs = mock_backup.call_args
-    assert call_kwargs["folders"] == ["homeassistant"]
+    assert call_kwargs["folders"] == []
+    assert call_kwargs["homeassistant"] is True
 
 
 async def test_v1_partial_restore_accepts_homeassistant_folder(
@@ -1704,7 +1705,8 @@ async def test_v1_partial_restore_accepts_homeassistant_folder(
     assert resp.status == 200
     mock_restore.assert_called_once()
     _, call_kwargs = mock_restore.call_args
-    assert call_kwargs["folders"] == ["homeassistant"]
+    assert call_kwargs["folders"] == []
+    assert call_kwargs["homeassistant"] is True
 
 
 @pytest.mark.parametrize("folder", ["addons/local", "apps/local"])
@@ -1728,7 +1730,8 @@ async def test_v1_partial_backup_renames_addons_local_folder(
     assert resp.status == 200
     mock_backup.assert_called_once()
     _, call_kwargs = mock_backup.call_args
-    assert call_kwargs["folders"] == ["apps/local"]
+    assert call_kwargs["folders"] == [Folder.APPS]
+    assert type(call_kwargs["folders"][0]) is Folder
 
 
 @pytest.mark.parametrize("folder", ["addons/local", "apps/local"])
@@ -1752,7 +1755,38 @@ async def test_v1_partial_restore_renames_addons_local_folder(
     assert resp.status == 200
     mock_restore.assert_called_once()
     _, call_kwargs = mock_restore.call_args
-    assert call_kwargs["folders"] == ["apps/local"]
+    assert call_kwargs["folders"] == [Folder.APPS]
+    assert type(call_kwargs["folders"][0]) is Folder
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [
+        pytest.param("do_backup_partial", "/backups/new/partial", id="backup"),
+        pytest.param(
+            "do_restore_partial", "/backups/{slug}/restore/partial", id="restore"
+        ),
+    ],
+)
+async def test_v1_partial_rejects_addons_local_and_apps_local(
+    api_client: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+    method: str,
+    url: str,
+):
+    """V1 partial backup/restore rejects addons/local and apps/local together as duplicates."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(BackupManager, method) as mock_method:
+        resp = await api_client.post(
+            url.format(slug=mock_partial_backup.slug),
+            json={"folders": ["addons/local", "apps/local"]},
+        )
+
+    assert resp.status == 400
+    assert "duplicate" in (await resp.json())["message"]
+    mock_method.assert_not_called()
 
 
 # ── V2 API tests ──────────────────────────────────────────────────────────────
@@ -1949,7 +1983,8 @@ async def test_v2_partial_backup_accepts_apps_local_folder(
     assert resp.status == 200
     mock_backup.assert_called_once()
     _, call_kwargs = mock_backup.call_args
-    assert call_kwargs["folders"] == ["apps/local"]
+    assert call_kwargs["folders"] == [Folder.APPS]
+    assert type(call_kwargs["folders"][0]) is Folder
 
 
 async def test_v2_partial_backup_rejects_addons_local_folder(
@@ -1990,7 +2025,8 @@ async def test_v2_partial_restore_accepts_apps_local_folder(
     assert resp.status == 200
     mock_restore.assert_called_once()
     _, call_kwargs = mock_restore.call_args
-    assert call_kwargs["folders"] == ["apps/local"]
+    assert call_kwargs["folders"] == [Folder.APPS]
+    assert type(call_kwargs["folders"][0]) is Folder
 
 
 async def test_v2_partial_restore_rejects_addons_local_folder(

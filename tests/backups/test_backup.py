@@ -213,7 +213,7 @@ async def test_backup_error_folder(
             ),
         ):
             backup_store_folders, backup_task = coresys.jobs.schedule_job(
-                backup.store_folders, JobSchedulerOptions(), ["media"]
+                backup.store_folders, JobSchedulerOptions(), [Folder.MEDIA]
             )
             await backup_task
             assert len(backup_store_folders.errors) == 1
@@ -250,7 +250,7 @@ async def test_backup_oserror_folder_propagates(
         pytest.raises(BackupFatalIOError),
     ):
         async with backup.create():
-            await backup.store_folders(["media"])
+            await backup.store_folders([Folder.MEDIA])
 
 
 async def test_backup_fatal_error_app_propagates(
@@ -559,14 +559,14 @@ async def test_restore_folder_bufsize(
         "test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL, password=password
     )
     async with backup.create():
-        await backup.store_folders(["media"])
+        await backup.store_folders([Folder.MEDIA])
 
     test_file.unlink()
     async with backup.open(None):
         with patch(
             "supervisor.backups.backup.SecureTarFile", wraps=SecureTarFile
         ) as secure_tar_mock:
-            assert await backup.restore_folders(["media"])
+            assert await backup.restore_folders([Folder.MEDIA])
 
     assert secure_tar_mock.call_args.kwargs["bufsize"] == expected_bufsize
     assert test_file.read_text() == "backup content"
@@ -593,7 +593,7 @@ async def test_restore_encrypted_zero_file_bounded_decompression(
         password="backup_password",
     )
     async with backup.create():
-        await backup.store_folders(["media"])
+        await backup.store_folders([Folder.MEDIA])
 
     max_chunk = 0
     decompressobj = zlib.decompressobj
@@ -614,7 +614,7 @@ async def test_restore_encrypted_zero_file_bounded_decompression(
     test_file.unlink()
     async with backup.open(None):
         with patch("zlib.decompressobj", RecordingDecompressor):
-            assert await backup.restore_folders(["media"])
+            assert await backup.restore_folders([Folder.MEDIA])
 
     assert test_file.stat().st_size == size
     assert max_chunk < size // 2
