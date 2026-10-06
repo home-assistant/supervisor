@@ -354,54 +354,56 @@ class APIHost(CoreSysAttributes):
         else:
             range_header = f"entries=:-{DEFAULT_LINES - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else DEFAULT_LINES}"
 
-        async with self.sys_host.logs.journald_logs(
-            params=params, range_header=range_header, accept=LogFormat.JOURNAL
-        ) as resp:
+        async with (
+            self.sys_host.logs.journald_logs(
+                params=params, range_header=range_header, accept=LogFormat.JOURNAL
+            ) as resp,
+            stop_on_disconnect(request),
+        ):
             response = web.StreamResponse()
             response.content_type = CONTENT_TYPE_TEXT
             headers_returned = False
-            async with stop_on_disconnect(request):
-                try:
-                    async for cursor, line in journal_logs_reader(
-                        resp, log_formatter, no_colors
-                    ):
-                        try:
-                            if not headers_returned:
-                                if cursor:
-                                    response.headers["X-First-Cursor"] = cursor
-                                response.headers["X-Accel-Buffering"] = "no"
-                                await response.prepare(request)
-                                headers_returned = True
-                            await response.write(line.encode("utf-8") + b"\n")
-                        except ClientConnectionResetError as err:
-                            # When client closes the connection while reading busy logs, we
-                            # sometimes get this exception. It should be safe to ignore it.
-                            _LOGGER.debug(
-                                "ClientConnectionResetError raised when returning journal logs: %s",
-                                err,
-                            )
-                            break
-                        except ConnectionError as err:
-                            _LOGGER.warning(
-                                "%s raised when returning journal logs: %s",
-                                type(err).__name__,
-                                err,
-                            )
-                            break
-                except (ConnectionResetError, ClientPayloadError) as ex:
-                    # If the stream to the client already started, an error response
-                    # can no longer be sent, so just end the stream. This happens
-                    # e.g. when systemd-journal-gatewayd is stopped on host shutdown
-                    # while a client is following the logs.
-                    if not headers_returned:
-                        raise APIError(
-                            "Connection reset when trying to fetch data from systemd-journald."
-                        ) from ex
-                    _LOGGER.debug(
-                        "%s raised when reading journal logs: %s",
-                        type(ex).__name__,
-                        ex,
-                    )
+            try:
+                async for cursor, line in journal_logs_reader(
+                    resp, log_formatter, no_colors
+                ):
+                    try:
+                        if not headers_returned:
+                            if cursor:
+                                response.headers["X-First-Cursor"] = cursor
+                            response.headers["X-Accel-Buffering"] = "no"
+                            await response.prepare(request)
+                            headers_returned = True
+                        await response.write(line.encode("utf-8") + b"\n")
+                    except ClientConnectionResetError as err:
+                        # When client closes the connection while reading busy logs, we
+                        # sometimes get this exception. It should be safe to ignore it.
+                        _LOGGER.debug(
+                            "ClientConnectionResetError raised when returning journal logs: %s",
+                            err,
+                        )
+                        break
+                    except ConnectionError as err:
+                        _LOGGER.warning(
+                            "%s raised when returning journal logs: %s",
+                            type(err).__name__,
+                            err,
+                        )
+                        break
+            except (ConnectionResetError, ClientPayloadError) as ex:
+                # If the stream to the client already started, an error response
+                # can no longer be sent, so just end the stream. This happens
+                # e.g. when systemd-journal-gatewayd is stopped on host shutdown
+                # while a client is following the logs.
+                if not headers_returned:
+                    raise APIError(
+                        "Connection reset when trying to fetch data from systemd-journald."
+                    ) from ex
+                _LOGGER.debug(
+                    "%s raised when reading journal logs: %s",
+                    type(ex).__name__,
+                    ex,
+                )
             return response
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
