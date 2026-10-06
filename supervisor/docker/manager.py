@@ -750,10 +750,10 @@ class DockerAPI(CoreSysAttributes):
     ) -> dict[str, Any]:
         """Pull the specified image and return it.
 
-        This mimics the high level API of images.pull but provides better error handling by raising
-        based on a docker error on pull. Whereas the high level API ignores all errors on pull and
-        raises only if the get fails afterwards. Additionally it fires progress reports for the pull
-        on the bus so listeners can use that to update status for users.
+        Streams the pull to fire progress reports on the bus so listeners can
+        update status for users. aiodocker raises DockerStreamError on error
+        entries in the stream, which is mapped to the matching Supervisor
+        exception (e.g. registry rate limit or no space left on device).
         """
         # Timeout is disabled for pull operations by default, matching docker-py behavior.
         try:
