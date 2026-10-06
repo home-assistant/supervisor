@@ -5,10 +5,12 @@ import json
 from pathlib import Path
 from unittest.mock import ANY, patch
 
+import time_machine
+
 from supervisor.const import HomeAssistantUser, IngressSessionData
 from supervisor.coresys import CoreSys
 from supervisor.ingress import Ingress
-from supervisor.utils.dt import utc_from_timestamp
+from supervisor.utils.dt import utc_from_timestamp, utcnow
 from supervisor.utils.json import read_json_file
 
 
@@ -21,7 +23,7 @@ def test_session_handling(coresys: CoreSys):
     assert validate
 
     assert coresys.ingress.validate_session(session)
-    assert coresys.ingress.sessions[session] != validate
+    assert coresys.ingress.sessions[session] >= validate
 
     not_valid = utc_from_timestamp(validate) - timedelta(minutes=20)
     coresys.ingress.sessions[session] = not_valid.timestamp()
@@ -30,6 +32,42 @@ def test_session_handling(coresys: CoreSys):
 
     session_data = coresys.ingress.get_session_data(session)
     assert session_data is None
+
+
+def test_session_validation_sliding_expiry(coresys: CoreSys):
+    """Test validating a session extends expiry from now, not cumulatively."""
+    start = utcnow()
+    with time_machine.travel(start, tick=False):
+        session = coresys.ingress.create_session()
+        for _ in range(100):
+            assert coresys.ingress.validate_session(session)
+
+        assert coresys.ingress.sessions[session] == (
+            (start + timedelta(minutes=15)).timestamp()
+        )
+
+    later = start + timedelta(minutes=10)
+    with time_machine.travel(later, tick=False):
+        assert coresys.ingress.validate_session(session)
+        assert coresys.ingress.sessions[session] == (
+            (later + timedelta(minutes=15)).timestamp()
+        )
+
+    with time_machine.travel(later + timedelta(minutes=16), tick=False):
+        assert not coresys.ingress.validate_session(session)
+
+
+def test_session_validation_malformed_timestamp(coresys: CoreSys):
+    """Test a malformed session timestamp is reset to a float timestamp."""
+    session = coresys.ingress.create_session()
+    coresys.ingress.sessions[session] = 1e20
+
+    start = utcnow()
+    with time_machine.travel(start, tick=False):
+        assert coresys.ingress.validate_session(session)
+        assert coresys.ingress.sessions[session] == (
+            (start + timedelta(minutes=15)).timestamp()
+        )
 
 
 def test_session_handling_with_session_data(coresys: CoreSys):
