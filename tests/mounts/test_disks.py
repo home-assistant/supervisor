@@ -56,7 +56,7 @@ async def test_guard_allows_unmounted_usb_partition(coresys: CoreSys):
     ids=[
         "whole-disk-has-no-filesystem",
         "zram-has-no-filesystem-signature",
-        "hassos-boot-hinted-as-system",
+        "hassos-boot-label",
         "hassos-data-old-despite-hint-system-false",
         "already-mounted-at-media-ext",
     ],
@@ -89,7 +89,8 @@ async def test_guard_rejects_hassos_label(
 ):
     """Test a disk with a Home Assistant OS filesystem label is not offered.
 
-    hassos-data-old reports HintSystem=False, so nothing else would exclude it.
+    A former data partition (hassos-data-old) is no longer mounted, so nothing
+    else would exclude it.
     """
     sdc_candidate.fixture = replace(sdc_candidate.fixture, IdLabel="hassos-data-old")
     await coresys.dbus.udisks2.update()
@@ -98,6 +99,21 @@ async def test_guard_rejects_hassos_label(
         validate_block_for_mount(
             coresys, coresys.dbus.udisks2.get_block_device(SDC1_PATH), used_uuids=set()
         )
+
+
+async def test_guard_allows_internal_disk(
+    coresys: CoreSys, sdc_candidate: DBusServiceMock
+):
+    """Test an internal disk is offered although UDisks2 hints it as system.
+
+    UDisks2 sets HintSystem on every disk that is not removable or on USB.
+    """
+    sdc_candidate.fixture = replace(sdc_candidate.fixture, HintSystem=True)
+    await coresys.dbus.udisks2.update()
+
+    validate_block_for_mount(
+        coresys, coresys.dbus.udisks2.get_block_device(SDC1_PATH), used_uuids=set()
+    )
 
 
 @pytest.mark.parametrize(

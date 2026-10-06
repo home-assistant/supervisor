@@ -37,14 +37,12 @@ def validate_block_for_mount(
     if block.id_usage != ID_USAGE_FILESYSTEM:
         raise MountFilesystemNotSupportedError(device=device)
 
-    # UDisks2 asks that hidden devices are not shown to users
+    # UDisks2 asks that hidden devices are not shown to users. HintSystem is
+    # not checked: UDisks2 sets it on every internal disk.
     if block.hint_ignore:
         raise MountDeviceProtectedError(device=device)
 
-    if block.hint_system:
-        raise MountDeviceProtectedError(device=device)
-
-    # hassos-data-old reports HintSystem=False but is still ours.
+    # Also catches a former data partition (hassos-data-old), no longer mounted.
     if (block.id_label or "").startswith(HAOS_LABEL_PREFIX):
         raise MountDeviceProtectedError(device=device)
 
