@@ -407,7 +407,7 @@ class AppManager(CoreSysAttributes):
             with suppress(DockerError, KeyError):
                 # Need pull a image again
                 if not app.need_build:
-                    await app.instance.install(app.version, app.image)
+                    await app.instance.install(app.version, app.image, arch=app.arch)
                     continue
 
                 # Need local lookup
@@ -415,7 +415,9 @@ class AppManager(CoreSysAttributes):
                     store = self.store[app.slug]
                     # If this app is available for rebuild
                     if app.version == store.version:
-                        await app.instance.install(app.version, app.image)
+                        await app.instance.install(
+                            app.version, app.image, arch=app.arch
+                        )
                         continue
 
             _LOGGER.error("Can't repair %s", app.slug)

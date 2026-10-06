@@ -1127,7 +1127,7 @@ class App(AppModel):
                 raise AppUnknownError(app=self.slug) from err
 
             try:
-                await self.instance.install(self.version)
+                await self.instance.install(self.version, arch=self.arch)
             except DockerBuildError as err:
                 _LOGGER.error("Could not build image for app %s: %s", self.slug, err)
                 raise AppBuildFailedUnknownError(app=self.slug) from err
@@ -1690,13 +1690,15 @@ class App(AppModel):
                     else:
                         with suppress(DockerError):
                             await self.instance.install(
-                                version, restore_image, self.arch
+                                version, restore_image, arch=self.arch
                             )
                             await self.instance.cleanup()
                 elif self.instance.version != version or self.legacy:
                     _LOGGER.info("Restore/Update of image for app %s", self.slug)
                     with suppress(DockerError):
-                        await self.instance.update(version, restore_image, self.arch)
+                        await self.instance.update(
+                            version, restore_image, arch=self.arch
+                        )
                 await self._check_ingress_port()
 
                 # Restore data and config
