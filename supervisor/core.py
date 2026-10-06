@@ -25,7 +25,6 @@ from .exceptions import (
     HassioError,
     HomeAssistantCrashError,
     HomeAssistantError,
-    SupervisorUpdateError,
     WhoamiError,
     WhoamiSSLError,
 )
@@ -263,7 +262,7 @@ class Core(CoreSysAttributes):
             if not self.healthy:
                 _LOGGER.warning("Ignoring Supervisor updates!")
             else:
-                with suppress(SupervisorUpdateError):
+                with suppress(HassioError):
                     # Detached job: errors are raised on the returned task
                     if task := await self.sys_supervisor.update():
                         await task

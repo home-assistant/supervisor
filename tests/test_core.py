@@ -21,6 +21,8 @@ from supervisor.exceptions import (
     DBusNotConnectedError,
     DockerError,
     HassioError,
+    JobException,
+    SupervisorUpdateError,
     WhoamiSSLError,
 )
 from supervisor.hardware.helper import HwHelper
@@ -967,6 +969,38 @@ async def test_start_continues_when_supervisor_update_refused(coresys: CoreSys):
         await coresys.core.start()
 
     update.assert_awaited_once()
+    coresys.tasks.load.assert_awaited_once()
+    coresys.homeassistant.core.start.assert_awaited_once()
+    assert coresys.core.state == CoreState.RUNNING
+
+
+@pytest.mark.usefixtures("core_start_base_mocks")
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(SupervisorUpdateError(), id="update_error"),
+        pytest.param(JobException(), id="job_error"),
+    ],
+)
+async def test_start_continues_when_supervisor_update_task_fails(
+    coresys: CoreSys, error: HassioError
+):
+    """Startup continues when the detached Supervisor update task fails."""
+
+    async def _failing_update() -> None:
+        raise error
+
+    coresys.updater.auto_update = True
+    with (
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(
+            Supervisor,
+            "update",
+            new=AsyncMock(return_value=asyncio.create_task(_failing_update())),
+        ),
+    ):
+        await coresys.core.start()
+
     coresys.tasks.load.assert_awaited_once()
     coresys.homeassistant.core.start.assert_awaited_once()
     assert coresys.core.state == CoreState.RUNNING
