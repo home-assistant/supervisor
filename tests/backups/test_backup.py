@@ -11,15 +11,10 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import zlib
 
 import pytest
-from securetar import (
-    AddFileError,
-    InvalidPasswordError,
-    SecureTarFile,
-    SecureTarReadError,
-)
+from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
 
 from supervisor.apps.app import App
-from supervisor.backups.backup import Backup, BackupLocation
+from supervisor.backups.backup import Backup, BackupLocation, _OuterMemberTarFile
 from supervisor.backups.const import BUF_SIZE, STREAM_BUF_SIZE, BackupType
 from supervisor.config import CoreConfig
 from supervisor.const import FOLDER_ADDONS
@@ -525,11 +520,11 @@ async def test_restore_folder_bufsize(
     test_file.unlink()
     async with backup.open(None):
         with patch(
-            "supervisor.backups.backup.SecureTarFile", wraps=SecureTarFile
-        ) as secure_tar_mock:
+            "supervisor.backups.backup._OuterMemberTarFile", wraps=_OuterMemberTarFile
+        ) as inner_tar_mock:
             assert await backup.restore_folders(["media"])
 
-    assert secure_tar_mock.call_args.kwargs["bufsize"] == expected_bufsize
+    assert inner_tar_mock.call_args.kwargs["bufsize"] == expected_bufsize
     assert test_file.read_text() == "backup content"
 
 
@@ -949,3 +944,150 @@ async def test_restore_supervisor_config_tar_read_error(
             success, tasks = await backup.restore_supervisor_config()
             assert success is False
             assert tasks == []
+
+
+@pytest.mark.parametrize(
+    ("password", "compressed", "member_name"),
+    [
+        pytest.param(None, True, "ssl.tar.gz", id="unencrypted"),
+        pytest.param("password", True, "ssl.tar.gz", id="encrypted"),
+        pytest.param(None, False, "ssl.tar", id="uncompressed"),
+        pytest.param("password", False, "ssl.tar", id="encrypted_uncompressed"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_partial_restore_reads_only_requested_member(
+    coresys: CoreSys,
+    tmp_path: Path,
+    password: str | None,
+    compressed: bool,
+    member_name: str,
+):
+    """Test a partial restore reads only the requested inner tar in place."""
+    (coresys.config.path_ssl / "cert.pem").write_text("ssl")
+    (coresys.config.path_share / "data.txt").write_text("share")
+
+    backup_dir = tmp_path / "backup_location"
+    backup_dir.mkdir()
+    backup_file = backup_dir / "my_backup.tar"
+    backup = Backup(coresys, backup_file, "test", None)
+    backup.new(
+        "test",
+        "2023-07-21T21:05:00.000000+00:00",
+        BackupType.PARTIAL,
+        password=password,
+        compressed=compressed,
+    )
+    async with backup.create():
+        await backup.store_folders(["ssl", "share"])
+
+    (coresys.config.path_ssl / "cert.pem").unlink()
+    (coresys.config.path_share / "data.txt").write_text("changed")
+
+    with (
+        patch.object(
+            tarfile.TarFile,
+            "extractfile",
+            autospec=True,
+            side_effect=tarfile.TarFile.extractfile,
+        ) as extractfile,
+        patch.object(
+            tarfile.TarFile,
+            "extractall",
+            autospec=True,
+            side_effect=tarfile.TarFile.extractall,
+        ) as extractall,
+    ):
+        async with backup.open(None):
+            assert await backup.restore_folders(["ssl"]) is True
+            assert list(backup_dir.iterdir()) == [backup_file]
+
+    assert [call.args[1].name for call in extractfile.call_args_list] == [member_name]
+    assert [call.kwargs["path"] for call in extractall.call_args_list] == [
+        coresys.config.path_ssl
+    ]
+    assert (coresys.config.path_ssl / "cert.pem").read_text() == "ssl"
+    assert (coresys.config.path_share / "data.txt").read_text() == "changed"
+    assert list(backup_dir.iterdir()) == [backup_file]
+
+
+@pytest.mark.parametrize(
+    ("fixture", "password"),
+    [
+        pytest.param("test_consolidate.tar", "test", id="encrypted"),
+        pytest.param("test_consolidate_unc.tar", None, id="unencrypted"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_restore_folder_from_fixture(
+    coresys: CoreSys, tmp_path: Path, fixture: str, password: str | None
+):
+    """Test restoring a folder from backups whose members lack the ./ prefix."""
+    backup_dir = tmp_path / "backup_location"
+    backup_dir.mkdir()
+    backup_file = Path(copy(get_fixture_path(fixture), backup_dir))
+    backup = Backup(coresys, backup_file, "test", None)
+    assert await backup.load()
+    backup.set_password(password)
+
+    (test_file := coresys.config.path_ssl / "test.txt").touch()
+    async with backup.open(None):
+        assert await backup.restore_folders(["ssl"]) is True
+        assert list(backup_dir.iterdir()) == [backup_file]
+
+    assert not test_file.exists()
+
+
+async def test_open_closes_backup_file_on_error(coresys: CoreSys, tmp_path: Path):
+    """Test the backup file is closed when restore fails."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+    async with backup.create():
+        pass
+
+    outer_tars: list[tarfile.TarFile] = []
+
+    # pylint: disable=protected-access
+    async def _failing_restore() -> None:
+        async with backup.open(None):
+            outer_tars.append(backup._outer_tar)
+            raise BackupError("restore failed")
+
+    with pytest.raises(BackupError, match="restore failed"):
+        await _failing_restore()
+
+    assert outer_tars[0].closed
+    assert backup._outer_tar is None
+
+
+async def test_inner_tar_holds_backup_lock_while_open(coresys: CoreSys, tmp_path: Path):
+    """Test reading an inner tar holds the lock that serializes backup file access."""
+    v3_tar = Path(copy(get_fixture_path("backup_example_sec_v3.tar"), tmp_path))
+    backup = Backup(coresys, v3_tar, "test", None)
+    assert await backup.load()
+    backup.set_password("supervisor")
+
+    # pylint: disable=protected-access
+    async with backup.open(None):
+        inner_tar = backup._get_inner_tar("a0d7b954_example")
+        await coresys.run_in_executor(inner_tar.open)
+        assert backup._outer_lock.locked()
+        await coresys.run_in_executor(inner_tar.close)
+        assert not backup._outer_lock.locked()
+
+
+async def test_inner_tar_releases_backup_lock_on_error(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test a failure to read an inner tar releases the backup file lock."""
+    v3_tar = Path(copy(get_fixture_path("backup_example_sec_v3.tar"), tmp_path))
+    backup = Backup(coresys, v3_tar, "test", None)
+    assert await backup.load()
+    backup.set_password("wrong_password")
+
+    # pylint: disable=protected-access
+    async with backup.open(None):
+        inner_tar = backup._get_inner_tar("a0d7b954_example")
+        with pytest.raises(InvalidPasswordError):
+            await coresys.run_in_executor(inner_tar.open)
+        assert not backup._outer_lock.locked()

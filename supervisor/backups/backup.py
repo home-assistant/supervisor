@@ -10,9 +10,10 @@ from datetime import timedelta
 import io
 import json
 import logging
+import os
 from pathlib import Path, PurePath
 import tarfile
-from tempfile import TemporaryDirectory
+import threading
 import time
 from typing import Any, Self, cast
 
@@ -103,6 +104,40 @@ def location_sort_key(value: str | None) -> str:
     return value if value else ""
 
 
+class _OuterMemberTarFile(SecureTarFile):
+    """Inner tar read directly from the open outer backup tar.
+
+    The outer tar's file handle is shared by all inner tars, so the lock is
+    held from open to close. This also makes closing the outer tar wait for
+    a reader that is still running in an executor thread.
+    """
+
+    def __init__(self, lock: threading.Lock, **kwargs: Any) -> None:
+        """Initialize inner tar reader."""
+        super().__init__(**kwargs)
+        self._lock = lock
+        self._locked = False
+
+    def open(self) -> tarfile.TarFile:
+        """Open inner tar while holding the outer tar lock."""
+        self._lock.acquire()  # pylint: disable=consider-using-with
+        self._locked = True
+        try:
+            return super().open()
+        except:
+            self.close()
+            raise
+
+    def close(self) -> None:
+        """Close inner tar and release the outer tar lock."""
+        try:
+            super().close()
+        finally:
+            if self._locked:
+                self._locked = False
+                self._lock.release()
+
+
 class Backup(JobGroup):
     """A single Supervisor backup.
 
@@ -131,7 +166,9 @@ class Backup(JobGroup):
             coresys, JOB_GROUP_BACKUP.format_map(defaultdict(str, slug=slug)), slug
         )
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
-        self._tmp: TemporaryDirectory | None = None
+        self._outer_tar: tarfile.TarFile | None = None
+        self._outer_members: dict[str, tarfile.TarInfo] = {}
+        self._outer_lock = threading.Lock()
         self._outer_secure_tarfile: SecureTarArchive | None = None
         self._password: str | None = None
         self._locations: dict[str | None, BackupLocation] = {
@@ -556,45 +593,81 @@ class Backup(JobGroup):
             else self.all_locations[cast(str | None, location)].path
         )
 
-        # extract an existing backup
-        def _extract_backup():
+        def _open_backup() -> tuple[tarfile.TarFile, dict[str, tarfile.TarInfo]]:
             if not backup_tarfile.is_file():
                 raise BackupFileNotFoundError(
                     f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
                     _LOGGER.error,
                 )
-            tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
 
             try:
-                with tarfile.open(backup_tarfile, "r:") as tar:
-                    # The tar filter rejects path traversal and absolute names,
-                    # aborting restore of potentially crafted backups.
-                    tar.extractall(
-                        path=tmp.name,
-                        filter="tar",
-                    )
-            except tarfile.FilterError as err:
-                raise BackupInvalidError(
-                    f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
-                    _LOGGER.error,
-                ) from err
+                tar = tarfile.open(backup_tarfile, "r:")
             except tarfile.TarError as err:
                 raise BackupError(
                     f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
                     _LOGGER.error,
                 ) from err
 
-            return tmp
+            # Inner tars are read in place, so only the member index is loaded.
+            # The tar filter still rejects path traversal and absolute names to
+            # abort restore of potentially crafted backups.
+            dest_path = self.sys_config.path_tmp.as_posix()
+            members: dict[str, tarfile.TarInfo] = {}
+            try:
+                for member in tar.getmembers():
+                    filtered = tarfile.tar_filter(member, dest_path)
+                    if member.isreg():
+                        members[os.path.normpath(filtered.name)] = member
+            except tarfile.FilterError as err:
+                tar.close()
+                raise BackupInvalidError(
+                    f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
+                    _LOGGER.error,
+                ) from err
+            except tarfile.TarError as err:
+                tar.close()
+                raise BackupError(
+                    f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
+                    _LOGGER.error,
+                ) from err
+
+            return tar, members
+
+        def _close_backup(tar: tarfile.TarFile) -> None:
+            with self._outer_lock:
+                tar.close()
 
         try:
-            self._tmp = await self.sys_run_in_executor(_extract_backup)
+            (
+                self._outer_tar,
+                self._outer_members,
+            ) = await self.sys_run_in_executor(_open_backup)
             yield
         except BackupFileNotFoundError as err:
             self.sys_create_task(self.sys_backups.reload(location))
             raise err
         finally:
-            if self._tmp:
-                await self.sys_run_in_executor(self._tmp.cleanup)
+            if outer_tar := self._outer_tar:
+                self._outer_tar = None
+                self._outer_members = {}
+                await self.sys_run_in_executor(_close_backup, outer_tar)
+
+    def _get_inner_tar(self, name: str) -> SecureTarFile | None:
+        """Return reader for an inner tar of the opened backup, None if missing."""
+        if not self._outer_tar:
+            raise RuntimeError("Cannot restore components without opening backup tar")
+
+        tar_name = f"{name}.tar{'.gz' if self.compressed else ''}"
+        if not (member := self._outer_members.get(tar_name)):
+            return None
+
+        return _OuterMemberTarFile(
+            self._outer_lock,
+            fileobj=self._outer_tar.extractfile(member),
+            gzip=self.compressed,
+            bufsize=self._restore_bufsize,
+            password=self._password,
+        )
 
     async def _create_finalize(self, outer_archive: SecureTarArchive) -> None:
         """Finalize backup creation.
@@ -698,22 +771,8 @@ class Backup(JobGroup):
     async def _app_restore(self, app_slug: str) -> asyncio.Task | None:
         """Restore an app from backup."""
         self.sys_jobs.current.reference = app_slug
-        if not self._tmp:
-            raise RuntimeError("Cannot restore components without opening backup tar")
-
-        tar_name = f"{app_slug}.tar{'.gz' if self.compressed else ''}"
-        tar_path = Path(self._tmp.name, tar_name)
-
-        # Verify the backup exists before trying to restore it
-        if not await self.sys_run_in_executor(tar_path.exists):
+        if not (app_file := self._get_inner_tar(app_slug)):
             raise BackupError(f"Can't find backup {app_slug}", _LOGGER.error)
-
-        app_file = SecureTarFile(
-            tar_path,
-            gzip=self.compressed,
-            bufsize=self._restore_bufsize,
-            password=self._password,
-        )
 
         # Perform a restore
         try:
@@ -864,19 +923,12 @@ class Backup(JobGroup):
     async def _folder_restore(self, name: str) -> None:
         """Restore a folder."""
         self.sys_jobs.current.reference = name
-        if not self._tmp:
-            raise RuntimeError("Cannot restore components without opening backup tar")
-
-        slug_name = name.replace("/", "_")
-        tar_name = Path(
-            self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
-        )
+        folder_file = self._get_inner_tar(name.replace("/", "_"))
         origin_dir = self._folder_origin_dir(name)
 
         # Perform a restore
         def _restore() -> None:
-            # Check if exists inside backup
-            if not tar_name.exists():
+            if not folder_file:
                 raise BackupInvalidError(
                     f"Can't find restore folder {name}", _LOGGER.warning
                 )
@@ -887,12 +939,7 @@ class Backup(JobGroup):
 
             try:
                 _LOGGER.info("Restore folder %s", name)
-                with SecureTarFile(
-                    tar_name,
-                    gzip=self.compressed,
-                    bufsize=self._restore_bufsize,
-                    password=self._password,
-                ) as tar_file:
+                with folder_file as tar_file:
                     # The tar filter rejects path traversal and absolute names,
                     # aborting restore of potentially crafted backups.
                     tar_file.extractall(
@@ -998,21 +1045,12 @@ class Backup(JobGroup):
     @Job(name="backup_restore_homeassistant", cleanup=False)
     async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assistant Core configuration folder."""
-        if not self._tmp:
-            raise RuntimeError("Cannot restore components without opening backup tar")
+        if not (homeassistant_file := self._get_inner_tar("homeassistant")):
+            raise BackupInvalidError(
+                "Can't find Home Assistant Core in backup", _LOGGER.error
+            )
 
         await self.sys_homeassistant.core.stop(remove_container=True)
-
-        # Restore Home Assistant Core config directory
-        tar_name = Path(
-            self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
-        )
-        homeassistant_file = SecureTarFile(
-            tar_name,
-            gzip=self.compressed,
-            bufsize=self._restore_bufsize,
-            password=self._password,
-        )
 
         await self.sys_homeassistant.restore(
             homeassistant_file, self.homeassistant_exclude_database
@@ -1119,31 +1157,21 @@ class Backup(JobGroup):
         Returns tuple of (success, list of mount activation tasks).
         The tasks should be awaited after the restore is complete to activate mounts.
         """
-        if not self._tmp:
-            raise RuntimeError("Cannot restore components without opening backup tar")
-
-        tar_name = Path(
-            self._tmp.name, f"supervisor.tar{'.gz' if self.compressed else ''}"
-        )
+        supervisor_file = self._get_inner_tar("supervisor")
 
         # Extract and parse supervisor data
         def _load_supervisor_data() -> tuple[
             dict[str, Any] | None, dict[str, Any] | None
         ]:
             """Load mounts and docker data from tar file."""
-            if not tar_name.exists():
+            if not supervisor_file:
                 _LOGGER.info("Supervisor tar file not found in backup")
                 return (None, None)
 
             mounts_data = None
             docker_data = None
 
-            with SecureTarFile(
-                tar_name,
-                gzip=self.compressed,
-                bufsize=self._restore_bufsize,
-                password=self._password,
-            ) as tar_file:
+            with supervisor_file as tar_file:
                 # Encrypted tars are opened in streaming mode by securetar since
                 # it cannot seek in the ciphertext. getmember() followed by
                 # extractfile() requires seeking backwards, so read the members

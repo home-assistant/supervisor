@@ -144,10 +144,19 @@ def test_uid_gid_preserved(tmp_path: Path):
             assert filtered.gid == 1000
 
 
-async def test_backup_open_rejects_path_traversal(coresys: CoreSys, tmp_path: Path):
+@pytest.mark.parametrize(
+    "member_name",
+    [
+        pytest.param("../../etc/passwd", id="parent"),
+        pytest.param("./ssl/../../ssl.tar.gz", id="nested_parent"),
+    ],
+)
+async def test_backup_open_rejects_path_traversal(
+    coresys: CoreSys, tmp_path: Path, member_name: str
+):
     """Test that Backup.open() raises BackupInvalidError for path traversal."""
     tar_path = tmp_path / "malicious.tar"
-    traversal_info = tarfile.TarInfo(name="../../etc/passwd")
+    traversal_info = tarfile.TarInfo(name=member_name)
     traversal_info.size = 9
     with tarfile.open(tar_path, "w:") as tar:
         tar.addfile(traversal_info, io.BytesIO(b"malicious"))
@@ -156,6 +165,34 @@ async def test_backup_open_rejects_path_traversal(coresys: CoreSys, tmp_path: Pa
     with pytest.raises(BackupInvalidError):
         async with backup.open(None):
             pass
+
+    assert list(tmp_path.iterdir()) == [tar_path]
+
+
+async def test_folder_restore_ignores_symlink_member(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test that an inner tar stored as a symlink in the backup is not followed."""
+    leaked_info = tarfile.TarInfo(name="leaked.txt")
+    leaked_info.size = 6
+    secret = tmp_supervisor_data / "secret.tar.gz"
+    _create_tar_gz(secret, [leaked_info], {"leaked.txt": b"secret"})
+    (existing := coresys.config.path_share / "existing.txt").write_text("keep")
+
+    link_info = tarfile.TarInfo(name="./share.tar.gz")
+    link_info.type = tarfile.SYMTYPE
+    link_info.linkname = secret.as_posix()
+    backup_tar_path = tmp_supervisor_data / "backup.tar"
+    with tarfile.open(backup_tar_path, "w:") as outer_tar:
+        outer_tar.addfile(link_info)
+
+    backup = Backup(coresys, backup_tar_path, "test", None)
+    backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)
+    async with backup.open(None):
+        assert await backup.restore_folders(["share"]) is False
+
+    assert existing.read_text() == "keep"
+    assert not (coresys.config.path_share / "leaked.txt").exists()
 
 
 async def test_homeassistant_restore_rejects_path_traversal(
