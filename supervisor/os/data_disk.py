@@ -260,6 +260,14 @@ class DataDisk(CoreSysAttributes):
                 else None
             )
 
+            # Check before any destructive step; the new partition is slightly
+            # smaller than the drive, so the post-format check remains as well
+            if current_block and current_block.size > target_disk[0].size:
+                raise HassOSDataDiskError(
+                    f"Cannot use {new_disk} as data disk as it is smaller than the current one (new: {target_disk[0].size}, current: {current_block.size})",
+                    _LOGGER.error,
+                )
+
             # If migrating from one external data disk to another, rename the old one to prevent conflicts
             # Do this first because otherwise a subsequent failure could create a race condition on reboot
             if (
@@ -281,7 +289,7 @@ class DataDisk(CoreSysAttributes):
 
             if current_block and current_block.size > partition.size:
                 raise HassOSDataDiskError(
-                    f"Cannot use {new_disk} as data disk as it is smaller then the current one (new: {partition.size}, current: {current_block.size})",
+                    f"Cannot use {new_disk} as data disk as it is smaller than the current one (new: {partition.size}, current: {current_block.size})",
                     _LOGGER.error,
                 )
 
