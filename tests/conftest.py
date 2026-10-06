@@ -600,10 +600,14 @@ async def coresys(
     coresys_obj.supervisor._connectivity = True
     coresys_obj.host.network._connectivity = True
 
-    # Fix Paths
-    su_config.APPS_CORE = APPS_FIXTURES / "core"
-    su_config.APPS_LOCAL = APPS_FIXTURES / "local"
-    su_config.APPS_GIT = APPS_FIXTURES / "git"
+    # Fix Paths. Select the apps fixtures before any fixture loads the store,
+    # as repositories and store apps cache their location.
+    apps_fixtures = APPS_FIXTURES
+    if "apps_fixtures_copy" in request.fixturenames:
+        apps_fixtures = request.getfixturevalue("apps_fixtures_copy")
+    su_config.APPS_CORE = apps_fixtures / "core"
+    su_config.APPS_LOCAL = apps_fixtures / "local"
+    su_config.APPS_GIT = apps_fixtures / "git"
     su_config.APPARMOR_DATA = Path(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )
@@ -653,21 +657,17 @@ async def ha_ws_client(coresys: CoreSys) -> AsyncMock:
 
 
 @pytest.fixture
-async def apps_fixtures_copy(
-    coresys: CoreSys, tmp_path_factory: pytest.TempPathFactory
-) -> Path:
-    """Point the app store paths at a private copy of the apps fixtures.
+def apps_fixtures_copy(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Create a private copy of the apps fixtures for the app store paths.
 
     Required by tests that write to path_apps_local, path_apps_core or
-    path_apps_git. The copy keeps the fixtures/apps suffix for tests asserting
-    on fixture paths and lives beside tmp_path, which some tests use as an app
-    location.
+    path_apps_git. The coresys fixture points the store at this copy, in
+    whichever order the test requests the fixtures. The copy keeps the
+    fixtures/apps suffix for tests asserting on fixture paths and lives beside
+    tmp_path, which some tests use as an app location.
     """
     apps_fixtures = tmp_path_factory.mktemp("apps") / "fixtures" / "apps"
-    await coresys.run_in_executor(shutil.copytree, APPS_FIXTURES, apps_fixtures)
-    su_config.APPS_CORE = apps_fixtures / "core"
-    su_config.APPS_LOCAL = apps_fixtures / "local"
-    su_config.APPS_GIT = apps_fixtures / "git"
+    shutil.copytree(APPS_FIXTURES, apps_fixtures)
     return apps_fixtures
 
 
