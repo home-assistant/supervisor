@@ -8,7 +8,6 @@ from contextlib import contextmanager, suppress
 from contextvars import Context, ContextVar, Token
 from dataclasses import dataclass
 from datetime import datetime
-from functools import partial
 import logging
 from typing import Any, Self, cast
 from uuid import uuid4
@@ -487,27 +486,20 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         Without a start time the job is started detached: conditions,
         concurrency and throttling are evaluated before this returns, so a
         refused job raises here instead of failing in a task nobody awaits.
-        With a start time they are evaluated when the timer fires; an error
-        is then recorded on the job.
-
-        A method declared with `detach=True` joins a run already in progress
-        instead of refusing, which cannot be represented by a tracked job, so
-        scheduling one is a programming error.
+        With a start time they are evaluated when the timer fires; a job
+        refused then is logged and removed, so its id no longer resolves.
         """
-        method = job_method
-        while isinstance(method, partial):
-            method = method.func
-        # Identity check: a mocked method answers any attribute with a truthy stand-in
-        if getattr(method, "job_detach", False) is True:
-            raise RuntimeError(
-                f"{method.__qualname__} is declared detached, call it directly instead of scheduling it"
-            )
-
         job = self.new_job(parent_id=None)
 
         def _wrap_task() -> asyncio.Task:
+            # The timer task is the task boundary, even for a detached job
             task = self.sys_create_task(
-                job_method(*args, _job__use_existing=job, **kwargs)
+                job_method(
+                    *args,
+                    _job__use_existing=job,
+                    _job_override__detach=False,
+                    **kwargs,
+                )
             )
             # The decorator only names the job once it runs
             task.add_done_callback(

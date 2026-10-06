@@ -2,7 +2,6 @@
 
 import asyncio
 from datetime import datetime, timedelta
-from functools import partial
 import gc
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
 from uuid import uuid4
@@ -2091,7 +2090,8 @@ async def test_scheduled_job_not_started_raises(coresys: CoreSys):
     assert coresys.jobs.jobs == []
 
 
-async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys):
+@pytest.mark.parametrize("detach", [False, True], ids=["regular", "declared_detach"])
+async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys, detach: bool):
     """Test scheduling a REJECT job while it runs raises instead of returning the running task."""
     event = asyncio.Event()
 
@@ -2103,8 +2103,9 @@ async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys):
             self.coresys = coresys
 
         @Job(
-            name="test_scheduled_job_reject_concurrency_raises_execute",
+            name=f"test_scheduled_job_reject_concurrency_raises_execute_{detach}",
             concurrency=JobConcurrency.REJECT,
+            detach=detach,
         )
         async def execute(self) -> None:
             """Execute the class method."""
@@ -2119,37 +2120,6 @@ async def test_scheduled_job_reject_concurrency_raises(coresys: CoreSys):
 
     event.set()
     await task
-
-
-@pytest.mark.parametrize(
-    "options",
-    [
-        pytest.param(JobSchedulerOptions(), id="immediate"),
-        pytest.param(JobSchedulerOptions(delayed_start=0.01), id="delayed"),
-    ],
-)
-@pytest.mark.parametrize("wrap_partial", [False, True], ids=["method", "partial"])
-async def test_scheduled_job_refuses_declared_detach(
-    coresys: CoreSys, options: JobSchedulerOptions, wrap_partial: bool
-):
-    """Test a method declared detached cannot be scheduled."""
-
-    class TestClass:
-        """Test class."""
-
-        def __init__(self, coresys: CoreSys):
-            """Initialize the test class."""
-            self.coresys = coresys
-
-        @Job(name=f"test_scheduled_job_refuses_declared_detach_{uuid4()}", detach=True)
-        async def execute(self, _flag: bool = False) -> None:
-            """Execute the class method."""
-
-    test = TestClass(coresys)
-    method = partial(test.execute, _flag=True) if wrap_partial else test.execute
-    with pytest.raises(RuntimeError, match="declared detached"):
-        await coresys.jobs.schedule_job(method, options)
-    assert coresys.jobs.jobs == []
 
 
 async def test_scheduled_job_group_concurrency(coresys: CoreSys):
@@ -2196,8 +2166,12 @@ async def test_scheduled_job_group_concurrency(coresys: CoreSys):
     assert job.done
 
 
+@pytest.mark.parametrize("detach", [False, True], ids=["regular", "declared_detach"])
 async def test_delayed_scheduled_job_rejection_is_logged(
-    coresys: CoreSys, caplog: pytest.LogCaptureFixture, loop_exception_handler: Mock
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    loop_exception_handler: Mock,
+    detach: bool,
 ):
     """Test a delayed job rejected when its timer fires is logged, not silently dropped."""
     event = asyncio.Event()
@@ -2210,8 +2184,9 @@ async def test_delayed_scheduled_job_rejection_is_logged(
             self.coresys = coresys
 
         @Job(
-            name="test_delayed_scheduled_job_rejection_is_logged_execute",
+            name=f"test_delayed_scheduled_job_rejection_is_logged_execute_{detach}",
             concurrency=JobConcurrency.REJECT,
+            detach=detach,
         )
         async def execute(self) -> None:
             """Execute the class method."""
