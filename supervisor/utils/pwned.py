@@ -35,7 +35,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
 
         buffer = io.StringIO(data)
         for line in buffer:
-            if not sha1_pw.endswith(line.split(":")[0]):
+            if sha1_short + line.partition(":")[0] != sha1_pw:
                 continue
             _CACHE.add(sha1_pw)
             raise PwnedSecret

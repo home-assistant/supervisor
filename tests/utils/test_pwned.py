@@ -49,3 +49,22 @@ async def test_cache_does_not_match_same_prefix(websession: MagicMock) -> None:
 
     await check_pwned_password(websession, OTHER_HASH)
     assert websession.get.call_count == 2
+
+
+@pytest.mark.parametrize(
+    "range_response",
+    [
+        pytest.param("\r\n", id="empty-line"),
+        pytest.param(":3861493\r\n", id="empty-suffix"),
+        pytest.param("EE68FD8:3861493\r\n", id="truncated-suffix"),
+    ],
+)
+async def test_partial_suffix_not_pwned(
+    websession: MagicMock, range_response: str
+) -> None:
+    """Test only a full hash match in the range response counts as pwned."""
+    websession.get.return_value.__aenter__.return_value.text.return_value = (
+        range_response
+    )
+
+    await check_pwned_password(websession, PWNED_HASH)
