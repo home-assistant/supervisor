@@ -10,6 +10,7 @@ from securetar import SecureTarFile
 from supervisor.apps.app import App
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
+from supervisor.const import Folder
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import BackupInvalidError
 
@@ -227,7 +228,7 @@ async def test_folder_restore_rejects_path_traversal(
     backup = Backup(coresys, backup_tar_path, "test", None)
     backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)
     async with backup.open(None):
-        assert await backup.restore_folders(["share"]) is False
+        assert await backup.restore_folders([Folder.SHARE]) is False
 
 
 async def test_folder_restore_rejects_symlink_escape(
@@ -254,4 +255,4 @@ async def test_folder_restore_rejects_symlink_escape(
     backup = Backup(coresys, backup_tar_path, "test", None)
     backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)
     async with backup.open(None):
-        assert await backup.restore_folders(["share"]) is False
+        assert await backup.restore_folders([Folder.SHARE]) is False
