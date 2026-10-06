@@ -20,6 +20,7 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import (
     AudioUpdateError,
+    DBusFatalError,
     DBusNotConnectedError,
     DockerAPIError,
     DockerContainerNotFoundError,
@@ -1403,6 +1404,73 @@ async def test_start_without_reservation_skips_systemd(
     assert systemd_service.StopUnit.calls == []
 
 
+async def test_start_waits_for_in_flight_port_reservation(
+    coresys: CoreSys,
+    container: DockerContainer,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """start() during reserve_port() waits for it, then releases before the container runs."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service.response_get_unit = [
+        DBusError(DBUS_ERR_SYSTEMD_NO_SUCH_UNIT, "no such unit"),
+        DBusError(DBUS_ERR_SYSTEMD_NO_SUCH_UNIT, "no such unit"),
+    ] + [SystemdService.response_get_unit] * 20
+    systemd_service.mock_systemd_unit = systemd_unit_service
+    systemd_service.StopUnit.calls.clear()
+    coresys.homeassistant.http_server_host = None
+    coresys.docker.images.inspect.return_value = {"Id": "123"}
+    container.show.return_value["Image"] = "123"
+    container.show.return_value["State"]["Status"] = "exited"
+    container.show.return_value["State"]["Running"] = False
+
+    orig_start_transient_unit = coresys.dbus.systemd.start_transient_unit
+    unit_creation_entered = asyncio.Event()
+    unit_creation_release = asyncio.Event()
+
+    async def gated_start_transient_unit(*args, **kwargs):
+        unit_creation_entered.set()
+        await unit_creation_release.wait()
+        return await orig_start_transient_unit(*args, **kwargs)
+
+    stop_calls_at_start: list[int] = []
+    container.start.side_effect = lambda: stop_calls_at_start.append(
+        len(systemd_service.StopUnit.calls)
+    )
+
+    with (
+        patch.object(
+            HomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2023.7.0")),
+        ),
+        patch.object(HomeAssistantCore, "_block_till_run"),
+        patch.object(
+            coresys.dbus.systemd,
+            "start_transient_unit",
+            side_effect=gated_start_transient_unit,
+        ),
+    ):
+        reserve_task = asyncio.create_task(coresys.homeassistant.core.reserve_port())
+        await unit_creation_entered.wait()
+        start_task = asyncio.create_task(coresys.homeassistant.core.start())
+        for _ in range(10):
+            await asyncio.sleep(0)
+        # Core start must be parked behind the reservation, not racing it
+        container.start.assert_not_called()
+
+        unit_creation_release.set()
+        assert await reserve_task is True
+        await start_task
+
+    container.start.assert_called_once()
+    assert ("homeassistant-core-port-reserve.socket", "replace") in (
+        systemd_service.StopUnit.calls
+    )
+    assert stop_calls_at_start == [2]
+    assert coresys.homeassistant.core._port_reserved is False
+
+
 async def test_start_proceeds_when_port_release_not_confirmed(
     coresys: CoreSys,
     container: DockerContainer,
@@ -1505,11 +1573,11 @@ async def test_reserve_port_skips_when_dbus_not_connected(
     assert systemd_service.StartTransientUnit.calls == []
 
 
-async def test_release_port_skips_when_dbus_not_connected(
+async def test_release_port_unconfirmed_when_dbus_not_connected(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ):
-    """Releasing is a cheap no-op (confirmed released) if systemd D-Bus is not connected."""
+    """A held reservation stays flagged if systemd D-Bus can't be asked to release it."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StopUnit.calls.clear()
 
@@ -1517,7 +1585,29 @@ async def test_release_port_skips_when_dbus_not_connected(
         coresys.homeassistant.core._port_reserved = True
         result = await coresys.homeassistant.core.release_port()
 
-    assert result is True
+    assert result is False
+    assert coresys.homeassistant.core._port_reserved is True
+    assert systemd_service.StopUnit.calls == []
+
+
+async def test_release_port_unconfirmed_when_unit_lookup_fails(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Only NoSuchUnit proves a unit is gone; any other lookup error keeps the flag."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StopUnit.calls.clear()
+    coresys.homeassistant.core._port_reserved = True
+
+    with patch.object(
+        coresys.dbus.systemd,
+        "get_unit",
+        side_effect=DBusFatalError("busy", type_="org.freedesktop.DBus.Error.Failed"),
+    ):
+        result = await coresys.homeassistant.core.release_port()
+
+    assert result is False
+    assert coresys.homeassistant.core._port_reserved is True
     assert systemd_service.StopUnit.calls == []
 
 
@@ -1552,6 +1642,9 @@ async def test_reserve_port_returns_false_when_unit_ends_up_failed(
 
     assert result is False
     assert len(systemd_service.StartTransientUnit.calls) == 1
+    # Cleanup of the FAILED unit can't be confirmed either (unlinked mock
+    # never clears), so the port must stay flagged for release_port to retry
+    assert coresys.homeassistant.core._port_reserved is True
 
 
 async def test_reserve_port_handles_dbus_disconnect_mid_call(

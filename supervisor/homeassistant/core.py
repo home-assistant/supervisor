@@ -26,6 +26,8 @@ from ..docker.homeassistant import HASS_DOCKER_NAME, DockerHomeAssistant
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    DBusObjectError,
+    DBusSystemdNoSuchUnit,
     DockerContainerNotFoundError,
     DockerContainerNotRunningError,
     DockerError,
@@ -112,6 +114,7 @@ class HomeAssistantCore(JobGroup):
         self._error_state: bool = False
         self._watchdog_listener: EventListener | None = None
         self._port_reserved: bool = False
+        self._port_lock = asyncio.Lock()
 
     @property
     def error_state(self) -> bool:
@@ -662,6 +665,12 @@ class HomeAssistantCore(JobGroup):
         Returns True if reserved, or False if it couldn't be reserved
         (non-fatal, boot continues without the protection).
         """
+        # Serialized with release_port so a concurrent Core start waits for
+        # an in-flight reservation instead of racing it
+        async with self._port_lock:
+            return await self._reserve_port()
+
+    async def _reserve_port(self) -> bool:
         hosts = self.sys_homeassistant.http_server_host or ["0.0.0.0", "::"]
         port = self.sys_homeassistant.api_port
 
@@ -733,7 +742,9 @@ class HomeAssistantCore(JobGroup):
                 port,
                 err,
             )
-            await self._stop_port_reserve_units()
+            # The unit may have been created: stay flagged if that can't be
+            # ruled out so release_port keeps retrying
+            self._port_reserved = not await self._stop_port_reserve_units()
             return False
 
         _LOGGER.debug(
@@ -752,12 +763,13 @@ class HomeAssistantCore(JobGroup):
         be confirmed -- in which case the reservation stays flagged so a
         later call retries.
         """
-        if not self._port_reserved:
-            return True
+        async with self._port_lock:
+            if not self._port_reserved:
+                return True
 
-        released = await self._stop_port_reserve_units()
-        self._port_reserved = not released
-        return released
+            released = await self._stop_port_reserve_units()
+            self._port_reserved = not released
+            return released
 
     async def _stop_unit_confirmed(self, unit_name: str) -> bool:
         """Stop a transient unit and confirm it actually reached INACTIVE.
@@ -767,9 +779,11 @@ class HomeAssistantCore(JobGroup):
         """
         try:
             unit = await self.sys_dbus.systemd.get_unit(unit_name)
-        except HassioError:
-            # No such unit (or couldn't even ask) -- nothing to release.
+        except DBusSystemdNoSuchUnit:
             return True
+        except HassioError:
+            # Can't tell whether the unit exists, so can't confirm release
+            return False
 
         for _attempt in range(2):
             # A stop error doesn't necessarily mean it didn't happen on the
@@ -783,8 +797,10 @@ class HomeAssistantCore(JobGroup):
                         await unit.wait_for_active_state(_TERMINAL_STATES)
 
                 state = await unit.get_active_state()
-            except HassioError:
+            except DBusObjectError:
                 return True  # unit disappeared -- nothing left to hold it
+            except HassioError:
+                continue
 
             if state == UnitActiveState.INACTIVE:
                 return True
@@ -813,7 +829,7 @@ class HomeAssistantCore(JobGroup):
         gone/INACTIVE, or False otherwise.
         """
         if not self.sys_dbus.systemd.is_connected:
-            return True
+            return False
 
         # Stop both units -- leaving either loaded would make systemd refuse
         # to redefine it under the same name next time.
