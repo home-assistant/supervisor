@@ -80,13 +80,22 @@ async def test_create_task_holds_reference_until_done(
     create: Callable[[CoreSys, Coroutine], asyncio.Task],
 ):
     """Test a task is kept alive while running and released once done."""
-    event = asyncio.Event()
-    task_ref = weakref.ref(create(coresys, event.wait()))
 
+    async def wait(future: asyncio.Future) -> None:
+        """Wait on the future."""
+        await future
+
+    future = asyncio.get_running_loop().create_future()
+    future_ref = weakref.ref(future)
+    task_ref = weakref.ref(create(coresys, wait(future)))
+    del future
+
+    # Only the task and its future reference each other now
+    await asyncio.sleep(0)
     gc.collect()
     assert task_ref() is not None
 
-    event.set()
+    future_ref().set_result(None)
     await coresys.block_till_done(wait_background_tasks=True)
     gc.collect()
     assert task_ref() is None
