@@ -12,15 +12,9 @@ from dbus_fast import DBusError, ErrorType, Variant
 import pytest
 
 from supervisor.const import AppStartup, CoreState
-from supervisor.core import _format_bind_address
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import DBUS_ERR_SYSTEMD_NO_SUCH_UNIT
-from supervisor.exceptions import (
-    AppFileReadError,
-    DBusNotConnectedError,
-    HassioError,
-    WhoamiSSLError,
-)
+from supervisor.exceptions import AppFileReadError, HassioError, WhoamiSSLError
 from supervisor.hardware.helper import HwHelper
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.host.control import SystemControl
@@ -491,20 +485,6 @@ def core_start_base_mocks(
         yield
 
 
-@pytest.mark.parametrize(
-    ("host", "expected"),
-    [
-        ("0.0.0.0", "0.0.0.0:8123"),
-        ("192.0.2.1", "192.0.2.1:8123"),
-        ("::", "[::]:8123"),
-        ("2001:db8::1", "[2001:db8::1]:8123"),
-    ],
-)
-def test_format_bind_address(host: str, expected: str) -> None:
-    """IPv6 addresses must be bracketed for systemd's Listen directive."""
-    assert _format_bind_address(host, 8123) == expected
-
-
 @pytest.mark.usefixtures("core_start_base_mocks")
 @pytest.mark.parametrize(
     ("http_server_host", "expected_listen"),
@@ -588,11 +568,11 @@ async def test_start_port_held_during_app_boot_released_before_core_start(
 
     call_sequence: list[str] = []
 
-    orig_reserve = coresys.core._reserve_core_port
-    orig_release = coresys.core._release_core_port
+    orig_reserve = coresys.homeassistant.core.reserve_port
+    orig_release = coresys.homeassistant.core.release_port
 
-    async def tracking_reserve(hosts: list[str], port: int) -> bool:
-        result = await orig_reserve(hosts, port)
+    async def tracking_reserve() -> bool:
+        result = await orig_reserve()
         call_sequence.append("port_reserved")
         return result
 
@@ -608,8 +588,12 @@ async def test_start_port_held_during_app_boot_released_before_core_start(
         call_sequence.append("core_start")
 
     with (
-        patch.object(coresys.core, "_reserve_core_port", side_effect=tracking_reserve),
-        patch.object(coresys.core, "_release_core_port", side_effect=tracking_release),
+        patch.object(
+            coresys.homeassistant.core, "reserve_port", side_effect=tracking_reserve
+        ),
+        patch.object(
+            coresys.homeassistant.core, "release_port", side_effect=tracking_release
+        ),
         patch.object(coresys.apps, "boot", side_effect=tracking_boot),
         patch.object(
             coresys.homeassistant.core, "start", side_effect=tracking_core_start
@@ -686,19 +670,21 @@ async def test_start_still_starts_core_when_release_not_confirmed(
     """
     coresys.homeassistant.http_server_host = None
 
-    orig_release = coresys.core._release_core_port
-    release_calls = 0
+    orig_stop = coresys.homeassistant.core._stop_port_reserve_units
+    stop_calls = 0
 
-    async def flaky_release() -> bool:
-        nonlocal release_calls
-        release_calls += 1
-        if release_calls == 1:
-            # Pre-cleanup release inside _reserve_core_port succeeds normally
-            return await orig_release()
+    async def flaky_stop() -> bool:
+        nonlocal stop_calls
+        stop_calls += 1
+        if stop_calls == 1:
+            # Pre-cleanup inside reserve_port succeeds normally
+            return await orig_stop()
         # The real release before Core starts can't be confirmed
         return False
 
-    with patch.object(coresys.core, "_release_core_port", side_effect=flaky_release):
+    with patch.object(
+        coresys.homeassistant.core, "_stop_port_reserve_units", side_effect=flaky_stop
+    ):
         await coresys.core.start()
 
     coresys.homeassistant.core.start.assert_awaited_once()
@@ -742,166 +728,3 @@ async def test_start_cleans_up_stale_active_unit_before_reserving(
     # It cleanly reached INACTIVE, so there was nothing to reset
     assert systemd_service.ResetFailedUnit.calls == []
     coresys.homeassistant.core.start.assert_awaited_once()
-
-
-async def test_release_core_port_resets_failed_unit(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
-    """Releasing a unit that ended up FAILED (not cleanly INACTIVE) resets it.
-
-    Systemd keeps a FAILED unit around until it is explicitly reset, unlike a
-    unit that cleanly stops to INACTIVE and is garbage collected on its own.
-    """
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-
-    # Simulate a unit that is FAILED and stays that way: StopUnit's mock
-    # unconditionally flips a *linked* unit to INACTIVE, so leave it unlinked
-    # and set the state directly instead, matching a real FAILED unit that
-    # ignores a stop request. ResetFailedUnit is also a no-op when unlinked,
-    # so the unit never actually clears -- release can't be confirmed.
-    systemd_service.response_get_unit = SystemdService.response_get_unit
-    systemd_unit_service.active_state = "failed"
-
-    result = await coresys.core._release_core_port()
-
-    assert result is False
-    assert (
-        "homeassistant-core-port-reserve.socket",
-        "replace",
-    ) in systemd_service.StopUnit.calls
-    assert (
-        "homeassistant-core-port-reserve.socket",
-    ) in systemd_service.ResetFailedUnit.calls
-
-
-async def test_release_core_port_confirms_success_when_unit_goes_inactive(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
-    """Releasing returns True once both units are confirmed INACTIVE."""
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-
-    systemd_service.response_get_unit = SystemdService.response_get_unit
-    systemd_service.mock_systemd_unit = systemd_unit_service
-    systemd_unit_service.active_state = "active"
-
-    result = await coresys.core._release_core_port()
-
-    assert result is True
-
-
-async def test_reserve_core_port_skips_when_dbus_not_connected(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
-    """No reservation is attempted if systemd D-Bus is not connected."""
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_service.StartTransientUnit.calls.clear()
-
-    with patch.object(coresys.dbus.systemd, "dbus", None):
-        result = await coresys.core._reserve_core_port(["0.0.0.0"], 8123)
-
-    assert result is False
-    assert systemd_service.StartTransientUnit.calls == []
-
-
-async def test_release_core_port_skips_when_dbus_not_connected(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
-    """Releasing is a cheap no-op (confirmed released) if systemd D-Bus is not connected."""
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_service.StopUnit.calls.clear()
-
-    with patch.object(coresys.dbus.systemd, "dbus", None):
-        result = await coresys.core._release_core_port()
-
-    assert result is True
-    assert systemd_service.StopUnit.calls == []
-
-
-async def test_reserve_core_port_returns_false_when_unit_ends_up_failed(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
-    """If the unit is created but ends up FAILED rather than ACTIVE, fail cleanly.
-
-    This can happen if the port turns out to already be bound by something
-    else outside Supervisor's knowledge: systemd creates the unit but it
-    immediately fails to actually claim the socket.
-    """
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-
-    # First two GetUnit calls are the pre-cleanup check (one per unit) on a
-    # clean/fresh boot -- neither exists yet. The next GetUnit call is the
-    # post-creation poll for the newly created socket unit, which ends up
-    # FAILED rather than ACTIVE. Leave mock_systemd_unit unlinked so
-    # StartTransientUnit's mock doesn't overwrite ActiveState back to
-    # "active" after we set it.
-    systemd_service.response_get_unit = [
-        DBusError(DBUS_ERR_SYSTEMD_NO_SUCH_UNIT, "no such unit"),
-        DBusError(DBUS_ERR_SYSTEMD_NO_SUCH_UNIT, "no such unit"),
-    ] + [SystemdService.response_get_unit] * 5
-    systemd_unit_service.active_state = "failed"
-    systemd_service.StartTransientUnit.calls.clear()
-
-    result = await coresys.core._reserve_core_port(["0.0.0.0"], 8123)
-
-    assert result is False
-    assert len(systemd_service.StartTransientUnit.calls) == 1
-
-
-async def test_reserve_core_port_handles_dbus_disconnect_mid_call(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
-    """A mid-call D-Bus disconnect is treated as a non-fatal reservation failure.
-
-    DBusNotConnectedError is not a DBusError subclass -- it's raised directly
-    by the dbus_connected decorator when the bus drops after the initial
-    is_connected check passed -- so it must be caught via the broader
-    HassioError, or it would propagate and abort Supervisor startup.
-    """
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    # Pre-cleanup finds nothing on both units (clean/fresh boot); the
-    # disconnect happens on the create attempt itself.
-    systemd_service.response_get_unit = DBusError(
-        DBUS_ERR_SYSTEMD_NO_SUCH_UNIT, "no such unit"
-    )
-
-    with patch.object(
-        coresys.dbus.systemd,
-        "start_transient_unit",
-        side_effect=DBusNotConnectedError(),
-    ):
-        result = await coresys.core._reserve_core_port(["0.0.0.0"], 8123)
-
-    assert result is False
-
-
-async def test_release_core_port_handles_dbus_disconnect_mid_call(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
-    """A mid-call D-Bus disconnect while stopping a unit does not propagate."""
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_service.response_get_unit = SystemdService.response_get_unit
-
-    # mock_systemd_unit is left unlinked, so the unit's ActiveState never
-    # actually moves off the "active" default -- shorten the wait so the
-    # test doesn't block for the real _PORT_RESERVE_TIMEOUT (10s).
-    with (
-        patch("supervisor.core._PORT_RESERVE_TIMEOUT", 0.01),
-        patch.object(
-            coresys.dbus.systemd,
-            "stop_unit",
-            side_effect=DBusNotConnectedError(),
-        ),
-    ):
-        result = await coresys.core._release_core_port()
-
-    assert result is False
