@@ -27,6 +27,7 @@ from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     BackupError,
+    BackupFileExistError,
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
@@ -667,6 +668,26 @@ async def test_backup_error_capture(
     assert backup is None
 
     capture_exception.assert_called_once_with(err)
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_backup_existing_filename_not_deleted(coresys: CoreSys):
+    """Test a backup with an existing filename fails without deleting that file."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    existing = coresys.config.path_backup / "nightly.tar"
+    existing.write_bytes(b"existing backup")
+
+    job, backup_task = coresys.jobs.schedule_job(
+        partial(coresys.backups.do_backup_full, filename="nightly.tar"),
+        JobSchedulerOptions(),
+    )
+    assert await backup_task is None
+
+    assert existing.read_bytes() == b"existing backup"
+    assert job.errors[0].type_ is BackupFileExistError
+    assert coresys.core.state == CoreState.RUNNING
 
 
 @pytest.mark.usefixtures("supervisor_internet")

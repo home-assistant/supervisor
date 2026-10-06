@@ -23,6 +23,7 @@ from ..dbus.const import UnitActiveState
 from ..exceptions import (
     BackupDataDiskBadMessageError,
     BackupError,
+    BackupFileExistError,
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
@@ -562,6 +563,10 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
+        except BackupFileExistError as err:
+            # The file belongs to a different backup, it must not be removed
+            self.sys_jobs.current.capture_error(err)
+            return None
         except BackupError as err:
             await self.sys_run_in_executor(backup.tarfile.unlink, missing_ok=True)
             _LOGGER.error("Backup %s error: %s", backup.slug, err)
