@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 from shutil import copy
 import tarfile
+from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
+import zlib
 
 import pytest
 from securetar import (
@@ -529,6 +531,54 @@ async def test_restore_folder_bufsize(
 
     assert secure_tar_mock.call_args.kwargs["bufsize"] == expected_bufsize
     assert test_file.read_text() == "backup content"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_restore_encrypted_zero_file_bounded_decompression(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test restoring a highly compressible encrypted file keeps decompressed chunks small.
+
+    In tar stream mode each input buffer is decompressed in one go, so a large
+    buffer of compressed zeros expands to the whole file at once.
+    """
+    size = 32 * 1024 * 1024
+    test_file = coresys.config.path_media / "zeros.bin"
+    test_file.write_bytes(bytes(size))
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new(
+        "test",
+        "2023-07-21T21:05:00.000000+00:00",
+        BackupType.FULL,
+        password="backup_password",
+    )
+    async with backup.create():
+        await backup.store_folders(["media"])
+
+    max_chunk = 0
+    decompressobj = zlib.decompressobj
+
+    class RecordingDecompressor:
+        def __init__(self, *args: Any) -> None:
+            self._obj = decompressobj(*args)
+
+        def decompress(self, data: bytes, *args: Any) -> bytes:
+            nonlocal max_chunk
+            out = self._obj.decompress(data, *args)
+            max_chunk = max(max_chunk, len(out))
+            return out
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._obj, name)
+
+    test_file.unlink()
+    async with backup.open(None):
+        with patch("zlib.decompressobj", RecordingDecompressor):
+            assert await backup.restore_folders(["media"])
+
+    assert test_file.stat().st_size == size
+    assert max_chunk < size // 2
 
 
 async def test_store_supervisor_config_nothing_to_backup(
