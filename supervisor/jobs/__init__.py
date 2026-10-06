@@ -8,6 +8,7 @@ from contextlib import contextmanager, suppress
 from contextvars import Context, ContextVar, Token
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 import logging
 from typing import Any, Self, cast
 from uuid import uuid4
@@ -488,7 +489,20 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         refused job raises here instead of failing in a task nobody awaits.
         With a start time they are evaluated when the timer fires; an error
         is then recorded on the job.
+
+        A method declared with `detach=True` joins a run already in progress
+        instead of refusing, which cannot be represented by a tracked job, so
+        scheduling one is a programming error.
         """
+        method = job_method
+        while isinstance(method, partial):
+            method = method.func
+        # Identity check: a mocked method answers any attribute with a truthy stand-in
+        if getattr(method, "job_detach", False) is True:
+            raise RuntimeError(
+                f"{method.__qualname__} is declared detached, call it directly instead of scheduling it"
+            )
+
         job = self.new_job(parent_id=None)
 
         def _wrap_task() -> asyncio.Task:

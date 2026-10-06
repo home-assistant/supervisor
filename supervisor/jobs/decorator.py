@@ -67,7 +67,7 @@ class Job(CoreSysAttributes):
             throttle_max_calls (int | None): Maximum number of calls allowed within the throttle period (for rate-limited jobs).
             internal (bool): Whether the job is internal (not exposed through the Supervisor API). Defaults to False.
             child_job_syncs (list[ChildJobSyncFilter] | None): Use if jobs progress should be kept in sync with progress of one or more of its child jobs.
-            detach (bool): Run the method in a separate task once conditions, concurrency and throttling allow it. The call then returns the task, or None if the job was refused. With REJECT concurrency a call while the job runs returns the running task. Not supported with group concurrency. `JobManager.schedule_job` enables this per call instead.
+            detach (bool): Run the method in a separate task once conditions, concurrency and throttling allow it. The call then returns the task, or None if the job was refused. With REJECT concurrency a call while the job runs returns the running task, so callers join a run in progress. Not supported with group concurrency, and such a method cannot be passed to `JobManager.schedule_job`, which starts a tracked job or refuses.
 
         Raises:
             RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected throttle policy.
@@ -341,11 +341,9 @@ class Job(CoreSysAttributes):
                             f"Job {self.name} cannot be detached while the current job holds the group lock"
                         )
 
-                    # A running detached job is returned instead of rejected.
-                    # Not for scheduled calls: they must not hand out a job
-                    # that was never started.
+                    # A running detached job is returned instead of rejected
                     if (
-                        _job_override__detach is None
+                        self._detach
                         and self.concurrency == JobConcurrency.REJECT
                         and self._detached_task
                         and not self._detached_task.done()
@@ -389,6 +387,8 @@ class Job(CoreSysAttributes):
                 if not detached:
                     self._cleanup_job(job, cleanup)
 
+        # Lets schedule_job() refuse methods that join a running job instead
+        wrapper.job_detach = self._detach  # type: ignore[attr-defined]
         return wrapper
 
     @staticmethod
