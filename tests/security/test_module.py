@@ -61,13 +61,8 @@ async def test_verify_secret(
     coresys.security.pwned = True
     coresys.security.force = force
 
-    with (
-        patch(
-            "supervisor.security.module.check_pwned_password",
-            AsyncMock(side_effect=error),
-        ) as check,
-        expectation,
-    ):
+    check = AsyncMock(side_effect=error)
+    with patch("supervisor.security.module.check_pwned_password", check), expectation:
         await coresys.security.verify_secret("1234567890abcdef")
 
     check.assert_awaited_once()
