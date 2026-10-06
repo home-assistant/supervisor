@@ -36,6 +36,7 @@ from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AppFileReadError,
     AppNotRunningError,
+    AppNotSupportedArchitectureError,
     AppPortConflict,
     AppPrePostBackupCommandReturnedError,
     AppsError,
@@ -1079,6 +1080,25 @@ async def test_app_rebuild_auth_failure(coresys: CoreSys, install_app_example: A
         pytest.raises(DockerRegistryAuthError),
     ):
         await install_app_example.rebuild()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_app_rebuild_unsupported_arch_keeps_image(
+    coresys: CoreSys, install_app_example: App
+) -> None:
+    """Test rebuild fails before removing the image if no arch is supported."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_example.data["arch"] = ["armv7"]
+
+    with (
+        patch.object(DockerApp, "remove") as remove,
+        patch.object(DockerApp, "install") as install,
+        pytest.raises(AppNotSupportedArchitectureError),
+    ):
+        await install_app_example.rebuild()
+
+    remove.assert_not_called()
+    install.assert_not_called()
 
 
 @pytest.mark.usefixtures("coresys", "path_extern")

@@ -69,6 +69,7 @@ from ..exceptions import (
     AppBuildFailedUnknownError,
     AppConfigurationInvalidError,
     AppNotRunningError,
+    AppNotSupportedArchitectureError,
     AppNotSupportedError,
     AppNotSupportedWriteStdinError,
     AppPortConflict,
@@ -88,6 +89,7 @@ from ..exceptions import (
     DockerNotFound,
     DockerRegistryAuthError,
     DockerStatsTimeoutError,
+    HassioArchNotFound,
     HostAppArmorError,
     StoreAppNotFoundError,
 )
@@ -1117,6 +1119,14 @@ class App(AppModel):
         Returns a Task that completes when app has state 'started' (see start)
         if it was running. Else nothing is returned.
         """
+        # Resolve arch before removing the image so an unsupported app keeps it
+        try:
+            arch = self.arch
+        except HassioArchNotFound:
+            raise AppNotSupportedArchitectureError(
+                _LOGGER.error, app=self, architectures=self.supported_arch
+            ) from None
+
         last_state: AppState = self.state
         try:
             # remove docker container and image but not app config
@@ -1127,7 +1137,7 @@ class App(AppModel):
                 raise AppUnknownError(app=self.slug) from err
 
             try:
-                await self.instance.install(self.version, arch=self.arch)
+                await self.instance.install(self.version, arch=arch)
             except DockerBuildError as err:
                 _LOGGER.error("Could not build image for app %s: %s", self.slug, err)
                 raise AppBuildFailedUnknownError(app=self.slug) from err
