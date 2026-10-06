@@ -1,6 +1,7 @@
 """Test backups."""
 
 from contextlib import AbstractContextManager, nullcontext as does_not_raise
+import errno
 import io
 import json
 from pathlib import Path
@@ -30,6 +31,7 @@ from supervisor.exceptions import (
 )
 from supervisor.jobs import JobSchedulerOptions
 from supervisor.mounts.mount import Mount
+from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils import remove_folder
 
 from tests.common import get_fixture_path
@@ -1058,6 +1060,46 @@ async def test_open_closes_backup_file_on_error(coresys: CoreSys, tmp_path: Path
 
     assert outer_tars[0].closed
     assert backup._outer_tar is None
+
+
+@pytest.mark.parametrize(
+    ("error_num", "unhealthy"),
+    [
+        pytest.param(errno.EIO, False, id="io_error"),
+        pytest.param(errno.EBADMSG, True, id="bad_message"),
+    ],
+)
+async def test_open_closes_backup_file_on_index_oserror(
+    coresys: CoreSys, tmp_path: Path, error_num: int, unhealthy: bool
+):
+    """Test the backup file is closed when reading its member index fails."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+    async with backup.create():
+        pass
+
+    outer_tars: list[tarfile.TarFile] = []
+    tarfile_open = tarfile.open
+
+    def _record_open(*args: Any, **kwargs: Any) -> tarfile.TarFile:
+        outer_tars.append(tar := tarfile_open(*args, **kwargs))
+        return tar
+
+    with (
+        patch("supervisor.backups.backup.tarfile.open", side_effect=_record_open),
+        patch.object(
+            tarfile.TarFile, "getmembers", side_effect=OSError(error_num, "error")
+        ),
+        pytest.raises(BackupError, match="Can't read backup tarfile"),
+    ):
+        async with backup.open(None):
+            pass
+
+    assert outer_tars[0].closed
+    assert backup._outer_tar is None  # pylint: disable=protected-access
+    assert (
+        UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
+    ) is unhealthy
 
 
 async def test_inner_tar_holds_backup_lock_while_open(coresys: CoreSys, tmp_path: Path):

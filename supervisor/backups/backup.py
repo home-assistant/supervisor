@@ -3,7 +3,7 @@
 import asyncio
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Awaitable
-from contextlib import asynccontextmanager, suppress
+from contextlib import ExitStack, asynccontextmanager, suppress
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
@@ -613,23 +613,24 @@ class Backup(JobGroup):
             # abort restore of potentially crafted backups.
             dest_path = self.sys_config.path_tmp.as_posix()
             members: dict[str, tarfile.TarInfo] = {}
-            try:
-                for member in tar.getmembers():
-                    filtered = tarfile.tar_filter(member, dest_path)
-                    if member.isreg():
-                        members[os.path.normpath(filtered.name)] = member
-            except tarfile.FilterError as err:
-                tar.close()
-                raise BackupInvalidError(
-                    f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
-                    _LOGGER.error,
-                ) from err
-            except tarfile.TarError as err:
-                tar.close()
-                raise BackupError(
-                    f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
-                    _LOGGER.error,
-                ) from err
+            with ExitStack() as stack:
+                stack.callback(tar.close)
+                try:
+                    for member in tar.getmembers():
+                        filtered = tarfile.tar_filter(member, dest_path)
+                        if member.isreg():
+                            members[os.path.normpath(filtered.name)] = member
+                except tarfile.FilterError as err:
+                    raise BackupInvalidError(
+                        f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
+                        _LOGGER.error,
+                    ) from err
+                except tarfile.TarError as err:
+                    raise BackupError(
+                        f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
+                        _LOGGER.error,
+                    ) from err
+                stack.pop_all()
 
             return tar, members
 
@@ -638,19 +639,25 @@ class Backup(JobGroup):
                 tar.close()
 
         try:
-            (
-                self._outer_tar,
-                self._outer_members,
-            ) = await self.sys_run_in_executor(_open_backup)
-            yield
-        except BackupFileNotFoundError as err:
+            outer_tar, outer_members = await self.sys_run_in_executor(_open_backup)
+        except BackupFileNotFoundError:
             self.sys_create_task(self.sys_backups.reload(location))
-            raise err
+            raise
+        except OSError as err:
+            self.sys_resolution.check_oserror(err)
+            raise BackupError(
+                f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
+                _LOGGER.error,
+            ) from err
+
+        self._outer_tar = outer_tar
+        self._outer_members = outer_members
+        try:
+            yield
         finally:
-            if outer_tar := self._outer_tar:
-                self._outer_tar = None
-                self._outer_members = {}
-                await self.sys_run_in_executor(_close_backup, outer_tar)
+            self._outer_tar = None
+            self._outer_members = {}
+            await self.sys_run_in_executor(_close_backup, outer_tar)
 
     def _get_inner_tar(self, name: str) -> SecureTarFile | None:
         """Return reader for an inner tar of the opened backup, None if missing."""
