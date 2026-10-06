@@ -1510,6 +1510,78 @@ async def test_disk_mount_discards_session_when_device_detached(
     ]
 
 
+async def test_disk_mount_discards_session_when_disk_replugged(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a disk replugged between checks has its dead session torn down.
+
+    The replugged disk carries the same UUID but is a new block device, while
+    the mount stays bound to the old, dead one.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+
+    # Mounted from sda1 (2049), what the UUID resolves to by default
+    with patch("supervisor.mounts.mount._mount_device_number", return_value=2049):
+        await mount.mount()
+        assert mount.state == UnitActiveState.ACTIVE
+
+        systemd_service.StopUnit.calls.clear()
+        # Same UUID, now on another block device
+        udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+
+        assert await mount.is_mounted() is False
+
+    assert mount.state == UnitActiveState.INACTIVE
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-media-test.mount"
+    ]
+
+
+async def test_disk_mount_btrfs_is_checked_by_uuid_only(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test btrfs, whose mounts report an anonymous device number, stays attached."""
+    mount: DiskMount = Mount.from_dict(
+        coresys, DISK_TEST_DATA | {"filesystem": "btrfs"}
+    )
+
+    with patch("supervisor.mounts.mount._mount_device_number", return_value=45):
+        await mount.mount()
+        assert await mount.is_mounted() is True
+
+    assert mount.state == UnitActiveState.ACTIVE
+
+
+async def test_disk_mount_unreadable_mount_point_is_detached(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a mount point that cannot be read is treated as a detached disk."""
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    await mount.mount()
+
+    with patch(
+        "supervisor.mounts.mount._mount_device_number",
+        side_effect=OSError(errno.EIO, "Input/output error"),
+    ):
+        assert await mount.is_mounted() is False
+
+    assert mount.state == UnitActiveState.INACTIVE
+
+
 async def test_disk_mount_survives_failed_session_discard(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],

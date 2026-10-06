@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 import subprocess
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
 from aiodocker.channel import Channel, ChannelSubscriber
@@ -1172,7 +1172,11 @@ def mock_is_mount() -> MagicMock:
     broken mount override with `side_effect=OSError(...)` for the
     unreachable case or `return_value=False` for the ghost case.
     """
-    with patch("supervisor.mounts.mount._probe_mount", return_value=True) as probe:
+    # ANY matches every resolved device number, so a disk mount stays attached
+    with (
+        patch("supervisor.mounts.mount._probe_mount", return_value=True) as probe,
+        patch("supervisor.mounts.mount._mount_device_number", return_value=ANY),
+    ):
         yield probe
 
 

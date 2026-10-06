@@ -98,6 +98,15 @@ def _probe_mount(path: Path) -> bool:
     return path.stat().st_dev != path.parent.stat().st_dev
 
 
+def _mount_device_number(path: Path) -> int:
+    """Return the device number of the filesystem mounted at `path`.
+
+    Run inside an executor, after `_probe_mount` activated the mount: stat
+    does not trigger an automount.
+    """
+    return path.stat().st_dev
+
+
 # Layered timeouts, ordered so each layer gives up before the one above it
 # (see #6827): the kernel RPC timeout (~30 s from timeo=100,retrans=2) lets
 # the mount helper exit, systemd's unit timeout then kills whatever is left,
@@ -1150,7 +1159,10 @@ class DiskMount(Mount):
         return True
 
     async def _device_attached(self) -> bool:
-        """Return whether the resolved device is still present.
+        """Return whether the mounted filesystem is backed by a present device.
+
+        The UUID alone is not enough: a replugged disk is a new block device
+        with the same UUID, while the mount stays bound to the old, dead one.
 
         True when UDisks2 cannot be asked: an unavailable service is not a
         missing disk.
@@ -1165,7 +1177,22 @@ class DiskMount(Mount):
         except DBusError, DBusNotConnectedError:
             return True
 
-        return bool(devices)
+        if not devices:
+            return False
+
+        # btrfs reports an anonymous device number, never the block device's,
+        # so a replug between checks goes unnoticed there.
+        if self.filesystem == "btrfs":
+            return True
+
+        try:
+            mounted = await self.sys_run_in_executor(
+                _mount_device_number, self.local_where
+            )
+        except OSError:
+            return False
+
+        return any(block.device_number == mounted for block in devices)
 
     def forget_resolved_device(self) -> None:
         """Drop the resolved filesystem so the next mount resolves again.
