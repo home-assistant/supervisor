@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Generator
 from datetime import datetime
 from pathlib import Path
+import shutil
 import subprocess
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
@@ -541,6 +542,7 @@ async def coresys(
     run_supervisor_state,
     supervisor_name,
     request: pytest.FixtureRequest,
+    tmp_path_factory: pytest.TempPathFactory,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with (
@@ -589,12 +591,16 @@ async def coresys(
     coresys_obj.supervisor._connectivity = True
     coresys_obj.host.network._connectivity = True
 
-    # Fix Paths
-    su_config.APPS_CORE = Path(Path(__file__).parent.joinpath("fixtures"), "apps/core")
-    su_config.APPS_LOCAL = Path(
-        Path(__file__).parent.joinpath("fixtures"), "apps/local"
+    # Fix Paths. Store tests get a private copy of the apps fixtures: backup
+    # restore of the local apps folder rewrites path_apps_local in place, which
+    # must not race other xdist workers reading the shared checkout.
+    apps_fixtures = tmp_path_factory.mktemp("apps") / "fixtures" / "apps"
+    await coresys_obj.run_in_executor(
+        shutil.copytree, Path(__file__).parent / "fixtures" / "apps", apps_fixtures
     )
-    su_config.APPS_GIT = Path(Path(__file__).parent.joinpath("fixtures"), "apps/git")
+    su_config.APPS_CORE = apps_fixtures / "core"
+    su_config.APPS_LOCAL = apps_fixtures / "local"
+    su_config.APPS_GIT = apps_fixtures / "git"
     su_config.APPARMOR_DATA = Path(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )

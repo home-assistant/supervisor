@@ -336,7 +336,6 @@ async def test_api_backup_restore_background(
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
-    (tmp_supervisor_data / "addons/local").mkdir(parents=True)
 
     assert coresys.jobs.jobs == []
 
@@ -422,7 +421,6 @@ async def test_api_backup_errors(
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
-    (tmp_supervisor_data / "addons/local").mkdir(parents=True)
 
     assert coresys.jobs.jobs == []
 
