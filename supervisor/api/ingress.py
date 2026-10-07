@@ -35,7 +35,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
 from .const import COOKIE_INGRESS
-from .utils import api_process, api_validate, require_home_assistant
+from .utils import api_process, api_validate, require_home_assistant, stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -290,19 +290,20 @@ class APIIngress(CoreSysAttributes):
             response = web.StreamResponse(status=result.status, headers=headers)
             response.content_type = content_type
 
-            try:
-                response.headers["X-Accel-Buffering"] = "no"
-                await response.prepare(request)
-                async for data, _ in result.content.iter_chunks():
-                    await response.write(data)
+            async with stop_on_disconnect(request):
+                try:
+                    response.headers["X-Accel-Buffering"] = "no"
+                    await response.prepare(request)
+                    async for data, _ in result.content.iter_chunks():
+                        await response.write(data)
 
-            except (
-                aiohttp.ClientError,
-                aiohttp.ClientPayloadError,
-                ConnectionResetError,
-                ConnectionError,
-            ) as err:
-                _LOGGER.error("Stream error with %s: %s", url, err)
+                except (
+                    aiohttp.ClientError,
+                    aiohttp.ClientPayloadError,
+                    ConnectionResetError,
+                    ConnectionError,
+                ) as err:
+                    _LOGGER.error("Stream error with %s: %s", url, err)
 
             return response
 

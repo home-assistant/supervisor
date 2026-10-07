@@ -6,6 +6,7 @@ import errno
 from http import HTTPStatus
 import logging
 from pathlib import Path, PurePath
+from tarfile import TarFile
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
@@ -35,6 +36,7 @@ from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AppFileReadError,
     AppNotRunningError,
+    AppNotSupportedArchitectureError,
     AppPortConflict,
     AppPrePostBackupCommandReturnedError,
     AppsError,
@@ -936,6 +938,57 @@ async def test_restore_while_running_with_watchdog(
         restart.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    ("image_exists", "method"),
+    [
+        pytest.param(False, "install", id="image-missing"),
+        pytest.param(True, "update", id="version-mismatch"),
+    ],
+)
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
+async def test_restore_pulls_image_for_app_arch(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    tmp_path: Path,
+    image_exists: bool,
+    method: str,
+) -> None:
+    """Test restore pulls the image for the app's arch without tagging latest."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+
+    # Drop the bundled image so restore has to pull it from the registry
+    backup_path = tmp_path / "backup.tar.gz"
+    with (
+        TarFile.open(get_fixture_path("backup_local_ssh_stopped.tar.gz")) as src,
+        TarFile.open(backup_path, "w:gz") as dest,
+    ):
+        for member in src.getmembers():
+            if member.name != "./image.tar":
+                dest.addfile(member, src.extractfile(member))
+
+    tarfile = SecureTarFile(backup_path)
+    with (
+        patch.object(DockerApp, "is_running", return_value=False),
+        patch.object(DockerApp, "exists", new=AsyncMock(return_value=image_exists)),
+        patch.object(
+            DockerApp,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("0.0.0")),
+        ),
+        patch.object(DockerApp, "cleanup", new=AsyncMock()),
+        patch.object(DockerApp, method, new=AsyncMock()) as pull_mock,
+    ):
+        await coresys.apps.restore(TEST_ADDON_SLUG, tarfile)
+
+    pull_mock.assert_called_once()
+    assert len(pull_mock.call_args.args) == 2
+    assert pull_mock.call_args.kwargs == {"arch": install_app_ssh.arch}
+
+
 @pytest.mark.usefixtures("coresys")
 async def test_start_when_running(
     install_app_ssh: App,
@@ -1027,6 +1080,25 @@ async def test_app_rebuild_auth_failure(coresys: CoreSys, install_app_example: A
         pytest.raises(DockerRegistryAuthError),
     ):
         await install_app_example.rebuild()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_app_rebuild_unsupported_arch_keeps_image(
+    coresys: CoreSys, install_app_example: App
+) -> None:
+    """Test rebuild fails before removing the image if no arch is supported."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_example.data["arch"] = ["armv7"]
+
+    with (
+        patch.object(DockerApp, "remove") as remove,
+        patch.object(DockerApp, "install") as install,
+        pytest.raises(AppNotSupportedArchitectureError),
+    ):
+        await install_app_example.rebuild()
+
+    remove.assert_not_called()
+    install.assert_not_called()
 
 
 @pytest.mark.usefixtures("coresys", "path_extern")

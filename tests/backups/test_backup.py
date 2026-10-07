@@ -100,7 +100,7 @@ async def test_backup_error_app(coresys: CoreSys, install_app_ssh: App, tmp_path
 
     async with backup.create():
         # Validate that the app exception is collected in the main job
-        backup_store_apps_job, backup_task = coresys.jobs.schedule_job(
+        backup_store_apps_job, backup_task = await coresys.jobs.schedule_job(
             backup.store_apps, JobSchedulerOptions(), [install_app_ssh]
         )
         await backup_task
@@ -212,7 +212,7 @@ async def test_backup_error_folder(
                 side_effect=(err := AddFileError(".", "Fake folder backup error"))
             ),
         ):
-            backup_store_folders, backup_task = coresys.jobs.schedule_job(
+            backup_store_folders, backup_task = await coresys.jobs.schedule_job(
                 backup.store_folders, JobSchedulerOptions(), [Folder.MEDIA]
             )
             await backup_task

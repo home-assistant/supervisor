@@ -610,7 +610,7 @@ async def test_install_progress_rounding_does_not_cause_misses(
 
     # Schedule job so we can listen for the end. Then we can assert against the WS mock
     event = asyncio.Event()
-    job, install_task = coresys.jobs.schedule_job(
+    job, install_task = await coresys.jobs.schedule_job(
         test_docker_interface.install,
         JobSchedulerOptions(),
         AwesomeVersion("1.2.3"),
@@ -630,29 +630,32 @@ async def test_install_progress_rounding_does_not_cause_misses(
 
 
 @pytest.mark.parametrize(
-    ("error_log", "exc_type", "exc_msg"),
+    ("stream_error", "exc_type", "exc_msg"),
     [
-        (
-            {
-                "errorDetail": {
+        pytest.param(
+            aiodocker.DockerStreamError(
+                "write /mnt/data/docker/tmp/GetImageBlob2228293192: no space left on device",
+                error_detail={
                     "message": "write /mnt/data/docker/tmp/GetImageBlob2228293192: no space left on device"
                 },
-                "error": "write /mnt/data/docker/tmp/GetImageBlob2228293192: no space left on device",
-            },
+            ),
             DockerNoSpaceOnDevice,
             "No space left on disk",
+            id="no_space",
         ),
-        (
-            {"errorDetail": {"message": "failure"}, "error": "failure"},
+        pytest.param(
+            aiodocker.DockerStreamError("failure", error_detail={"message": "failure"}),
             DockerError,
             "failure",
+            id="generic",
         ),
     ],
 )
 async def test_install_raises_on_pull_error(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,
-    error_log: dict[str, Any],
+    capture_exception: Mock,
+    stream_error: aiodocker.DockerStreamError,
     exc_type: type[DockerError],
     exc_msg: str,
 ):
@@ -670,12 +673,14 @@ async def test_install_raises_on_pull_error(
             "progress": "[==============================================>    ]  1.378kB/1.486kB",
             "id": "1578b14a573c",
         },
-        error_log,
+        stream_error,
     ]
     coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
     with pytest.raises(exc_type, match=exc_msg):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
+
+    capture_exception.assert_not_called()
 
 
 @pytest.mark.usefixtures("ha_ws_client")
@@ -697,7 +702,7 @@ async def test_install_progress_handles_download_restart(
     ):
         # Schedule job so we can listen for the end. Then we can assert against the WS mock
         event = asyncio.Event()
-        job, install_task = coresys.jobs.schedule_job(
+        job, install_task = await coresys.jobs.schedule_job(
             test_docker_interface.install,
             JobSchedulerOptions(),
             AwesomeVersion("1.2.3"),
@@ -813,7 +818,7 @@ async def test_install_progress_handles_layers_skipping_download(
 
     with patch.object(coresys.jobs, "_on_job_change", side_effect=capture_and_forward):
         event = asyncio.Event()
-        job, install_task = coresys.jobs.schedule_job(
+        job, install_task = await coresys.jobs.schedule_job(
             test_docker_interface.install,
             JobSchedulerOptions(),
             AwesomeVersion("1.2.3"),
@@ -888,7 +893,7 @@ async def test_missing_total_handled_gracefully(
 
     # Schedule job so we can listen for the end. Then we can assert against the WS mock
     event = asyncio.Event()
-    job, install_task = coresys.jobs.schedule_job(
+    job, install_task = await coresys.jobs.schedule_job(
         test_docker_interface.install,
         JobSchedulerOptions(),
         AwesomeVersion("1.2.3"),
@@ -1114,17 +1119,16 @@ async def test_install_streaming_pull_rate_limit(
     Docker's pull endpoint is a long-running streaming API - once the daemon
     has started writing the response body it can no longer change the HTTP
     status, so errors that occur during layer download are surfaced as JSON
-    error events in the stream. The text-detection in PullLogEntry must
-    convert these into a typed exception that install() can refine into a
-    registry-specific one. Happens on all recent daemon versions.
+    error events in the stream, which aiodocker raises as DockerStreamError.
+    The text-detection in PullLogEntry must convert these into a typed
+    exception that install() can refine into a registry-specific one. Happens
+    on all recent daemon versions.
     """
     coresys.docker.images.pull.return_value = AsyncIterator(
         [
-            {
-                "error": (
-                    "toomanyrequests: retry-after: 1.265943ms, allowed: 44000/minute"
-                )
-            },
+            aiodocker.DockerStreamError(
+                "toomanyrequests: retry-after: 1.265943ms, allowed: 44000/minute"
+            ),
         ]
     )
 

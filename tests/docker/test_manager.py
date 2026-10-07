@@ -512,7 +512,9 @@ async def test_import_image_error(coresys: CoreSys, tmp_path: Path):
     """Test failure importing an image into docker."""
     (test_tar := tmp_path / "test.tar").touch()
     coresys.docker.images.import_image = AsyncMock(
-        return_value=[{"errorDetail": {"message": "fail"}}]
+        side_effect=aiodocker.DockerStreamError(
+            "fail", error_detail={"message": "fail"}
+        )
     )
 
     with pytest.raises(DockerError, match="Can't import image from tar: fail"):

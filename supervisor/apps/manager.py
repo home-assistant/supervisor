@@ -23,6 +23,7 @@ from ..exceptions import (
     AppsJobError,
     CoreDNSError,
     DockerError,
+    HassioArchNotFound,
     HassioError,
 )
 from ..jobs import ChildJobSyncFilter
@@ -404,10 +405,10 @@ class AppManager(CoreSysAttributes):
 
         for app in needs_repair:
             _LOGGER.info("Repairing for app: %s", app.slug)
-            with suppress(DockerError, KeyError):
+            with suppress(DockerError, KeyError, HassioArchNotFound):
                 # Need pull a image again
                 if not app.need_build:
-                    await app.instance.install(app.version, app.image)
+                    await app.instance.install(app.version, app.image, arch=app.arch)
                     continue
 
                 # Need local lookup
@@ -415,7 +416,9 @@ class AppManager(CoreSysAttributes):
                     store = self.store[app.slug]
                     # If this app is available for rebuild
                     if app.version == store.version:
-                        await app.instance.install(app.version, app.image)
+                        await app.instance.install(
+                            app.version, app.image, arch=app.arch
+                        )
                         continue
 
             _LOGGER.error("Can't repair %s", app.slug)

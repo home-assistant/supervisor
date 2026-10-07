@@ -1,6 +1,7 @@
 """Test backups API."""
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import errno
 from pathlib import Path, PurePath
 from shutil import copy
@@ -97,6 +98,17 @@ async def test_list(api_client: TestClient, coresys: CoreSys, tmp_path: Path):
     assert "apps/local" not in result["data"]["backups"][0]["content"]["folders"]
     assert result["data"]["backups"][0]["size"] == 0.01
     assert result["data"]["backups"][0]["size_bytes"] == 10240
+
+
+def _detached_job_result(result: Any) -> Callable[..., Awaitable[asyncio.Future]]:
+    """Mimic a scheduled job call: return a task that already finished with result."""
+
+    async def _start(*_: Any, **__: Any) -> asyncio.Future:
+        future = asyncio.get_running_loop().create_future()
+        future.set_result(result)
+        return future
+
+    return _start
 
 
 async def test_options(
@@ -233,7 +245,7 @@ async def test_backup_to_down_mount_returns_400(
 
     # Simulate the mount being down: probe (statvfs) fails with EHOSTDOWN.
     with patch(
-        "supervisor.mounts.mount._probe_network_mount",
+        "supervisor.mounts.mount._probe_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         resp = await api_client.post(
@@ -342,7 +354,6 @@ async def test_api_backup_restore_background(
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
-    (tmp_supervisor_data / "apps/local").mkdir(parents=True)
 
     assert coresys.jobs.jobs == []
 
@@ -428,7 +439,6 @@ async def test_api_backup_errors(
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
-    (tmp_supervisor_data / "apps/local").mkdir(parents=True)
 
     assert coresys.jobs.jobs == []
 
@@ -1648,7 +1658,7 @@ async def test_restore_partial_with_addons_key(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
-        BackupManager, "do_restore_partial", return_value=True
+        BackupManager, "do_restore_partial", side_effect=_detached_job_result(True)
     ) as mock_restore:
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
@@ -1672,7 +1682,9 @@ async def test_v1_partial_backup_accepts_homeassistant_folder(
     await coresys.core.set_state(CoreState.RUNNING)
 
     with patch.object(
-        BackupManager, "do_backup_partial", return_value=mock_partial_backup
+        BackupManager,
+        "do_backup_partial",
+        side_effect=_detached_job_result(mock_partial_backup),
     ) as mock_backup:
         resp = await api_client.post(
             "/backups/new/partial",
@@ -1695,7 +1707,7 @@ async def test_v1_partial_restore_accepts_homeassistant_folder(
     await coresys.core.set_state(CoreState.RUNNING)
 
     with patch.object(
-        BackupManager, "do_restore_partial", return_value=True
+        BackupManager, "do_restore_partial", side_effect=_detached_job_result(True)
     ) as mock_restore:
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
@@ -1720,7 +1732,9 @@ async def test_v1_partial_backup_renames_addons_local_folder(
     await coresys.core.set_state(CoreState.RUNNING)
 
     with patch.object(
-        BackupManager, "do_backup_partial", return_value=mock_partial_backup
+        BackupManager,
+        "do_backup_partial",
+        side_effect=_detached_job_result(mock_partial_backup),
     ) as mock_backup:
         resp = await api_client.post(
             "/backups/new/partial",
@@ -1745,7 +1759,7 @@ async def test_v1_partial_restore_renames_addons_local_folder(
     await coresys.core.set_state(CoreState.RUNNING)
 
     with patch.object(
-        BackupManager, "do_restore_partial", return_value=True
+        BackupManager, "do_restore_partial", side_effect=_detached_job_result(True)
     ) as mock_restore:
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
@@ -1868,7 +1882,9 @@ async def test_v2_backup_partial_accepts_apps_key(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
-        BackupManager, "do_backup_partial", return_value=mock_partial_backup
+        BackupManager,
+        "do_backup_partial",
+        side_effect=_detached_job_result(mock_partial_backup),
     ) as mock_backup:
         resp = await api_client_v2.post(
             "/v2/backups/new/partial",
@@ -1911,7 +1927,7 @@ async def test_v2_restore_partial_accepts_apps_key(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
-        BackupManager, "do_restore_partial", return_value=True
+        BackupManager, "do_restore_partial", side_effect=_detached_job_result(True)
     ) as mock_restore:
         resp = await api_client_v2.post(
             f"/v2/backups/{mock_partial_backup.slug}/restore/partial",
@@ -1973,7 +1989,9 @@ async def test_v2_partial_backup_accepts_apps_local_folder(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
-        BackupManager, "do_backup_partial", return_value=mock_partial_backup
+        BackupManager,
+        "do_backup_partial",
+        side_effect=_detached_job_result(mock_partial_backup),
     ) as mock_backup:
         resp = await api_client_v2.post(
             "/v2/backups/new/partial",
@@ -2015,7 +2033,7 @@ async def test_v2_partial_restore_accepts_apps_local_folder(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
-        BackupManager, "do_restore_partial", return_value=True
+        BackupManager, "do_restore_partial", side_effect=_detached_job_result(True)
     ) as mock_restore:
         resp = await api_client_v2.post(
             f"/v2/backups/{mock_partial_backup.slug}/restore/partial",
