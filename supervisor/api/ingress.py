@@ -29,8 +29,8 @@ from ..const import (
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
+    STOPPING_STATES,
     WEBSOCKET_CLOSE_TIMEOUT,
-    CoreState,
     HomeAssistantUser,
     IngressSessionData,
 )
@@ -192,7 +192,7 @@ class APIIngress(CoreSysAttributes):
         await ws_server.prepare(request)
         request.config_dict[WEBSOCKETS].add(ws_server)
         # The upgrade may complete after API stop closed the tracked websockets
-        if self.sys_core.state in (CoreState.STOPPING, CoreState.CLOSE):
+        if self.sys_core.state in STOPPING_STATES:
             await ws_server.close(code=WSCloseCode.GOING_AWAY)
             return ws_server
 

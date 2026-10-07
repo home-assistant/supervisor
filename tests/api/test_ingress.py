@@ -325,14 +325,9 @@ async def test_ingress_websocket_closed_on_api_stop(
             )
         assert len(api_client.server.app[WEBSOCKETS]) == 1
 
-        with (
-            patch.object(coresys.api, "webapp", api_client.server.app),
-            patch.object(coresys.api, "_site", AsyncMock()),
-            patch.object(coresys.api, "_runner", AsyncMock()),
-        ):
-            stop_task = asyncio.create_task(coresys.api.stop())
-            msg = await websocket.receive()
-            await stop_task
+        shutdown_task = asyncio.create_task(api_client.server.app.shutdown())
+        msg = await websocket.receive()
+        await shutdown_task
 
         assert msg.type == WSMsgType.CLOSE
         assert msg.data == WSCloseCode.GOING_AWAY

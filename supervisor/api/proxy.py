@@ -14,7 +14,7 @@ from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
 from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPForbidden, HTTPUnauthorized
 
-from ..const import CoreState
+from ..const import STOPPING_STATES
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
@@ -306,7 +306,7 @@ class APIProxy(CoreSysAttributes):
         await server.prepare(request)
         request.config_dict[WEBSOCKETS].add(server)
         # The upgrade may complete after API stop closed the tracked websockets
-        if self.sys_core.state in (CoreState.STOPPING, CoreState.CLOSE):
+        if self.sys_core.state in STOPPING_STATES:
             await server.close(code=WSCloseCode.GOING_AWAY)
             return server
         app_name = None
@@ -344,6 +344,9 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.error("Timeout during authentication for WebSocket API")
             return server
         except WSMessageTypeError as err:
+            # Closed on API stop while waiting for the auth message
+            if self.sys_core.state in STOPPING_STATES:
+                return server
             _LOGGER.error(
                 "Unexpected message during authentication for WebSocket API: %s", err
             )

@@ -114,6 +114,7 @@ class RestAPI(CoreSysAttributes):
     async def load(self) -> None:
         """Register REST API Calls."""
         self.webapp[WEBSOCKETS] = weakref.WeakSet()
+        self.webapp.on_shutdown.append(self._close_websockets)
         v2_enabled = self.sys_config.feature_flags.get(
             FeatureFlag.SUPERVISOR_V2_API, False
         )
@@ -1174,21 +1175,21 @@ class RestAPI(CoreSysAttributes):
 
         # Shutdown running API
         await self._site.stop()
-        await self._close_websockets()
         await self._runner.cleanup()
 
         _LOGGER.info("Stopping API on %s", self.sys_docker.network.supervisor)
 
-    async def _close_websockets(self) -> None:
-        """Close open proxied websockets.
+    async def _close_websockets(self, app: web.Application) -> None:
+        """Close open proxied websockets on app shutdown.
 
         aiohttp's graceful shutdown only waits for in-flight handlers, so
         long-lived websocket proxies would otherwise hold the API stop until
         the shutdown timeout expires.
         """
-        # Two steps as mypy otherwise infers the key type from list()
-        tracked = self.webapp[WEBSOCKETS]
-        websockets = list(tracked)
+        # Closed sockets linger in the weak set until garbage collected
+        websockets = [
+            websocket for websocket in app[WEBSOCKETS] if not websocket.closed
+        ]
         if not websockets:
             return
 
