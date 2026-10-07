@@ -25,7 +25,6 @@ from .exceptions import (
     HassioError,
     HomeAssistantCrashError,
     HomeAssistantError,
-    SupervisorUpdateError,
     WhoamiError,
     WhoamiSSLError,
 )
@@ -263,9 +262,11 @@ class Core(CoreSysAttributes):
             if not self.healthy:
                 _LOGGER.warning("Ignoring Supervisor updates!")
             else:
-                with suppress(SupervisorUpdateError):
-                    await self.sys_supervisor.update()
-                    return
+                with suppress(HassioError):
+                    # Detached job: errors are raised on the returned task
+                    if task := await self.sys_supervisor.update():
+                        await task
+                        return
 
         # Reserve Core's TCP port before booting other apps, since Core runs
         # with --network=host and competes with them for it. Released again
