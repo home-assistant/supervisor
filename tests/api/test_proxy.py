@@ -139,10 +139,10 @@ async def test_proxy_message(
         install_app_ssh.supervisor_token
     )
 
-    await client.send_json_auto_id({"hello": "world"})
+    await client.send_json_auto_id({"type": "hello"})
     proxied_msg = await ha_ws_server.incoming.get()
     assert proxied_msg.type == WSMsgType.TEXT
-    assert proxied_msg.data == '{"hello": "world", "id": 1}'
+    assert proxied_msg.data == '{"type": "hello", "id": 1}'
 
     await ha_ws_server.respond_json({"world": "received"})
     assert await client.receive_json() == {"world": "received", "id": 1}
@@ -255,7 +255,8 @@ async def test_proxy_blocks_supervisor_api_command(
         )
         result = await client.receive_json()
         assert (
-            "Blocked disallowed WebSocket command type 'supervisor/api'" in caplog.text
+            "Blocked WebSocket message with disallowed or invalid command"
+            in caplog.text
         )
 
     assert result == {
@@ -324,23 +325,109 @@ async def test_proxy_allows_normal_commands_after_blocked_command(
     assert await client.close()
 
 
-async def test_proxy_forwards_malformed_text_message(
+@pytest.mark.parametrize(
+    ("message", "expected_id"),
+    [
+        pytest.param(
+            [
+                {"id": 1, "type": "call_service"},
+                {"id": 2, "type": "supervisor/api", "endpoint": "/backups"},
+            ],
+            None,
+            id="batch_with_denied_command",
+        ),
+        pytest.param(
+            [{"id": 1, "type": "call_service"}, "supervisor/api"],
+            None,
+            id="batch_with_non_dict_element",
+        ),
+        pytest.param(
+            [[{"id": 1, "type": "supervisor/api"}]],
+            None,
+            id="nested_batch",
+        ),
+        pytest.param({"id": 1}, 1, id="missing_type"),
+        pytest.param({"id": 1, "type": ["supervisor/api"]}, 1, id="non_string_type"),
+        pytest.param("supervisor/api", None, id="string"),
+        pytest.param(1, None, id="number"),
+        pytest.param(None, None, id="null"),
+    ],
+)
+async def test_proxy_rejects_unverifiable_messages(
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+    message: Any,
+    expected_id: int | None,
+):
+    """Test messages that aren't verifiably allowed are rejected as a whole."""
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+
+    await client.send_str(dumps(message))
+    result = await client.receive_json()
+
+    assert result == {
+        "id": expected_id,
+        "type": "result",
+        "success": False,
+        "error": {"code": "unauthorized", "message": "Unauthorized"},
+    }
+    assert ha_ws_server.incoming.empty()
+
+    # Only a single result is sent, even for a batch, and the connection stays usable
+    await client.send_json_auto_id({"type": "ping"})
+    assert (await ha_ws_server.incoming.get()).data == '{"type": "ping", "id": 1}'
+    await ha_ws_server.respond_json({"type": "pong"})
+    assert await client.receive_json() == {"type": "pong", "id": 1}
+
+    assert await client.close()
+
+
+async def test_proxy_forwards_allowed_batch(
     proxy_ws_client: WebSocketGenerator,
     ha_ws_server: MockHAServerWebSocket,
     install_app_ssh: App,
 ):
-    """Test non-JSON text frames are forwarded as-is (Core rejects them itself)."""
+    """Test a batch with only allowed commands is forwarded unchanged."""
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+
+    message = dumps(
+        [
+            {"id": 1, "type": "call_service", "domain": "light"},
+            {"id": 2, "type": "subscribe_events"},
+        ]
+    )
+    await client.send_str(message)
+    proxied_msg = await ha_ws_server.incoming.get()
+    assert proxied_msg.type == WSMsgType.TEXT
+    assert proxied_msg.data == message
+
+    assert await client.close()
+
+
+async def test_proxy_closes_on_invalid_json(
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+):
+    """Test non-JSON text frames close the connection like Core does."""
     install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
     client: MockHAClientWebSocket = await proxy_ws_client(
         install_app_ssh.supervisor_token
     )
 
     await client.send_str("this is not JSON")
-    proxied_msg = await ha_ws_server.incoming.get()
-    assert proxied_msg.type == WSMsgType.TEXT
-    assert proxied_msg.data == "this is not JSON"
+    msg = await client.receive()
 
-    assert await client.close()
+    assert msg.type == WSMsgType.CLOSE
+    assert ha_ws_server.closed
+    assert ha_ws_server.incoming.empty()
 
 
 async def test_proxy_large_message(

@@ -2,10 +2,10 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 import logging
 import re
-from typing import Final
+from typing import Any, Final
 
 import aiohttp
 from aiohttp import WSCloseCode, WSMessageTypeError, web
@@ -48,21 +48,28 @@ CORE_API_DENY: Final = re.compile(r"^hassio(?:/|_)")
 DENIED_WS_TYPE_PREFIXES = ("supervisor/", "hassio/")
 
 
-def _denied_command_type(data: str) -> tuple[str, str | None] | None:
-    """Return the command type if it's one apps must never reach, else None."""
+def _command_allowed(command: Any) -> bool:
+    """Return if command has a type apps may send. Raises TypeError if not a dict."""
     try:
-        parsed = json_loads(data)
-        command_type = parsed.get("type")
-        return (
-            (command_type, parsed.get("id"))
-            if command_type and command_type.startswith(DENIED_WS_TYPE_PREFIXES)
-            else None
-        )
-    except ValueError, AttributeError:
-        # ValueError: data wasn't valid JSON.
-        # AttributeError: decoded message wasn't a dict (no .get) or "type" wasn't
-        # a string (no .startswith) or missing entirely (.get returns None).
-        return None
+        return not command["type"].startswith(DENIED_WS_TYPE_PREFIXES)
+    except KeyError, AttributeError:
+        # Missing or non-string type, Core can't dispatch these anyway
+        return False
+
+
+def _frame_allowed(parsed: Any) -> bool:
+    """Return if a decoded frame only contains commands apps may send."""
+    # TypeError means parsed isn't a dict (e.g. a list), which we detect this way
+    # instead of an isinstance check to keep the common single command path fast.
+    with suppress(TypeError):
+        return _command_allowed(parsed)
+
+    # Core dispatches each element of a JSON array as a separate command. Reject
+    # the whole batch if any element is denied or isn't a command.
+    try:
+        return all(_command_allowed(command) for command in parsed)
+    except TypeError:
+        return False
 
 
 class APIProxy(CoreSysAttributes):
@@ -225,6 +232,48 @@ class APIProxy(CoreSysAttributes):
                 _LOGGER.error,
             ) from err
 
+    async def _proxy_app_text(
+        self,
+        data: str,
+        source: web.WebSocketResponse | ClientWebSocketResponse,
+        target: web.WebSocketResponse | ClientWebSocketResponse,
+        logger: AppLoggerAdapter,
+    ) -> None:
+        """Forward a TEXT message from an app to Core unless it must be rejected.
+
+        Commands whose type is reserved for Home Assistant's own frontend (see
+        DENIED_WS_TYPE_PREFIXES) are rejected to prevent apps from using this proxy
+        to reach the Supervisor API at full privilege through Home Assistant Core.
+        Anything that can't be verified as allowed is rejected as well.
+        """
+        try:
+            parsed = json_loads(data)
+        except ValueError:
+            # Core closes the connection on invalid JSON too
+            logger.warning("Received invalid JSON from app, closing connection")
+            await target.close()
+            await source.close()
+            return
+
+        if _frame_allowed(parsed):
+            await target.send_str(data)
+            return
+
+        logger.warning("Blocked WebSocket message with disallowed or invalid command")
+        # Batches and other non-dict frames get a single result without an id
+        message_id = None
+        with suppress(AttributeError):
+            message_id = parsed.get("id")
+        await source.send_json(
+            {
+                "id": message_id,
+                "type": "result",
+                "success": False,
+                "error": {"code": "unauthorized", "message": "Unauthorized"},
+            },
+            dumps=json_dumps,
+        )
+
     async def _proxy_message(
         self,
         source: web.WebSocketResponse | ClientWebSocketResponse,
@@ -235,33 +284,15 @@ class APIProxy(CoreSysAttributes):
     ) -> None:
         """Proxy a message from client to server or vice versa.
 
-        If filter_app_commands is set, TEXT messages whose command type is reserved
-        for Home Assistant's own frontend (see DENIED_WS_TYPE_PREFIXES) are rejected
-        instead of forwarded, to prevent apps from using this proxy to reach the
-        Supervisor API at full privilege through Home Assistant Core.
+        If filter_app_commands is set, TEXT messages are passed through
+        _proxy_app_text to keep apps from reaching commands reserved for Home
+        Assistant's own frontend.
         """
         while not source.closed and not target.closed:
             msg = await source.receive()
             match msg.type:
-                case WSMsgType.TEXT if filter_app_commands and (
-                    denied_msg := _denied_command_type(msg.data)
-                ):
-                    denied_type, message_id = denied_msg
-                    logger.warning(
-                        "Blocked disallowed WebSocket command type %r", denied_type
-                    )
-                    await source.send_json(
-                        {
-                            "id": message_id,
-                            "type": "result",
-                            "success": False,
-                            "error": {
-                                "code": "unauthorized",
-                                "message": "Unauthorized",
-                            },
-                        },
-                        dumps=json_dumps,
-                    )
+                case WSMsgType.TEXT if filter_app_commands:
+                    await self._proxy_app_text(msg.data, source, target, logger)
                 case WSMsgType.TEXT:
                     await target.send_str(msg.data)
                 case WSMsgType.BINARY:
