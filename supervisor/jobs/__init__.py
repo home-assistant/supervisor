@@ -78,6 +78,18 @@ def process_job_dict_for_legacy_compatibility(
     return job_data
 
 
+def retrieve_job_task_error(job_name: str | None, task: asyncio.Task) -> None:
+    """Consume the error of a finished job task nobody may await.
+
+    Prevents asyncio's "Task exception was never retrieved" report. Callers
+    that do await the task still receive the error. Not every error logs
+    itself when raised (a concurrency rejection at timer fire does not), so
+    log one line naming the job to keep the failure observable.
+    """
+    if not task.cancelled() and (err := task.exception()) is not None:
+        _LOGGER.warning("Background job %s failed: %s", job_name, err)
+
+
 @dataclass
 class JobSchedulerOptions:
     """Options for scheduling a job."""
@@ -462,24 +474,47 @@ class JobManager(FileConfiguration, CoreSysAttributes):
 
         self.sys_call_later(JOB_DONE_RETENTION.total_seconds(), _remove)
 
-    def schedule_job(
+    async def schedule_job(
         self,
         job_method: Callable[..., Coroutine],
         options: JobSchedulerOptions,
         *args,
         **kwargs,
     ) -> tuple[SupervisorJob, asyncio.Task | asyncio.TimerHandle]:
-        """Schedule a job to run later and return job and task or timer handle."""
+        """Schedule a job to run in the background and return job and task or timer handle.
+
+        Without a start time the job is started detached: conditions,
+        concurrency and throttling are evaluated before this returns, so a
+        refused job raises here instead of failing in a task nobody awaits.
+        With a start time they are evaluated when the timer fires; a job
+        refused then is logged and removed, so its id no longer resolves.
+        """
         job = self.new_job(parent_id=None)
 
         def _wrap_task() -> asyncio.Task:
-            return self.sys_create_task(
-                job_method(*args, _job__use_existing=job, **kwargs)
+            # The timer task is the task boundary, even for a detached job
+            task = self.sys_create_task(
+                job_method(
+                    *args,
+                    _job__use_existing=job,
+                    _job_override__detach=False,
+                    **kwargs,
+                )
             )
+            # The decorator only names the job once it runs
+            task.add_done_callback(
+                lambda done_task: retrieve_job_task_error(job.name, done_task)
+            )
+            return task
 
         if options.start_at:
             return (job, self.sys_call_at(options.start_at, _wrap_task))
         if options.delayed_start:
             return (job, self.sys_call_later(options.delayed_start, _wrap_task))
 
-        return (job, _wrap_task())
+        task: asyncio.Task | None = await job_method(
+            *args, _job__use_existing=job, _job_override__detach=True, **kwargs
+        )
+        if task is None:
+            raise JobStartException(f"Job {job.name} was not started")
+        return (job, task)

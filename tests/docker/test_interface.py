@@ -610,7 +610,7 @@ async def test_install_progress_rounding_does_not_cause_misses(
 
     # Schedule job so we can listen for the end. Then we can assert against the WS mock
     event = asyncio.Event()
-    job, install_task = coresys.jobs.schedule_job(
+    job, install_task = await coresys.jobs.schedule_job(
         test_docker_interface.install,
         JobSchedulerOptions(),
         AwesomeVersion("1.2.3"),
@@ -702,7 +702,7 @@ async def test_install_progress_handles_download_restart(
     ):
         # Schedule job so we can listen for the end. Then we can assert against the WS mock
         event = asyncio.Event()
-        job, install_task = coresys.jobs.schedule_job(
+        job, install_task = await coresys.jobs.schedule_job(
             test_docker_interface.install,
             JobSchedulerOptions(),
             AwesomeVersion("1.2.3"),
@@ -818,7 +818,7 @@ async def test_install_progress_handles_layers_skipping_download(
 
     with patch.object(coresys.jobs, "_on_job_change", side_effect=capture_and_forward):
         event = asyncio.Event()
-        job, install_task = coresys.jobs.schedule_job(
+        job, install_task = await coresys.jobs.schedule_job(
             test_docker_interface.install,
             JobSchedulerOptions(),
             AwesomeVersion("1.2.3"),
@@ -893,7 +893,7 @@ async def test_missing_total_handled_gracefully(
 
     # Schedule job so we can listen for the end. Then we can assert against the WS mock
     event = asyncio.Event()
-    job, install_task = coresys.jobs.schedule_job(
+    job, install_task = await coresys.jobs.schedule_job(
         test_docker_interface.install,
         JobSchedulerOptions(),
         AwesomeVersion("1.2.3"),

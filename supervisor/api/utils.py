@@ -46,7 +46,7 @@ from ..exceptions import (
     HassioError,
     JobConditionException,
 )
-from ..jobs import JobSchedulerOptions, SupervisorJob
+from ..jobs import JobSchedulerOptions
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..utils import get_message_from_exception_chain
@@ -359,16 +359,14 @@ async def background_task(
 
     """
     event = asyncio.Event()
-    job, task = cast(
-        tuple[SupervisorJob, asyncio.Task],
-        coresys_obj.sys_jobs.schedule_job(
-            task_method,
-            JobSchedulerOptions(),
-            *args,
-            validation_complete=event,
-            **kwargs,
-        ),
+    job, task = await coresys_obj.sys_jobs.schedule_job(
+        task_method,
+        JobSchedulerOptions(),
+        *args,
+        validation_complete=event,
+        **kwargs,
     )
+    task = cast(asyncio.Task, task)
 
     # Wait for provided event before returning
     # If the task fails validation it should raise before getting there
