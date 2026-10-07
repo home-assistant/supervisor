@@ -8,7 +8,7 @@ from json import dumps
 import logging
 import re
 from typing import Any, cast
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientPayloadError, ClientWebSocketResponse, WSCloseCode, web
 from aiohttp.http_websocket import WSMessage, WSMsgType
@@ -18,7 +18,12 @@ import pytest
 from supervisor.api.proxy import APIProxy
 from supervisor.apps.app import App
 from supervisor.const import ATTR_ACCESS_TOKEN
+from supervisor.coresys import CoreSys
+from supervisor.docker.const import ContainerState
+from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.homeassistant.api import HomeAssistantAPI
+
+from tests.common import MockResponse
 
 
 def id_generator() -> Generator[int]:
@@ -750,3 +755,79 @@ async def test_api_proxy_streaming_response_client_payload_error(
 
         content = await response.read()
         assert b"data: event1\n\n" in content
+
+
+def core_api_response(*_args: Any, **_kwargs: Any) -> MockResponse:
+    """Return a plain JSON response from Core."""
+    response = MockResponse(text="{}")
+    response.content_type = "application/json"
+    response.headers = {}
+    return response
+
+
+def core_state_event(state: ContainerState) -> DockerContainerStateEvent:
+    """Return a container state event for the Core container."""
+    return DockerContainerStateEvent(
+        name="homeassistant", state=state, id="abc123", time=1234567890
+    )
+
+
+async def test_api_proxy_burst_checks_core_once(
+    api_client: TestClient,
+    install_app_example: App,
+    coresys: CoreSys,
+    websession: MagicMock,
+):
+    """Test a burst of proxied requests neither inspects Core nor rechecks its state."""
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+    api = coresys.homeassistant.api
+    websession.request = MagicMock(side_effect=core_api_response)
+    await api.container_state_changed(core_state_event(ContainerState.RUNNING))
+
+    with (
+        patch.object(HomeAssistantAPI, "use_unix_socket", False),
+        patch.object(api, "_ensure_access_token", new_callable=AsyncMock),
+    ):
+        for _ in range(5):
+            response = await api_client.get(
+                "/core/api/states", headers={"Authorization": "Bearer abc123"}
+            )
+            assert response.status == 200
+
+    coresys.homeassistant.core.instance.is_running.assert_not_awaited()
+    api.get_api_state.assert_awaited_once()
+    assert websession.request.call_count == 5
+
+
+async def test_api_proxy_core_stopped_bad_gateway(
+    api_client: TestClient,
+    install_app_example: App,
+    coresys: CoreSys,
+    websession: MagicMock,
+):
+    """Test proxied requests fail with 502 once the Core container stopped."""
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+    api = coresys.homeassistant.api
+    websession.request = MagicMock(side_effect=core_api_response)
+    await api.container_state_changed(core_state_event(ContainerState.RUNNING))
+
+    with (
+        patch.object(HomeAssistantAPI, "use_unix_socket", False),
+        patch.object(api, "_ensure_access_token", new_callable=AsyncMock),
+    ):
+        response = await api_client.get(
+            "/core/api/states", headers={"Authorization": "Bearer abc123"}
+        )
+        assert response.status == 200
+
+        coresys.homeassistant.core.instance.is_running.return_value = False
+        await api.container_state_changed(core_state_event(ContainerState.STOPPED))
+        response = await api_client.get(
+            "/core/api/states", headers={"Authorization": "Bearer abc123"}
+        )
+        assert response.status == 502
+
+    assert api.get_api_state.await_count == 2
+    websession.request.assert_called_once()
