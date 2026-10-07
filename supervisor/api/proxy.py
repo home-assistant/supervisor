@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 import logging
 import re
 from typing import Any, Final
@@ -48,28 +48,28 @@ CORE_API_DENY: Final = re.compile(r"^hassio(?:/|_)")
 DENIED_WS_TYPE_PREFIXES = ("supervisor/", "hassio/")
 
 
-def _command_allowed(command: Any) -> bool:
-    """Return if command has a type apps may send. Raises TypeError if not a dict."""
-    try:
-        return not command["type"].startswith(DENIED_WS_TYPE_PREFIXES)
-    except KeyError, AttributeError:
-        # Missing or non-string type, Core can't dispatch these anyway
-        return False
+def _command_type(command: Any) -> str | None:
+    """Return the type of a command, or None if it isn't a well-formed command."""
+    if isinstance(command, dict) and isinstance(
+        command_type := command.get("type"), str
+    ):
+        return command_type
+    return None
 
 
-def _frame_allowed(parsed: Any) -> bool:
-    """Return if a decoded frame only contains commands apps may send."""
-    # TypeError means parsed isn't a dict (e.g. a list), which we detect this way
-    # instead of an isinstance check to keep the common single command path fast.
-    with suppress(TypeError):
-        return _command_allowed(parsed)
+def _denied_command_types(parsed: Any) -> list[str | None]:
+    """Return the types of commands apps must not send, None for malformed ones.
 
-    # Core dispatches each element of a JSON array as a separate command. Reject
-    # the whole batch if any element is denied or isn't a command.
-    try:
-        return all(_command_allowed(command) for command in parsed)
-    except TypeError:
-        return False
+    An empty list means the frame may be forwarded.
+    """
+    # Core dispatches each element of a JSON array as a separate command
+    commands = parsed if isinstance(parsed, list) else [parsed]
+    return [
+        command_type
+        for command in commands
+        if (command_type := _command_type(command)) is None
+        or command_type.startswith(DENIED_WS_TYPE_PREFIXES)
+    ]
 
 
 class APIProxy(CoreSysAttributes):
@@ -255,18 +255,18 @@ class APIProxy(CoreSysAttributes):
             await source.close()
             return
 
-        if _frame_allowed(parsed):
+        if not (denied_types := _denied_command_types(parsed)):
             await target.send_str(data)
             return
 
-        logger.warning("Blocked WebSocket message with disallowed or invalid command")
+        logger.warning(
+            "Blocked WebSocket message with disallowed or malformed command types: %r",
+            denied_types,
+        )
         # Batches and other non-dict frames get a single result without an id
-        message_id = None
-        with suppress(AttributeError):
-            message_id = parsed.get("id")
         await source.send_json(
             {
-                "id": message_id,
+                "id": parsed.get("id") if isinstance(parsed, dict) else None,
                 "type": "result",
                 "success": False,
                 "error": {"code": "unauthorized", "message": "Unauthorized"},

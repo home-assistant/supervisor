@@ -255,8 +255,8 @@ async def test_proxy_blocks_supervisor_api_command(
         )
         result = await client.receive_json()
         assert (
-            "Blocked WebSocket message with disallowed or invalid command"
-            in caplog.text
+            "Blocked WebSocket message with disallowed or malformed command types: "
+            "['supervisor/api']" in caplog.text
         )
 
     assert result == {
@@ -326,7 +326,7 @@ async def test_proxy_allows_normal_commands_after_blocked_command(
 
 
 @pytest.mark.parametrize(
-    ("message", "expected_id"),
+    ("message", "expected_id", "expected_types"),
     [
         pytest.param(
             [
@@ -334,31 +334,49 @@ async def test_proxy_allows_normal_commands_after_blocked_command(
                 {"id": 2, "type": "supervisor/api", "endpoint": "/backups"},
             ],
             None,
+            ["supervisor/api"],
             id="batch_with_denied_command",
+        ),
+        pytest.param(
+            [
+                {"id": 1, "type": "hassio/update/core"},
+                {"id": 2, "type": "call_service"},
+                {"id": 3, "type": "supervisor/api"},
+            ],
+            None,
+            ["hassio/update/core", "supervisor/api"],
+            id="batch_with_multiple_denied_commands",
         ),
         pytest.param(
             [{"id": 1, "type": "call_service"}, "supervisor/api"],
             None,
+            [None],
             id="batch_with_non_dict_element",
         ),
         pytest.param(
             [[{"id": 1, "type": "supervisor/api"}]],
             None,
+            [None],
             id="nested_batch",
         ),
-        pytest.param({"id": 1}, 1, id="missing_type"),
-        pytest.param({"id": 1, "type": ["supervisor/api"]}, 1, id="non_string_type"),
-        pytest.param("supervisor/api", None, id="string"),
-        pytest.param(1, None, id="number"),
-        pytest.param(None, None, id="null"),
+        pytest.param({"id": 1}, 1, [None], id="missing_type"),
+        pytest.param(
+            {"id": 1, "type": ["supervisor/api"]}, 1, [None], id="non_string_type"
+        ),
+        pytest.param("supervisor/api", None, [None], id="string"),
+        pytest.param("", None, [None], id="empty_string"),
+        pytest.param(1, None, [None], id="number"),
+        pytest.param(None, None, [None], id="null"),
     ],
 )
 async def test_proxy_rejects_unverifiable_messages(
     proxy_ws_client: WebSocketGenerator,
     ha_ws_server: MockHAServerWebSocket,
     install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
     message: Any,
     expected_id: int | None,
+    expected_types: list[str | None],
 ):
     """Test messages that aren't verifiably allowed are rejected as a whole."""
     install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
@@ -366,9 +384,15 @@ async def test_proxy_rejects_unverifiable_messages(
         install_app_ssh.supervisor_token
     )
 
-    await client.send_str(dumps(message))
-    result = await client.receive_json()
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        await client.send_str(dumps(message))
+        result = await client.receive_json()
 
+    assert (
+        "Blocked WebSocket message with disallowed or malformed command types: "
+        f"{expected_types!r}" in caplog.text
+    )
     assert result == {
         "id": expected_id,
         "type": "result",
