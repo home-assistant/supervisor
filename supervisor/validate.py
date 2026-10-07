@@ -9,6 +9,7 @@ import voluptuous as vol
 from .const import (
     ATTR_ADDON,
     ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_ADMIN,
     ATTR_APP,
     ATTR_APPS_CUSTOM_LIST,
     ATTR_AUDIO,
@@ -260,7 +261,7 @@ SCHEMA_SESSION_DATA = vol.Schema(
     {
         token: vol.Schema(
             {
-                vol.Required(ATTR_SESSION_DATA_USER): vol.Schema(
+                vol.Optional(ATTR_SESSION_DATA_USER): vol.Schema(
                     {
                         vol.Required(ATTR_ID): str,
                         vol.Required(ATTR_USERNAME, default=None): vol.Maybe(str),
@@ -268,7 +269,8 @@ SCHEMA_SESSION_DATA = vol.Schema(
                         # Legacy key, replaced by ATTR_NAME
                         vol.Optional(ATTR_DISPLAYNAME): vol.Maybe(str),
                     }
-                )
+                ),
+                vol.Optional(ATTR_ADMIN): vol.Boolean(),
             }
         )
     }

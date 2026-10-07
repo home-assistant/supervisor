@@ -3,8 +3,10 @@
 from datetime import timedelta
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import ANY, patch
 
+import pytest
 import time_machine
 
 from supervisor.const import HomeAssistantUser, IngressSessionData
@@ -82,6 +84,35 @@ def test_session_handling_with_session_data(coresys: CoreSys):
     assert session_data.user.id == "some-id"
 
 
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        pytest.param(
+            {"user": {"id": "123", "name": "Test", "username": "test"}},
+            IngressSessionData(
+                HomeAssistantUser("123", name="Test", username="test"), admin=True
+            ),
+            id="legacy_without_admin_flag",
+        ),
+        pytest.param(
+            {"admin": False},
+            IngressSessionData(None, admin=False),
+            id="admin_flag_without_user",
+        ),
+        pytest.param(
+            {"admin": False, "user": {"id": "123", "name": None, "username": None}},
+            IngressSessionData(HomeAssistantUser("123"), admin=False),
+            id="admin_flag_with_user",
+        ),
+    ],
+)
+def test_session_data_from_dict(
+    data: dict[str, Any], expected: IngressSessionData
+) -> None:
+    """Test deserializing ingress session data."""
+    assert IngressSessionData.from_dict(data) == expected
+
+
 async def test_save_on_unload(coresys: CoreSys):
     """Test called save on unload."""
     coresys.ingress.create_session()
@@ -126,7 +157,10 @@ async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
     assert await coresys.run_in_executor(get_config) == {
         "session": {session: ANY},
         "session_data": {
-            session: {"user": {"id": "123", "name": "Test", "username": "test"}}
+            session: {
+                "admin": True,
+                "user": {"id": "123", "name": "Test", "username": "test"},
+            }
         },
         "ports": {},
     }

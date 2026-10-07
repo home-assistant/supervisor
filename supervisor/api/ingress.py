@@ -9,6 +9,7 @@ import aiohttp
 from aiohttp import ClientTimeout, ClientWSTimeout, WSCloseCode, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
+    HTTPForbidden,
     HTTPServiceUnavailable,
     HTTPUnauthorized,
 )
@@ -49,6 +50,7 @@ VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
 SCHEMA_INGRESS_CREATE_SESSION_DATA = vol.Schema(
     {
         vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
+        vol.Optional(ATTR_ADMIN): bool,
     }
 )
 
@@ -113,17 +115,14 @@ class APIIngress(CoreSysAttributes):
     @require_home_assistant
     async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
-        schema_ingress_config_session_data = await api_validate(
-            SCHEMA_INGRESS_CREATE_SESSION_DATA, request
-        )
+        body = await api_validate(SCHEMA_INGRESS_CREATE_SESSION_DATA, request)
         data: IngressSessionData | None = None
 
-        if ATTR_SESSION_DATA_USER_ID in schema_ingress_config_session_data:
-            user = await self._find_user_by_id(
-                schema_ingress_config_session_data[ATTR_SESSION_DATA_USER_ID]
-            )
-            if user:
-                data = IngressSessionData(user)
+        if body:
+            user = None
+            if ATTR_SESSION_DATA_USER_ID in body:
+                user = await self._find_user_by_id(body[ATTR_SESSION_DATA_USER_ID])
+            data = IngressSessionData(user=user, admin=body.get(ATTR_ADMIN, True))
 
         session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
@@ -154,6 +153,9 @@ class APIIngress(CoreSysAttributes):
         app = self._extract_app(request)
         path = request.match_info.get("path", "")
         session_data = self.sys_ingress.get_session_data(session)
+        if app.panel_admin and session_data is not None and not session_data.admin:
+            _LOGGER.warning("Non-admin ingress session denied for %s", app.slug)
+            raise HTTPForbidden
         try:
             # Websocket
             if _is_websocket(request):
@@ -332,7 +334,7 @@ def _init_header(
     """Create initial header."""
     headers = CIMultiDict[str]()
 
-    if session_data is not None:
+    if session_data is not None and session_data.user is not None:
         headers[HEADER_REMOTE_USER_ID] = session_data.user.id
         if session_data.user.username is not None:
             headers[HEADER_REMOTE_USER_NAME] = session_data.user.username

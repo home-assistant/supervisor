@@ -657,29 +657,36 @@ class IngressSessionDataUserDict(TypedDict):
 class IngressSessionDataDict(TypedDict):
     """Serialization format for ingress session data."""
 
-    user: IngressSessionDataUserDict
+    user: NotRequired[IngressSessionDataUserDict]
+    admin: NotRequired[bool]
 
 
 @dataclass
 class IngressSessionData:
     """Ingress session data attached to a session token."""
 
-    user: HomeAssistantUser
+    user: HomeAssistantUser | None = None
+    # Sessions created before Core passed the flag are treated as admin
+    admin: bool = True
 
     def to_dict(self) -> IngressSessionDataDict:
         """Get dictionary representation."""
-        return IngressSessionDataDict(
-            user=IngressSessionDataUserDict(
+        data = IngressSessionDataDict(admin=self.admin)
+        if self.user is not None:
+            data["user"] = IngressSessionDataUserDict(
                 id=self.user.id,
                 name=self.user.name,
                 username=self.user.username,
             )
-        )
+        return data
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> Self:
         """Return object from dictionary representation."""
-        return cls(user=HomeAssistantUser.from_dict(data["user"]))
+        return cls(
+            user=HomeAssistantUser.from_dict(data["user"]) if "user" in data else None,
+            admin=data.get("admin", True),
+        )
 
 
 STARTING_STATES = [
