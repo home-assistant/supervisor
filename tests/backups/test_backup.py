@@ -1,5 +1,6 @@
 """Test backups."""
 
+import asyncio
 from contextlib import AbstractContextManager, nullcontext as does_not_raise
 import errno
 import io
@@ -7,12 +8,18 @@ import json
 from pathlib import Path
 from shutil import copy
 import tarfile
+import threading
 from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
 import zlib
 
 import pytest
-from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
+from securetar import (
+    AddFileError,
+    InvalidPasswordError,
+    SecureTarFile,
+    SecureTarReadError,
+)
 
 from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation, _OuterMemberTarFile
@@ -1116,6 +1123,85 @@ async def test_inner_tar_holds_backup_lock_while_open(coresys: CoreSys, tmp_path
         assert backup._outer_lock.locked()
         await coresys.run_in_executor(inner_tar.close)
         assert not backup._outer_lock.locked()
+
+
+class _CloseWaitObservedLock:
+    """Backup file lock that signals when closing the backup waits for it.
+
+    Inner tar readers use acquire/release, closing the backup uses the context
+    manager, so entering the context marks the start of the close.
+    """
+
+    def __init__(self) -> None:
+        """Initialize lock."""
+        self._lock = threading.Lock()
+        self.close_waiting = threading.Event()
+
+    def acquire(self) -> bool:
+        """Acquire lock."""
+        return self._lock.acquire()
+
+    def release(self) -> None:
+        """Release lock."""
+        self._lock.release()
+
+    def locked(self) -> bool:
+        """Return if lock is held."""
+        return self._lock.locked()
+
+    def __enter__(self) -> bool:
+        """Signal close is waiting, then acquire lock."""
+        self.close_waiting.set()
+        return self._lock.acquire()
+
+    def __exit__(self, *args: object) -> None:
+        """Release lock."""
+        self._lock.release()
+
+
+async def test_open_close_waits_for_executor_reader(coresys: CoreSys, tmp_path: Path):
+    """Test closing the backup waits for a reader that outlives the restore."""
+    v3_tar = Path(copy(get_fixture_path("backup_example_sec_v3.tar"), tmp_path))
+    backup = Backup(coresys, v3_tar, "test", None)
+    assert await backup.load()
+    backup.set_password("supervisor")
+
+    # pylint: disable=protected-access
+    backup._outer_lock = lock = _CloseWaitObservedLock()
+    reader_opened = threading.Event()
+    release_reader = threading.Event()
+    outer_tars: list[tarfile.TarFile] = []
+    readers: list[asyncio.Future[None]] = []
+
+    def _read(inner_tar: SecureTarFile) -> None:
+        inner_tar.open()
+        reader_opened.set()
+        release_reader.wait(5)
+        inner_tar.close()
+
+    async def _restore() -> None:
+        async with backup.open(None):
+            outer_tars.append(backup._outer_tar)
+            inner_tar = backup._get_inner_tar("a0d7b954_example")
+            readers.append(coresys.run_in_executor(_read, inner_tar))
+            assert await coresys.run_in_executor(reader_opened.wait, 5)
+
+    restore_task = asyncio.create_task(_restore())
+    assert await coresys.run_in_executor(lock.close_waiting.wait, 5)
+
+    # Loop keeps running while the close waits for the reader
+    await asyncio.sleep(0)
+    assert not restore_task.done()
+    assert not outer_tars[0].closed
+    assert backup._outer_tar is None
+
+    release_reader.set()
+    async with asyncio.timeout(5):
+        await restore_task
+        await readers[0]
+
+    assert outer_tars[0].closed
+    assert not lock.locked()
 
 
 async def test_inner_tar_releases_backup_lock_on_error(
