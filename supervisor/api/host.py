@@ -79,7 +79,7 @@ from .const import (
     CONTENT_TYPE_TEXT,
     CONTENT_TYPE_X_LOG,
 )
-from .utils import api_process, api_process_raw, api_validate
+from .utils import api_process, api_process_raw, api_validate, stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -354,9 +354,12 @@ class APIHost(CoreSysAttributes):
         else:
             range_header = f"entries=:-{DEFAULT_LINES - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else DEFAULT_LINES}"
 
-        async with self.sys_host.logs.journald_logs(
-            params=params, range_header=range_header, accept=LogFormat.JOURNAL
-        ) as resp:
+        async with (
+            stop_on_disconnect(request),
+            self.sys_host.logs.journald_logs(
+                params=params, range_header=range_header, accept=LogFormat.JOURNAL
+            ) as resp,
+        ):
             response = web.StreamResponse()
             response.content_type = CONTENT_TYPE_TEXT
             headers_returned = False

@@ -19,6 +19,7 @@ from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
 from ..utils.logging import AppLoggerAdapter
 from .middleware.security import recursive_unquote
+from .utils import stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -87,13 +88,14 @@ class APIProxy(CoreSysAttributes):
 
         response.headers["X-Accel-Buffering"] = "no"
 
-        try:
-            await response.prepare(request)
-            async for data in client.content:
-                await response.write(data)
-        except aiohttp.ClientError, aiohttp.ClientPayloadError:
-            # Client disconnected or upstream closed
-            pass
+        async with stop_on_disconnect(request):
+            try:
+                await response.prepare(request)
+                async for data in client.content:
+                    await response.write(data)
+            except aiohttp.ClientError, aiohttp.ClientPayloadError:
+                # Client disconnected or upstream closed
+                pass
 
         return response
 

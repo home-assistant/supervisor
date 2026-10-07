@@ -10,7 +10,7 @@ import time
 from typing import Any
 from unittest.mock import ANY, MagicMock, patch
 
-from aiohttp import ClientPayloadError
+from aiohttp import ClientPayloadError, ClientSession, web
 from aiohttp.test_utils import TestClient
 from dbus_fast import DBusError, ErrorType
 import pytest
@@ -548,6 +548,37 @@ async def test_advanced_logs_gateway_closed_mid_stream(
     )
 
     assert await resp.text() == "Hello, world!\n"
+
+
+async def test_advanced_logs_follow_client_disconnect(
+    journald_gateway: MagicMock, api_client: TestClient
+):
+    """Test following logs stops when the client disconnects while logs are idle."""
+    journald_gateway.content.feed_data(b"__CURSOR=cursor1\nMESSAGE=Hello, world!\n\n")
+    upstream_closed = asyncio.Event()
+    journald_gateway.get.return_value.__aexit__.side_effect = lambda *_: (
+        upstream_closed.set()
+    )
+
+    # The test server cancels handlers on disconnect, production does not
+    runner = web.AppRunner(api_client.server.app)
+    await runner.setup()
+    await web.TCPSite(runner, "127.0.0.1", 0).start()
+    port = runner.addresses[0][1]
+
+    with patch("supervisor.api.utils.DISCONNECT_CHECK_INTERVAL", 0):
+        async with ClientSession() as session:
+            # ClientSession.get is patched by the journald_gateway fixture
+            resp = await session.request(
+                "GET", f"http://127.0.0.1:{port}/host/logs/identifiers/test/follow"
+            )
+            assert await resp.content.readline() == b"Hello, world!\n"
+            assert not upstream_closed.is_set()
+            resp.close()
+
+        await asyncio.wait_for(upstream_closed.wait(), 1)
+
+    await runner.cleanup()
 
 
 async def test_advanced_logs_gateway_reset_before_stream(
