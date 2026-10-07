@@ -1,0 +1,87 @@
+"""Helpers for local disk mounts."""
+
+from collections.abc import Collection
+from pathlib import PurePath
+
+from ..coresys import CoreSys
+from ..dbus.udisks2.block import UDisks2Block
+from ..exceptions import (
+    MountDeviceInUseError,
+    MountDeviceMissingUUIDError,
+    MountDeviceProtectedError,
+    MountFilesystemNotSupportedError,
+)
+from ..os.const import (
+    PARTITION_NAME_EXTERNAL_DATA_DISK,
+    PARTITION_NAME_OLD_EXTERNAL_DATA_DISK,
+)
+from .const import HAOS_LABEL_PREFIX, ID_USAGE_FILESYSTEM, SUPPORTED_LOCAL_FILESYSTEMS
+
+# Partition names HAOS uses for an external data disk. Mounting one would
+# race the OS for the same partition on the next boot.
+PROTECTED_PARTITION_NAMES = {
+    PARTITION_NAME_EXTERNAL_DATA_DISK,
+    PARTITION_NAME_OLD_EXTERNAL_DATA_DISK,
+}
+
+
+def validate_block_for_mount(
+    coresys: CoreSys,
+    block: UDisks2Block,
+    *,
+    used_uuids: set[str],
+    own_mount_points: Collection[PurePath] = (),
+) -> None:
+    """Raise if a block device cannot be used as a disk mount.
+
+    Shared by GET /host/disks (caught to filter) and create (propagated).
+    Cheaper structural checks run first so the most fundamental reason wins.
+    """
+    device = block.device.as_posix() if block.device else ""
+
+    # Only devices with a mountable filesystem (not swap, LUKS, RAID, or a
+    # partition table).
+    if block.id_usage != ID_USAGE_FILESYSTEM:
+        raise MountFilesystemNotSupportedError(device=device)
+
+    # UDisks2 asks that hidden devices are not shown to users. HintSystem is
+    # not checked: UDisks2 sets it on every internal disk.
+    if block.hint_ignore:
+        raise MountDeviceProtectedError(device=device)
+
+    # Also catches a former data partition (hassos-data-old), no longer mounted.
+    if (block.id_label or "").startswith(HAOS_LABEL_PREFIX):
+        raise MountDeviceProtectedError(device=device)
+
+    if block.partition and block.partition.name_ in PROTECTED_PARTITION_NAMES:
+        raise MountDeviceProtectedError(device=device)
+
+    if _is_current_data_disk(coresys, block):
+        raise MountDeviceProtectedError(device=device)
+
+    # Already mounted on the host, other than by the mount being resolved
+    if block.filesystem and set(block.filesystem.mount_points) - set(own_mount_points):
+        raise MountDeviceInUseError(device=device)
+
+    if block.id_type not in SUPPORTED_LOCAL_FILESYSTEMS:
+        raise MountFilesystemNotSupportedError(device=device)
+
+    # Disk mounts persist by UUID; without one there is nothing stable to record.
+    if not block.id_uuid:
+        raise MountDeviceMissingUUIDError(device=device)
+
+    if block.id_uuid in used_uuids:
+        raise MountDeviceInUseError(device=device)
+
+
+def _is_current_data_disk(coresys: CoreSys, block: UDisks2Block) -> bool:
+    """Return true if this block device holds the data partition in use.
+
+    OS-Agent is absent on non-HAOS installs, which have no managed data disk.
+    """
+    datadisk = coresys.dbus.agent.datadisk
+    if not datadisk.is_connected:
+        return False
+
+    current_device = datadisk.current_device
+    return bool(current_device) and block.device == current_device

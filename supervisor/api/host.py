@@ -30,19 +30,28 @@ from ..const import (
     ATTR_DISK_USED,
     ATTR_FEATURES,
     ATTR_HOSTNAME,
+    ATTR_ID,
     ATTR_KERNEL,
     ATTR_NAME,
     ATTR_OPERATING_SYSTEM,
+    ATTR_SERIAL,
     ATTR_SERVICES,
+    ATTR_SIZE,
     ATTR_STATE,
     ATTR_TIMEZONE,
+    ATTR_UUID,
 )
 from ..coresys import CoreSysAttributes
+from ..dbus.const import DBUS_OBJECT_BASE
+from ..dbus.udisks2.block import UDisks2Block
+from ..dbus.udisks2.drive import UDisks2Drive
 from ..exceptions import (
     APIDBMigrationInProgress,
     APIError,
+    DBusObjectError,
     HostContainerLogEpochError,
     HostLogError,
+    MountInvalidError,
     MountNotFound,
     MountUsageNotMountedError,
     MountUsageReadError,
@@ -57,7 +66,10 @@ from ..host.const import (
     LogFormatter,
 )
 from ..host.logs import SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX
-from ..mounts.mount import Mount
+from ..mounts.const import ATTR_FILESYSTEM, ATTR_READ_ONLY
+from ..mounts.disks import validate_block_for_mount
+from ..mounts.mount import Mount, disk_mount_uuids
+from ..os.data_disk import Disk
 from ..utils.systemd_journal import journal_logs_reader
 from .const import (
     ATTR_AGENT_VERSION,
@@ -67,14 +79,25 @@ from .const import (
     ATTR_BROADCAST_LLMNR,
     ATTR_BROADCAST_MDNS,
     ATTR_CHILDREN,
+    ATTR_CONNECTION_BUS,
+    ATTR_DEV_PATH,
+    ATTR_DEVICE,
+    ATTR_DISKS,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
+    ATTR_EJECTABLE,
     ATTR_FORCE,
     ATTR_IDENTIFIERS,
+    ATTR_LABEL,
     ATTR_LLMNR_HOSTNAME,
     ATTR_MAX_DEPTH,
+    ATTR_MODEL,
+    ATTR_MOUNTABLE,
+    ATTR_PARTITIONS,
+    ATTR_REMOVABLE,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
+    ATTR_VENDOR,
     ATTR_VIRTUALIZATION,
     CONTENT_TYPE_TEXT,
     CONTENT_TYPE_X_LOG,
@@ -420,6 +443,102 @@ class APIHost(CoreSysAttributes):
         return await self.advanced_logs_handler(
             request, identifier, follow, latest, no_colors, default_verbose
         )
+
+    @api_process
+    async def disks(self, request: web.Request) -> dict[str, Any]:
+        """Return local disks with the partitions that can be mounted."""
+        if not self.sys_dbus.udisks2.is_connected:
+            return {ATTR_DISKS: []}
+
+        # Refresh so a disk plugged in moments ago shows up.
+        await self.sys_dbus.udisks2.update()
+
+        used_uuids = disk_mount_uuids(self.sys_mounts.mounts)
+        disks: dict[str, dict[str, Any]] = {}
+        for block in self.sys_dbus.udisks2.block_devices:
+            try:
+                # Same guard as mount creation, so the two cannot disagree.
+                validate_block_for_mount(self.coresys, block, used_uuids=used_uuids)
+            except MountInvalidError:
+                continue
+
+            if not (disk_block := self._disk_block(block)):
+                continue
+
+            if disk_block.object_path not in disks:
+                disks[disk_block.object_path] = self._disk_to_dict(disk_block)
+            disks[disk_block.object_path][ATTR_PARTITIONS].append(
+                self._partition_to_dict(block)
+            )
+
+        return {ATTR_DISKS: list(disks.values())}
+
+    def _disk_block(self, block: UDisks2Block) -> UDisks2Block | None:
+        """Return the whole-disk block device a filesystem is on.
+
+        None if its partition table disappeared during enumeration.
+        """
+        if not block.partition:
+            return block
+
+        try:
+            return self.sys_dbus.udisks2.get_block_device(block.partition.table)
+        except DBusObjectError:
+            return None
+
+    def _drive(self, block: UDisks2Block) -> UDisks2Drive | None:
+        """Return the drive of a block device, None if UDisks2 has none."""
+        if not block.drive or block.drive == DBUS_OBJECT_BASE:
+            return None
+
+        try:
+            return self.sys_dbus.udisks2.get_drive(block.drive)
+        except DBusObjectError:
+            return None
+
+    def _disk_to_dict(self, disk_block: UDisks2Block) -> dict[str, Any]:
+        """Return API representation of a disk, named as in /os/datadisk/list."""
+        if drive := self._drive(disk_block):
+            disk = Disk.from_udisks2_drive(drive, disk_block)
+        else:
+            disk = Disk(
+                vendor="",
+                model="",
+                serial="",
+                id=disk_block.device.as_posix(),
+                size=disk_block.size,
+                device_path=disk_block.device,
+                object_path=DBUS_OBJECT_BASE,
+                device_object_path=disk_block.object_path,
+            )
+
+        return {
+            ATTR_NAME: disk.name,
+            ATTR_VENDOR: disk.vendor,
+            ATTR_MODEL: disk.model,
+            ATTR_SERIAL: disk.serial,
+            ATTR_SIZE: disk.size,
+            ATTR_ID: disk.id,
+            ATTR_DEV_PATH: disk.device_path.as_posix(),
+            ATTR_CONNECTION_BUS: drive.connection_bus if drive else "",
+            ATTR_REMOVABLE: drive.removable if drive else False,
+            ATTR_EJECTABLE: drive.ejectable if drive else False,
+            ATTR_PARTITIONS: [],
+        }
+
+    @staticmethod
+    def _partition_to_dict(block: UDisks2Block) -> dict[str, Any]:
+        """Return API representation of a partition."""
+        return {
+            ATTR_DEVICE: block.device.as_posix(),
+            ATTR_UUID: block.id_uuid,
+            ATTR_LABEL: block.id_label,
+            ATTR_FILESYSTEM: block.id_type,
+            ATTR_SIZE: block.size,
+            ATTR_READ_ONLY: block.read_only,
+            # Only mountable partitions are listed for now.
+            ATTR_MOUNTABLE: True,
+        }
 
     @api_process
     async def disk_usage(self, request: web.Request) -> dict[str, Any]:
