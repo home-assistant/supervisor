@@ -54,13 +54,21 @@ class FixupAppExecuteRepair(FixupBase):
             )
             return
 
+        if not app.has_supported_arch:
+            _LOGGER.warning(
+                "Cannot repair app %s as it does not support any architecture "
+                "of this system, dismissing suggestion",
+                suggestion.reference,
+            )
+            return
+
         # A failing install (broken Dockerfile or unavailable base/builder
         # image; disk full; bad credentials; registry rate limit) propagates
         # to the caller. The repair stays available for manual retry once
         # the underlying cause is fixed.
         _LOGGER.info("Installing image for app %s", suggestion.reference)
         self.attempts += 1
-        await app.instance.install(app.version)
+        await app.instance.install(app.version, arch=app.arch)
 
     @property
     def suggestion(self) -> SuggestionType:

@@ -34,7 +34,9 @@ async def test_fixup(docker: DockerAPI, coresys: CoreSys, install_app_ssh: App):
     )
     with patch.object(DockerInterface, "install") as install:
         await app_execute_repair()
-        install.assert_called_once()
+        install.assert_called_once_with(
+            install_app_ssh.version, None, False, install_app_ssh.arch
+        )
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
@@ -65,6 +67,31 @@ async def test_fixup_detached_build_app_skips(
         install.assert_not_called()
 
     # Dismissed gracefully without attempting a build or raising.
+    assert not coresys.resolution.issues
+    assert not coresys.resolution.suggestions
+
+
+async def test_fixup_unsupported_arch_skips(
+    docker: DockerAPI, coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test fixup dismisses an app that supports no arch of this system."""
+    docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
+    install_app_ssh.data["image"] = "test_image"
+    install_app_ssh.data["arch"] = ["armv7"]
+
+    app_execute_repair = FixupAppExecuteRepair(coresys)
+    coresys.resolution.create_issue(
+        IssueType.MISSING_IMAGE,
+        ContextType.ADDON,
+        reference="local_ssh",
+        suggestions=[SuggestionType.EXECUTE_REPAIR],
+    )
+    with patch.object(DockerInterface, "install") as install:
+        await app_execute_repair()
+        install.assert_not_called()
+
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
 
