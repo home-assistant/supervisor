@@ -40,7 +40,7 @@ def test_v1_folder_migration():
         }
     )
 
-    assert data[validate.ATTR_FOLDERS] == [validate.FOLDER_ADDONS]
+    assert data[validate.ATTR_FOLDERS] == [validate.Folder.APPS]
 
 
 def test_v1_protected():

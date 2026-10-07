@@ -22,7 +22,7 @@ from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import BUF_SIZE, STREAM_BUF_SIZE, BackupType
 from supervisor.config import CoreConfig
-from supervisor.const import FOLDER_ADDONS
+from supervisor.const import FOLDER_ADDONS, Folder
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     AppsError,
@@ -121,12 +121,13 @@ async def test_backup_error_app(coresys: CoreSys, install_app_ssh: App, tmp_path
 async def test_backup_folder_addons_local_maps_to_apps_local(
     coresys: CoreSys, tmp_path: Path
 ):
-    """Test backup/restore of FOLDER_ADDONS uses the apps/local on-disk path.
+    """Test restoring a legacy addons/local backup archive as apps/local.
 
-    The local apps folder moved from addons/local to apps/local, but the
-    backup folder name FOLDER_ADDONS ("addons/local") is kept for API and
-    existing backup compatibility. Backup/restore must resolve it to the
-    current on-disk location instead of the now-nonexistent old path.
+    Backups created before the addons/local -> apps/local rename archived
+    this folder under the legacy "addons_local" slug. Schema validation
+    normalizes "addons/local" to Folder.APPS ("apps/local") in the backup
+    metadata on load, but the on-disk archive keeps the legacy slug name.
+    Restore must fall back to that legacy archive name.
     """
     apps_local = tmp_path / "apps_local"
     apps_local.mkdir()
@@ -141,16 +142,54 @@ async def test_backup_folder_addons_local_maps_to_apps_local(
         CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_local)
     ):
         async with backup.create():
-            await backup.store_folders([FOLDER_ADDONS])
-
-        assert FOLDER_ADDONS in backup.folders
+            await backup.store_folders([Folder.APPS])
 
         # Simulate a fresh system: remove the on-disk folder before restoring
         await coresys.run_in_executor(remove_folder, apps_local, True)
         assert not list(apps_local.iterdir())
 
         async with backup.open(None):
-            await backup.restore_folders([FOLDER_ADDONS])
+            # Simulate a pre-migration backup: archived under the legacy slug.
+            ext = ".tar.gz" if backup.compressed else ".tar"
+            tmp_dir = Path(backup._tmp.name)  # pylint: disable=protected-access
+            (tmp_dir / f"apps_local{ext}").rename(
+                tmp_dir / f"{FOLDER_ADDONS.replace('/', '_')}{ext}"
+            )
+
+            await backup.restore_folders([Folder.APPS])
+
+        restored_config = apps_local / "test_app" / "config.yaml"
+        assert restored_config.is_file()
+        assert restored_config.read_text() == "name: Test App"
+
+
+async def test_backup_folder_apps_local(
+    coresys: CoreSys, tmp_supervisor_data: Path, tmp_path: Path
+):
+    """Test backup/restore of Folder.APPS uses the apps/local on-disk path."""
+    apps_local = tmp_path / "apps_local"
+    apps_local.mkdir()
+    (apps_local / "test_app").mkdir()
+    (apps_local / "test_app" / "config.yaml").write_text("name: Test App")
+
+    backup_file = tmp_path / "my_backup.tar"
+    backup = Backup(coresys, backup_file, "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    with patch.object(
+        CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_local)
+    ):
+        async with backup.create():
+            await backup.store_folders([Folder.APPS])
+
+        assert Folder.APPS in backup.folders
+
+        # Simulate a fresh system: remove the on-disk folder before restoring
+        await coresys.run_in_executor(remove_folder, apps_local, True)
+        assert not list(apps_local.iterdir())
+
+        async with backup.open(None):
+            await backup.restore_folders([Folder.APPS])
 
         restored_config = apps_local / "test_app" / "config.yaml"
         assert restored_config.is_file()
@@ -174,7 +213,7 @@ async def test_backup_error_folder(
             ),
         ):
             backup_store_folders, backup_task = await coresys.jobs.schedule_job(
-                backup.store_folders, JobSchedulerOptions(), ["media"]
+                backup.store_folders, JobSchedulerOptions(), [Folder.MEDIA]
             )
             await backup_task
             assert len(backup_store_folders.errors) == 1
@@ -211,7 +250,7 @@ async def test_backup_oserror_folder_propagates(
         pytest.raises(BackupFatalIOError),
     ):
         async with backup.create():
-            await backup.store_folders(["media"])
+            await backup.store_folders([Folder.MEDIA])
 
 
 async def test_backup_fatal_error_app_propagates(
@@ -520,14 +559,14 @@ async def test_restore_folder_bufsize(
         "test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL, password=password
     )
     async with backup.create():
-        await backup.store_folders(["media"])
+        await backup.store_folders([Folder.MEDIA])
 
     test_file.unlink()
     async with backup.open(None):
         with patch(
             "supervisor.backups.backup.SecureTarFile", wraps=SecureTarFile
         ) as secure_tar_mock:
-            assert await backup.restore_folders(["media"])
+            assert await backup.restore_folders([Folder.MEDIA])
 
     assert secure_tar_mock.call_args.kwargs["bufsize"] == expected_bufsize
     assert test_file.read_text() == "backup content"
@@ -554,7 +593,7 @@ async def test_restore_encrypted_zero_file_bounded_decompression(
         password="backup_password",
     )
     async with backup.create():
-        await backup.store_folders(["media"])
+        await backup.store_folders([Folder.MEDIA])
 
     max_chunk = 0
     decompressobj = zlib.decompressobj
@@ -575,7 +614,7 @@ async def test_restore_encrypted_zero_file_bounded_decompression(
     test_file.unlink()
     async with backup.open(None):
         with patch("zlib.decompressobj", RecordingDecompressor):
-            assert await backup.restore_folders(["media"])
+            assert await backup.restore_folders([Folder.MEDIA])
 
     assert test_file.stat().st_size == size
     assert max_chunk < size // 2

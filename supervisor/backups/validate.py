@@ -27,19 +27,19 @@ from ..const import (
     ATTR_VERSION,
     FOLDER_ADDONS,
     FOLDER_HOMEASSISTANT,
-    FOLDER_MEDIA,
-    FOLDER_SHARE,
-    FOLDER_SSL,
+    Folder,
 )
 from ..store.validate import repositories
 from ..validate import version_tag
 
-ALL_FOLDERS = [
-    FOLDER_SHARE,
-    FOLDER_ADDONS,
-    FOLDER_SSL,
-    FOLDER_MEDIA,
-]
+# FOLDER_ADDONS ("addons/local") is only used for the v1 API contract and
+# backups created before the apps/local rename.
+ALL_FOLDERS: list[Folder] = list(Folder)
+
+
+def replace_folder(folders: list[str], old: str, new: str) -> list[str]:
+    """Return a copy of folders with old replaced by new."""
+    return [new if folder == old else folder for folder in folders]
 
 
 def unique_apps(apps_list):
@@ -68,7 +68,10 @@ def v1_folderlist(folder_data: list[str]) -> list[str]:
     """Cleanup folder artefacts from v1."""
     if FOLDER_HOMEASSISTANT in folder_data:
         folder_data.remove(FOLDER_HOMEASSISTANT)
-    return folder_data
+    # Backups written before the addons/local -> apps/local rename still
+    # have the old name in their metadata. Normalize it so the rest of the
+    # code only ever has to deal with Folder.APPS.
+    return replace_folder(folder_data, FOLDER_ADDONS, Folder.APPS)
 
 
 def v1_protected(protected: bool | str) -> bool:
@@ -112,7 +115,7 @@ SCHEMA_BACKUP = vol.Schema(
             ),
         ),
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
-            v1_folderlist, [vol.In(ALL_FOLDERS)], vol.Unique()
+            v1_folderlist, [vol.Coerce(Folder)], vol.Unique()
         ),
         vol.Optional(ATTR_ADDONS, default=list): vol.All(
             [

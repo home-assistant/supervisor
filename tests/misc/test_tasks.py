@@ -10,7 +10,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.apps.app import App
-from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState, FeatureFlag
+from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState, FeatureFlag, Folder
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -186,7 +186,7 @@ async def test_core_backup_cleanup(tasks: Tasks, coresys: CoreSys):
     await coresys.backups.reload()
     assert (old_backup := coresys.backups.get("7fed74c8"))
     new_backup = await coresys.backups.do_backup_partial(
-        name="test", folders=["ssl"], location=".cloud_backup"
+        name="test", folders=[Folder.SSL], location=".cloud_backup"
     )
 
     old_tar = old_backup.tarfile

@@ -12,12 +12,7 @@ from shutil import copy
 from typing import cast
 
 from ..apps.app import App
-from ..const import (
-    ATTR_DAYS_UNTIL_STALE,
-    FILE_HASSIO_BACKUPS,
-    FOLDER_HOMEASSISTANT,
-    CoreState,
-)
+from ..const import ATTR_DAYS_UNTIL_STALE, FILE_HASSIO_BACKUPS, CoreState, Folder
 from ..coresys import CoreSys
 from ..dbus.const import UnitActiveState
 from ..exceptions import (
@@ -518,7 +513,7 @@ class BackupManager(FileConfiguration, JobGroup):
         self,
         backup: Backup,
         app_list: list[App],
-        folder_list: list[str],
+        folder_list: list[Folder],
         homeassistant: bool,
         homeassistant_exclude_database: bool | None,
         additional_locations: list[LOCATION_TYPE] | None = None,
@@ -661,7 +656,7 @@ class BackupManager(FileConfiguration, JobGroup):
         filename: str | None = None,
         *,
         apps: list[str] | None = None,
-        folders: list[str] | None = None,
+        folders: list[Folder] | None = None,
         password: str | None = None,
         homeassistant: bool = False,
         compressed: bool = True,
@@ -684,11 +679,6 @@ class BackupManager(FileConfiguration, JobGroup):
 
         apps = apps or []
         folders = folders or []
-
-        # HomeAssistant Folder is for v1
-        if FOLDER_HOMEASSISTANT in folders:
-            folders.remove(FOLDER_HOMEASSISTANT)
-            homeassistant = True
 
         if len(apps) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
@@ -726,7 +716,7 @@ class BackupManager(FileConfiguration, JobGroup):
         self,
         backup: Backup,
         app_list: list[str],
-        folder_list: list[str],
+        folder_list: list[Folder],
         homeassistant: bool,
         replace: bool,
         location: str | None | type[DEFAULT],
@@ -954,7 +944,7 @@ class BackupManager(FileConfiguration, JobGroup):
         *,
         homeassistant: bool = False,
         apps: list[str] | None = None,
-        folders: list[str] | None = None,
+        folders: list[Folder] | None = None,
         password: str | None = None,
         location: str | None | type[DEFAULT] = DEFAULT,
         validation_complete: asyncio.Event | None = None,
@@ -965,11 +955,6 @@ class BackupManager(FileConfiguration, JobGroup):
 
         app_list = apps or []
         folder_list = folders or []
-
-        # Version 1
-        if FOLDER_HOMEASSISTANT in folder_list:
-            folder_list.remove(FOLDER_HOMEASSISTANT)
-            homeassistant = True
 
         await self._validate_backup_location(backup, password, location)
 

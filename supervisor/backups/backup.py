@@ -48,6 +48,7 @@ from ..const import (
     ATTR_TYPE,
     ATTR_VERSION,
     FOLDER_ADDONS,
+    Folder,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -193,7 +194,7 @@ class Backup(JobGroup):
         return [app_data[ATTR_SLUG] for app_data in self.apps]
 
     @property
-    def folders(self) -> list[str]:
+    def folders(self) -> list[Folder]:
         """Return list of saved folders."""
         return self._data[ATTR_FOLDERS]
 
@@ -764,19 +765,8 @@ class Backup(JobGroup):
 
         return success
 
-    def _folder_origin_dir(self, name: str) -> Path:
-        """Resolve the on-disk path backing a backup folder name.
-
-        FOLDER_ADDONS ("addons/local") is kept as the backup/API name for
-        compatibility with existing backups, but the local apps folder now
-        lives at path_apps_local ("apps/local") on disk.
-        """
-        if name == FOLDER_ADDONS:
-            return self.sys_config.path_apps_local
-        return Path(self.sys_config.path_supervisor, name)
-
     @Job(name="backup_folder_save", cleanup=False)
-    async def _folder_save(self, name: str):
+    async def _folder_save(self, name: Folder):
         """Take backup of a folder."""
         self.sys_jobs.current.reference = name
         if not self._outer_secure_tarfile:
@@ -787,7 +777,7 @@ class Backup(JobGroup):
         outer_secure_tarfile = self._outer_secure_tarfile
         slug_name = name.replace("/", "_")
         tar_name = f"{slug_name}.tar{'.gz' if self.compressed else ''}"
-        origin_dir = self._folder_origin_dir(name)
+        origin_dir = name.origin_dir(self.sys_config)
 
         def _save() -> bool:
             # Check if exists
@@ -846,7 +836,7 @@ class Backup(JobGroup):
             raise BackupError(f"Can't write tarfile: {err!s}") from err
 
     @Job(name="backup_store_folders", cleanup=False)
-    async def store_folders(self, folder_list: list[str]):
+    async def store_folders(self, folder_list: list[Folder]):
         """Backup Supervisor data into backup."""
         # Save folder sequential avoid issue on slow IO
         for folder in folder_list:
@@ -861,22 +851,26 @@ class Backup(JobGroup):
                 self.sys_jobs.current.capture_error(err)
 
     @Job(name="backup_folder_restore", cleanup=False)
-    async def _folder_restore(self, name: str) -> None:
+    async def _folder_restore(self, name: Folder) -> None:
         """Restore a folder."""
         self.sys_jobs.current.reference = name
         if not self._tmp:
             raise RuntimeError("Cannot restore components without opening backup tar")
 
-        slug_name = name.replace("/", "_")
-        tar_name = Path(
-            self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
-        )
-        origin_dir = self._folder_origin_dir(name)
+        ext = ".tar.gz" if self.compressed else ".tar"
+        tar_candidates = [Path(self._tmp.name, f"{name.replace('/', '_')}{ext}")]
+        if name == Folder.APPS:
+            # Backups created before the addons/local -> apps/local rename
+            # archived this folder under the legacy slug.
+            legacy_slug = FOLDER_ADDONS.replace("/", "_")
+            tar_candidates.append(Path(self._tmp.name, f"{legacy_slug}{ext}"))
+        origin_dir = name.origin_dir(self.sys_config)
 
         # Perform a restore
         def _restore() -> None:
             # Check if exists inside backup
-            if not tar_name.exists():
+            tar_name = next((c for c in tar_candidates if c.exists()), None)
+            if tar_name is None:
                 raise BackupInvalidError(
                     f"Can't find restore folder {name}", _LOGGER.warning
                 )
@@ -955,7 +949,7 @@ class Backup(JobGroup):
                         raise result
 
     @Job(name="backup_restore_folders", cleanup=False)
-    async def restore_folders(self, folder_list: list[str]) -> bool:
+    async def restore_folders(self, folder_list: list[Folder]) -> bool:
         """Backup Supervisor data into backup."""
         success = True
 
