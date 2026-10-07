@@ -296,7 +296,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             self._add_failed_issue(mount)
             return
 
-        if await mount.is_mounted():
+        # A disk mount stays bound to a pulled or replugged device. Discarding
+        # the session re-arms the trigger, so the re-probe mounts the new one.
+        if await mount.is_mounted() or await mount.renew_stale_session():
             mount.dismiss_failed_issue()
         else:
             self._add_failed_issue(mount)

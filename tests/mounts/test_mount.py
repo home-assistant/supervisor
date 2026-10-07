@@ -18,6 +18,8 @@ from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import (
     DBusError as SupervisorDBusError,
     MountActivationError,
+    MountDeviceInUseError,
+    MountDeviceLinkError,
     MountDeviceNotFoundError,
     MountDeviceReadOnlyError,
     MountDisksNotSupportedError,
@@ -1473,54 +1475,23 @@ async def test_disk_mount_stays_active_when_udisks2_unavailable(
     assert mount.state == UnitActiveState.ACTIVE
 
 
-async def test_disk_mount_discards_session_when_device_detached(
+@pytest.mark.parametrize(
+    "resolved_devices",
+    [pytest.param([], id="pulled"), pytest.param([SDC1_OBJECT_PATH], id="replugged")],
+)
+async def test_disk_mount_probe_reports_dead_session_without_stopping_it(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
     path_extern,
     mock_is_mount,
+    resolved_devices: list[str],
 ):
-    """Test a disk pulled while mounted has its dead session torn down.
+    """Test a disk pulled or replugged while mounted is reported, not torn down.
 
-    The kernel keeps the dead mount attached, which covers the autofs trigger,
-    and a reattached disk arrives as a new device instance — so without this
-    the path stays dead until someone reloads the mount by hand. Stopping the
-    .mount lets systemd re-install the trigger, and the next access mounts the
-    disk fresh.
-    """
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
-        "udisks2_manager"
-    ]
-    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
-    await mount.mount()
-    assert mount.state == UnitActiveState.ACTIVE
-
-    systemd_service.StopUnit.calls.clear()
-    # statvfs still succeeds from cache; only the device has gone
-    udisks2_manager_service.resolved_devices = []
-
-    assert await mount.is_mounted() is False
-    assert mount.state == UnitActiveState.INACTIVE
-
-    # Only the .mount is stopped — the .automount stays armed, so the path is
-    # never exposed as a writable directory
-    assert [call[0] for call in systemd_service.StopUnit.calls] == [
-        "mnt-data-supervisor-media-test.mount"
-    ]
-
-
-async def test_disk_mount_discards_session_when_disk_replugged(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock],
-    tmp_supervisor_data: Path,
-    path_extern,
-    mock_is_mount,
-):
-    """Test a disk replugged between checks has its dead session torn down.
-
-    The replugged disk carries the same UUID but is a new block device, while
-    the mount stays bound to the old, dead one.
+    A replugged disk carries the same UUID but is a new block device, while the
+    mount stays bound to the old, dead one. Callers such as the backup location
+    check only probe, so discarding the session is left to the mount manager.
     """
     systemd_service: SystemdService = all_dbus_services["systemd"]
     udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
@@ -1534,15 +1505,60 @@ async def test_disk_mount_discards_session_when_disk_replugged(
         assert mount.state == UnitActiveState.ACTIVE
 
         systemd_service.StopUnit.calls.clear()
-        # Same UUID, now on another block device
-        udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+        udisks2_manager_service.resolved_devices = resolved_devices
 
         assert await mount.is_mounted() is False
 
     assert mount.state == UnitActiveState.INACTIVE
-    assert [call[0] for call in systemd_service.StopUnit.calls] == [
-        "mnt-data-supervisor-media-test.mount"
+    assert systemd_service.StopUnit.calls == []
+
+
+async def test_disk_mount_new_name_rejects_device_at_its_target(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a device mounted at a new mount's target is in use, not stale.
+
+    Only a mount replacing a registered one of the same name may find its
+    previous mount still listed by UDisks2.
+    """
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
     ]
+    # sdb1 is mounted at /mnt/data/supervisor/media/ext
+    udisks2_manager_service.resolved_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sdb1"
+    ]
+    mount: DiskMount = Mount.from_dict(
+        coresys,
+        {"name": "ext", "usage": "media", "type": "disk", "device": "/dev/sdb1"},
+    )
+
+    with pytest.raises(MountDeviceInUseError):
+        await mount.mount()
+
+
+async def test_disk_mount_device_link_blocked(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a directory where the device link belongs fails as a mount error."""
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    mount.path_device_link.mkdir(parents=True)
+
+    with pytest.raises(MountDeviceLinkError) as err:
+        await mount.mount()
+
+    assert err.value.extra_fields["path"] == mount.path_device_link.as_posix()
+
+    # Unmounting still succeeds and leaves the directory alone
+    await mount.unmount()
+    assert mount.path_device_link.is_dir()
 
 
 async def test_disk_mount_btrfs_is_checked_by_uuid_only(
@@ -1579,31 +1595,4 @@ async def test_disk_mount_unreadable_mount_point_is_detached(
     ):
         assert await mount.is_mounted() is False
 
-    assert mount.state == UnitActiveState.INACTIVE
-
-
-async def test_disk_mount_survives_failed_session_discard(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock],
-    tmp_supervisor_data: Path,
-    path_extern,
-    mock_is_mount,
-):
-    """Test a failed teardown still reports the mount as unusable.
-
-    The probe's answer is what callers act on, so a systemd error while
-    discarding must not turn a health check into a raised error — the next
-    reconcile tries again.
-    """
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
-        "udisks2_manager"
-    ]
-    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
-    await mount.mount()
-
-    udisks2_manager_service.resolved_devices = []
-    systemd_service.response_stop_unit = ERROR_FAILURE
-
-    assert await mount.is_mounted() is False
     assert mount.state == UnitActiveState.INACTIVE

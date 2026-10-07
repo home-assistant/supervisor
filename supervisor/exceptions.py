@@ -2202,6 +2202,25 @@ class MountDeviceMissingUUIDError(MountInvalidError):
         super().__init__(None, logger)
 
 
+class MountDeviceLinkError(MountError):
+    """Raise when the device link of a disk mount cannot be written."""
+
+    error_key = "mount_device_link_error"
+    message_template = "Cannot create device link {path} for mount {name}: {error}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        name: str,
+        path: str,
+        error: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"name": name, "path": path, "error": error}
+        super().__init__(None, logger)
+
+
 class MountDisksNotSupportedError(MountInvalidError):
     """Raise when the host cannot mount local disks at all."""
 

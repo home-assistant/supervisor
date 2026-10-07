@@ -1,6 +1,7 @@
 """Test mounts API."""
 
 import asyncio
+from dataclasses import replace
 import errno
 from unittest.mock import PropertyMock, patch
 
@@ -1218,6 +1219,56 @@ async def test_api_create_disk_mount_cannot_skip_guards_with_filesystem(
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
     assert result["data"]["mounts"] == []
+
+
+async def test_api_update_disk_mount_while_udisks2_lists_old_target(
+    api_client_with_prefix: tuple[TestClient, str],
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    sdc_candidate: DBusServiceMock,
+    mock_is_mount,
+):
+    """Test an update is not refused because UDisks2 still lists the old mount.
+
+    UDisks2 updates mount points asynchronously, after the update has already
+    taken the previous mount down.
+    """
+    api_client, prefix = api_client_with_prefix
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+    resp = await api_client.post(
+        f"{prefix}/mounts",
+        json={
+            "name": "media_test",
+            "type": "disk",
+            "usage": "media",
+            "uuid": SDC1_UUID,
+        },
+    )
+    assert (await resp.json())["result"] == "ok"
+
+    filesystem = all_dbus_services["udisks2_filesystem"][SDC1_OBJECT_PATH]
+    filesystem.fixture = replace(
+        filesystem.fixture, MountPoints=[b"/mnt/data/supervisor/media/media_test"]
+    )
+
+    # Moving to another usage changes the target, too
+    resp = await api_client.put(
+        f"{prefix}/mounts/media_test",
+        json={"type": "disk", "usage": "share", "uuid": SDC1_UUID},
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    resp = await api_client.get(f"{prefix}/mounts")
+    mounts = (await resp.json())["data"]["mounts"]
+    assert [(mount["name"], mount["usage"], mount["state"]) for mount in mounts] == [
+        ("media_test", "share", "active")
+    ]
 
 
 async def test_api_update_disk_mount_cannot_skip_guards_with_filesystem(

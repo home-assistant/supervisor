@@ -16,6 +16,7 @@ from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import (
     MountActivationError,
     MountDeviceInUseError,
+    MountDeviceLinkError,
     MountError,
     MountJobError,
     MountNotFound,
@@ -36,6 +37,8 @@ from tests.dbus_service_mocks.udisks2_manager import (
 )
 
 ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
+ERROR_FAILURE = DBusError(ErrorType.FAILED, "error")
+SDC1_OBJECT_PATH = "/org/freedesktop/UDisks2/block_devices/sdc1"
 DISK_UUID = "d2f4a6c8-3b5e-4079-8a1c-6e9d2f4b7a30"
 BACKUP_TEST_DATA = {
     "name": "backup_test",
@@ -1121,7 +1124,12 @@ async def test_reload_reconciles_issue_creation(
     all_dbus_services: dict[str, DBusServiceMock],
     mount: Mount,
 ):
-    """Test the periodic reconcile surfaces an unreachable mount as issue."""
+    """Test the periodic reconcile surfaces an unreachable mount as issue.
+
+    The kernel recovers a network session on its own, so it is not discarded.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StopUnit.calls.clear()
     assert mount.failed_issue not in coresys.resolution.issues
 
     with patch(
@@ -1130,6 +1138,7 @@ async def test_reload_reconciles_issue_creation(
     ):
         await coresys.mounts.reload()
 
+    assert systemd_service.StopUnit.calls == []
     assert mount.state == UnitActiveState.INACTIVE
     assert mount.failed_issue in coresys.resolution.issues
     assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
@@ -1170,6 +1179,148 @@ async def test_reload_reconciles_trigger_repair_failure(
         suggestion.type
         for suggestion in coresys.resolution.suggestions_for_issue(mount.failed_issue)
     } == expected_suggestions
+
+
+@pytest.fixture(name="disk_mount")
+async def fixture_disk_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation, mock_is_mount
+) -> DiskMount:
+    """Add a mounted disk mount."""
+    disk_mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    coresys.mounts._mounts = {"disk_test": disk_mount}  # pylint: disable=protected-access
+    await disk_mount.mount()
+    return disk_mount
+
+
+async def test_reload_recovers_replugged_disk(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    disk_mount: DiskMount,
+):
+    """Test the reconcile discards a replugged disk's dead session and re-mounts it.
+
+    Unlike a network session the kernel cannot recover a mount bound to a
+    removed device, so the re-probe after the discard mounts the new one.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StopUnit.calls.clear()
+    # Same UUID, now on sdc1 (2081); the dead mount stays on sda1 until discarded
+    udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+
+    with patch(
+        "supervisor.mounts.mount._mount_device_number",
+        side_effect=lambda _: 2081 if systemd_service.StopUnit.calls else 2049,
+    ):
+        await coresys.mounts.reload()
+
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-media-disk_test.mount"
+    ]
+    assert disk_mount.state == UnitActiveState.ACTIVE
+    assert disk_mount.failed_issue not in coresys.resolution.issues
+
+
+@pytest.mark.parametrize(
+    "stop_unit_response",
+    [
+        pytest.param("/org/freedesktop/systemd1/job/7623", id="discarded"),
+        pytest.param(ERROR_FAILURE, id="stop-fails"),
+    ],
+)
+async def test_reload_flags_pulled_disk(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    disk_mount: DiskMount,
+    stop_unit_response: str | DBusError,
+):
+    """Test a disk still gone after the discard is flagged, even if the stop fails."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.response_stop_unit = stop_unit_response
+    udisks2_manager_service.resolved_devices = []
+
+    await coresys.mounts.reload()
+
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-media-disk_test.mount"
+    ]
+    assert disk_mount.state == UnitActiveState.INACTIVE
+    assert disk_mount.failed_issue in coresys.resolution.issues
+
+
+async def test_reload_keeps_disk_session_when_probe_fails(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    disk_mount: DiskMount,
+):
+    """Test a failed probe flags a disk mount without stopping a live session.
+
+    Only a mount bound to a gone or replaced device is discarded.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StopUnit.calls.clear()
+
+    with patch(
+        "supervisor.mounts.mount._probe_mount",
+        side_effect=OSError(errno.EIO, "Input/output error"),
+    ):
+        await coresys.mounts.reload()
+
+    assert systemd_service.StopUnit.calls == []
+    assert disk_mount.failed_issue in coresys.resolution.issues
+
+
+async def test_load_renews_replugged_disk_session(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    disk_mount: DiskMount,
+):
+    """Test adopting a disk mount bound to a replugged device mounts it fresh.
+
+    After a Supervisor restart the units survive, and the first reconcile only
+    runs 15 minutes later.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    udisks2_manager_service: UDisks2ManagerService = all_dbus_services[
+        "udisks2_manager"
+    ]
+    systemd_service.StopUnit.calls.clear()
+    udisks2_manager_service.resolved_devices = [SDC1_OBJECT_PATH]
+
+    with patch(
+        "supervisor.mounts.mount._mount_device_number",
+        side_effect=lambda _: 2081 if systemd_service.StopUnit.calls else 2049,
+    ):
+        await coresys.mounts.load()
+
+    assert [call[0] for call in systemd_service.StopUnit.calls] == [
+        "mnt-data-supervisor-media-disk_test.mount"
+    ]
+    assert disk_mount.state == UnitActiveState.ACTIVE
+    assert disk_mount.failed_issue not in coresys.resolution.issues
+
+
+async def test_create_disk_mount_device_link_blocked(
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
+):
+    """Test a blocked device link fails the add as a mount error and rolls back."""
+    disk_mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    disk_mount.path_device_link.mkdir(parents=True)
+
+    with pytest.raises(MountDeviceLinkError):
+        await coresys.mounts.create_mount(disk_mount)
+
+    assert coresys.mounts.mounts == []
 
 
 async def test_load_disk_mount(

@@ -1,5 +1,8 @@
 """Helpers for local disk mounts."""
 
+from collections.abc import Collection
+from pathlib import PurePath
+
 from ..coresys import CoreSys
 from ..dbus.udisks2.block import UDisks2Block
 from ..exceptions import (
@@ -23,7 +26,11 @@ PROTECTED_PARTITION_NAMES = {
 
 
 def validate_block_for_mount(
-    coresys: CoreSys, block: UDisks2Block, *, used_uuids: set[str]
+    coresys: CoreSys,
+    block: UDisks2Block,
+    *,
+    used_uuids: set[str],
+    own_mount_points: Collection[PurePath] = (),
 ) -> None:
     """Raise if a block device cannot be used as a disk mount.
 
@@ -52,8 +59,8 @@ def validate_block_for_mount(
     if _is_current_data_disk(coresys, block):
         raise MountDeviceProtectedError(device=device)
 
-    # Already mounted on the host
-    if block.filesystem and block.filesystem.mount_points:
+    # Already mounted on the host, other than by the mount being resolved
+    if block.filesystem and set(block.filesystem.mount_points) - set(own_mount_points):
         raise MountDeviceInUseError(device=device)
 
     if block.id_type not in SUPPORTED_LOCAL_FILESYSTEMS:

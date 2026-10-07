@@ -1,7 +1,8 @@
 """Tests for the shared local disk mount guard."""
 
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import replace
-from pathlib import Path
+from pathlib import Path, PurePath
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -20,6 +21,7 @@ from supervisor.mounts.disks import validate_block_for_mount
 from tests.dbus_service_mocks.base import DBusServiceMock
 
 SDA1_PATH = "/org/freedesktop/UDisks2/block_devices/sda1"
+SDB1_PATH = "/org/freedesktop/UDisks2/block_devices/sdb1"
 SDC1_PATH = "/org/freedesktop/UDisks2/block_devices/sdc1"
 SDC1_UUID = "d2f4a6c8-3b5e-4079-8a1c-6e9d2f4b7a30"
 
@@ -69,6 +71,38 @@ async def test_guard_rails(
 
     with pytest.raises(expected_error):
         validate_block_for_mount(coresys, block, used_uuids=set())
+
+
+@pytest.mark.parametrize(
+    ("own_mount_points", "expectation"),
+    [
+        pytest.param(
+            {PurePath("/mnt/data/supervisor/media/ext")}, nullcontext(), id="own-target"
+        ),
+        pytest.param(
+            {PurePath("/mnt/data/supervisor/media/other")},
+            pytest.raises(MountDeviceInUseError),
+            id="other-target",
+        ),
+    ],
+)
+async def test_guard_in_use_ignores_own_target(
+    coresys: CoreSys,
+    own_mount_points: set[PurePath],
+    expectation: AbstractContextManager,
+):
+    """Test a device mounted only at the resolving mount's own target is allowed.
+
+    UDisks2 updates mount points asynchronously, so an update can still see the
+    mount it just took down.
+    """
+    # sdb1 is mounted at /mnt/data/supervisor/media/ext
+    block = coresys.dbus.udisks2.get_block_device(SDB1_PATH)
+
+    with expectation:
+        validate_block_for_mount(
+            coresys, block, used_uuids=set(), own_mount_points=own_mount_points
+        )
 
 
 async def test_guard_rejects_hidden_device(

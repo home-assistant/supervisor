@@ -38,6 +38,7 @@ from ..exceptions import (
     DBusNotConnectedError,
     DBusSystemdNoSuchUnit,
     MountActivationError,
+    MountDeviceLinkError,
     MountDeviceMismatchError,
     MountDeviceNotFoundError,
     MountDeviceReadOnlyError,
@@ -393,7 +394,7 @@ class Mount(CoreSysAttributes, ABC):
             await self._update_state_await(unit)
         # The .mount unit is inactive until something triggers it, so only
         # the probe tells reachability apart from a dormant trigger
-        if not await self.is_mounted():
+        if not await self.is_mounted() and not await self.renew_stale_session():
             _LOGGER.error(
                 "Mount %s is not reachable. Check host logs for errors from "
                 "mount or systemd unit %s for details",
@@ -847,6 +848,23 @@ class Mount(CoreSysAttributes, ABC):
                 err,
             )
 
+    @property
+    def stale_session(self) -> bool:
+        """Return true if the last probe found a session the kernel cannot recover.
+
+        Never for a network mount: the kernel reconnects its session.
+        """
+        return False
+
+    async def renew_stale_session(self) -> bool:
+        """Discard a stale session and probe again; return whether reachable."""
+        if not self.stale_session:
+            return False
+
+        with suppress(MountError):
+            await self.discard_session()
+        return await self.is_mounted()
+
     async def discard_session(self) -> None:
         """Stop the .mount unit while keeping the automount trigger armed.
 
@@ -1054,6 +1072,8 @@ class DiskMount(Mount):
     uses an autofs pair, so an unplugged disk remounts on the next access.
     """
 
+    _stale_session = False
+
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
         out = MountData(**super().to_dict())
@@ -1101,6 +1121,25 @@ class DiskMount(Mount):
         return self.sys_config.path_mounts_devices / self.name
 
     @property
+    def _own_targets(self) -> set[PurePath]:
+        """Return the targets a previous mount of this name may still hold.
+
+        An update or restore takes the previous mount down first, possibly at
+        another usage's target, but UDisks2 updates mount points asynchronously
+        and may still list it. Empty for a new name.
+        """
+        if not any(mount.name == self.name for mount in self.sys_mounts.mounts):
+            return set()
+        return {
+            path / self.name
+            for path in (
+                self.sys_config.path_extern_media,
+                self.sys_config.path_extern_share,
+                self.sys_config.path_extern_mounts,
+            )
+        }
+
+    @property
     def path_by_uuid(self) -> Path:
         """Path to the host's device node for the filesystem UUID."""
         return Path(f"/dev/disk/by-uuid/{self.uuid}")
@@ -1122,41 +1161,52 @@ class DiskMount(Mount):
         """Point the device link at the resolved device. Must run in executor."""
         target = self.path_by_uuid
         link = self.path_device_link
-        if link.is_symlink() and link.readlink() == target:
-            return
-        link.unlink(missing_ok=True)
-        link.symlink_to(target)
+        try:
+            if link.is_symlink() and link.readlink() == target:
+                return
+            # Refuses anything but a file or link, e.g. a directory
+            link.unlink(missing_ok=True)
+            link.symlink_to(target)
+        except OSError as err:
+            raise MountDeviceLinkError(
+                _LOGGER.error,
+                name=self.name,
+                path=link.as_posix(),
+                error=err.strerror or str(err),
+            ) from err
+
+    def _remove_device_link(self) -> None:
+        """Remove the device link. Must run in executor."""
+        try:
+            self.path_device_link.unlink(missing_ok=True)
+        except OSError as err:
+            _LOGGER.warning(
+                "Could not remove device link of mount %s: %s", self.name, err
+            )
 
     async def is_mounted(self) -> bool:
         """Return true if the disk is mounted and still attached.
 
-        statvfs is cached for a local filesystem, so a pulled disk still looks
-        healthy. UDisks2 presence is what distinguishes the two.
+        statvfs is cached for a local filesystem, so a pulled or replugged disk
+        still looks healthy. UDisks2 tells them apart. Only probes: a dead
+        session is flagged in `stale_session` for the caller to discard.
         """
+        self._stale_session = False
         if not await super().is_mounted():
             return False
 
         if not await self._device_attached():
-            # The kernel keeps the dead mount attached, covering the autofs
-            # trigger, and a replugged disk arrives as a new device instance -
-            # so nothing re-fires the trigger on its own and What= outside /dev
-            # means no device unit ever will. Discard the session so systemd
-            # re-installs the trigger and the next access mounts the disk fresh.
-            _LOGGER.info(
-                "Mount %s is mounted but its device is gone, discarding its "
-                "session so a reattached disk mounts on next access",
-                self.name,
-            )
-            try:
-                await self.discard_session()
-            except MountError as err:
-                _LOGGER.warning(
-                    "Could not discard the stale session of %s: %s", self.name, err
-                )
+            # Mounted, but bound to a device that is gone or was replaced
+            self._stale_session = True
             self._state = UnitActiveState.INACTIVE
             return False
 
         return True
+
+    @property
+    def stale_session(self) -> bool:
+        """Return true if the last probe found the mount bound to a dead device."""
+        return self._stale_session
 
     async def _device_attached(self) -> bool:
         """Return whether the mounted filesystem is backed by a present device.
@@ -1219,7 +1269,7 @@ class DiskMount(Mount):
     async def unmount(self) -> None:
         """Unmount using systemd."""
         await super().unmount()
-        await self.sys_run_in_executor(self.path_device_link.unlink, missing_ok=True)
+        await self.sys_run_in_executor(self._remove_device_link)
 
     async def _ensure_resolved(self) -> None:
         """Resolve the device unless it is already known.
@@ -1302,6 +1352,7 @@ class DiskMount(Mount):
             self.coresys,
             block,
             used_uuids=disk_mount_uuids(self.sys_mounts.mounts, exclude=self.name),
+            own_mount_points=self._own_targets,
         )
 
         # Do not silently downgrade a writable request on a read-only device.
