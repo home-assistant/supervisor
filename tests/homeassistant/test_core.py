@@ -585,7 +585,7 @@ async def test_install_resets_progress_on_retry(
             "progressDetail": {"current": 500, "total": 1000},
             "id": "1578b14a573c",
         },
-        {"errorDetail": {"message": "failure"}, "error": "failure"},
+        aiodocker.DockerStreamError("failure", error_detail={"message": "failure"}),
     ]
     full = load_json_fixture("docker_pull_image_log_containerd_snapshot.json")
     coresys.docker.images.pull.side_effect = [

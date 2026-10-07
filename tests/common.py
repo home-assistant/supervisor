@@ -224,7 +224,11 @@ class MockResponse:
 
 
 class AsyncIterator:
-    """Make list/fixture into async iterator for test mocks."""
+    """Make list/fixture into async iterator for test mocks.
+
+    Exception instances in the sequence are raised when reached, e.g. to mimic
+    aiodocker raising DockerStreamError on an error chunk mid-stream.
+    """
 
     def __init__(self, seq: Sequence[Any]) -> None:
         """Initialize with sequence."""
@@ -237,9 +241,12 @@ class AsyncIterator:
     async def __anext__(self) -> Any:
         """Return next in sequence."""
         try:
-            return next(self.iter)
+            item = next(self.iter)
         except StopIteration:
             raise StopAsyncIteration from None
+        if isinstance(item, Exception):
+            raise item
+        return item
 
 
 def mount_start_transient_unit_call(
