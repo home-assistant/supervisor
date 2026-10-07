@@ -14,6 +14,7 @@ from supervisor.api.const import WEBSOCKETS
 from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HomeAssistantWSError
 
 
 @pytest.fixture(name="real_websession")
@@ -147,6 +148,45 @@ async def test_create_session_admin_flag(
         assert session_data.user.id == "some-id"
     else:
         assert session_data.user is None
+
+
+@pytest.mark.parametrize(
+    "list_users_mock",
+    [
+        pytest.param({"return_value": []}, id="user_not_found"),
+        pytest.param(
+            {"side_effect": HomeAssistantWSError("offline")}, id="lookup_error"
+        ),
+    ],
+)
+async def test_create_session_non_admin_user_lookup_failure(
+    api_client: TestClient,
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    list_users_mock: dict[str, Any],
+):
+    """Test a non-admin session stays restricted when the user cannot be resolved."""
+    ha_ws_client.async_send_command.configure_mock(**list_users_mock)
+
+    resp = await api_client.post(
+        "/ingress/session", json={"user_id": "some-id", "admin": False}
+    )
+    session = (await resp.json())["data"]["session"]
+
+    session_data = coresys.ingress.get_session_data(session)
+    assert session_data is not None
+    assert session_data.user is None
+    assert session_data.admin is False
+
+    mock_app = MagicMock(spec=App)
+    mock_app.slug = "test_addon"
+    mock_app.panel_admin = True
+    ingress_token = coresys.ingress.create_session()
+    with patch.object(coresys.ingress, "get", return_value=mock_app):
+        resp = await api_client.get(
+            f"/ingress/{ingress_token}/", cookies={"ingress_session": session}
+        )
+    assert resp.status == 403
 
 
 @pytest.mark.parametrize(
