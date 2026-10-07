@@ -1,6 +1,9 @@
 """Const for API."""
 
 from enum import StrEnum
+import weakref
+
+from aiohttp import web
 
 CONTENT_TYPE_BINARY = "application/octet-stream"
 CONTENT_TYPE_JSON = "application/json"
@@ -11,6 +14,10 @@ CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
 CONTENT_TYPE_X_LOG = "text/x-log"
 
 COOKIE_INGRESS = "ingress_session"
+
+# Open proxied websockets, closed on API stop as they outlive aiohttp's
+# graceful shutdown timeout otherwise
+WEBSOCKETS = web.AppKey[weakref.WeakSet[web.WebSocketResponse]]("websockets")
 
 ATTR_ADDITIONAL_LOCATIONS = "additional_locations"
 ATTR_AGENT_VERSION = "agent_version"

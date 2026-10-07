@@ -1,15 +1,22 @@
 """Init file for Supervisor RESTful API."""
 
+import asyncio
 from dataclasses import dataclass
 from functools import partial
 import logging
 from pathlib import Path
 from typing import Any
+import weakref
 
-from aiohttp import hdrs, web
+from aiohttp import WSCloseCode, hdrs, web
 
 from ..apps.app import App
-from ..const import SUPERVISOR_DOCKER_NAME, AppState, FeatureFlag
+from ..const import (
+    SUPERVISOR_DOCKER_NAME,
+    WEBSOCKET_CLOSE_TIMEOUT,
+    AppState,
+    FeatureFlag,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     APIAppNotInstalled,
@@ -22,7 +29,7 @@ from .audio import APIAudio
 from .auth import APIAuth
 from .backups import APIBackups
 from .cli import APICli
-from .const import CONTENT_TYPE_TEXT, AppVersion
+from .const import CONTENT_TYPE_TEXT, WEBSOCKETS, AppVersion
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
 from .docker import APIDocker
@@ -106,6 +113,8 @@ class RestAPI(CoreSysAttributes):
 
     async def load(self) -> None:
         """Register REST API Calls."""
+        self.webapp[WEBSOCKETS] = weakref.WeakSet()
+        self.webapp.on_shutdown.append(self._close_websockets)
         v2_enabled = self.sys_config.feature_flags.get(
             FeatureFlag.SUPERVISOR_V2_API, False
         )
@@ -1169,3 +1178,32 @@ class RestAPI(CoreSysAttributes):
         await self._runner.cleanup()
 
         _LOGGER.info("Stopping API on %s", self.sys_docker.network.supervisor)
+
+    async def _close_websockets(self, app: web.Application) -> None:
+        """Close open proxied websockets on app shutdown.
+
+        aiohttp's graceful shutdown only waits for in-flight handlers, so
+        long-lived websocket proxies would otherwise hold the API stop until
+        the shutdown timeout expires.
+        """
+        # Closed sockets linger in the weak set until garbage collected
+        websockets = [
+            websocket for websocket in app[WEBSOCKETS] if not websocket.closed
+        ]
+        if not websockets:
+            return
+
+        _LOGGER.info("Closing %d websocket connections", len(websockets))
+        try:
+            async with asyncio.timeout(WEBSOCKET_CLOSE_TIMEOUT):
+                await asyncio.gather(
+                    *(
+                        websocket.close(
+                            code=WSCloseCode.GOING_AWAY, message=b"Supervisor stopping"
+                        )
+                        for websocket in websockets
+                    ),
+                    return_exceptions=True,
+                )
+        except TimeoutError:
+            _LOGGER.warning("Timeout closing websocket connections")

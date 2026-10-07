@@ -15,9 +15,11 @@ from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.api.const import WEBSOCKETS
 from supervisor.api.proxy import APIProxy
 from supervisor.apps.app import App
-from supervisor.const import ATTR_ACCESS_TOKEN
+from supervisor.const import ATTR_ACCESS_TOKEN, CoreState
+from supervisor.coresys import CoreSys
 from supervisor.homeassistant.api import HomeAssistantAPI
 
 
@@ -146,6 +148,58 @@ async def test_proxy_message(
     assert await client.receive_json() == {"world": "received", "id": 1}
 
     assert await client.close()
+
+
+async def test_proxy_websocket_closed_on_api_stop(
+    api_client: TestClient,
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_app_ssh: App,
+):
+    """Test proxied websockets are closed when the API stops."""
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_app_ssh.supervisor_token
+    )
+    assert len(api_client.server.app[WEBSOCKETS]) == 1
+
+    shutdown_task = asyncio.create_task(api_client.server.app.shutdown())
+    msg = await client.receive()
+    await shutdown_task
+
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.GOING_AWAY
+    assert ha_ws_server.closed
+
+
+async def test_proxy_websocket_closed_on_api_stop_during_auth(
+    api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test a websocket closed on API stop while authenticating logs no error."""
+    websocket = await api_client.ws_connect("/core/websocket")
+    assert (await websocket.receive_json())["type"] == "auth_required"
+    await coresys.core.set_state(CoreState.STOPPING)
+
+    shutdown_task = asyncio.create_task(api_client.server.app.shutdown())
+    msg = await websocket.receive()
+    await shutdown_task
+
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.GOING_AWAY
+    assert "Unexpected message during authentication" not in caplog.text
+
+
+async def test_proxy_websocket_closed_when_stopping(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test websocket upgrades completing after API stop began are closed."""
+    await coresys.core.set_state(CoreState.STOPPING)
+
+    websocket = await api_client.ws_connect("/core/websocket")
+    msg = await websocket.receive()
+
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.GOING_AWAY
 
 
 async def test_proxy_binary_message(

@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 import aiohttp
-from aiohttp import ClientTimeout, hdrs, web
+from aiohttp import ClientTimeout, ClientWSTimeout, WSCloseCode, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
     HTTPServiceUnavailable,
@@ -29,12 +29,14 @@ from ..const import (
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
+    STOPPING_STATES,
+    WEBSOCKET_CLOSE_TIMEOUT,
     HomeAssistantUser,
     IngressSessionData,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
-from .const import COOKIE_INGRESS
+from .const import COOKIE_INGRESS, WEBSOCKETS
 from .utils import api_process, api_validate, require_home_assistant, stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -188,6 +190,11 @@ class APIIngress(CoreSysAttributes):
             max_msg_size=MAX_WEBSOCKET_MESSAGE_SIZE,
         )
         await ws_server.prepare(request)
+        request.config_dict[WEBSOCKETS].add(ws_server)
+        # The upgrade may complete after API stop closed the tracked websockets
+        if self.sys_core.state in STOPPING_STATES:
+            await ws_server.close(code=WSCloseCode.GOING_AWAY)
+            return ws_server
 
         # Preparing
         url = self._create_url(app, path)
@@ -207,6 +214,7 @@ class APIIngress(CoreSysAttributes):
                 autoclose=False,
                 autoping=False,
                 max_msg_size=MAX_WEBSOCKET_MESSAGE_SIZE,
+                timeout=ClientWSTimeout(ws_close=WEBSOCKET_CLOSE_TIMEOUT),
             ) as ws_client:
                 # Proxy requests
                 await asyncio.wait(

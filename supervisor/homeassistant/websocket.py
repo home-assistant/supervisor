@@ -19,6 +19,7 @@ from ..const import (
     ATTR_TYPE,
     ATTR_UPDATE_KEY,
     STARTING_STATES,
+    WEBSOCKET_CLOSE_TIMEOUT,
     BusEvent,
     CoreState,
     FeatureFlag,
@@ -154,7 +155,10 @@ class WSClient:
         """Open a raw WebSocket connection to Core."""
         try:
             return await session.ws_connect(
-                url, ssl=False, max_msg_size=MAX_MESSAGE_SIZE_FROM_CORE
+                url,
+                ssl=False,
+                max_msg_size=MAX_MESSAGE_SIZE_FROM_CORE,
+                timeout=aiohttp.ClientWSTimeout(ws_close=WEBSOCKET_CLOSE_TIMEOUT),
             )
         except aiohttp.client_exceptions.ClientConnectorError:
             raise HomeAssistantWSConnectionError("Can't connect") from None

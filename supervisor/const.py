@@ -688,6 +688,13 @@ STARTING_STATES = [
     CoreState.SETUP,
 ]
 
+# Bounds waiting for the peer's close acknowledgment, must stay well below
+# the stage timeouts of Core.stop()
+WEBSOCKET_CLOSE_TIMEOUT = 5
+
+# States in which the Supervisor is shutting down (see Core.stop())
+STOPPING_STATES = frozenset({CoreState.STOPPING, CoreState.CLOSE})
+
 # States in which the API can be used (enforced by system_validation())
 VALID_API_STATES = frozenset(
     {

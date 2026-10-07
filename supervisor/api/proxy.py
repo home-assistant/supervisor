@@ -14,10 +14,12 @@ from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
 from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPForbidden, HTTPUnauthorized
 
+from ..const import STOPPING_STATES
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
 from ..utils.logging import AppLoggerAdapter
+from .const import WEBSOCKETS
 from .middleware.security import recursive_unquote
 from .utils import stop_on_disconnect
 
@@ -264,15 +266,15 @@ class APIProxy(CoreSysAttributes):
                     await target.send_str(msg.data)
                 case WSMsgType.BINARY:
                     await target.send_bytes(msg.data)
-                case WSMsgType.CLOSE | WSMsgType.CLOSED:
+                # CLOSING is received when the source is closed locally from another
+                # task (e.g. on API stop), the other leg must be closed as well then
+                case WSMsgType.CLOSE | WSMsgType.CLOSING | WSMsgType.CLOSED:
                     logger.debug(
                         "Received WebSocket message type %r from %s.",
                         msg.type,
                         "app" if type(source) is web.WebSocketResponse else "Core",
                     )
                     await target.close()
-                case WSMsgType.CLOSING:
-                    pass
                 case WSMsgType.ERROR:
                     logger.warning(
                         "Error WebSocket message received while proxying: %r", msg.data
@@ -302,6 +304,11 @@ class APIProxy(CoreSysAttributes):
         # init server
         server = web.WebSocketResponse(heartbeat=30)
         await server.prepare(request)
+        request.config_dict[WEBSOCKETS].add(server)
+        # The upgrade may complete after API stop closed the tracked websockets
+        if self.sys_core.state in STOPPING_STATES:
+            await server.close(code=WSCloseCode.GOING_AWAY)
+            return server
         app_name = None
 
         # handle authentication
@@ -337,6 +344,9 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.error("Timeout during authentication for WebSocket API")
             return server
         except WSMessageTypeError as err:
+            # Closed on API stop while waiting for the auth message
+            if self.sys_core.state in STOPPING_STATES:
+                return server
             _LOGGER.error(
                 "Unexpected message during authentication for WebSocket API: %s", err
             )
