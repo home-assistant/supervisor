@@ -22,7 +22,8 @@
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
         "GitHub.vscode-pull-request-github",
-        "GitHub.copilot"
+        "GitHub.copilot",
+        "anthropic.claude-code"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/home/vscode/.local/ha-venv/bin/python",
@@ -45,6 +46,9 @@
         }
       }
     }
+  },
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {}
   },
   "mounts": [
     "type=volume,target=/var/lib/docker",
