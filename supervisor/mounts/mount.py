@@ -899,8 +899,8 @@ class Mount(CoreSysAttributes, ABC):
         and since the path stays covered the trigger never re-fires.
         Stopping only the `.mount` (lazily for a network mount, so this
         cannot block on the server) makes systemd re-install the autofs
-        trigger over the path — the
-        same mechanism idle-expiry uses, and the automount's Triggers=
+        trigger over the path — the same mechanism idle-expiry uses, and
+        the automount's Triggers=
         reference keeps the transient `.mount` definition alive — so
         the path is never exposed as a writable directory. The next
         access mounts fresh, establishing a new session.
@@ -1319,6 +1319,17 @@ class DiskMount(Mount):
         await self._stop_automount()
         await self._release_units()
         await self.sys_run_in_executor(self._remove_device_link)
+
+    async def discard_session(self) -> None:
+        """Stop the .mount unit while keeping the automount trigger armed.
+
+        A dead session of a pulled disk can only be dropped once nothing
+        holds files on it anymore, so a failure tells the user what to do.
+        """
+        try:
+            await super().discard_session()
+        except MountReloadError as err:
+            raise MountDiskBusyError(name=self.name) from err
 
     async def _ensure_resolved(self) -> None:
         """Resolve the device unless it is already known.

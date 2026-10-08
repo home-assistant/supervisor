@@ -992,6 +992,29 @@ async def test_disk_mount_unmount_busy(
     assert not mount.path_device_link.is_symlink()
 
 
+async def test_disk_mount_discard_session_busy(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test dropping a dead session of a disk still in use names the cause."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    await mount.mount()
+
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.response_stop_unit = ERROR_FAILURE
+    with pytest.raises(MountDiskBusyError):
+        await mount.discard_session()
+
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-test.mount", "fail"),
+    ]
+
+
 async def test_disk_mount_read_only(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
