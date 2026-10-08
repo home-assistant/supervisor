@@ -22,6 +22,7 @@ from supervisor.exceptions import (
     MountDeviceLinkError,
     MountDeviceNotFoundError,
     MountDeviceReadOnlyError,
+    MountDiskBusyError,
     MountDisksNotSupportedError,
     MountError,
     MountFilesystemNotSupportedError,
@@ -933,13 +934,61 @@ async def test_disk_mount(
             what="/mnt/data/supervisor/.mounts_devices/test",
             fstype="ext4",
             options=None,
+            lazy_unmount=False,
         )
     ]
 
+    systemd_service.StopUnit.calls.clear()
     systemd_unit_service.active_state = ["active", "inactive"]
     await mount.unmount()
 
+    # The .mount goes first: stopping the trigger first would detach the
+    # disk lazily and keep its superblock alive while anything holds it
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-test.mount", "fail"),
+        ("mnt-data-supervisor-media-test.automount", "fail"),
+    ]
+
     # Unlink the link we created. is_symlink() does not follow it.
+    assert not mount.path_device_link.is_symlink()
+
+
+async def test_disk_mount_unmount_busy(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+    mock_is_mount,
+):
+    """Test a disk still in use fails the unmount with everything left in place."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+
+    mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
+    await mount.mount()
+
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.response_stop_unit = ERROR_FAILURE
+    with pytest.raises(MountDiskBusyError):
+        await mount.unmount()
+
+    # The trigger stays armed and the device link in place for a retry
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-test.mount", "fail"),
+    ]
+    assert mount.unit is not None
+    assert mount.path_device_link.is_symlink()
+
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.response_stop_unit = "/org/freedesktop/systemd1/job/7623"
+    systemd_unit_service.active_state = ["active", "inactive"]
+    await mount.unmount()
+
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-test.mount", "fail"),
+        ("mnt-data-supervisor-media-test.automount", "fail"),
+    ]
+    assert mount.unit is None
     assert not mount.path_device_link.is_symlink()
 
 
@@ -971,6 +1020,7 @@ async def test_disk_mount_read_only(
             what="/mnt/data/supervisor/.mounts_devices/test",
             fstype="ext4",
             options="ro",
+            lazy_unmount=False,
         )
     ]
 
@@ -1003,6 +1053,7 @@ async def test_disk_mount_ntfs_uses_kernel_driver(
             what="/mnt/data/supervisor/.mounts_devices/test",
             fstype="ntfs3",
             options=None,
+            lazy_unmount=False,
         )
     ]
 
@@ -1038,6 +1089,7 @@ async def test_disk_mount_vfat_decodes_names_as_utf8(
             what="/mnt/data/supervisor/.mounts_devices/test",
             fstype="vfat",
             options=expected_options,
+            lazy_unmount=False,
         )
     ]
 
@@ -1179,6 +1231,7 @@ async def test_disk_mount_resolves_device_on_create(
             what="/mnt/data/supervisor/.mounts_devices/test",
             fstype="ext4",
             options=None,
+            lazy_unmount=False,
         )
     ]
 

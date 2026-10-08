@@ -1375,6 +1375,7 @@ async def test_load_disk_mount(
             what="/mnt/data/supervisor/.mounts_devices/disk_test",
             fstype="ext4",
             options=None,
+            lazy_unmount=False,
         )
     ]
 

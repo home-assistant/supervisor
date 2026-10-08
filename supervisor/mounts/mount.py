@@ -42,6 +42,7 @@ from ..exceptions import (
     MountDeviceMismatchError,
     MountDeviceNotFoundError,
     MountDeviceReadOnlyError,
+    MountDiskBusyError,
     MountDisksNotSupportedError,
     MountError,
     MountFilesystemNotSupportedError,
@@ -220,6 +221,11 @@ class Mount(CoreSysAttributes, ABC):
     def options(self) -> list[str]:
         """List of options to use to mount."""
         return ["ro"] if self.read_only else []
+
+    @property
+    def lazy_unmount(self) -> bool:
+        """Return true if the .mount unit detaches lazily on stop."""
+        return True
 
     @property
     def fs_type(self) -> str:
@@ -640,15 +646,18 @@ class Mount(CoreSysAttributes, ABC):
             if self.options
             else []
         )
+        # MNT_DETACH on umount, so teardown never blocks on an unreachable
+        # server. Open fds error out on their next operation through
+        # softerr (NFS) / soft (CIFS).
+        lazy_unmount = (
+            [(DBUS_ATTR_LAZY_UNMOUNT, Variant("b", True))] if self.lazy_unmount else []
+        )
         mount_properties = options + [
             (DBUS_ATTR_TYPE, Variant("s", self.fs_type)),
             (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
             (DBUS_ATTR_WHAT, Variant("s", self.what)),
             (DBUS_ATTR_TIMEOUT_USEC, Variant("t", MOUNT_UNIT_TIMEOUT_USEC)),
-            # MNT_DETACH on umount, so teardown never blocks on an
-            # unreachable server. Open fds error out on their next
-            # operation through softerr (NFS) / soft (CIFS).
-            (DBUS_ATTR_LAZY_UNMOUNT, Variant("b", True)),
+            *lazy_unmount,
             # No start rate limiting: hitting the default limit (5 starts
             # in 10 s, successful ones included) makes systemd detach the
             # autofs trigger entirely and the path degrades to a plain,
@@ -727,10 +736,29 @@ class Mount(CoreSysAttributes, ABC):
         # Stop the .automount first: it disarms the trigger so nothing can
         # re-mount during cleanup, and it lazily detaches the whole stack
         # at the path (systemd's unmount_autofs() uses MNT_DETACH), so the
-        # stop cannot block on an unreachable server. Stopping an automount
-        # is synchronous and cannot fail on its own — an error here means
-        # systemd could not be reached, which must not pass silently: it
-        # would leave an armed trigger at the path of a removed mount.
+        # stop cannot block on an unreachable server.
+        await self._stop_automount()
+
+        # Resolve the .mount unit only after the automount stop: the lazy
+        # detach can take the active .mount down with it, and systemd then
+        # garbage-collects the transient unit — a proxy fetched earlier
+        # would point at a vanished D-Bus object.
+        try:
+            await self._stop_mount_unit()
+        except MountUnmountError:
+            await self._rearm_after_failed_unmount()
+            raise
+
+        await self._release_units()
+
+    async def _stop_automount(self) -> None:
+        """Stop the .automount unit, disarming the trigger.
+
+        Stopping an automount is synchronous and cannot fail on its own —
+        an error here means systemd could not be reached, which must not
+        pass silently: it would leave an armed trigger at the path of a
+        removed mount.
+        """
         try:
             result = await self._run_systemd_job(
                 "stop_unit",
@@ -753,42 +781,40 @@ class Mount(CoreSysAttributes, ABC):
             )
             raise MountUnmountError(name=self.name) from err
 
-        # Resolve the .mount unit only after the automount stop: the lazy
-        # detach can take the active .mount down with it, and systemd then
-        # garbage-collects the transient unit — a proxy fetched earlier
-        # would point at a vanished D-Bus object.
+    async def _stop_mount_unit(self) -> None:
+        """Stop the .mount unit if it exists and is not already failed."""
         unit = await self._update_unit()
         if not unit:
             _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
-        else:
-            await self._update_state(unit)
-            try:
-                if self.state != UnitActiveState.FAILED:
-                    result = await self._run_systemd_job(
-                        "stop_unit",
-                        self.sys_dbus.systemd.stop_unit(
-                            self.unit_name, StopUnitMode.FAIL
-                        ),
-                    )
-                    # A failed stop job is an error, not a success — treating
-                    # it as done is how a stale mount once survived a
-                    # "successful" cleanup (see #6938).
-                    if result != "done":
-                        _LOGGER.error(
-                            "Could not unmount %s (systemd result: %s)",
-                            self.name,
-                            result,
-                        )
-                        await self._rearm_after_failed_unmount()
-                        raise MountUnmountError(name=self.name)
-            except DBusSystemdNoSuchUnit:
-                # Unit went away with the automount detach — fine.
-                pass
-            except DBusError as err:
-                _LOGGER.error("Could not unmount %s due to: %s", self.name, err)
-                await self._rearm_after_failed_unmount()
-                raise MountUnmountError(name=self.name) from err
+            return
 
+        await self._update_state(unit)
+        if self.state == UnitActiveState.FAILED:
+            return
+
+        try:
+            result = await self._run_systemd_job(
+                "stop_unit",
+                self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL),
+            )
+        except DBusSystemdNoSuchUnit:
+            # Unit went away with the automount detach — fine.
+            return
+        except DBusError as err:
+            _LOGGER.error("Could not unmount %s due to: %s", self.name, err)
+            raise MountUnmountError(name=self.name) from err
+
+        # A failed stop job is an error, not a success — treating it as
+        # done is how a stale mount once survived a "successful" cleanup
+        # (see #6938).
+        if result != "done":
+            _LOGGER.error(
+                "Could not unmount %s (systemd result: %s)", self.name, result
+            )
+            raise MountUnmountError(name=self.name)
+
+    async def _release_units(self) -> None:
+        """Forget the units after teardown."""
         # Clear any failure state so the dead transient units get
         # garbage-collected instead of lingering.
         for unit_name in (self.automount_unit_name, self.unit_name):
@@ -871,8 +897,9 @@ class Mount(CoreSysAttributes, ABC):
         Used when an established mount's session is permanently dead
         (e.g. the server was replaced): the kernel cannot recover it,
         and since the path stays covered the trigger never re-fires.
-        Stopping only the `.mount` (LazyUnmount detaches immediately)
-        makes systemd re-install the autofs trigger over the path — the
+        Stopping only the `.mount` (lazily for a network mount, so this
+        cannot block on the server) makes systemd re-install the autofs
+        trigger over the path — the
         same mechanism idle-expiry uses, and the automount's Triggers=
         reference keeps the transient `.mount` definition alive — so
         the path is never exposed as a writable directory. The next
@@ -1106,6 +1133,16 @@ class DiskMount(Mount):
         return super().options + FILESYSTEM_MOUNT_OPTIONS.get(self.filesystem, [])
 
     @property
+    def lazy_unmount(self) -> bool:
+        """Return false: a local unmount cannot hang on a server.
+
+        A lazily detached disk mount lives on while anything holds it, and
+        the kernel then refuses to mount the device again with a different
+        read-only state.
+        """
+        return False
+
+    @property
     def fs_type(self) -> str:
         """Kernel filesystem name for the systemd unit."""
         if (filesystem := self.filesystem) is None:
@@ -1267,8 +1304,20 @@ class DiskMount(Mount):
         await super().mount()
 
     async def unmount(self) -> None:
-        """Unmount using systemd."""
-        await super().unmount()
+        """Unmount using systemd.
+
+        The .mount is stopped before the trigger: stopping the .automount
+        first would detach the stack lazily, and a lazily detached disk mount
+        lives on while anything holds it. A busy disk fails the unmount with
+        everything left in place, so the user can free it and retry.
+        """
+        try:
+            await self._stop_mount_unit()
+        except MountUnmountError as err:
+            raise MountDiskBusyError(name=self.name) from err
+
+        await self._stop_automount()
+        await self._release_units()
         await self.sys_run_in_executor(self._remove_device_link)
 
     async def _ensure_resolved(self) -> None:

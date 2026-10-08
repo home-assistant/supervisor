@@ -2049,6 +2049,16 @@ class MountUnmountError(MountError):
         super().__init__(None, logger)
 
 
+class MountDiskBusyError(MountUnmountError):
+    """Raise when a disk mount could not be unmounted because it is in use."""
+
+    error_key = "mount_disk_busy_error"
+    message_template = (
+        "Could not unmount {name}, the disk is still in use. Close open files "
+        "on it or stop apps using it and try again"
+    )
+
+
 class MountReloadError(MountError):
     """Raise when a mount could not be reloaded."""
 
