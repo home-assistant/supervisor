@@ -19,7 +19,7 @@ orjson==3.12.0
 pulsectl==24.12.0
 pyudev==0.24.5
 PyYAML==6.0.3
-securetar==2026.4.1
+securetar @ git+https://github.com/home-assistant-libs/securetar@4730819f938f949f439e1cd50e3d47f6e08f94ae
 sentry-sdk==2.71.0
 setuptools==84.0.0
 voluptuous==0.16.0
