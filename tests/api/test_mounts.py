@@ -3,6 +3,7 @@
 import asyncio
 from dataclasses import replace
 import errno
+from typing import Any
 from unittest.mock import PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -1423,3 +1424,78 @@ async def test_api_create_disk_mount_rejects_system_disk(
     resp = await api_client.get(f"{prefix}/mounts")
     result = await resp.json()
     assert result["data"]["mounts"] == []
+
+
+@pytest.mark.parametrize(
+    ("request_kwargs", "expected_types"),
+    [
+        pytest.param(
+            {"headers": {"User-Agent": "AioHASupervisor/0.6.0"}},
+            ["cifs"],
+            id="old_client_library",
+        ),
+        pytest.param(
+            {"headers": {"User-Agent": "AioHASupervisor/0.7.0"}},
+            ["cifs", "disk"],
+            id="client_library",
+        ),
+        pytest.param(
+            {"headers": {"User-Agent": "AioHASupervisor/0.0.0"}},
+            ["cifs", "disk"],
+            id="dev_client_library",
+        ),
+        pytest.param(
+            {"headers": {"User-Agent": "AioHASupervisor/0.6.0 Python/3.14"}},
+            ["cifs"],
+            id="client_library_suffix",
+        ),
+        pytest.param(
+            {"headers": {"User-Agent": "AioHASupervisor/wat"}},
+            ["cifs", "disk"],
+            id="invalid_version",
+        ),
+        pytest.param(
+            {"headers": {"User-Agent": "HomeAssistant/2026.10.0"}},
+            ["cifs", "disk"],
+            id="other_client",
+        ),
+        pytest.param(
+            {"skip_auto_headers": ["User-Agent"]}, ["cifs", "disk"], id="no_user_agent"
+        ),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mount_propagation")
+async def test_api_mounts_info_hides_disk_from_old_client(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    request_kwargs: dict[str, Any],
+    expected_types: list[str],
+):
+    """Test disk mounts are hidden from client library versions that cannot parse them."""
+    api_client, prefix = api_client_with_prefix
+    coresys.mounts._mounts = {  # pylint: disable=protected-access
+        "share_test": Mount.from_dict(
+            coresys,
+            {
+                "name": "share_test",
+                "type": "cifs",
+                "usage": "share",
+                "server": "share.local",
+                "share": "share",
+            },
+        ),
+        "media_test": Mount.from_dict(
+            coresys,
+            {
+                "name": "media_test",
+                "type": "disk",
+                "usage": "media",
+                "uuid": SDC1_UUID,
+            },
+        ),
+    }
+
+    resp = await api_client.get(f"{prefix}/mounts", **request_kwargs)
+    result = await resp.json()
+
+    assert [mount["type"] for mount in result["data"]["mounts"]] == expected_types

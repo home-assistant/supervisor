@@ -15,6 +15,9 @@ CONTENT_TYPE_X_LOG = "text/x-log"
 
 COOKIE_INGRESS = "ingress_session"
 
+# User-Agent product name sent by aiohasupervisor, the Python client library
+CLIENT_LIBRARY_USER_AGENT = "AioHASupervisor"
+
 # Open proxied websockets, closed on API stop as they outlive aiohttp's
 # graceful shutdown timeout otherwise
 WEBSOCKETS = web.AppKey[weakref.WeakSet[web.WebSocketResponse]]("websockets")
