@@ -44,6 +44,7 @@ _PORT_RESERVE_UNIT: Final = "homeassistant-core-port-reserve.socket"
 _PORT_RESERVE_SERVICE: Final = "homeassistant-core-port-reserve.service"
 _PORT_RESERVE_TIMEOUT: Final = 10
 _TERMINAL_STATES: Final = {UnitActiveState.INACTIVE, UnitActiveState.FAILED}
+_STARTUP_HEALTHCHECK_TIMEOUT: Final = 30
 
 
 def _format_bind_address(host: str, port: int) -> str:
@@ -349,9 +350,21 @@ class Core(CoreSysAttributes):
 
             # Update Host/Device information
             self.sys_create_task(self.sys_host.reload())
-            self.sys_create_task(self.sys_resolution.healthcheck())
 
             await self.set_state(CoreState.RUNNING)
+
+            # Home Assistant refreshes issues on startup complete and removes
+            # repairs (and their ignored state) of issues not raised yet
+            healthcheck = self.sys_create_task(self.sys_resolution.healthcheck())
+            _, pending = await asyncio.wait(
+                {healthcheck}, timeout=_STARTUP_HEALTHCHECK_TIMEOUT
+            )
+            if pending:
+                _LOGGER.warning(
+                    "Healthcheck did not finish within %ds, completing startup",
+                    _STARTUP_HEALTHCHECK_TIMEOUT,
+                )
+
             self.sys_homeassistant.websocket.supervisor_update_event(
                 "supervisor", {ATTR_STARTUP: "complete"}
             )

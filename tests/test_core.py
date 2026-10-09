@@ -1004,3 +1004,49 @@ async def test_start_continues_when_supervisor_update_task_fails(
     coresys.tasks.load.assert_awaited_once()
     coresys.homeassistant.core.start.assert_awaited_once()
     assert coresys.core.state == CoreState.RUNNING
+
+
+@pytest.mark.usefixtures("core_start_base_mocks")
+@pytest.mark.parametrize(
+    ("finish_healthcheck", "expected_order"),
+    [
+        pytest.param(
+            True,
+            ["healthcheck running", "healthcheck done", "startup complete"],
+            id="finished",
+        ),
+        pytest.param(
+            False, ["healthcheck running", "startup complete"], id="timed_out"
+        ),
+    ],
+)
+async def test_start_completes_after_healthcheck(
+    coresys: CoreSys, finish_healthcheck: bool, expected_order: list[str]
+) -> None:
+    """Test startup complete is sent once the healthcheck finished or timed out."""
+    order: list[str] = []
+    release = asyncio.Event()
+    if finish_healthcheck:
+        release.set()
+
+    async def mock_healthcheck() -> None:
+        order.append(f"healthcheck {coresys.core.state}")
+        await release.wait()
+        order.append("healthcheck done")
+
+    def mock_update_event(key: str, data: dict) -> None:
+        if data == {"startup": "complete"}:
+            order.append("startup complete")
+
+    coresys.homeassistant.websocket.supervisor_update_event.side_effect = (
+        mock_update_event
+    )
+    with (
+        patch.object(coresys.resolution, "healthcheck", new=mock_healthcheck),
+        patch("supervisor.core._STARTUP_HEALTHCHECK_TIMEOUT", 0.01),
+    ):
+        await coresys.core.start()
+        assert order == expected_order
+
+        release.set()
+        await asyncio.sleep(0)
