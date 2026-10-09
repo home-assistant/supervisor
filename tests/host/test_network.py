@@ -15,9 +15,21 @@ from supervisor.dbus.network.setting import (
     CONF_ATTR_802_WIRELESS_SECURITY_PSK,
 )
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
-from supervisor.exceptions import HostNetworkError, HostNotSupportedError
+from supervisor.exceptions import (
+    DBusInterfaceError,
+    DBusInterfaceMethodError,
+    DBusObjectError,
+    HassioError,
+    HostNetworkCreateConfigError,
+    HostNetworkDeactivateConfigError,
+    HostNetworkDeleteConfigError,
+    HostNetworkError,
+    HostNetworkUpdateConfigError,
+    HostNotSupportedError,
+)
 from supervisor.homeassistant.const import WSEvent, WSType
-from supervisor.host.const import MulticastDnsMode, WifiMode
+from supervisor.host.configuration import WifiConfig
+from supervisor.host.const import AuthMethod, MulticastDnsMode, WifiMode
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_active_connection import (
@@ -625,3 +637,91 @@ async def test_apply_changes_v2_reenable_reuses_profile(
         "/org/freedesktop/NetworkManager/Devices/1",
         "/",
     ) in network_manager_service.ActivateConnection.calls
+
+
+@pytest.mark.parametrize(
+    ("interface_name", "enabled", "wifi", "destructive_disable", "target", "expected"),
+    [
+        pytest.param(
+            "eth0",
+            True,
+            None,
+            True,
+            "supervisor.dbus.network.setting.NetworkSetting.update",
+            HostNetworkUpdateConfigError,
+            id="update",
+        ),
+        pytest.param(
+            "eth0",
+            True,
+            None,
+            True,
+            "supervisor.dbus.network.NetworkManager.activate_connection",
+            HostNetworkUpdateConfigError,
+            id="update-activate",
+        ),
+        pytest.param(
+            "wlan0",
+            True,
+            WifiConfig(
+                WifiMode.INFRASTRUCTURE, "MY_TEST", AuthMethod.WPA_PSK, "password", None
+            ),
+            True,
+            "supervisor.dbus.network.NetworkManager.add_and_activate_connection",
+            HostNetworkCreateConfigError,
+            id="create",
+        ),
+        pytest.param(
+            "eth0",
+            False,
+            None,
+            True,
+            "supervisor.dbus.network.setting.NetworkSetting.delete",
+            HostNetworkDeleteConfigError,
+            id="delete",
+        ),
+        pytest.param(
+            "eth0",
+            False,
+            None,
+            False,
+            "supervisor.dbus.network.setting.NetworkSetting.update",
+            HostNetworkDeactivateConfigError,
+            id="deactivate",
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(DBusObjectError("Object does not exist"), id="unknown-object"),
+        pytest.param(DBusInterfaceError("Object is not usable"), id="interface"),
+        pytest.param(DBusInterfaceMethodError("No such interface"), id="method"),
+    ],
+)
+async def test_apply_changes_vanished_object(
+    coresys: CoreSys,
+    interface_name: str,
+    enabled: bool,
+    wifi: WifiConfig | None,
+    destructive_disable: bool,
+    target: str,
+    expected: type[HostNetworkError],
+    error: HassioError,
+):
+    """Test D-Bus objects vanishing during apply_changes raise a host network error."""
+    await coresys.host.network.load()
+
+    interface = coresys.host.network.get(interface_name)
+    interface.enabled = enabled
+    interface.wifi = wifi
+
+    with (
+        patch(target, side_effect=error),
+        pytest.raises(expected) as exc_info,
+    ):
+        await coresys.host.network.apply_changes(
+            interface, destructive_disable=destructive_disable
+        )
+
+    assert exc_info.value.__cause__ is error

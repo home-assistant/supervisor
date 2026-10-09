@@ -31,7 +31,9 @@ from ..dbus.network.setting import (
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
+    DBusInterfaceError,
     DBusNotConnectedError,
+    DBusObjectError,
     HostNetworkActivationFailedError,
     HostNetworkActivationTimeoutError,
     HostNetworkCreateConfigError,
@@ -397,7 +399,7 @@ class NetworkManager(CoreSysAttributes):
                 existing_settings.object_path, inet.object_path
             )
             _LOGGER.debug("activate_connection returns %s", activated.object_path)
-        except DBusError as err:
+        except (DBusError, DBusInterfaceError, DBusObjectError) as err:
             _LOGGER.error("Can't update config on %s: %s", interface.name, err)
             raise HostNetworkUpdateConfigError(interface=interface.name) from err
 
@@ -419,7 +421,7 @@ class NetworkManager(CoreSysAttributes):
             _LOGGER.debug(
                 "add_and_activate_connection returns %s", activated.object_path
             )
-        except DBusError as err:
+        except (DBusError, DBusInterfaceError, DBusObjectError) as err:
             _LOGGER.error(
                 "Can't create config and activate %s: %s", interface.name, err
             )
@@ -438,7 +440,7 @@ class NetworkManager(CoreSysAttributes):
         _LOGGER.info("Deleting configuration for interface %s", interface.name)
         try:
             await existing_settings.delete()
-        except DBusError as err:
+        except (DBusError, DBusInterfaceError, DBusObjectError) as err:
             _LOGGER.error(
                 "Can't delete configuration for interface %s: %s", interface.name, err
             )
@@ -483,7 +485,7 @@ class NetworkManager(CoreSysAttributes):
                 await self.sys_dbus.network.deactivate_connection(
                     inet.connection.object_path
                 )
-        except DBusError as err:
+        except (DBusError, DBusInterfaceError, DBusObjectError) as err:
             _LOGGER.error("Can't deactivate interface %s: %s", interface.name, err)
             raise HostNetworkDeactivateConfigError(interface=interface.name) from err
 
