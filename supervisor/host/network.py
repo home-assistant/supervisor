@@ -535,6 +535,7 @@ class NetworkManager(CoreSysAttributes):
         try:
             await self._wait_for_activation(con)
         finally:
+            con.shutdown()
             # update_only means not done by user so don't force a check afterwards
             await self.update(force_connectivity_check=not update_only)
 
@@ -617,16 +618,22 @@ class NetworkManager(CoreSysAttributes):
 
         job_id: str | None = None
         if con:
-            if background_activation:
-                job, _ = await self.sys_jobs.schedule_job(
-                    self._activate_connection_job,
-                    JobSchedulerOptions(),
-                    con,
-                    update_only=update_only,
-                )
-                job_id = job.uuid
-            else:
-                await self._wait_for_activation(con)
+            try:
+                if background_activation:
+                    job, _ = await self.sys_jobs.schedule_job(
+                        self._activate_connection_job,
+                        JobSchedulerOptions(),
+                        con,
+                        update_only=update_only,
+                    )
+                    job_id = job.uuid
+                    # The job shuts the connection down once it is done
+                    con = None
+                else:
+                    await self._wait_for_activation(con)
+            finally:
+                if con:
+                    con.shutdown()
 
         if job_id is None:
             # update_only means not done by user so don't force a check afterwards
