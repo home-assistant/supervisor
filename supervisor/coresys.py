@@ -678,10 +678,10 @@ class CoreSys:
     async def block_till_done(self, wait_background_tasks: bool = False) -> None:
         """Wait until all tasks are done, including tasks created while waiting.
 
-        Used by tests for now; also suited to draining tasks during shutdown.
-        Skips the calling task and tasks being cancelled, but not tasks awaiting
-        the caller, so calling it from a task another tracked task awaits
-        deadlocks.
+        Used by tests. Skips the calling task and tasks being cancelled, but not
+        tasks awaiting the caller, so calling it from a task another tracked
+        task awaits deadlocks. Callbacks scheduled with call_later or call_at
+        are not waited for until they run and create a task.
         """
         # Bound at import so tests patching asyncio.sleep cannot stop this yielding
         await _sleep(0)

@@ -114,8 +114,18 @@ async def test_create_task_eager_done_not_tracked(coresys: CoreSys):
     assert task not in coresys._active_tasks
 
 
-async def test_create_background_task_has_no_parent_job(coresys: CoreSys):
-    """Test a background task does not inherit the current job."""
+@pytest.mark.parametrize(
+    "create",
+    [
+        pytest.param(CoreSys.create_task, id="task"),
+        pytest.param(CoreSys.create_background_task, id="background"),
+    ],
+)
+async def test_create_task_has_no_parent_job(
+    coresys: CoreSys,
+    create: Callable[[CoreSys, Coroutine], asyncio.Task],
+):
+    """Test a task does not inherit the current job."""
     in_job: bool | None = None
 
     async def check_job() -> None:
@@ -130,10 +140,10 @@ async def test_create_background_task_has_no_parent_job(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_create_background_task_has_no_parent_job_execute")
+        @Job(name=f"test_create_task_has_no_parent_job_{create.__name__}")
         async def execute(self) -> asyncio.Task:
-            """Create a background task from within a job."""
-            return self.coresys.create_background_task(check_job())
+            """Create a task from within a job."""
+            return create(self.coresys, check_job())
 
     await (await TestClass(coresys).execute())
 
