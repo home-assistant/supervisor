@@ -118,3 +118,23 @@ async def test_dynamic_check_loader(coresys: CoreSys):
     }
     for check in await coresys.run_in_executor(load_modules):
         assert check in loaded_module_names
+
+
+async def test_check_dismisses_all_unapproved_issues(coresys: CoreSys):
+    """Test all adjacent unapproved issues are dismissed in a single run."""
+    await coresys.core.set_state(CoreState.SETUP)
+    check = coresys.resolution.check.get("detached_app_removed")
+    issues = [
+        Issue(IssueType.DETACHED_APP_REMOVED, ContextType.ADDON, reference=slug)
+        for slug in ("app_1", "app_2")
+    ]
+    for issue in issues:
+        coresys.resolution.add_issue(issue)
+
+    with (
+        patch.object(type(check), "approve_check", return_value=False),
+        patch.object(type(check), "run_check", return_value=None),
+    ):
+        await check()
+
+    assert not any(issue in coresys.resolution.issues for issue in issues)
