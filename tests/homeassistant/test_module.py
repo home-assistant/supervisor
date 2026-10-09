@@ -2,18 +2,26 @@
 
 import asyncio
 import errno
+import io
 import logging
 from pathlib import Path, PurePath
+import tarfile
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from securetar import SecureTarArchive, SecureTarError, SecureTarFile
 
 from supervisor.backups.backup import Backup
-from supervisor.backups.const import BackupType
+from supervisor.backups.const import (
+    SECURETAR_CREATE_VERSION,
+    SECURETAR_V3_CREATE_VERSION,
+    BackupType,
+)
 from supervisor.const import ATTR_PORT, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 from supervisor.exceptions import (
+    BackupInvalidError,
     HomeAssistantBackupError,
     HomeAssistantWSConnectionError,
 )
@@ -193,3 +201,41 @@ async def test_backup_excludes(
     assert (
         f"Ignoring data/{test_path.as_posix()} because of " in caplog.text
     ) is expect_excluded
+
+
+@pytest.mark.parametrize(
+    "create_version",
+    [
+        pytest.param(SECURETAR_CREATE_VERSION, id="securetar_v2"),
+        pytest.param(SECURETAR_V3_CREATE_VERSION, id="securetar_v3"),
+    ],
+)
+async def test_restore_wrong_password(
+    coresys: CoreSys, tmp_supervisor_data: Path, create_version: int
+):
+    """Test restore with a wrong password raises BackupInvalidError."""
+    existing = coresys.config.path_homeassistant / "configuration.yaml"
+    existing.write_text("keep")
+
+    backup_file = tmp_supervisor_data / "backup.tar"
+    with (
+        SecureTarArchive(
+            backup_file, "w", password="right", create_version=create_version
+        ) as archive,
+        archive.create_tar("./homeassistant.tar.gz") as inner_tar,
+    ):
+        info = tarfile.TarInfo("data/configuration.yaml")
+        info.size = 7
+        inner_tar.addfile(info, io.BytesIO(b"restore"))
+
+    with tarfile.open(backup_file, "r:") as outer_tar:
+        tar_file = SecureTarFile(
+            fileobj=outer_tar.extractfile(outer_tar.getmembers()[0]),
+            password="wrong",
+            gzip=True,
+        )
+        with pytest.raises(BackupInvalidError) as exc_info:
+            await coresys.homeassistant.restore(tar_file)
+
+    assert isinstance(exc_info.value.__cause__, SecureTarError)
+    assert existing.read_text() == "keep"

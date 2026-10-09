@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from securetar import AddFileError, SecureTarFile, atomic_contents_add
+from securetar import AddFileError, SecureTarError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -533,7 +533,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                             path=temp_path,
                             filter="tar",
                         )
-                except tarfile.FilterError as err:
+                except (tarfile.FilterError, SecureTarError) as err:
                     raise BackupInvalidError(
                         f"Invalid tarfile {tar_file}: {err}", _LOGGER.error
                     ) from err
