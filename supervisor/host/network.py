@@ -332,20 +332,21 @@ class NetworkManager(CoreSysAttributes):
         ):
             return False
 
-        # In-place application requires an active connection
-        if not inet.connection or inet.connection.state != ConnectionState.ACTIVATED:
-            return False
-
         if not settings_changed:
             # User-initiated updates with unchanged settings still re-activate,
             # both as a way to force a reconnect and to cover secret-only
             # changes.
             if not update_only:
                 return False
+            # A connection still activating already uses the unchanged settings
             _LOGGER.debug(
                 "Settings for %s unchanged, skipping activation", interface.name
             )
             return True
+
+        # In-place application requires an active connection
+        if not inet.connection or inet.connection.state != ConnectionState.ACTIVATED:
+            return False
 
         try:
             await inet.reapply()
