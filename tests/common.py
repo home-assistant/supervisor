@@ -258,6 +258,7 @@ def mount_start_transient_unit_call(
     what: str,
     fstype: str,
     options: str | None,
+    lazy_unmount: bool = True,
 ) -> tuple:
     """Build the expected StartTransientUnit call for a mount unit pair.
 
@@ -272,9 +273,10 @@ def mount_start_transient_unit_call(
         ("Description", Variant("s", description)),
         ("What", Variant("s", what)),
         ("TimeoutUSec", Variant("t", 35000000)),
-        ("LazyUnmount", Variant("b", True)),
-        ("StartLimitIntervalUSec", Variant("t", 0)),
     ]
+    if lazy_unmount:
+        mount_properties.append(("LazyUnmount", Variant("b", True)))
+    mount_properties.append(("StartLimitIntervalUSec", Variant("t", 0)))
     return (
         automount_unit,
         "fail",
