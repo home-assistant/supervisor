@@ -25,7 +25,7 @@ class CheckBase(ABC, CoreSysAttributes):
 
         # Check if system is affected by the issue
         affected: bool = False
-        for issue in self.sys_resolution.issues:
+        for issue in list(self.sys_resolution.issues):
             if issue.type != self.issue or issue.context != self.context:
                 continue
             affected = True
