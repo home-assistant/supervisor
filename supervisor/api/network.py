@@ -249,8 +249,8 @@ SCHEMA_CONFIG_V2 = vol.Schema(
     }
 )
 
-# 802.1Q reserves VLAN IDs 0 and 4095
-VALIDATE_VLAN_ID = vol.All(vol.Coerce(int), vol.Range(min=1, max=4094))
+# VLAN ID 0 is deliberately allowed for 802.1p priority tagging, 4095 is reserved
+VALIDATE_VLAN_ID = vol.All(vol.Coerce(int), vol.Range(min=0, max=4094))
 
 
 def ip4config_struct(config: IpConfig, setting: IpSetting) -> dict[str, Any]:
@@ -700,7 +700,7 @@ class APINetwork(CoreSysAttributes):
             vlan: int = VALIDATE_VLAN_ID(vlan_id)
         except vol.Invalid as err:
             raise APIError(
-                f"Invalid VLAN ID {vlan_id}, must be between 1 and 4094"
+                f"Invalid VLAN ID {vlan_id}, must be between 0 and 4094"
             ) from err
 
         # Only ethernet is supported
