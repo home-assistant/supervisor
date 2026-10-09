@@ -6,6 +6,7 @@ from functools import partial
 from pathlib import Path
 from shutil import copy, rmtree
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
@@ -1152,6 +1153,62 @@ async def test_backup_to_down_mount_error(coresys: CoreSys, mock_is_mount: Magic
             await coresys.backups.do_backup_partial(
                 "test", location=mount, homeassistant=True
             )
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mount_propagation")
+@pytest.mark.parametrize(
+    ("probe", "copied", "error_types"),
+    [
+        pytest.param({"return_value": True}, True, [], id="mount_up"),
+        pytest.param(
+            {"side_effect": OSError(errno.EHOSTDOWN, "Host is down")},
+            False,
+            [BackupMountDownError],
+            id="mount_unreachable",
+        ),
+        pytest.param(
+            {"return_value": False}, False, [BackupMountDownError], id="not_mounted"
+        ),
+    ],
+)
+async def test_backup_copy_to_additional_mount(
+    coresys: CoreSys,
+    mock_is_mount: MagicMock,
+    probe: dict[str, Any],
+    copied: bool,
+    error_types: list[type[Exception]],
+):
+    """Test copying a backup to an additional mount location checks the mount."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    mock_is_mount.configure_mock(**probe)
+
+    backup = await coresys.backups.do_backup_partial(
+        "test", folders=[Folder.SHARE], additional_locations=[mount]
+    )
+
+    assert backup
+    assert backup.location is None
+    assert ("backup_test" in backup.all_locations) is copied
+    assert (mount_dir / f"{backup.slug}.tar").exists() is copied
+    job = next(
+        job for job in coresys.jobs.jobs if job.name == "backup_copy_to_location"
+    )
+    assert [error.type_ for error in job.errors] == error_types
 
 
 @pytest.mark.usefixtures(
