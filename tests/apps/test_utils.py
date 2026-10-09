@@ -1,11 +1,14 @@
 """Test app utility functions."""
 
-from unittest.mock import MagicMock
+from pathlib import Path
+import subprocess
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from supervisor.apps.model import AppModel
-from supervisor.apps.utils import rating_security
+from supervisor.apps.utils import rating_security, remove_data
 from supervisor.const import ATTR_PORTS, ROLE_DEFAULT, SECURITY_DEFAULT
 
 
@@ -44,3 +47,23 @@ def test_rating_security_network_exposure(
     app.with_full_access = False
 
     assert rating_security(app) == expected
+
+
+def test_remove_data_process_error(
+    caplog: pytest.LogCaptureFixture, tmp_path: Path
+) -> None:
+    """Test remove data logs the rm error output instead of raising."""
+
+    def mock_run(args: list[str], **kwargs: Any) -> None:
+        # Like subprocess.run, stderr is only captured when piped
+        stderr = (
+            "rm: cannot remove: Busy\n"
+            if kwargs.get("stderr") == subprocess.PIPE
+            else None
+        )
+        raise subprocess.CalledProcessError(1, args, stderr=stderr)
+
+    with patch("supervisor.apps.utils.subprocess.run", side_effect=mock_run):
+        remove_data(tmp_path)
+
+    assert "Can't remove app data: rm: cannot remove: Busy" in caplog.text
