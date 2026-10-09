@@ -8,9 +8,10 @@ import logging
 from typing import Any, cast
 
 from aiohttp import web
-from aiohttp.hdrs import AUTHORIZATION
+from aiohttp.hdrs import AUTHORIZATION, USER_AGENT
 from aiohttp.web_exceptions import HTTPUnauthorized
 from aiohttp.web_request import Request
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -109,6 +110,23 @@ def extract_supervisor_token(request: web.Request) -> str | None:
         return supervisor_token.split(" ")[-1]
 
     return None
+
+
+def client_library_version(request: web.Request) -> AwesomeVersion | None:
+    """Return the aiohasupervisor version a request was sent with.
+
+    None for any other client, or when the version cannot be compared. A
+    source checkout reports 0.0.0, which is treated as unversioned so a
+    development install sees the full API.
+    """
+    product, _, version = request.headers.get(USER_AGENT, "").partition("/")
+    if product != const.CLIENT_LIBRARY_USER_AGENT:
+        return None
+
+    parsed = AwesomeVersion(version.split(" ", 1)[0])
+    if not parsed.valid or parsed == AwesomeVersion("0.0.0"):
+        return None
+    return parsed
 
 
 def json_loads(data: Any) -> dict[str, Any]:

@@ -3,6 +3,7 @@
 from typing import Any, cast
 
 from aiohttp import web
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from ..const import ATTR_NAME, ATTR_STATE, ATTR_TYPE, ATTR_UUID
@@ -18,7 +19,11 @@ from ..mounts.validate import (
     usage_specific_validation,
 )
 from .const import ATTR_DEVICE, ATTR_MOUNTS, ATTR_USER_PATH
-from .utils import api_process, api_validate
+from .utils import api_process, api_validate, client_library_version
+
+# aiohasupervisor before 0.7.0 fails to parse a mount of unknown type, which
+# breaks the hassio integration in Core. Hide disk mounts from those clients.
+CLIENT_LIBRARY_DISK_MOUNT_MIN_VERSION = AwesomeVersion("0.7.0")
 
 SCHEMA_OPTIONS = vol.Schema(
     {
@@ -72,9 +77,21 @@ class APIMounts(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return MountManager info."""
+        client_version = client_library_version(request)
+        hide_disk = (
+            client_version is not None
+            and client_version < CLIENT_LIBRARY_DISK_MOUNT_MIN_VERSION
+        )
+
+        def visible(mount: Mount) -> bool:
+            return not (hide_disk and mount.type == MountType.DISK)
+
+        # A hidden default backup mount reads as local backups, which keeps
+        # the client's default consistent with the mounts it can see.
+        default = self.sys_mounts.default_backup_mount
         return {
-            ATTR_DEFAULT_BACKUP_MOUNT: self.sys_mounts.default_backup_mount.name
-            if self.sys_mounts.default_backup_mount
+            ATTR_DEFAULT_BACKUP_MOUNT: default.name
+            if default and visible(default)
             else None,
             ATTR_MOUNTS: [
                 mount.to_dict()
@@ -85,6 +102,7 @@ class APIMounts(CoreSysAttributes):
                     else None,
                 }
                 for mount in self.sys_mounts.mounts
+                if visible(mount)
             ],
         }
 
