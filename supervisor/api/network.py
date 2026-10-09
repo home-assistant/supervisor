@@ -249,6 +249,9 @@ SCHEMA_CONFIG_V2 = vol.Schema(
     }
 )
 
+# 802.1Q reserves VLAN IDs 0 and 4095
+VALIDATE_VLAN_ID = vol.All(vol.Coerce(int), vol.Range(min=1, max=4094))
+
 
 def ip4config_struct(config: IpConfig, setting: IpSetting) -> dict[str, Any]:
     """Return a dict with information about IPv4 configuration."""
@@ -692,9 +695,13 @@ class APINetwork(CoreSysAttributes):
     async def create_vlan(self, request: web.Request) -> None:
         """Create a new vlan."""
         interface = self._get_interface(request.match_info[ATTR_INTERFACE])
-        vlan = int(request.match_info.get(ATTR_VLAN, -1))
-        if vlan < 0:
-            raise APIError(f"Invalid vlan specified: {vlan}")
+        vlan_id = request.match_info[ATTR_VLAN]
+        try:
+            vlan: int = VALIDATE_VLAN_ID(vlan_id)
+        except vol.Invalid as err:
+            raise APIError(
+                f"Invalid VLAN ID {vlan_id}, must be between 1 and 4094"
+            ) from err
 
         # Only ethernet is supported
         if interface.type != InterfaceType.ETHERNET:

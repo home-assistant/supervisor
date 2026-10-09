@@ -458,6 +458,34 @@ async def test_api_network_vlan(
 
 
 @pytest.mark.parametrize(
+    "vlan",
+    [
+        pytest.param("abc", id="not-a-number"),
+        pytest.param("1.5", id="float"),
+        pytest.param("0", id="reserved-zero"),
+        pytest.param("4095", id="reserved-4095"),
+        pytest.param("-1", id="negative"),
+    ],
+)
+async def test_api_network_vlan_invalid_id(
+    api_client: TestClient,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    vlan: str,
+):
+    """Test creating a vlan with an invalid id returns a client error."""
+    settings_service: SettingsService = network_manager_services["network_settings"]
+    settings_service.AddConnection.calls.clear()
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_ETH_NAME}/vlan/{vlan}",
+        json={"ipv4": {"method": "auto"}},
+    )
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == f"Invalid VLAN ID {vlan}, must be between 1 and 4094"
+    assert settings_service.AddConnection.calls == []
+
+
+@pytest.mark.parametrize(
     ("method", "url"),
     [
         ("get", "/network/interface/bad/info"),
