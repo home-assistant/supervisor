@@ -425,6 +425,68 @@ async def test_auth_bearer_token_returns_401(
     assert resp.status == 401
 
 
+@pytest.mark.parametrize(
+    ("headers", "data"),
+    [
+        pytest.param(
+            {"Content-Type": "application/json; charset=utf-8"},
+            '{"username": "test", "password": "pass"}',
+            id="json_charset",
+        ),
+        pytest.param(
+            {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},
+            "username=test&password=pass",
+            id="urlencoded_charset",
+        ),
+        pytest.param(
+            {
+                "Authorization": "Bearer sometoken123",
+                "Content-Type": "application/json",
+            },
+            '{"username": "test", "password": "pass"}',
+            id="bearer_json",
+        ),
+        pytest.param(
+            {
+                "Authorization": "Bearer sometoken123",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            "username=test&password=pass",
+            id="bearer_urlencoded",
+        ),
+    ],
+)
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_auth_body_credentials(
+    api_client: TestClient,
+    mock_check_login: AsyncMock,
+    install_app_ssh: App,
+    headers: dict[str, str],
+    data: str,
+):
+    """Test credentials in the body with content type parameters or a Bearer token."""
+    mock_check_login.return_value = True
+    resp = await api_client.post("/auth", data=data, headers=headers)
+    assert resp.status == 200
+    mock_check_login.assert_awaited_once_with(install_app_ssh, "test", "pass")
+
+
+@pytest.mark.parametrize("data", ["[1]", '"test"', "1", "null"])
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+@pytest.mark.usefixtures("install_app_ssh")
+async def test_auth_json_not_an_object(
+    api_client: TestClient, mock_check_login: AsyncMock, data: str
+):
+    """Test JSON auth with a body that is not an object."""
+    resp = await api_client.post(
+        "/auth", data=data, headers={"Content-Type": "application/json"}
+    )
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Invalid json"
+    mock_check_login.assert_not_awaited()
+
+
 @pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
 async def test_auth_app_no_auth_access(
     api_client: TestClient, install_app_example: App
