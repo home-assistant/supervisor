@@ -1,5 +1,6 @@
 """Test updater files."""
 
+from copy import deepcopy
 import json
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -9,7 +10,7 @@ import pytest
 from supervisor.const import ATTR_HASSOS_UNRESTRICTED, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
-from supervisor.exceptions import UpdaterJobError
+from supervisor.exceptions import UpdaterError, UpdaterJobError
 from supervisor.resolution.const import UnsupportedReason
 from supervisor.supervisor import Supervisor
 
@@ -64,6 +65,29 @@ async def test_fetch_versions(
     assert coresys.updater.image_multicast == data["images"]["multicast"].format(
         arch=coresys.arch.supervisor
     )
+
+
+@pytest.mark.usefixtures("no_job_throttle", "supervisor_internet")
+async def test_fetch_versions_missing_key_keeps_data(
+    coresys: CoreSys, mock_update_data: MockResponse
+) -> None:
+    """Test version data is left unchanged when the version file misses a key."""
+    task = await coresys.updater.fetch_data()
+    assert task
+    await task
+    data_before = deepcopy(coresys.updater._data)  # pylint: disable=protected-access
+
+    version_data = json.loads(await mock_update_data.text())
+    version_data["supervisor"] = "2099.1.0"
+    del version_data["images"]["multicast"]
+    mock_update_data.update_text(json.dumps(version_data))
+
+    task = await coresys.updater.fetch_data()
+    assert task
+    with pytest.raises(UpdaterError, match="Can't process version data"):
+        await task
+
+    assert coresys.updater._data == data_before  # pylint: disable=protected-access
 
 
 @pytest.mark.usefixtures("no_job_throttle")
