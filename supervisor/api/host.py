@@ -377,15 +377,15 @@ class APIHost(CoreSysAttributes):
         else:
             range_header = f"entries=:-{DEFAULT_LINES - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else DEFAULT_LINES}"
 
+        response = web.StreamResponse()
+        response.content_type = CONTENT_TYPE_TEXT
+        headers_returned = False
         async with (
             stop_on_disconnect(request),
             self.sys_host.logs.journald_logs(
                 params=params, range_header=range_header, accept=LogFormat.JOURNAL
             ) as resp,
         ):
-            response = web.StreamResponse()
-            response.content_type = CONTENT_TYPE_TEXT
-            headers_returned = False
             try:
                 async for cursor, line in journal_logs_reader(
                     resp, log_formatter, no_colors
@@ -427,7 +427,7 @@ class APIHost(CoreSysAttributes):
                     type(ex).__name__,
                     ex,
                 )
-            return response
+        return response
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     async def advanced_logs(
