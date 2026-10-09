@@ -980,7 +980,7 @@ async def test_upload_with_filename(
     if expected_status != 200:
         assert (
             body["message"]
-            == r"does not match regular expression ^[^\\\/]+\.tar$."
+            == r"does not match regular expression ^[^\\/\x00-\x1f\x7f]+\.tar\Z."
             + f" Got '{filename}'"
         )
         return
@@ -993,6 +993,97 @@ async def test_upload_with_filename(
         None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
     }
     assert coresys.backups.get("7fed74c8").location is None
+
+
+CONTROL_CHARACTER_FILENAMES = [
+    pytest.param("bad.tar\n", id="trailing-newline"),
+    pytest.param("bad\r\nX-Test: 1.tar", id="crlf"),
+    pytest.param("bad\x00.tar", id="nul"),
+    pytest.param("bad\x7f.tar", id="del"),
+]
+
+
+@pytest.mark.parametrize("filename", CONTROL_CHARACTER_FILENAMES)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_upload_filename_control_characters(
+    api_client: TestClient, coresys: CoreSys, filename: str
+):
+    """Test uploading a backup with control characters in the filename."""
+    backup_file = get_fixture_path("backup_example.tar")
+
+    with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
+        mp.append(file)
+        resp = await api_client.post(
+            "/backups/new/upload", params={"filename": filename}, data=mp
+        )
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert "does not match regular expression" in body["message"]
+    assert not list(coresys.config.path_backup.iterdir())
+
+
+@pytest.mark.parametrize("filename", CONTROL_CHARACTER_FILENAMES)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_backup_full_filename_control_characters(
+    api_client: TestClient, coresys: CoreSys, filename: str
+):
+    """Test creating a backup with control characters in the filename."""
+    resp = await api_client.post("/backups/new/full", json={"filename": filename})
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert "does not match regular expression" in body["message"]
+    assert not list(coresys.config.path_backup.iterdir())
+
+
+@pytest.mark.parametrize(
+    ("filename", "content_disposition"),
+    [
+        pytest.param(
+            "plain.tar",
+            "attachment; filename=\"plain.tar\"; filename*=UTF-8''plain.tar",
+            id="plain",
+        ),
+        pytest.param(
+            "my backup; 1.tar",
+            'attachment; filename="my backup; 1.tar"; '
+            "filename*=UTF-8''my%20backup%3B%201.tar",
+            id="space-semicolon",
+        ),
+        pytest.param(
+            'quote"back\\slash.tar',
+            'attachment; filename="quote_back_slash.tar"; '
+            "filename*=UTF-8''quote%22back%5Cslash.tar",
+            id="quote-backslash",
+        ),
+        pytest.param(
+            "Bäckup.tar",
+            "attachment; filename=\"B_ckup.tar\"; filename*=UTF-8''B%C3%A4ckup.tar",
+            id="non-ascii",
+        ),
+        pytest.param(
+            "new\nline.tar",
+            "attachment; filename=\"new_line.tar\"; filename*=UTF-8''new%0Aline.tar",
+            id="newline",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_download_content_disposition(
+    api_client: TestClient,
+    coresys: CoreSys,
+    filename: str,
+    content_disposition: str,
+):
+    """Test the download filename is safely encoded in Content-Disposition."""
+    copy(get_fixture_path("backup_example.tar"), coresys.config.path_backup / filename)
+    await coresys.backups.reload()
+
+    resp = await api_client.get("/backups/7fed74c8/download")
+
+    assert resp.status == 200
+    assert resp.headers["Content-Disposition"] == content_disposition
 
 
 @pytest.mark.parametrize(
