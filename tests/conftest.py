@@ -833,13 +833,8 @@ def supervisor_internet(coresys: CoreSys) -> AsyncMock:
 
 @pytest.fixture
 def websession(coresys: CoreSys) -> MagicMock:
-    """Fixture for global aiohttp SessionClient.
-
-    Also mocks Core container is_running to return True so that
-    make_request doesn't bail before reaching the websession.
-    """
+    """Fixture for global aiohttp SessionClient."""
     coresys._websession = MagicMock(spec_set=ClientSession)
-    coresys.homeassistant.core.instance.is_running = AsyncMock(return_value=True)
     return coresys._websession
 
 

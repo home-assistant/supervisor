@@ -510,7 +510,10 @@ async def test_listeners_removed_on_uninstall(
             listener in coresys.bus._listeners[BusEvent.DOCKER_CONTAINER_STATE_CHANGE]
         )
 
-    with patch.object(App, "persist", new=PropertyMock(return_value=MagicMock())):
+    with (
+        patch.object(App, "persist", new=PropertyMock(return_value=MagicMock())),
+        patch.object(Ingress, "update_hass_panel"),
+    ):
         await coresys.apps.uninstall(TEST_ADDON_SLUG)
 
     for listener in listeners:
