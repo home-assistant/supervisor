@@ -282,9 +282,9 @@ class NetworkSetting(DBusInterface):
 
         if CONF_ATTR_802_WIRELESS in data:
             self._wireless = WirelessProperties(
-                ssid=bytes(
+                ssid_raw=bytes(
                     data[CONF_ATTR_802_WIRELESS].get(CONF_ATTR_802_WIRELESS_SSID, [])
-                ).decode(),
+                ),
                 assigned_mac=data[CONF_ATTR_802_WIRELESS].get(
                     CONF_ATTR_802_WIRELESS_ASSIGNED_MAC
                 ),

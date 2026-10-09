@@ -1,5 +1,6 @@
 """Test network API."""
 
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -8,6 +9,8 @@ import pytest
 
 from supervisor.const import DOCKER_IPV4_NETWORK_MASK, DOCKER_NETWORK
 from supervisor.coresys import CoreSys
+from supervisor.host.configuration import WifiConfig
+from supervisor.host.const import AuthMethod, WifiMode
 
 from tests.const import (
     TEST_INTERFACE_ETH_MAC,
@@ -255,6 +258,57 @@ async def test_api_network_interface_update_wifi(
     )
     result = await resp.json()
     assert result["result"] == "ok"
+
+
+@pytest.mark.parametrize(
+    ("update", "expected_ssid"),
+    [
+        pytest.param(
+            {"enabled": True, "ipv4": {"method": "auto"}},
+            b"Caf\xe9",
+            id="ipv4_only_keeps_raw",
+        ),
+        pytest.param(
+            {"enabled": True, "wifi": {"ssid": "Caf\ufffd"}},
+            b"Caf\xe9",
+            id="echoed_ssid_keeps_raw",
+        ),
+        pytest.param(
+            {"enabled": True, "wifi": {"ssid": "Café"}},
+            "Café".encode(),
+            id="new_ssid_as_utf8",
+        ),
+    ],
+)
+async def test_api_network_interface_update_non_utf8_ssid(
+    api_client: TestClient,
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    update: dict[str, Any],
+    expected_ssid: bytes,
+):
+    """Test a stored non-UTF-8 SSID is only replaced when a new one is supplied."""
+    network_manager_service.AddAndActivateConnection.calls.clear()
+    interface = coresys.host.network.get(TEST_INTERFACE_WLAN_NAME)
+    interface.wifi = WifiConfig(
+        mode=WifiMode.INFRASTRUCTURE,
+        ssid="Caf\ufffd",
+        auth=AuthMethod.OPEN,
+        psk=None,
+        signal=None,
+        ssid_raw=b"Caf\xe9",
+    )
+
+    with patch.object(coresys.host.network, "get", return_value=interface):
+        resp = await api_client.post(
+            f"/network/interface/{TEST_INTERFACE_WLAN_NAME}/update", json=update
+        )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    assert len(network_manager_service.AddAndActivateConnection.calls) == 1
+    settings = network_manager_service.AddAndActivateConnection.calls[0][0]
+    assert settings["802-11-wireless"]["ssid"] == Variant("ay", expected_ssid)
 
 
 async def test_api_network_interface_update_wifi_error(
