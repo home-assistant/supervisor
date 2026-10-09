@@ -286,6 +286,36 @@ async def test_do_restore_full_different_app(
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.usefixtures("supervisor_internet")
+async def test_do_restore_full_removes_delta_apps_after_folder_failure(
+    coresys: CoreSys, full_backup_mock: Backup, install_app_ssh: App
+):
+    """Test full restore still removes apps not in backup if folder restore fails."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.core.start = AsyncMock(return_value=None)
+    coresys.homeassistant.core.stop = AsyncMock(return_value=None)
+    coresys.homeassistant.core.update = AsyncMock(return_value=None)
+    install_app_ssh.uninstall = AsyncMock(return_value=None)
+
+    manager = await BackupManager(coresys).load_config()
+
+    backup_instance = full_backup_mock.return_value
+    backup_instance.app_list = ["differentslug"]
+    backup_instance.sys_apps = coresys.apps
+    backup_instance.restore_folders.return_value = False
+    backup_instance.remove_delta_apps = partial(
+        Backup.remove_delta_apps, backup_instance
+    )
+    assert not await manager.do_restore_full(backup_instance)
+
+    backup_instance.restore_folders.assert_called_once()
+    install_app_ssh.uninstall.assert_called_once()
+    backup_instance.restore_apps.assert_called_once()
+
+    assert coresys.core.state == CoreState.RUNNING
+
+
 @pytest.mark.usefixtures("supervisor_internet", "install_app_ssh")
 async def test_do_restore_partial_minimal(
     coresys: CoreSys, partial_backup_mock: Backup
