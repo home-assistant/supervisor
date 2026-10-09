@@ -15,6 +15,7 @@ from ..const import (
     SECURITY_PROFILE,
 )
 from ..docker.const import Capabilities
+from ..utils import clean_env
 
 if TYPE_CHECKING:
     from .model import AppModel
@@ -103,7 +104,12 @@ def remove_data(folder: Path) -> None:
     """
     try:
         subprocess.run(
-            ["rm", "-rf", str(folder)], stdout=subprocess.DEVNULL, text=True, check=True
+            ["rm", "-rf", str(folder)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            env=clean_env(),
+            text=True,
+            check=True,
         )
     except OSError as err:
         error_msg = str(err)
