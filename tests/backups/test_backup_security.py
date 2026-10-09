@@ -295,10 +295,21 @@ async def test_folder_restore_rejects_symlink_escape(
         assert await backup.restore_folders([Folder.SHARE]) is False
 
 
-async def test_backup_open_strips_leading_slash(
-    coresys: CoreSys, tmp_supervisor_data: Path
+@pytest.mark.parametrize(
+    "member_name",
+    [
+        pytest.param("./ssl.tar.gz", id="dot_prefix"),
+        pytest.param("/ssl.tar.gz", id="leading_slash"),
+    ],
+)
+async def test_backup_open_normalizes_member_names(
+    coresys: CoreSys, tmp_supervisor_data: Path, member_name: str
 ):
-    """Test an outer member with a leading slash is indexed under its stripped name."""
+    """Test outer member names are normalized when indexing inner tars.
+
+    Backups created before the securetar archive writer prefix inner tar
+    names with "./", and the tar filter strips leading slashes.
+    """
     cert_info = tarfile.TarInfo(name="cert.pem")
     cert_info.size = 3
     inner_tar = tmp_supervisor_data / "ssl.tar.gz"
@@ -306,7 +317,7 @@ async def test_backup_open_strips_leading_slash(
 
     backup_tar_path = tmp_supervisor_data / "backup.tar"
     with tarfile.open(backup_tar_path, "w:") as outer_tar:
-        outer_tar.add(inner_tar, arcname="/ssl.tar.gz")
+        outer_tar.add(inner_tar, arcname=member_name)
 
     backup = Backup(coresys, backup_tar_path, "test", None)
     backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)

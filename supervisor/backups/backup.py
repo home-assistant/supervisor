@@ -570,7 +570,8 @@ class Backup(JobGroup):
             # Inner tars are read in place, so only the member index is loaded.
             # The tar filter still rejects path traversal to abort restore of
             # potentially crafted backups. It strips leading slashes, and names
-            # are normalized since both ./name and name exist in the wild.
+            # are normalized because backups created before the securetar
+            # archive writer prefix inner tar names with "./".
             dest_path = self.sys_config.path_tmp.as_posix()
             members: dict[str, tarfile.TarInfo] = {}
             try:
@@ -619,8 +620,8 @@ class Backup(JobGroup):
             # the close.
             await self.sys_run_in_executor(tar.close)
 
-    def _get_inner_tar(self, *names: str) -> SecureTarFile | None:
-        """Return a reader for the first inner tar found in the opened backup.
+    def _get_inner_tar(self, name: str) -> SecureTarFile | None:
+        """Return a reader for the named inner tar, None if the backup lacks it.
 
         Readers share the outer tar's file position, so restore steps open
         one inner tar at a time.
@@ -628,12 +629,8 @@ class Backup(JobGroup):
         if not self._restore_tar:
             raise RuntimeError("Cannot restore components without opening backup tar")
 
-        ext = ".tar.gz" if self.compressed else ".tar"
-        member = next(
-            (m for name in names if (m := self._restore_members.get(f"{name}{ext}"))),
-            None,
-        )
-        if member is None:
+        tar_name = f"{name}.tar{'.gz' if self.compressed else ''}"
+        if (member := self._restore_members.get(tar_name)) is None:
             return None
 
         return SecureTarFile(
@@ -891,7 +888,9 @@ class Backup(JobGroup):
             # Backups created before the addons/local -> apps/local rename
             # archived this folder under the legacy slug.
             slugs.append(FOLDER_ADDONS.replace("/", "_"))
-        folder_file = self._get_inner_tar(*slugs)
+        folder_file = next(
+            (f for slug in slugs if (f := self._get_inner_tar(slug))), None
+        )
         origin_dir = name.origin_dir(self.sys_config)
 
         # Perform a restore
