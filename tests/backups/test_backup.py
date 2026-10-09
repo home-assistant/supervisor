@@ -1,11 +1,15 @@
 """Test backups."""
 
+import asyncio
 from contextlib import AbstractContextManager, nullcontext as does_not_raise
+import errno
 import io
 import json
+import os
 from pathlib import Path
 from shutil import copy
 import tarfile
+import threading
 from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
 import zlib
@@ -35,9 +39,24 @@ from supervisor.exceptions import (
 )
 from supervisor.jobs import JobSchedulerOptions
 from supervisor.mounts.mount import Mount
+from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils import remove_folder
 
 from tests.common import get_fixture_path
+
+
+def _rename_outer_member(backup_file: Path, old_name: str, new_name: str) -> None:
+    """Rewrite the outer backup tar with one member renamed."""
+    tmp_file = backup_file.with_suffix(".tmp")
+    with (
+        tarfile.open(backup_file, "r:") as src,
+        tarfile.open(tmp_file, "w:") as dst,
+    ):
+        for member in src.getmembers():
+            if Path(member.name).name == old_name:
+                member.name = new_name
+            dst.addfile(member, src.extractfile(member))
+    tmp_file.replace(backup_file)
 
 
 async def test_new_backup_stays_in_folder(coresys: CoreSys, tmp_path: Path):
@@ -148,14 +167,13 @@ async def test_backup_folder_addons_local_maps_to_apps_local(
         await coresys.run_in_executor(remove_folder, apps_local, True)
         assert not list(apps_local.iterdir())
 
-        async with backup.open(None):
-            # Simulate a pre-migration backup: archived under the legacy slug.
-            ext = ".tar.gz" if backup.compressed else ".tar"
-            tmp_dir = Path(backup._tmp.name)  # pylint: disable=protected-access
-            (tmp_dir / f"apps_local{ext}").rename(
-                tmp_dir / f"{FOLDER_ADDONS.replace('/', '_')}{ext}"
-            )
+        # Simulate a pre-migration backup: archived under the legacy slug.
+        ext = ".tar.gz" if backup.compressed else ".tar"
+        _rename_outer_member(
+            backup_file, f"apps_local{ext}", f"{FOLDER_ADDONS.replace('/', '_')}{ext}"
+        )
 
+        async with backup.open(None):
             await backup.restore_folders([Folder.APPS])
 
         restored_config = apps_local / "test_app" / "config.yaml"
@@ -988,3 +1006,233 @@ async def test_restore_supervisor_config_tar_read_error(
             success, tasks = await backup.restore_supervisor_config()
             assert success is False
             assert tasks == []
+
+
+@pytest.mark.parametrize(
+    ("password", "compressed", "member_name"),
+    [
+        pytest.param(None, True, "ssl.tar.gz", id="unencrypted"),
+        pytest.param("password", True, "ssl.tar.gz", id="encrypted"),
+        pytest.param(None, False, "ssl.tar", id="uncompressed"),
+        pytest.param("password", False, "ssl.tar", id="encrypted_uncompressed"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_partial_restore_reads_only_requested_member(
+    coresys: CoreSys,
+    tmp_path: Path,
+    password: str | None,
+    compressed: bool,
+    member_name: str,
+):
+    """Test a partial restore reads only the requested inner tar in place."""
+    (coresys.config.path_ssl / "cert.pem").write_text("ssl")
+    (coresys.config.path_share / "data.txt").write_text("share")
+
+    backup_dir = tmp_path / "backup_location"
+    backup_dir.mkdir()
+    backup_file = backup_dir / "my_backup.tar"
+    backup = Backup(coresys, backup_file, "test", None)
+    backup.new(
+        "test",
+        "2023-07-21T21:05:00.000000+00:00",
+        BackupType.PARTIAL,
+        password=password,
+        compressed=compressed,
+    )
+    async with backup.create():
+        await backup.store_folders([Folder.SSL, Folder.SHARE])
+
+    (coresys.config.path_ssl / "cert.pem").unlink()
+    (coresys.config.path_share / "data.txt").write_text("changed")
+
+    with (
+        patch.object(
+            tarfile.TarFile,
+            "extractfile",
+            autospec=True,
+            side_effect=tarfile.TarFile.extractfile,
+        ) as extractfile,
+        patch.object(
+            tarfile.TarFile,
+            "extractall",
+            autospec=True,
+            side_effect=tarfile.TarFile.extractall,
+        ) as extractall,
+    ):
+        async with backup.open(None):
+            assert await backup.restore_folders([Folder.SSL]) is True
+            assert list(backup_dir.iterdir()) == [backup_file]
+
+    assert [call.args[1].name for call in extractfile.call_args_list] == [member_name]
+    assert [call.kwargs["path"] for call in extractall.call_args_list] == [
+        coresys.config.path_ssl
+    ]
+    assert (coresys.config.path_ssl / "cert.pem").read_text() == "ssl"
+    assert (coresys.config.path_share / "data.txt").read_text() == "changed"
+    assert list(backup_dir.iterdir()) == [backup_file]
+
+
+@pytest.mark.parametrize(
+    ("fixture", "password"),
+    [
+        pytest.param("test_consolidate.tar", "test", id="encrypted"),
+        pytest.param("test_consolidate_unc.tar", None, id="unencrypted"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_restore_folder_from_fixture(
+    coresys: CoreSys, tmp_path: Path, fixture: str, password: str | None
+):
+    """Test restoring a folder from backups whose members lack the ./ prefix."""
+    backup_dir = tmp_path / "backup_location"
+    backup_dir.mkdir()
+    backup_file = Path(copy(get_fixture_path(fixture), backup_dir))
+    backup = Backup(coresys, backup_file, "test", None)
+    assert await backup.load()
+    backup.set_password(password)
+
+    (test_file := coresys.config.path_ssl / "test.txt").touch()
+    async with backup.open(None):
+        assert await backup.restore_folders([Folder.SSL]) is True
+        assert list(backup_dir.iterdir()) == [backup_file]
+
+    assert not test_file.exists()
+
+
+async def test_open_closes_backup_file_on_error(coresys: CoreSys, tmp_path: Path):
+    """Test the backup file is closed when restore fails."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+    async with backup.create():
+        pass
+
+    outer_tars: list[tarfile.TarFile] = []
+
+    # pylint: disable=protected-access
+    async def _failing_restore() -> None:
+        async with backup.open(None):
+            outer_tars.append(backup._restore_tar)
+            raise BackupError("restore failed")
+
+    with pytest.raises(BackupError, match="restore failed"):
+        await _failing_restore()
+
+    assert outer_tars[0].closed
+    assert backup._restore_tar is None
+
+
+@pytest.mark.parametrize(
+    ("error_num", "unhealthy"),
+    [
+        pytest.param(errno.EIO, False, id="io_error"),
+        pytest.param(errno.EBADMSG, True, id="bad_message"),
+    ],
+)
+async def test_open_closes_backup_file_on_index_oserror(
+    coresys: CoreSys, tmp_path: Path, error_num: int, unhealthy: bool
+):
+    """Test the backup file is closed when reading its member index fails."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+    async with backup.create():
+        pass
+
+    outer_tars: list[tarfile.TarFile] = []
+    tarfile_open = tarfile.open
+
+    def _record_open(*args: Any, **kwargs: Any) -> tarfile.TarFile:
+        outer_tars.append(tar := tarfile_open(*args, **kwargs))
+        return tar
+
+    with (
+        patch("supervisor.backups.backup.tarfile.open", side_effect=_record_open),
+        patch.object(
+            tarfile.TarFile, "getmembers", side_effect=OSError(error_num, "error")
+        ),
+        pytest.raises(BackupError, match="Can't read backup tarfile"),
+    ):
+        async with backup.open(None):
+            pass
+
+    assert outer_tars[0].closed
+    assert backup._restore_tar is None  # pylint: disable=protected-access
+    assert (
+        UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
+    ) is unhealthy
+
+
+async def test_restore_homeassistant_missing_in_backup(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test restoring Home Assistant from a backup without it fails before stopping Core."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.PARTIAL)
+    async with backup.create():
+        pass
+
+    with (
+        patch.object(coresys.homeassistant.core, "stop") as stop,
+        pytest.raises(BackupInvalidError, match="Can't find Home Assistant Core"),
+    ):
+        async with backup.open(None):
+            await backup.restore_homeassistant()
+
+    stop.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_open_close_after_cancelled_restore(coresys: CoreSys, tmp_path: Path):
+    """Test closing the backup after a cancelled restore fails the stale reader.
+
+    Cancelling the restore does not stop the executor thread extracting an
+    inner tar. Closing the outer tar must not let that thread read past the
+    close; it fails with ValueError on its next read instead.
+    """
+    # Larger than any read buffer so the reader must touch the file after close
+    (coresys.config.path_ssl / "cert.pem").write_bytes(os.urandom(8 * 2**20))
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.PARTIAL)
+    async with backup.create():
+        await backup.store_folders([Folder.SSL])
+
+    reader_started = threading.Event()
+    release_reader = threading.Event()
+    reader_done = threading.Event()
+    reader_errors: list[BaseException] = []
+    extractall = tarfile.TarFile.extractall
+
+    def _blocking_extractall(self: tarfile.TarFile, *args: Any, **kwargs: Any) -> None:
+        reader_started.set()
+        release_reader.wait(5)
+        try:
+            extractall(self, *args, **kwargs)
+        except BaseException as err:
+            reader_errors.append(err)
+            raise
+        finally:
+            reader_done.set()
+
+    async def _restore() -> None:
+        async with backup.open(None):
+            await backup.restore_folders([Folder.SSL])
+
+    # pylint: disable=protected-access
+    with patch.object(
+        tarfile.TarFile, "extractall", autospec=True, side_effect=_blocking_extractall
+    ):
+        restore_task = asyncio.create_task(_restore())
+        assert await coresys.run_in_executor(reader_started.wait, 5)
+        outer_tar = backup._restore_tar
+        restore_task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await restore_task
+
+        assert outer_tar.closed
+        assert backup._restore_tar is None
+
+        release_reader.set()
+        assert await coresys.run_in_executor(reader_done.wait, 5)
+
+    assert len(reader_errors) == 1
+    assert isinstance(reader_errors[0], ValueError)
