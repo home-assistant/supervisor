@@ -1,12 +1,15 @@
 """Test backups."""
 
+import asyncio
 from contextlib import AbstractContextManager, nullcontext as does_not_raise
 import errno
 import io
 import json
+import os
 from pathlib import Path
 from shutil import copy
 import tarfile
+import threading
 from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
 import zlib
@@ -1176,3 +1179,60 @@ async def test_restore_homeassistant_missing_in_backup(
             await backup.restore_homeassistant()
 
     stop.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_open_close_after_cancelled_restore(coresys: CoreSys, tmp_path: Path):
+    """Test closing the backup after a cancelled restore fails the stale reader.
+
+    Cancelling the restore does not stop the executor thread extracting an
+    inner tar. Closing the outer tar must not let that thread read past the
+    close; it fails with ValueError on its next read instead.
+    """
+    # Larger than any read buffer so the reader must touch the file after close
+    (coresys.config.path_ssl / "cert.pem").write_bytes(os.urandom(8 * 2**20))
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.PARTIAL)
+    async with backup.create():
+        await backup.store_folders([Folder.SSL])
+
+    reader_started = threading.Event()
+    release_reader = threading.Event()
+    reader_done = threading.Event()
+    reader_errors: list[BaseException] = []
+    extractall = tarfile.TarFile.extractall
+
+    def _blocking_extractall(self: tarfile.TarFile, *args: Any, **kwargs: Any) -> None:
+        reader_started.set()
+        release_reader.wait(5)
+        try:
+            extractall(self, *args, **kwargs)
+        except BaseException as err:
+            reader_errors.append(err)
+            raise
+        finally:
+            reader_done.set()
+
+    async def _restore() -> None:
+        async with backup.open(None):
+            await backup.restore_folders([Folder.SSL])
+
+    # pylint: disable=protected-access
+    with patch.object(
+        tarfile.TarFile, "extractall", autospec=True, side_effect=_blocking_extractall
+    ):
+        restore_task = asyncio.create_task(_restore())
+        assert await coresys.run_in_executor(reader_started.wait, 5)
+        outer_tar = backup._restore_tar
+        restore_task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await restore_task
+
+        assert outer_tar.closed
+        assert backup._restore_tar is None
+
+        release_reader.set()
+        assert await coresys.run_in_executor(reader_done.wait, 5)
+
+    assert len(reader_errors) == 1
+    assert isinstance(reader_errors[0], ValueError)

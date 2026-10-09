@@ -612,6 +612,10 @@ class Backup(JobGroup):
         finally:
             self._restore_tar = None
             self._restore_members = {}
+            # Closing is safe while a cancelled restore still reads in an
+            # executor: the file object serializes close against reads and
+            # the stale reader fails with ValueError instead of reading past
+            # the close.
             await self.sys_run_in_executor(tar.close)
 
     def _get_inner_tar(self, *names: str) -> SecureTarFile | None:
