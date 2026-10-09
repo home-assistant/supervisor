@@ -987,11 +987,11 @@ class DockerApp(DockerInterface):
         # container() builds the handle from the name with no I/O; attach()
         # below addresses it by name/id directly.
         container = self.sys_docker.containers.container(self.name)
-        socket = container.attach(stdin=True)
+        stream = container.attach(stdin=True)
 
         try:
-            await socket.write_in(data + b"\n")
-            await socket.close()
+            async with stream:
+                await stream.write_in(data + b"\n")
         except TimeoutError as err:
             raise DockerTimeoutError(
                 f"Timeout writing to {self.name} stdin", _LOGGER.error

@@ -27,7 +27,12 @@ from supervisor.docker.const import (
     PropagationMode,
 )
 from supervisor.docker.manager import DockerAPI
-from supervisor.exceptions import CoreDNSError, DockerNotFound, DockerTimeoutError
+from supervisor.exceptions import (
+    CoreDNSError,
+    DockerError,
+    DockerNotFound,
+    DockerTimeoutError,
+)
 from supervisor.hardware.data import Device
 from supervisor.host.const import HostFeature
 from supervisor.os.manager import OSManager
@@ -997,17 +1002,40 @@ async def test_app_build_inspect_timeout(
         await docker_app.install(docker_app.version, need_build=True)
 
 
+@pytest.mark.parametrize(
+    ("side_effect", "expected_error", "match"),
+    [
+        pytest.param(
+            TimeoutError(),
+            DockerTimeoutError,
+            "Timeout writing to .* stdin",
+            id="timeout",
+        ),
+        pytest.param(
+            RuntimeError("Cannot write to closed transport"),
+            DockerError,
+            "Can't write to .* stdin",
+            id="generic-error",
+        ),
+    ],
+)
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
-async def test_app_write_stdin_get_timeout(
-    coresys: CoreSys, addonsdata_system: dict[str, Data]
+async def test_app_write_stdin_error_closes_stream(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    side_effect: Exception,
+    expected_error: type[DockerError],
+    match: str,
 ):
-    """Test write_stdin raises DockerTimeoutError when the attach stream times out."""
+    """Test write_stdin maps write errors and still closes the attach stream."""
     docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
-    attach_stream = coresys.docker.containers.get.return_value.attach.return_value
-    attach_stream.write_in.side_effect = TimeoutError()
+    attach_stream = coresys.docker.containers.container.return_value.attach.return_value
+    attach_stream.write_in.side_effect = side_effect
 
-    with pytest.raises(DockerTimeoutError, match="Timeout writing to .* stdin"):
+    with pytest.raises(expected_error, match=match):
         await docker_app.write_stdin(b"hello")
+
+    attach_stream.__aexit__.assert_awaited_once()
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
