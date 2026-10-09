@@ -582,6 +582,35 @@ async def test_update_backup_mount_changes_default(
     assert coresys.mounts.default_backup_mount is None
 
 
+@pytest.mark.usefixtures("mount", "mock_is_mount")
+async def test_update_default_backup_mount_keeps_default(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+):
+    """Test updating the default backup mount without changing usage keeps it default."""
+    api_client, prefix = api_client_with_prefix
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
+
+    resp = await api_client.put(
+        f"{prefix}/mounts/backup_test",
+        json={
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+            "username": "admin",
+            "password": "new_password",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert coresys.mounts.default_backup_mount.name == "backup_test"
+    assert coresys.mounts.default_backup_mount.password == "new_password"
+
+
 async def test_delete_backup_mount_changes_default(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,

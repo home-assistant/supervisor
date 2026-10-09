@@ -259,9 +259,8 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         await mount.unmount()
         if not retain_entry:
             del self._mounts[name]
-
-        if self._data.get(ATTR_DEFAULT_BACKUP_MOUNT) == mount.name:
-            self.default_backup_mount = None
+            if self._data.get(ATTR_DEFAULT_BACKUP_MOUNT) == mount.name:
+                self.default_backup_mount = None
 
         return mount
 
