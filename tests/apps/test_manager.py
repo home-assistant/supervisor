@@ -238,6 +238,25 @@ async def test_app_shutdown_error(
     )
 
 
+@pytest.mark.parametrize(
+    ("state", "stopped"),
+    [
+        pytest.param(AppState.STARTED, True, id="started"),
+        pytest.param(AppState.STARTUP, True, id="startup"),
+        pytest.param(AppState.STOPPED, False, id="stopped"),
+    ],
+)
+async def test_app_shutdown_stops_running_apps(
+    coresys: CoreSys, install_app_ssh: App, state: AppState, stopped: bool
+):
+    """Test shutdown stops apps that are running, including those still starting."""
+    force_app_state(install_app_ssh, state)
+    with patch.object(DockerApp, "stop") as stop:
+        await coresys.apps.shutdown(AppStartup.APPLICATION)
+
+    assert stop.called is stopped
+
+
 @pytest.mark.usefixtures("websession")
 async def test_app_uninstall_removes_discovery(coresys: CoreSys, install_app_ssh: App):
     """Test discovery messages removed when app uninstalled."""

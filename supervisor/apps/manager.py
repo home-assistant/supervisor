@@ -187,7 +187,10 @@ class AppManager(CoreSysAttributes):
         """Shutdown apps."""
         tasks: list[App] = []
         for app in self.installed:
-            if app.state != AppState.STARTED or app.startup != stage:
+            if (
+                app.state not in (AppState.STARTED, AppState.STARTUP)
+                or app.startup != stage
+            ):
                 continue
             tasks.append(app)
 
