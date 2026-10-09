@@ -82,9 +82,16 @@ class APIMounts(CoreSysAttributes):
             client_version is not None
             and client_version < CLIENT_LIBRARY_DISK_MOUNT_MIN_VERSION
         )
+
+        def visible(mount: Mount) -> bool:
+            return not (hide_disk and mount.type == MountType.DISK)
+
+        # A hidden default backup mount reads as local backups, which keeps
+        # the client's default consistent with the mounts it can see.
+        default = self.sys_mounts.default_backup_mount
         return {
-            ATTR_DEFAULT_BACKUP_MOUNT: self.sys_mounts.default_backup_mount.name
-            if self.sys_mounts.default_backup_mount
+            ATTR_DEFAULT_BACKUP_MOUNT: default.name
+            if default and visible(default)
             else None,
             ATTR_MOUNTS: [
                 mount.to_dict()
@@ -95,7 +102,7 @@ class APIMounts(CoreSysAttributes):
                     else None,
                 }
                 for mount in self.sys_mounts.mounts
-                if not (hide_disk and mount.type == MountType.DISK)
+                if visible(mount)
             ],
         }
 

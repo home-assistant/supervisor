@@ -1499,3 +1499,37 @@ async def test_api_mounts_info_hides_disk_from_old_client(
     result = await resp.json()
 
     assert [mount["type"] for mount in result["data"]["mounts"]] == expected_types
+
+
+@pytest.mark.parametrize(
+    ("user_agent", "expected_default"),
+    [
+        pytest.param("AioHASupervisor/0.6.0", None, id="old_client_library"),
+        pytest.param("AioHASupervisor/0.7.0", "backup_test", id="client_library"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mount_propagation")
+async def test_api_mounts_info_hides_disk_default_backup_mount(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    user_agent: str,
+    expected_default: str | None,
+):
+    """Test a hidden disk default backup mount reads as local backups."""
+    api_client, prefix = api_client_with_prefix
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "type": "disk",
+            "usage": "backup",
+            "uuid": SDC1_UUID,
+        },
+    )
+    coresys.mounts._mounts = {"backup_test": mount}  # pylint: disable=protected-access
+    coresys.mounts.default_backup_mount = mount
+
+    resp = await api_client.get(f"{prefix}/mounts", headers={"User-Agent": user_agent})
+    result = await resp.json()
+
+    assert result["data"]["default_backup_mount"] == expected_default
