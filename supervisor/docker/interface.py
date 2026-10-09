@@ -101,8 +101,9 @@ def _container_state_from_model(
                 return ContainerState.HEALTHY, None
             case "unhealthy":
                 return ContainerState.UNHEALTHY, None
-        # Includes "starting" (healthcheck start period) and no healthcheck
-        return ContainerState.RUNNING, None
+            case _:
+                # Includes "starting" (healthcheck start period) and no healthcheck
+                return ContainerState.RUNNING, None
 
     exit_code = state_obj["ExitCode"]
     if exit_code > 0:
