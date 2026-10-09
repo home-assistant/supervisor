@@ -223,7 +223,7 @@ class DockerApp(DockerInterface):
     @property
     def environment(self) -> dict[str, str | int | None]:
         """Return environment for Docker app."""
-        app_env = cast(dict[str, str | int | None], self.app.environment or {})
+        app_env = cast(dict[str, str | int | None], dict(self.app.environment or {}))
 
         # Provide options for legacy apps
         if self.app.legacy:

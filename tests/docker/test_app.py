@@ -95,6 +95,27 @@ def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Da
     )
 
 
+def test_legacy_app_environment_does_not_modify_app_data(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    addonsdata_user: PropertyMock,
+):
+    """Legacy app options are added to the env without changing stored app data."""
+    config = load_json_fixture("basic-app-config.json")
+    config["legacy"] = True
+    config["environment"] = {"MY_ENV": "value"}
+    config["options"] = {"port": 8080, "name": "test"}
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+    addonsdata_user.return_value = {"test_addon": {"options": {}}}
+
+    environment = docker_app.environment
+
+    assert environment["MY_ENV"] == "value"
+    assert environment["port"] == 8080
+    assert environment["name"] == "test"
+    assert docker_app.app.data["environment"] == {"MY_ENV": "value"}
+
+
 @pytest.mark.usefixtures("path_extern")
 def test_app_map_folder_defaults(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate defaults for mapped folders in apps."""
