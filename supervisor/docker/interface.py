@@ -96,13 +96,12 @@ def _container_state_from_model(
 
     state_obj = container_metadata["State"]
     if state_obj["Status"] == "running":
-        if "Health" in state_obj:
-            return (
-                ContainerState.HEALTHY
-                if state_obj["Health"]["Status"] == "healthy"
-                else ContainerState.UNHEALTHY,
-                None,
-            )
+        match state_obj.get("Health", {}).get("Status"):
+            case "healthy":
+                return ContainerState.HEALTHY, None
+            case "unhealthy":
+                return ContainerState.UNHEALTHY, None
+        # Includes "starting" (healthcheck start period) and no healthcheck
         return ContainerState.RUNNING, None
 
     exit_code = state_obj["ExitCode"]

@@ -205,6 +205,10 @@ async def test_pull_401_without_credentials_raises_docker_error(
             {"State": {"Status": "running", "Health": {"Status": "unhealthy"}}},
             ContainerState.UNHEALTHY,
         ),
+        (
+            {"State": {"Status": "running", "Health": {"Status": "starting"}}},
+            ContainerState.RUNNING,
+        ),
     ],
 )
 async def test_current_state(
@@ -289,6 +293,12 @@ async def test_current_state_timeout(coresys: CoreSys):
         (
             {"State": {"Status": "running", "Health": {"Status": "unhealthy"}}},
             ContainerState.UNHEALTHY,
+            None,
+            True,
+        ),
+        (
+            {"State": {"Status": "running", "Health": {"Status": "starting"}}},
+            ContainerState.RUNNING,
             None,
             True,
         ),

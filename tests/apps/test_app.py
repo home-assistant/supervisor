@@ -520,17 +520,46 @@ async def test_listeners_removed_on_uninstall(
         )
 
 
+@pytest.mark.parametrize(
+    ("config", "state", "expected"),
+    [
+        pytest.param({}, {}, AppState.STARTED, id="no-healthcheck"),
+        pytest.param(
+            {"Healthcheck": "exists"},
+            {"Health": {"Status": "starting"}},
+            AppState.STARTUP,
+            id="health-starting",
+        ),
+        pytest.param(
+            {"Healthcheck": "exists"},
+            {"Health": {"Status": "healthy"}},
+            AppState.STARTED,
+            id="health-healthy",
+        ),
+        pytest.param(
+            {"Healthcheck": "exists"},
+            {"Health": {"Status": "unhealthy"}},
+            AppState.STARTED,
+            id="health-unhealthy",
+        ),
+    ],
+)
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_load_settles_state_from_running_container(
-    install_app_ssh: App, container: DockerContainer
+    install_app_ssh: App,
+    container: DockerContainer,
+    config: dict[str, Any],
+    state: dict[str, Any],
+    expected: AppState,
 ) -> None:
     """Test load derives the state from a running container, not the default."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
+    container.show.return_value["Config"] = config
+    container.show.return_value["State"] |= {"Status": "running", "Running": True}
+    container.show.return_value["State"] |= state
     await install_app_ssh.load()
     # State is settled synchronously from current_state(), so it reflects the
     # running container immediately rather than the image-only STOPPED default.
-    assert install_app_ssh.state == AppState.STARTED
+    assert install_app_ssh.state == expected
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
