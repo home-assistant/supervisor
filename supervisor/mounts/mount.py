@@ -811,7 +811,15 @@ class Mount(CoreSysAttributes, ABC):
             _LOGGER.error(
                 "Could not unmount %s (systemd result: %s)", self.name, result
             )
-            raise MountUnmountError(name=self.name)
+            raise self._stop_failure(result, MountUnmountError)
+
+    def _stop_failure(
+        self,
+        result: str | None,  # pylint: disable=unused-argument
+        fallback: Callable[..., MountError],
+    ) -> MountError:
+        """Return the error for a .mount stop job that did not end in done."""
+        return fallback(name=self.name)
 
     async def _release_units(self) -> None:
         """Forget the units after teardown."""
@@ -917,7 +925,7 @@ class Mount(CoreSysAttributes, ABC):
                     self.name,
                     result,
                 )
-                raise MountReloadError(name=self.name)
+                raise self._stop_failure(result, MountReloadError)
         except DBusSystemdNoSuchUnit:
             # Nothing mounted — the trigger alone covers the path
             pass
@@ -1310,26 +1318,31 @@ class DiskMount(Mount):
         first would detach the stack lazily, and a lazily detached disk mount
         lives on while anything holds it. A busy disk fails the unmount with
         everything left in place, so the user can free it and retry.
-        """
-        try:
-            await self._stop_mount_unit()
-        except MountUnmountError as err:
-            raise MountDiskBusyError(name=self.name) from err
 
+        An access between the two stops re-triggers the mount, and the
+        automount stop then detaches that fresh mount lazily. It is released
+        as soon as its last user is done, so only a file opened in that
+        window and kept open leaves the superblock behind - the same busy
+        failure as any held file, just without a visible mount.
+        """
+        await self._stop_mount_unit()
+        # A failure here leaves the disk unmounted with the trigger still
+        # armed: the next access mounts it again, nothing to undo.
         await self._stop_automount()
         await self._release_units()
         await self.sys_run_in_executor(self._remove_device_link)
 
-    async def discard_session(self) -> None:
-        """Stop the .mount unit while keeping the automount trigger armed.
+    def _stop_failure(
+        self, result: str | None, fallback: Callable[..., MountError]
+    ) -> MountError:
+        """Name a disk still in use, the one reason a local umount fails.
 
-        A dead session of a pulled disk can only be dropped once nothing
-        holds files on it anymore, so a failure tells the user what to do.
+        A timeout is a slow flush of dirty data, not a holder, and a job
+        result carries no errno, so only a failed job is reported as busy.
         """
-        try:
-            await super().discard_session()
-        except MountReloadError as err:
-            raise MountDiskBusyError(name=self.name) from err
+        if result == "failed":
+            return MountDiskBusyError(name=self.name)
+        return super()._stop_failure(result, fallback)
 
     async def _ensure_resolved(self) -> None:
         """Resolve the device unless it is already known.

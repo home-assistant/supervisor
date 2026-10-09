@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Coroutine
 from dataclasses import replace
 import errno
 from pathlib import Path, PurePath
 import stat
-from typing import Any
+from typing import Any, cast
 from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 from dbus_fast import DBusError, ErrorType
@@ -27,6 +28,7 @@ from supervisor.exceptions import (
     MountError,
     MountFilesystemNotSupportedError,
     MountInvalidError,
+    MountReloadError,
     MountSetupError,
     MountUnmountError,
 )
@@ -953,34 +955,53 @@ async def test_disk_mount(
     assert not mount.path_device_link.is_symlink()
 
 
-async def test_disk_mount_unmount_busy(
+def _stop_job_result(result: str | None):
+    """Return a _run_systemd_job replacement ending the stop job with result."""
+
+    async def run_job(_self: Mount, _op: str, dispatch: Awaitable[str]) -> str | None:
+        cast(Coroutine, dispatch).close()
+        return result
+
+    return run_job
+
+
+@pytest.mark.parametrize(
+    ("result", "error"),
+    [
+        pytest.param("failed", MountDiskBusyError, id="failed_is_busy"),
+        pytest.param(None, MountUnmountError, id="timeout_is_not_busy"),
+    ],
+)
+async def test_disk_mount_unmount_failure(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
     path_extern,
     mock_is_mount,
+    result: str | None,
+    error: type[MountUnmountError],
 ):
-    """Test a disk still in use fails the unmount with everything left in place."""
+    """Test a failed disk unmount leaves everything in place for a retry."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
 
     mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
     await mount.mount()
 
-    systemd_service.StopUnit.calls.clear()
-    systemd_service.response_stop_unit = ERROR_FAILURE
-    with pytest.raises(MountDiskBusyError):
+    with (
+        patch.object(Mount, "_run_systemd_job", _stop_job_result(result)),
+        pytest.raises(MountUnmountError) as excinfo,
+    ):
         await mount.unmount()
 
+    # Only a failed umount means a holder; a timeout is a slow flush
+    assert type(excinfo.value) is error
+
     # The trigger stays armed and the device link in place for a retry
-    assert systemd_service.StopUnit.calls == [
-        ("mnt-data-supervisor-media-test.mount", "fail"),
-    ]
     assert mount.unit is not None
     assert mount.path_device_link.is_symlink()
 
     systemd_service.StopUnit.calls.clear()
-    systemd_service.response_stop_unit = "/org/freedesktop/systemd1/job/7623"
     systemd_unit_service.active_state = ["active", "inactive"]
     await mount.unmount()
 
@@ -992,27 +1013,33 @@ async def test_disk_mount_unmount_busy(
     assert not mount.path_device_link.is_symlink()
 
 
-async def test_disk_mount_discard_session_busy(
+@pytest.mark.parametrize(
+    ("result", "error"),
+    [
+        pytest.param("failed", MountDiskBusyError, id="failed_is_busy"),
+        pytest.param(None, MountReloadError, id="timeout_is_not_busy"),
+    ],
+)
+async def test_disk_mount_discard_session_failure(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
     path_extern,
     mock_is_mount,
+    result: str | None,
+    error: type[MountError],
 ):
     """Test dropping a dead session of a disk still in use names the cause."""
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-
     mount: DiskMount = Mount.from_dict(coresys, DISK_TEST_DATA)
     await mount.mount()
 
-    systemd_service.StopUnit.calls.clear()
-    systemd_service.response_stop_unit = ERROR_FAILURE
-    with pytest.raises(MountDiskBusyError):
+    with (
+        patch.object(Mount, "_run_systemd_job", _stop_job_result(result)),
+        pytest.raises(MountError) as excinfo,
+    ):
         await mount.discard_session()
 
-    assert systemd_service.StopUnit.calls == [
-        ("mnt-data-supervisor-media-test.mount", "fail"),
-    ]
+    assert type(excinfo.value) is error
 
 
 async def test_disk_mount_read_only(
