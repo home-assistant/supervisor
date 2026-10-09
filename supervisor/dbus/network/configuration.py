@@ -33,10 +33,15 @@ class ConnectionProperties:
 class WirelessProperties:
     """Wireless Properties object for Network Manager."""
 
-    ssid: str
+    ssid_raw: bytes
     assigned_mac: str | None
     mode: str | None
     powersave: int | None
+
+    @property
+    def ssid(self) -> str:
+        """Return SSID decoded for display, SSIDs are arbitrary bytes."""
+        return self.ssid_raw.decode(errors="replace")
 
 
 @dataclass(slots=True)

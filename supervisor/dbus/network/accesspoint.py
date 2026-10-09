@@ -37,7 +37,7 @@ class NetworkWirelessAP(DBusInterfaceProxy):
     @dbus_property
     def ssid(self) -> str:
         """Return details about ssid."""
-        return bytes(self.properties[DBUS_ATTR_SSID]).decode()
+        return bytes(self.properties[DBUS_ATTR_SSID]).decode(errors="replace")
 
     @property
     @dbus_property

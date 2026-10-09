@@ -202,3 +202,17 @@ async def test_watching_updated_signal(
     await connection_settings_service.ping()
     await connection_settings_service.ping()
     assert connection_settings_service.GetSettings.calls == [(), ()]
+
+
+async def test_non_utf8_wireless_ssid(
+    connection_settings_service: ConnectionSettingsService, dbus_session_bus: MessageBus
+):
+    """Test loading a wireless profile whose SSID is not valid UTF-8."""
+    connection_settings_service.settings["802-11-wireless"] = {
+        "ssid": Variant("ay", b"Caf\xe9")
+    }
+    settings = NetworkSetting("/org/freedesktop/NetworkManager/Settings/1")
+    await settings.connect(dbus_session_bus)
+
+    assert settings.wireless.ssid == "Caf\ufffd"
+    assert settings.wireless.ssid_raw == b"Caf\xe9"

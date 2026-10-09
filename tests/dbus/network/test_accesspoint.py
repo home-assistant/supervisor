@@ -1,5 +1,7 @@
 """Test NetworkWireless AP object."""
 
+from dataclasses import replace
+
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
@@ -45,3 +47,16 @@ async def test_accesspoint(
     access_point_service.emit_properties_changed({"Strength": 74})
     await access_point_service.ping()
     assert wireless_ap.strength == 47
+
+
+async def test_accesspoint_non_utf8_ssid(
+    access_point_service: AccessPointService, dbus_session_bus: MessageBus
+):
+    """Test accesspoint with an SSID that is not valid UTF-8."""
+    access_point_service.fixture = replace(
+        access_point_service.fixture, Ssid=b"Caf\xe9"
+    )
+    wireless_ap = NetworkWirelessAP("/org/freedesktop/NetworkManager/AccessPoint/43099")
+    await wireless_ap.connect(dbus_session_bus)
+
+    assert wireless_ap.ssid == "Caf\ufffd"
