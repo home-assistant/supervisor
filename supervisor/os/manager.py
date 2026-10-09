@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 import logging
 from pathlib import Path, PurePath
 
@@ -378,10 +379,10 @@ class OSManager(JobGroup):
         # Fetch files from internet
         ota_url = self._get_download_url(version)
         int_ota = Path(self.sys_config.path_tmp, f"hassos-{version!s}.raucb")
-        await self._download_raucb(ota_url, int_ota)
         ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.name)
 
         try:
+            await self._download_raucb(ota_url, int_ota)
             async with self.sys_dbus.rauc.signal_completed() as signal:
                 # Start listening for signals before triggering install
                 # This prevents a race condition with install complete signal
@@ -393,7 +394,8 @@ class OSManager(JobGroup):
             raise HassOSUpdateError("Rauc communication error", _LOGGER.error) from err
 
         finally:
-            await self.sys_run_in_executor(int_ota.unlink)
+            # Also removes a partial bundle left behind by a failed download
+            await self.sys_run_in_executor(partial(int_ota.unlink, missing_ok=True))
 
         # Update success
         if 0 in completed:
