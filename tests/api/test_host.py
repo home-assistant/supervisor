@@ -621,6 +621,44 @@ async def test_advanced_logs_follow_client_disconnect(
     assert "Missing return statement on request handler" not in caplog.text
 
 
+async def test_advanced_logs_client_disconnect_while_connecting(
+    journald_gateway: MagicMock,
+    api_client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test client disconnecting while the journal gateway connection is opening."""
+    connecting = asyncio.Event()
+
+    async def block_connect(*_):
+        connecting.set()
+        await asyncio.Event().wait()
+
+    journald_gateway.get.return_value.__aenter__.side_effect = block_connect
+
+    # The test server cancels handlers on disconnect, production does not
+    runner = web.AppRunner(api_client.server.app)
+    await runner.setup()
+    await web.TCPSite(runner, "127.0.0.1", 0).start()
+    port = runner.addresses[0][1]
+
+    with patch("supervisor.api.utils.DISCONNECT_CHECK_INTERVAL", 0):
+        async with ClientSession() as session:
+            # ClientSession.get is patched by the journald_gateway fixture
+            request = asyncio.create_task(
+                session.request(
+                    "GET", f"http://127.0.0.1:{port}/host/logs/identifiers/test"
+                )
+            )
+            await asyncio.wait_for(connecting.wait(), 1)
+            request.cancel()
+            with suppress(asyncio.CancelledError):
+                await request
+
+        await runner.cleanup()
+
+    assert "Error handling request" not in caplog.text
+
+
 async def test_advanced_logs_gateway_reset_before_stream(
     journald_gateway: MagicMock,
     api_client_with_prefix: tuple[TestClient, str],
