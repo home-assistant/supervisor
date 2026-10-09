@@ -15,7 +15,7 @@ def test_issue_uuid_pinned() -> None:
     """
     assert (
         Issue(IssueType.PWNED, ContextType.ADDON, reference="core_samba").uuid
-        == "57fb6e6881fc51a4807636f323bcad99"
+        == "cb870065e1b85522a7212b7416d83794"
     )
     assert (
         Issue(
@@ -24,7 +24,7 @@ def test_issue_uuid_pinned() -> None:
             reference="a",
             reference_extra={"port": 80},
         ).uuid
-        == "78c6842ed13451ad905e0addf53548a6"
+        == "36ff1fae334850df8c2dda7eb2f96945"
     )
 
 
@@ -71,3 +71,11 @@ def test_issue_uuid_differs_for_other_identity(changes: dict[str, Any]) -> None:
     }
 
     assert Issue(**base).uuid != Issue(**(base | changes)).uuid
+
+
+def test_issue_uuid_reference_none_vs_string() -> None:
+    """Test a missing reference does not share the uuid of reference "None"."""
+    assert (
+        Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT).uuid
+        != Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="None").uuid
+    )

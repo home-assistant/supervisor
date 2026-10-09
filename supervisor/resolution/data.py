@@ -28,10 +28,11 @@ def _identity_uuid(
     Home Assistant keys repairs (and their ignored state) on this uuid, so it
     has to stay the same when a check raises the same issue after a restart.
     """
-    extra = json.dumps(reference_extra, sort_keys=True)
-    return uuid5(
-        NAMESPACE_RESOLUTION, f"{kind}/{type_}/{context}/{reference}/{extra}"
-    ).hex
+    # JSON keeps field boundaries, e.g. None distinct from "None"
+    name = json.dumps(
+        [kind, type_, context, reference, reference_extra], sort_keys=True
+    )
+    return uuid5(NAMESPACE_RESOLUTION, name).hex
 
 
 @dataclass(frozen=True, slots=True)
