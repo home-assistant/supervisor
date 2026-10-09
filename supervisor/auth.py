@@ -99,8 +99,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
             _LOGGER.info("Home Assistant not running, checking cache")
             return cache_hit is True
 
-        # No cache hit
-        if cache_hit is None:
+        # A mismatch may be a changed password, so only trust positive hits
+        if cache_hit is not True:
             return await self._backend_login(app, username, password)
 
         # Home Assistant Core take over 1-2sec to validate it
@@ -110,7 +110,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
                 self._refresh_cached_login(app, username, password)
             )
 
-        return cache_hit
+        return True
 
     async def _refresh_cached_login(
         self, app: App, username: str, password: str
@@ -120,8 +120,11 @@ class Auth(FileConfiguration, CoreSysAttributes):
         Nothing awaits this task, so failures already logged by the request
         path are consumed here instead of surfacing as unretrieved task errors.
         """
-        with suppress(AuthHomeAssistantAPIValidationError, HomeAssistantAuthError):
-            await self._backend_login(app, username, password)
+        try:
+            with suppress(AuthHomeAssistantAPIValidationError, HomeAssistantAuthError):
+                await self._backend_login(app, username, password)
+        finally:
+            self._running.pop(username, None)
 
     async def _backend_login(self, app: App, username: str, password: str) -> bool:
         """Check username login on core."""
@@ -150,8 +153,6 @@ class Auth(FileConfiguration, CoreSysAttributes):
             raise
         except HomeAssistantAPIError as err:
             _LOGGER.error("Can't request auth on Home Assistant: %s", err)
-        finally:
-            self._running.pop(username, None)
 
         raise AuthHomeAssistantAPIValidationError
 
