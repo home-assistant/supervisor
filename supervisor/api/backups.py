@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
 from typing import Any, cast
+from urllib.parse import quote
 
 from aiohttp import BodyPartReader, web
 from aiohttp.hdrs import CONTENT_DISPOSITION
@@ -69,7 +70,18 @@ ALL_APPS_FLAG = "ALL"
 LOCATION_LOCAL = ".local"
 
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
-RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
+RE_BACKUP_FILENAME = re.compile(r"^[^\\/\x00-\x1f\x7f]+\.tar\Z")
+RE_FILENAME_FALLBACK = re.compile(r'[^\x20-\x7e]|["\\]')
+
+
+def _content_disposition_attachment(filename: str) -> str:
+    """Return an RFC 6266 attachment header value for any filename."""
+    fallback = RE_FILENAME_FALLBACK.sub("_", filename)
+    return (
+        f'attachment; filename="{fallback}"; '
+        f"filename*=UTF-8''{quote(filename, safe='')}"
+    )
+
 
 # Backwards compatible
 # Remove: 2022.08
@@ -573,8 +585,8 @@ class APIBackups(CoreSysAttributes):
         download_filename = filename.name
         if download_filename == f"{backup.slug}.tar":
             download_filename = f"{RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
-        response.headers[CONTENT_DISPOSITION] = (
-            f"attachment; filename={download_filename}"
+        response.headers[CONTENT_DISPOSITION] = _content_disposition_attachment(
+            download_filename
         )
         return response
 
