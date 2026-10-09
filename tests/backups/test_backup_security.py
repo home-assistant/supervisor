@@ -293,3 +293,24 @@ async def test_folder_restore_rejects_symlink_escape(
     backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)
     async with backup.open(None):
         assert await backup.restore_folders([Folder.SHARE]) is False
+
+
+async def test_backup_open_strips_leading_slash(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test an outer member with a leading slash is indexed under its stripped name."""
+    cert_info = tarfile.TarInfo(name="cert.pem")
+    cert_info.size = 3
+    inner_tar = tmp_supervisor_data / "ssl.tar.gz"
+    _create_tar_gz(inner_tar, [cert_info], {"cert.pem": b"ssl"})
+
+    backup_tar_path = tmp_supervisor_data / "backup.tar"
+    with tarfile.open(backup_tar_path, "w:") as outer_tar:
+        outer_tar.add(inner_tar, arcname="/ssl.tar.gz")
+
+    backup = Backup(coresys, backup_tar_path, "test", None)
+    backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)
+    async with backup.open(None):
+        assert await backup.restore_folders([Folder.SSL]) is True
+
+    assert (coresys.config.path_ssl / "cert.pem").read_bytes() == b"ssl"

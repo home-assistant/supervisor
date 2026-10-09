@@ -568,8 +568,9 @@ class Backup(JobGroup):
             tar = tarfile.open(backup_tarfile, "r:")
 
             # Inner tars are read in place, so only the member index is loaded.
-            # The tar filter still rejects path traversal and absolute names to
-            # abort restore of potentially crafted backups.
+            # The tar filter still rejects path traversal to abort restore of
+            # potentially crafted backups. It strips leading slashes, and names
+            # are normalized since both ./name and name exist in the wild.
             dest_path = self.sys_config.path_tmp.as_posix()
             members: dict[str, tarfile.TarInfo] = {}
             try:
