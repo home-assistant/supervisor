@@ -1,7 +1,9 @@
 """Test network manager."""
 
 import asyncio
+from collections.abc import AsyncGenerator
 from ipaddress import IPv4Address, IPv6Address
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from dbus_fast import DBusError, Variant
@@ -10,14 +12,20 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import InterfaceMethod
+from supervisor.dbus.network.connection import NetworkConnection
 from supervisor.dbus.network.setting import (
     CONF_ATTR_802_WIRELESS_SECURITY,
     CONF_ATTR_802_WIRELESS_SECURITY_PSK,
 )
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
-from supervisor.exceptions import HostNetworkError, HostNotSupportedError
+from supervisor.exceptions import (
+    HostNetworkActivationFailedError,
+    HostNetworkError,
+    HostNotSupportedError,
+)
 from supervisor.homeassistant.const import WSEvent, WSType
-from supervisor.host.const import MulticastDnsMode, WifiMode
+from supervisor.host.configuration import WifiConfig
+from supervisor.host.const import AuthMethod, MulticastDnsMode, WifiMode
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_active_connection import (
@@ -62,6 +70,44 @@ async def fixture_device_wlan0_service(
     return network_manager_services["network_device"][
         "/org/freedesktop/NetworkManager/Devices/3"
     ]
+
+
+@pytest.fixture(name="activated_connections")
+async def fixture_activated_connections(
+    coresys: CoreSys,
+) -> AsyncGenerator[list[NetworkConnection]]:
+    """Record active connections returned by NetworkManager activation calls."""
+    activated: list[NetworkConnection] = []
+    network = coresys.dbus.network
+    activate_connection = network.activate_connection
+    add_and_activate_connection = network.add_and_activate_connection
+
+    async def _activate_connection(*args: Any) -> NetworkConnection:
+        con = await activate_connection(*args)
+        activated.append(con)
+        return con
+
+    async def _add_and_activate_connection(*args: Any) -> tuple[Any, NetworkConnection]:
+        settings, con = await add_and_activate_connection(*args)
+        activated.append(con)
+        return settings, con
+
+    with (
+        patch.object(network, "activate_connection", new=_activate_connection),
+        patch.object(
+            network, "add_and_activate_connection", new=_add_and_activate_connection
+        ),
+    ):
+        yield activated
+
+
+def _assert_connection_shut_down(con: NetworkConnection) -> None:
+    """Assert an activated connection and its child objects are shut down."""
+    assert con.is_shutdown
+    assert not con.is_connected
+    assert con.settings.is_shutdown
+    assert con.ipv4.is_shutdown
+    assert con.ipv6.is_shutdown
 
 
 async def test_load(
@@ -625,3 +671,74 @@ async def test_apply_changes_v2_reenable_reuses_profile(
         "/org/freedesktop/NetworkManager/Devices/1",
         "/",
     ) in network_manager_service.ActivateConnection.calls
+
+
+@pytest.mark.parametrize(
+    ("interface_name", "wifi"),
+    [
+        pytest.param("eth0", None, id="update"),
+        pytest.param(
+            "wlan0",
+            WifiConfig(
+                WifiMode.INFRASTRUCTURE, "MY_TEST", AuthMethod.WPA_PSK, "password", None
+            ),
+            id="create",
+        ),
+    ],
+)
+async def test_apply_changes_shuts_down_activated_connection(
+    coresys: CoreSys,
+    activated_connections: list[NetworkConnection],
+    interface_name: str,
+    wifi: WifiConfig | None,
+):
+    """Test the connection returned by activation is shut down once activated."""
+    await coresys.host.network.load()
+
+    interface = coresys.host.network.get(interface_name)
+    interface.enabled = True
+    interface.wifi = wifi
+    await coresys.host.network.apply_changes(interface)
+
+    assert len(activated_connections) == 1
+    _assert_connection_shut_down(activated_connections[0])
+    # The interface tracks the active connection with its own object
+    assert not coresys.dbus.network.get("eth0").connection.is_shutdown
+
+
+async def test_apply_changes_shuts_down_failed_connection(
+    coresys: CoreSys,
+    active_connection_service: ActiveConnectionService,
+    activated_connections: list[NetworkConnection],
+):
+    """Test the connection returned by activation is shut down if activation fails."""
+    await coresys.host.network.load()
+
+    original_state = active_connection_service.fixture.state
+    active_connection_service.fixture.state = 4  # DEACTIVATED
+    try:
+        with pytest.raises(HostNetworkActivationFailedError):
+            await coresys.host.network.apply_changes(coresys.host.network.get("eth0"))
+    finally:
+        active_connection_service.fixture.state = original_state
+
+    assert len(activated_connections) == 1
+    _assert_connection_shut_down(activated_connections[0])
+
+
+async def test_apply_changes_background_shuts_down_activated_connection(
+    coresys: CoreSys,
+    activated_connections: list[NetworkConnection],
+):
+    """Test the connection is shut down once a background activation finishes."""
+    await coresys.host.network.load()
+
+    job_id = await coresys.host.network.apply_changes(
+        coresys.host.network.get("eth0"), background_activation=True
+    )
+    job = coresys.jobs.get_job(job_id)
+    while not job.done:
+        await asyncio.sleep(0)
+
+    assert len(activated_connections) == 1
+    _assert_connection_shut_down(activated_connections[0])
