@@ -4,7 +4,8 @@
   "overrideCommand": false,
   "remoteUser": "vscode",
   "containerEnv": {
-    "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
+    "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}",
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
   },
   "remoteEnv": {
     "PATH": "${containerEnv:VIRTUAL_ENV}/bin:${containerEnv:PATH}"
@@ -22,7 +23,8 @@
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
         "GitHub.vscode-pull-request-github",
-        "GitHub.copilot"
+        "GitHub.copilot",
+        "anthropic.claude-code"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/home/vscode/.local/ha-venv/bin/python",
@@ -46,10 +48,15 @@
       }
     }
   },
+  "features": {
+    "ghcr.io/devcontainers/features/node:2": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {}
+  },
   "mounts": [
     "type=volume,target=/var/lib/docker",
     "type=volume,target=/var/lib/containerd",
     "type=volume,target=/mnt/supervisor",
-    "type=tmpfs,target=/tmp"
+    "type=tmpfs,target=/tmp",
+    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
   ]
 }
