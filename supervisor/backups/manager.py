@@ -386,7 +386,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 destination = self.sys_config.path_core_backup
             elif location:
                 location_mount = cast(Mount, location)
-                if not location_mount.local_where.is_mount():
+                if not await location_mount.is_mounted():
                     raise BackupMountDownError(mount=location_mount.name)
                 destination = location_mount.local_where
             else:
