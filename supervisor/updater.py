@@ -4,6 +4,7 @@ from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
+from typing import Any
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -306,22 +307,25 @@ class Updater(FileConfiguration, CoreSysAttributes):
             raise UpdaterError(f"Invalid data from {url}", _LOGGER.warning)
 
         events = ["supervisor", "core"]
+        # Collect into local dicts so a missing key leaves _data untouched
+        versions: dict[str, Any] = {}
+        images: dict[str, Any] = {}
         try:
             # Update supervisor version
-            self._data[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
+            versions[ATTR_SUPERVISOR] = AwesomeVersion(data["supervisor"])
 
             # Update Home Assistant core version
-            self._data[ATTR_HOMEASSISTANT] = AwesomeVersion(
+            versions[ATTR_HOMEASSISTANT] = AwesomeVersion(
                 data["homeassistant"][machine]
             )
 
             # Update HassOS version
             if self.sys_os.board:
-                self._data[ATTR_OTA] = data["ota"]
+                versions[ATTR_OTA] = data["ota"]
                 if version := data["hassos"].get(self.sys_os.board):
-                    self._data[ATTR_HASSOS_UNRESTRICTED] = AwesomeVersion(version)
+                    versions[ATTR_HASSOS_UNRESTRICTED] = AwesomeVersion(version)
                     # Store the upgrade map for persistent access
-                    self._data[ATTR_HASSOS_UPGRADE] = data.get("hassos-upgrade", {})
+                    versions[ATTR_HASSOS_UPGRADE] = data.get("hassos-upgrade", {})
                     events.append("os")
                 else:
                     _LOGGER.warning(
@@ -330,25 +334,28 @@ class Updater(FileConfiguration, CoreSysAttributes):
                     )
 
             # Update Home Assistant plugins
-            self._data[ATTR_CLI] = AwesomeVersion(data["cli"])
-            self._data[ATTR_DNS] = AwesomeVersion(data["dns"])
-            self._data[ATTR_AUDIO] = AwesomeVersion(data["audio"])
-            self._data[ATTR_OBSERVER] = AwesomeVersion(data["observer"])
-            self._data[ATTR_MULTICAST] = AwesomeVersion(data["multicast"])
+            versions[ATTR_CLI] = AwesomeVersion(data["cli"])
+            versions[ATTR_DNS] = AwesomeVersion(data["dns"])
+            versions[ATTR_AUDIO] = AwesomeVersion(data["audio"])
+            versions[ATTR_OBSERVER] = AwesomeVersion(data["observer"])
+            versions[ATTR_MULTICAST] = AwesomeVersion(data["multicast"])
 
             # Update images for that versions
-            self._data[ATTR_IMAGE][ATTR_HOMEASSISTANT] = data["images"]["core"]
-            self._data[ATTR_IMAGE][ATTR_SUPERVISOR] = data["images"]["supervisor"]
-            self._data[ATTR_IMAGE][ATTR_AUDIO] = data["images"]["audio"]
-            self._data[ATTR_IMAGE][ATTR_CLI] = data["images"]["cli"]
-            self._data[ATTR_IMAGE][ATTR_DNS] = data["images"]["dns"]
-            self._data[ATTR_IMAGE][ATTR_OBSERVER] = data["images"]["observer"]
-            self._data[ATTR_IMAGE][ATTR_MULTICAST] = data["images"]["multicast"]
+            images[ATTR_HOMEASSISTANT] = data["images"]["core"]
+            images[ATTR_SUPERVISOR] = data["images"]["supervisor"]
+            images[ATTR_AUDIO] = data["images"]["audio"]
+            images[ATTR_CLI] = data["images"]["cli"]
+            images[ATTR_DNS] = data["images"]["dns"]
+            images[ATTR_OBSERVER] = data["images"]["observer"]
+            images[ATTR_MULTICAST] = data["images"]["multicast"]
 
         except KeyError as err:
             raise UpdaterError(
                 f"Can't process version data: {err}", _LOGGER.warning
             ) from err
+
+        self._data.update(versions)
+        self._data[ATTR_IMAGE].update(images)
 
         await self.save_data()
 
