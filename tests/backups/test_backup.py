@@ -21,6 +21,7 @@ from securetar import (
     SecureTarFile,
     SecureTarReadError,
 )
+import voluptuous as vol
 
 from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation
@@ -305,6 +306,49 @@ async def test_backup_oserror_close_suppressed_on_error(
     with pytest.raises(ValueError, match="test error"):
         async with backup.create():
             raise ValueError("test error")
+
+
+@pytest.mark.parametrize(
+    ("target", "side_effect", "expected"),
+    [
+        pytest.param(
+            "supervisor.backups.backup.json_bytes",
+            OSError(errno.ENOSPC, "No space left on device"),
+            BackupFatalIOError,
+            id="enospc_writing_metadata",
+        ),
+        pytest.param(
+            "supervisor.backups.backup.json_bytes",
+            TypeError("Type is not JSON serializable"),
+            TypeError,
+            id="encode_error",
+        ),
+        pytest.param(
+            "supervisor.backups.backup.SCHEMA_BACKUP",
+            vol.Invalid("invalid"),
+            ValueError,
+            id="invalid_metadata",
+        ),
+    ],
+)
+async def test_backup_finalize_error_closes_tar(
+    coresys: CoreSys,
+    tmp_path: Path,
+    target: str,
+    side_effect: Exception,
+    expected: type[Exception],
+):
+    """Test the outer tar is closed when finalizing the backup fails."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    with patch(target, side_effect=side_effect), pytest.raises(expected):
+        async with backup.create():
+            # pylint: disable-next=protected-access
+            outer_tar = backup._outer_secure_tarfile.tar
+
+    assert outer_tar.closed
+    assert outer_tar.fileobj.closed
 
 
 async def test_consolidate_conflict_varied_encryption(

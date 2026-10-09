@@ -527,6 +527,7 @@ class Backup(JobGroup):
 
         try:
             yield
+            await self._create_finalize(outer_secure_tarfile)
         except Exception:
             self._outer_secure_tarfile = None
             # Close may fail (e.g. ENOSPC writing end-of-archive
@@ -537,7 +538,6 @@ class Backup(JobGroup):
             raise
 
         try:
-            await self._create_finalize(outer_secure_tarfile)
             size_bytes = await self.sys_run_in_executor(_close_outer_tarfile)
             self._locations[self.location].size_bytes = size_bytes
         finally:
@@ -671,9 +671,6 @@ class Backup(JobGroup):
             raise BackupFatalIOError(
                 f"Can't write backup metadata: {err!s}", _LOGGER.error
             ) from err
-        except json.JSONDecodeError as err:
-            self.sys_jobs.current.capture_error(BackupError("Can't write backup"))
-            _LOGGER.error("Can't write backup: %s", err)
 
     @Job(name="backup_app_save", cleanup=False)
     async def _app_save(self, app: App) -> asyncio.Task | None:
