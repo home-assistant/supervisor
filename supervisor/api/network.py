@@ -596,6 +596,7 @@ class APINetwork(CoreSysAttributes):
                 auth=wifi[ATTR_AUTH],
                 psk=wifi.get(ATTR_PSK),
                 signal=None,
+                ssid_raw=interface.wifi.ssid_raw if interface.wifi else None,
             )
 
         interface.enabled = body[ATTR_ENABLED]
@@ -658,6 +659,7 @@ class APINetwork(CoreSysAttributes):
                     auth=config.get(ATTR_AUTH, AuthMethod.OPEN),
                     psk=config.get(ATTR_PSK, None),
                     signal=None,
+                    ssid_raw=interface.wifi.ssid_raw if interface.wifi else None,
                 )
             elif key == ATTR_ENABLED:
                 interface.enabled = config

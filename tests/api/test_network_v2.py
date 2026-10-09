@@ -665,6 +665,60 @@ async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
     await _wait_for_background_job(coresys, result["data"]["job_id"])
 
 
+@pytest.mark.parametrize(
+    ("ssid", "expected_ssid"),
+    [
+        pytest.param("Caf\ufffd", b"Caf\xe9", id="echoed_ssid_keeps_raw"),
+        pytest.param("Café", "Café".encode(), id="new_ssid_as_utf8"),
+    ],
+)
+async def test_api_network_update_config_v2_non_utf8_ssid(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    ssid: str,
+    expected_ssid: bytes,
+):
+    """Test a stored non-UTF-8 SSID survives echoing back the GET config."""
+    network_manager_service.AddAndActivateConnection.calls.clear()
+    resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
+    resolved.interface.wifi = WifiConfig(
+        mode=WifiMode.INFRASTRUCTURE,
+        ssid="Caf\ufffd",
+        auth=AuthMethod.OPEN,
+        psk=None,
+        signal=None,
+        ssid_raw=b"Caf\xe9",
+    )
+    existing = ResolvedInterface(
+        resolved.interface, has_profile=True, enabled=resolved.enabled
+    )
+
+    config = {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+        "wifi": {"mode": "infrastructure", "ssid": ssid, "auth": "open"},
+    }
+
+    with patch.object(
+        coresys.host.network, "get_with_config", AsyncMock(return_value=existing)
+    ):
+        resp = await api_client_v2.put(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+        )
+    assert resp.status == 200, await resp.text()
+
+    assert len(network_manager_service.AddAndActivateConnection.calls) == 1
+    settings = network_manager_service.AddAndActivateConnection.calls[0][0]
+    assert settings["802-11-wireless"]["ssid"] == Variant("ay", expected_ssid)
+
+    result = await resp.json()
+    await _wait_for_background_job(coresys, result["data"]["job_id"])
+
+
 async def test_api_network_update_config_v2_mdns_llmnr(
     api_client_v2: TestClient,
     connection_settings_service: ConnectionSettingsService,
