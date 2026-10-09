@@ -1,12 +1,13 @@
 """Test sentry data filter."""
 
 import os
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.const import SUPERVISOR_VERSION, CoreState
+from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     AppConfigurationError,
     DockerHubRateLimitExceeded,
@@ -175,6 +176,21 @@ async def test_defaults(coresys):
         filtered["contexts"]["docker"]["storage_driver"] == coresys.docker.info.storage
     )
     assert filtered["user"]["id"] == coresys.machine_id
+
+
+async def test_defaults_without_machine(coresys: CoreSys, sys_machine: PropertyMock):
+    """Test event defaults when machine type is unknown."""
+    coresys.config.diagnostics = True
+    sys_machine.return_value = None
+
+    await coresys.core.set_state(CoreState.RUNNING)
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
+        filtered = filter_data(coresys, {"sample": "event"}, {})
+
+    assert "machine" not in filtered["tags"]
+    assert filtered["tags"]["installation_type"] == "supervised"
+    assert filtered["tags"]["storage_driver"] == coresys.docker.info.storage
+    assert filtered["contexts"]["host"]["machine"] is None
 
 
 async def test_sanitize_url_credentials(coresys):

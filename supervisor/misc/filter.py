@@ -181,7 +181,7 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
         {plugin.slug: plugin.version for plugin in coresys.plugins.all_plugins}
     )
 
-    event["tags"].update(
+    event.setdefault("tags", {}).update(
         {
             "installation_type": "os" if coresys.os.available else "supervised",
             "storage_driver": coresys.docker.info.storage,
