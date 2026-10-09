@@ -252,6 +252,16 @@ class NetworkSetting(DBusInterface):
         """Get current settings for connection."""
         data = await self.get_settings()
 
+        # Sections NetworkManager no longer reports must not keep stale values
+        self._connection = None
+        self._wireless = None
+        self._wireless_security = None
+        self._ethernet = None
+        self._vlan = None
+        self._ipv4 = None
+        self._ipv6 = None
+        self._match = None
+
         # Get configuration settings we care about
         # See: https://networkmanager.dev/docs/api/latest/nm-settings-dbus.html
         if CONF_ATTR_CONNECTION in data:
@@ -314,7 +324,6 @@ class NetworkSetting(DBusInterface):
                     parent=data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_PARENT),
                 )
             else:
-                self._vlan = None
                 _LOGGER.warning(
                     "Network settings for vlan connection %s missing required vlan id, cannot process it",
                     self.connection.interface_name,
