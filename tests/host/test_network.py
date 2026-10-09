@@ -11,7 +11,7 @@ import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.dbus.const import InterfaceMethod
+from supervisor.dbus.const import ConnectionState, InterfaceMethod
 from supervisor.dbus.network.connection import NetworkConnection
 from supervisor.dbus.network.setting import (
     CONF_ATTR_802_WIRELESS_SECURITY,
@@ -188,10 +188,19 @@ async def test_load(
     assert network_manager_service.CheckConnectivity.calls == []
 
 
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(ConnectionState.ACTIVATED, id="activated"),
+        pytest.param(ConnectionState.ACTIVATING, id="activating"),
+    ],
+)
 async def test_load_unchanged_settings_skips_activation(
     coresys: CoreSys,
     network_manager_service: NetworkManagerService,
+    active_connection_service: ActiveConnectionService,
     device_eth0_service: DeviceService,
+    state: ConnectionState,
 ):
     """Test load does not touch connections when settings are unchanged."""
     # First load updates the profiles to Supervisor defaults and applies them
@@ -199,6 +208,9 @@ async def test_load_unchanged_settings_skips_activation(
 
     network_manager_service.ActivateConnection.calls.clear()
     device_eth0_service.Reapply.calls.clear()
+
+    active_connection_service.emit_properties_changed({"State": state})
+    await active_connection_service.ping()
 
     # Profiles now match what Supervisor generates, nothing to apply
     await coresys.host.network.load()
