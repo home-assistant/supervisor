@@ -390,29 +390,21 @@ class APIHost(CoreSysAttributes):
                 async for cursor, line in journal_logs_reader(
                     resp, log_formatter, no_colors
                 ):
-                    try:
-                        if not headers_returned:
-                            if cursor:
-                                response.headers["X-First-Cursor"] = cursor
-                            response.headers["X-Accel-Buffering"] = "no"
-                            await response.prepare(request)
-                            headers_returned = True
-                        await response.write(line.encode("utf-8") + b"\n")
-                    except ClientConnectionResetError as err:
-                        # When client closes the connection while reading busy logs, we
-                        # sometimes get this exception. It should be safe to ignore it.
-                        _LOGGER.debug(
-                            "ClientConnectionResetError raised when returning journal logs: %s",
-                            err,
-                        )
-                        break
-                    except ConnectionError as err:
-                        _LOGGER.warning(
-                            "%s raised when returning journal logs: %s",
-                            type(err).__name__,
-                            err,
-                        )
-                        break
+                    if not headers_returned:
+                        if cursor:
+                            response.headers["X-First-Cursor"] = cursor
+                        response.headers["X-Accel-Buffering"] = "no"
+                        await response.prepare(request)
+                        headers_returned = True
+                    await response.write(line.encode("utf-8") + b"\n")
+            except ClientConnectionResetError as err:
+                # When client closes the connection while reading busy logs, we
+                # sometimes get this exception. It should be safe to ignore it.
+                # Must precede the ConnectionResetError handler, it's a subclass.
+                _LOGGER.debug(
+                    "ClientConnectionResetError raised when returning journal logs: %s",
+                    err,
+                )
             except (ConnectionResetError, ClientPayloadError) as ex:
                 # If the stream to the client already started, an error response
                 # can no longer be sent, so just end the stream. This happens
@@ -426,6 +418,12 @@ class APIHost(CoreSysAttributes):
                     "%s raised when reading journal logs: %s",
                     type(ex).__name__,
                     ex,
+                )
+            except ConnectionError as err:
+                _LOGGER.warning(
+                    "%s raised when returning journal logs: %s",
+                    type(err).__name__,
+                    err,
                 )
         return response
 
