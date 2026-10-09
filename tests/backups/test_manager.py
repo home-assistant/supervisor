@@ -22,6 +22,7 @@ from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import AppState, CoreState, Folder
 from supervisor.coresys import CoreSys
+from supervisor.dbus.const import UnitActiveState
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
@@ -2465,6 +2466,43 @@ async def test_partial_reload_multiple_locations(
     assert backup.location is None
     assert backup.locations == [None, "backup_test"]
     assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
+
+
+@pytest.mark.usefixtures("mount_propagation", "mock_is_mount", "path_extern")
+async def test_partial_reload_inactive_location(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test a partial reload of a location which is no longer active."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    copy(get_fixture_path("backup_example.tar"), tmp_supervisor_data / "backup")
+    copy(get_fixture_path("backup_example.tar"), mount_dir)
+    copy(get_fixture_path("test_consolidate.tar"), mount_dir)
+    await coresys.backups.reload()
+
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations.keys() == {None, "backup_test"}
+    assert len(coresys.backups.list_backups) == 2
+
+    with patch.object(
+        Mount, "state", new=PropertyMock(return_value=UnitActiveState.FAILED)
+    ):
+        assert await coresys.backups.reload("backup_test")
+
+    assert coresys.backups.list_backups == [backup]
+    assert backup.all_locations.keys() == {None}
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")

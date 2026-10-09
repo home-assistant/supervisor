@@ -290,11 +290,13 @@ class BackupManager(FileConfiguration, JobGroup):
 
         # This is just so we don't have to cast repeatedly. Variable will only be used when location is not DEFAULT
         location_name = "" if location == DEFAULT else cast(str | None, location)
-        locations = (
-            self.backup_locations
-            if location == DEFAULT
-            else {location_name: self.backup_locations[location_name]}
-        )
+        if location == DEFAULT:
+            locations = self.backup_locations
+        elif location_name in self.backup_locations:
+            locations = {location_name: self.backup_locations[location_name]}
+        else:
+            # Location is no longer available, prune it from the cache below
+            locations = {}
         # List the backup files of all locations in parallel; a slow or
         # network-backed location should not hold up the others.
         location_items = list(locations.items())
