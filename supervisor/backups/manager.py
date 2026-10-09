@@ -744,7 +744,8 @@ class BackupManager(FileConfiguration, JobGroup):
                 # Delete delta apps
                 if replace:
                     self._change_stage(RestoreJobStage.REMOVE_DELTA_APPS, backup)
-                    success = success and await backup.remove_delta_apps()
+                    delta_success = await backup.remove_delta_apps()
+                    success = success and delta_success
 
                 if app_list:
                     self._change_stage(RestoreJobStage.APP_REPOSITORIES, backup)
