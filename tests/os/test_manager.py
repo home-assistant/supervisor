@@ -1,9 +1,11 @@
 """Test Home Assistant OS functionality."""
 
 import asyncio
+import errno
 from pathlib import Path
-from unittest.mock import AsyncMock, PropertyMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
+import aiohttp
 from awesomeversion import AwesomeVersion
 from dbus_fast import Variant
 import pytest
@@ -11,7 +13,11 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import RaucState
-from supervisor.exceptions import HassOSJobError, HassOSUpdatePendingRebootError
+from supervisor.exceptions import (
+    HassOSJobError,
+    HassOSUpdateError,
+    HassOSUpdatePendingRebootError,
+)
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
@@ -159,6 +165,47 @@ async def test_update_success_cleans_up_bundle(
     }
     assert coresys.os.version_pending == AwesomeVersion("13.0")
     assert coresys.os.need_update is False
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(aiohttp.ClientPayloadError("connection reset"), id="client"),
+        pytest.param(TimeoutError(), id="timeout"),
+        pytest.param(OSError(errno.ENOSPC, "No space left on device"), id="os"),
+    ],
+)
+@pytest.mark.usefixtures("path_extern", "supervisor_internet")
+async def test_update_download_failure_removes_partial_bundle(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    websession: MagicMock,
+    error: Exception,
+) -> None:
+    """Test a failed OTA download removes the partially written bundle."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    coresys.os._available = True
+    coresys.os._board = "generic-x86-64"
+    coresys.os._os_name = "haos"
+    coresys.os._version = AwesomeVersion("12.0")
+    coresys.updater._data = {
+        "ota": (
+            "https://github.com/home-assistant/operating-system/releases/download/"
+            "{version}/{os_name}_{board}-{version}.raucb"
+        ),
+        "hassos_unrestricted": AwesomeVersion("13.0"),
+    }
+
+    response = MockResponse()
+    response.content = MagicMock()
+    response.content.read = AsyncMock(side_effect=[b"partial", error])
+    websession.get = MagicMock(return_value=response)
+
+    with pytest.raises(HassOSUpdateError, match="Can't (fetch OTA update|write OTA)"):
+        await coresys.os.update()
+
+    assert not (coresys.config.path_tmp / "hassos-13.0.raucb").exists()
 
 
 async def test_update_pending_version_blocked(
