@@ -57,6 +57,17 @@ SCHEMA_PROFILE = vol.Schema(
 )
 
 
+def _get_stream_type(request: web.Request) -> StreamType:
+    """Return stream type from request path."""
+    try:
+        return StreamType(request.match_info["source"])
+    except ValueError as err:
+        raise APIError(
+            f"Invalid audio source {request.match_info['source']}, must be one of: "
+            f"{', '.join(StreamType)}"
+        ) from err
+
+
 class APIAudio(CoreSysAttributes):
     """Handle RESTful API for Audio functions."""
 
@@ -117,7 +128,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_volume(self, request: web.Request) -> None:
         """Set audio volume on stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_VOLUME, request)
 
@@ -130,7 +141,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_mute(self, request: web.Request) -> None:
         """Mute audio volume on stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_MUTE, request)
 
@@ -143,7 +154,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_default(self, request: web.Request) -> None:
         """Set audio default stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         body = await api_validate(SCHEMA_DEFAULT, request)
 
         await asyncio.shield(self.sys_host.sound.set_default(source, body[ATTR_NAME]))
