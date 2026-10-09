@@ -345,7 +345,7 @@ class Core(CoreSysAttributes):
 
             # If landingpage / run upgrade in background
             if self.sys_homeassistant.version == LANDINGPAGE:
-                self.sys_create_task(self.sys_homeassistant.core.install())
+                self.sys_create_background_task(self.sys_homeassistant.core.install())
 
             # Update Host/Device information
             self.sys_create_task(self.sys_host.reload())

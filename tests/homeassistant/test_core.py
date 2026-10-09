@@ -429,6 +429,27 @@ async def test_install_logs_progress_periodically(
     assert expected_log in caplog.text
 
 
+async def test_install_progress_log_does_not_block_till_done(coresys: CoreSys):
+    """Test a pending install's progress logger does not block block_till_done."""
+    with (
+        patch.object(
+            Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
+        ),
+        patch.object(DockerHomeAssistant, "update", side_effect=asyncio.Event().wait),
+    ):
+        install_task = coresys.create_background_task(
+            coresys.homeassistant.core.install()
+        )
+        await asyncio.sleep(0)
+
+        async with asyncio.timeout(1):
+            await coresys.block_till_done()
+
+        install_task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await install_task
+
+
 async def test_install_exposes_core_install_job_with_progress(
     coresys: CoreSys, ha_ws_client: AsyncMock
 ):

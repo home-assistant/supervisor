@@ -366,8 +366,8 @@ async def test_api_backup_restore_background(
     job_id = result["data"]["job_id"]
     assert (await _get_job_info(api_client, job_id))["done"] is False
 
-    while not (job := (await _get_job_info(api_client, job_id)))["done"]:
-        await asyncio.sleep(0)
+    await coresys.block_till_done()
+    assert (job := await _get_job_info(api_client, job_id))["done"] is True
 
     assert job["name"] == f"backup_manager_{backup_type}_backup"
     assert (backup_slug := job["reference"])
@@ -392,8 +392,8 @@ async def test_api_backup_restore_background(
         job_id = result["data"]["job_id"]
         assert (await _get_job_info(api_client, job_id))["done"] is False
 
-        while not (job := (await _get_job_info(api_client, job_id)))["done"]:
-            await asyncio.sleep(0)
+        await coresys.block_till_done()
+        assert (job := await _get_job_info(api_client, job_id))["done"] is True
 
     assert job["name"] == f"backup_manager_{backup_type}_restore"
     assert job["reference"] == backup_slug

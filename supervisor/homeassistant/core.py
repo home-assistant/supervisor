@@ -260,7 +260,7 @@ class HomeAssistantCore(JobGroup):
                     else:
                         _LOGGER.info("Home Assistant Core installation in progress")
 
-        progress_task = self.sys_create_task(_periodic_progress_log())
+        progress_task = self.sys_create_background_task(_periodic_progress_log())
         install_image = self.sys_homeassistant.install_image
         try:
             while True:
