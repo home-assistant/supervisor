@@ -339,6 +339,7 @@ class Tasks(CoreSysAttributes):
 
             # if App have running actions / Application work
             if app.in_progress or await app.watchdog_application():
+                self._cache[app.slug] = 0
                 continue
 
             # Look like we run into a problem
@@ -348,7 +349,7 @@ class Tasks(CoreSysAttributes):
                 _LOGGER.warning(
                     "Watchdog missing application response from %s", app.slug
                 )
-                return
+                continue
 
             _LOGGER.warning("Watchdog found a problem with %s application!", app.slug)
             try:

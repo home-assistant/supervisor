@@ -10,7 +10,13 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.apps.app import App
-from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState, FeatureFlag, Folder
+from supervisor.const import (
+    ATTR_VERSION_TIMESTAMP,
+    AppState,
+    CoreState,
+    FeatureFlag,
+    Folder,
+)
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -308,3 +314,53 @@ async def test_update_apps_auto_update_success(
                 "backup": True,
             }
         )
+
+
+def _mock_watchdog_app(slug: str, responses: list[bool]) -> Mock:
+    """Return a started app with watchdog enabled and given application responses."""
+    restart_done = asyncio.get_running_loop().create_future()
+    restart_done.set_result(None)
+    return Mock(
+        spec=App,
+        slug=slug,
+        watchdog=True,
+        state=AppState.STARTED,
+        in_progress=False,
+        watchdog_application=AsyncMock(side_effect=responses),
+        restart=AsyncMock(return_value=restart_done),
+    )
+
+
+@pytest.mark.parametrize(
+    ("responses", "restarted"),
+    [
+        pytest.param([False, False], True, id="two_misses_in_a_row"),
+        pytest.param([False, True, False], False, id="miss_respond_miss"),
+    ],
+)
+async def test_watchdog_app_application_retry_counter(
+    tasks: Tasks, coresys: CoreSys, responses: list[bool], restarted: bool
+):
+    """Test app watchdog only restarts after consecutive missed responses."""
+    app = _mock_watchdog_app("local_test", responses)
+    coresys.apps.local = {app.slug: app}
+
+    for _ in responses:
+        await tasks._watchdog_app_application()
+
+    assert app.restart.called is restarted
+
+
+async def test_watchdog_app_application_first_miss_checks_other_apps(
+    tasks: Tasks, coresys: CoreSys
+):
+    """Test a first missed response does not skip checking the remaining apps."""
+    app_1 = _mock_watchdog_app("local_test_1", [False])
+    app_2 = _mock_watchdog_app("local_test_2", [False])
+    coresys.apps.local = {app_1.slug: app_1, app_2.slug: app_2}
+
+    await tasks._watchdog_app_application()
+
+    app_1.watchdog_application.assert_awaited_once()
+    app_2.watchdog_application.assert_awaited_once()
+    assert tasks._cache == {app_1.slug: 1, app_2.slug: 1}
