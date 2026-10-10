@@ -3,8 +3,10 @@
 from datetime import timedelta
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import ANY, patch
 
+import pytest
 import time_machine
 
 from supervisor.const import HomeAssistantUser, IngressSessionData
@@ -82,6 +84,35 @@ def test_session_handling_with_session_data(coresys: CoreSys):
     assert session_data.user.id == "some-id"
 
 
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        pytest.param(
+            {"user": {"id": "123", "name": "Test", "username": "test"}},
+            IngressSessionData(
+                HomeAssistantUser("123", name="Test", username="test"), admin=True
+            ),
+            id="legacy_without_admin_flag",
+        ),
+        pytest.param(
+            {"admin": False},
+            IngressSessionData(None, admin=False),
+            id="admin_flag_without_user",
+        ),
+        pytest.param(
+            {"admin": False, "user": {"id": "123", "name": None, "username": None}},
+            IngressSessionData(HomeAssistantUser("123"), admin=False),
+            id="admin_flag_with_user",
+        ),
+    ],
+)
+def test_session_data_from_dict(
+    data: dict[str, Any], expected: IngressSessionData
+) -> None:
+    """Test deserializing ingress session data."""
+    assert IngressSessionData.from_dict(data) == expected
+
+
 async def test_save_on_unload(coresys: CoreSys):
     """Test called save on unload."""
     coresys.ingress.create_session()
@@ -109,15 +140,48 @@ async def test_dynamic_ports(coresys: CoreSys):
     assert port_test1 <= 65500
 
 
-async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
-    """Test saving ingress data to file."""
+@pytest.mark.parametrize(
+    ("session_data", "expected"),
+    [
+        pytest.param(
+            IngressSessionData(HomeAssistantUser("123", name="Test", username="test")),
+            {
+                "admin": True,
+                "user": {"id": "123", "name": "Test", "username": "test"},
+            },
+            id="admin_with_user",
+        ),
+        pytest.param(
+            IngressSessionData(
+                HomeAssistantUser("123", name="Test", username="test"), admin=False
+            ),
+            {
+                "admin": False,
+                "user": {"id": "123", "name": "Test", "username": "test"},
+            },
+            id="non_admin_with_user",
+        ),
+        pytest.param(
+            IngressSessionData(None, admin=False),
+            {"admin": False},
+            id="non_admin_without_user",
+        ),
+    ],
+)
+async def test_ingress_save_data(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    session_data: IngressSessionData,
+    expected: dict[str, Any],
+):
+    """Test saving ingress session data to file and loading it back."""
     config_file = tmp_supervisor_data / "ingress.json"
     with patch("supervisor.ingress.FILE_HASSIO_INGRESS", new=config_file):
         ingress = await Ingress(coresys).load_config()
-        session = ingress.create_session(
-            IngressSessionData(HomeAssistantUser("123", name="Test", username="test"))
-        )
+        session = ingress.create_session(session_data)
         await ingress.save_data()
+
+        reloaded = await Ingress(coresys).load_config()
 
     def get_config():
         assert config_file.exists()
@@ -125,11 +189,10 @@ async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
 
     assert await coresys.run_in_executor(get_config) == {
         "session": {session: ANY},
-        "session_data": {
-            session: {"user": {"id": "123", "name": "Test", "username": "test"}}
-        },
+        "session_data": {session: expected},
         "ports": {},
     }
+    assert reloaded.get_session_data(session) == session_data
 
 
 async def test_ingress_load_legacy_displayname(

@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
@@ -13,6 +14,7 @@ from supervisor.api.const import WEBSOCKETS
 from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HomeAssistantWSError
 
 
 @pytest.fixture(name="real_websession")
@@ -111,6 +113,133 @@ async def test_validate_session_with_user_id(
         assert coresys.ingress.get_session_data(session).user.id == "some-id"
         assert coresys.ingress.get_session_data(session).user.username == "sn"
         assert coresys.ingress.get_session_data(session).user.name == "Some Name"
+        assert coresys.ingress.get_session_data(session).admin is True
+
+
+@pytest.mark.parametrize(
+    ("body", "expected_admin"),
+    [
+        pytest.param({"user_id": "some-id", "admin": False}, False, id="non_admin"),
+        pytest.param({"user_id": "some-id", "admin": True}, True, id="admin"),
+        pytest.param({"admin": False}, False, id="non_admin_without_user"),
+    ],
+)
+async def test_create_session_admin_flag(
+    api_client: TestClient,
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    body: dict[str, Any],
+    expected_admin: bool,
+):
+    """Test the admin flag passed by Core is stored with the session."""
+    ha_ws_client.async_send_command.return_value = [
+        {"id": "some-id", "name": "Some Name", "username": "sn"}
+    ]
+
+    resp = await api_client.post("/ingress/session", json=body)
+    result = await resp.json()
+    session = result["data"]["session"]
+
+    session_data = coresys.ingress.get_session_data(session)
+    assert session_data is not None
+    assert session_data.admin is expected_admin
+    if "user_id" in body:
+        assert session_data.user is not None
+        assert session_data.user.id == "some-id"
+    else:
+        assert session_data.user is None
+
+
+@pytest.mark.parametrize(
+    "list_users_mock",
+    [
+        pytest.param({"return_value": []}, id="user_not_found"),
+        pytest.param(
+            {"side_effect": HomeAssistantWSError("offline")}, id="lookup_error"
+        ),
+    ],
+)
+async def test_create_session_non_admin_user_lookup_failure(
+    api_client: TestClient,
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    list_users_mock: dict[str, Any],
+):
+    """Test a non-admin session stays restricted when the user cannot be resolved."""
+    ha_ws_client.async_send_command.configure_mock(**list_users_mock)
+
+    resp = await api_client.post(
+        "/ingress/session", json={"user_id": "some-id", "admin": False}
+    )
+    session = (await resp.json())["data"]["session"]
+
+    session_data = coresys.ingress.get_session_data(session)
+    assert session_data is not None
+    assert session_data.user is None
+    assert session_data.admin is False
+
+    mock_app = MagicMock(spec=App)
+    mock_app.slug = "test_addon"
+    mock_app.panel_admin = True
+    ingress_token = coresys.ingress.create_session()
+    with patch.object(coresys.ingress, "get", return_value=mock_app):
+        resp = await api_client.get(
+            f"/ingress/{ingress_token}/", cookies={"ingress_session": session}
+        )
+    assert resp.status == 403
+
+
+@pytest.mark.parametrize(
+    ("session_admin", "panel_admin", "expected_status"),
+    [
+        pytest.param(False, True, 403, id="non_admin_session_admin_panel"),
+        pytest.param(False, False, 200, id="non_admin_session_user_panel"),
+        pytest.param(True, True, 200, id="admin_session_admin_panel"),
+        pytest.param(None, True, 200, id="legacy_session_admin_panel"),
+    ],
+)
+async def test_ingress_proxy_enforces_panel_admin(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    real_websession: aiohttp.ClientSession,
+    session_admin: bool | None,
+    panel_admin: bool,
+    expected_status: int,
+):
+    """Test non-admin sessions cannot access apps with an admin-only panel."""
+    api_client, prefix = api_client_with_prefix
+
+    async def mock_app_handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"ok", content_type="text/plain")
+
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        resp = await api_client.post(
+            f"{prefix}/ingress/session",
+            json={"admin": session_admin} if session_admin is not None else None,
+        )
+        session = (await resp.json())["data"]["session"]
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_addon"
+        mock_app.panel_admin = panel_admin
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+        mock_app.ingress_stream = False
+
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_app):
+            resp = await api_client.get(
+                f"{prefix}/ingress/{ingress_token}/",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == expected_status
+    finally:
+        await app_server.close()
 
 
 async def test_ingress_proxy_no_content_type_for_empty_body_responses(
