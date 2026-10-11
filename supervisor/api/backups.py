@@ -564,7 +564,7 @@ class APIBackups(CoreSysAttributes):
         filename = backup.all_locations[location].path
         # If the file is missing, return 404 and trigger reload of location
         if not await self.sys_run_in_executor(filename.is_file):
-            self.sys_create_task(self.sys_backups.reload(location))
+            self.sys_create_task(self.sys_backups.reload_location(location))
             return web.Response(status=404)
 
         response = web.FileResponse(filename)
