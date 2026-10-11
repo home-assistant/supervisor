@@ -56,15 +56,17 @@ SCHEMA_PROFILE = vol.Schema(
     {vol.Required(ATTR_CARD): str, vol.Required(ATTR_NAME): str}
 )
 
+SCHEMA_STREAM_TYPE = vol.Coerce(StreamType)
+
 
 def _get_stream_type(request: web.Request) -> StreamType:
-    """Return stream type from request path."""
+    """Return validated stream type from request path."""
+    source = request.match_info["source"]
     try:
-        return StreamType(request.match_info["source"])
-    except ValueError as err:
+        return SCHEMA_STREAM_TYPE(source)
+    except vol.Invalid as err:
         raise APIError(
-            f"Invalid audio source {request.match_info['source']}, must be one of: "
-            f"{', '.join(StreamType)}"
+            f"Invalid audio source {source}, must be one of: {', '.join(StreamType)}"
         ) from err
 
 
