@@ -332,6 +332,13 @@ class NetworkManager(CoreSysAttributes):
         ):
             return False
 
+        # Any other state requires a full re-activation
+        if not inet.connection or inet.connection.state not in (
+            ConnectionState.ACTIVATED,
+            ConnectionState.ACTIVATING,
+        ):
+            return False
+
         if not settings_changed:
             # User-initiated updates with unchanged settings still re-activate,
             # both as a way to force a reconnect and to cover secret-only
@@ -345,7 +352,7 @@ class NetworkManager(CoreSysAttributes):
             return True
 
         # In-place application requires an active connection
-        if not inet.connection or inet.connection.state != ConnectionState.ACTIVATED:
+        if inet.connection.state != ConnectionState.ACTIVATED:
             return False
 
         try:
