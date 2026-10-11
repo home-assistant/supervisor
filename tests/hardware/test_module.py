@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import threading
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pyudev
 
@@ -13,15 +13,41 @@ from supervisor.hardware.data import Device
 # pylint: disable=protected-access
 
 
+def _udev_device(sys_name: str, device_node: str | None, sys_path: str) -> MagicMock:
+    """Return a udev device as listed by pyudev."""
+    udev = MagicMock(spec=pyudev.Device)
+    udev.sys_name = sys_name
+    udev.device_node = device_node
+    udev.sys_path = sys_path
+    udev.subsystem = "tty"
+    udev.parent = None
+    udev.device_links = []
+    udev.properties = {}
+    udev.children = []
+    return udev
+
+
 async def test_load_imports_devices_in_executor(coresys: CoreSys) -> None:
     """Test load reads the udev database without blocking the event loop."""
     assert not coresys.hardware.devices
 
     threads: list[threading.Thread] = []
 
+    undecodable = _udev_device("bad", None, "/sys/devices/platform/bad")
+    type(undecodable).device_node = PropertyMock(
+        side_effect=UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+    )
+
     def _list_devices() -> list[pyudev.Device]:
         threads.append(threading.current_thread())
-        return []
+        return [
+            _udev_device(
+                "ttyUSB0", "/dev/ttyUSB0", "/sys/devices/platform/usb1/1-1/ttyUSB0"
+            ),
+            _udev_device("no_node", None, "/sys/devices/platform/no_node"),
+            _udev_device("tty0", "/dev/tty0", "/sys/devices/virtual/tty/tty0"),
+            undecodable,
+        ]
 
     with (
         patch.object(coresys.hardware.udev, "list_devices", _list_devices),
@@ -32,7 +58,7 @@ async def test_load_imports_devices_in_executor(coresys: CoreSys) -> None:
 
     assert threads
     assert threading.main_thread() not in threads
-    assert [device.name for device in coresys.hardware.devices] == ["tun"]
+    assert [device.name for device in coresys.hardware.devices] == ["ttyUSB0", "tun"]
 
 
 def test_device_path_lookup(coresys):
