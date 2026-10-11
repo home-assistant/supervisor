@@ -59,10 +59,11 @@ def _move_no_replace(src: Path, dst: Path) -> None:
     """Move a file, raising FileExistsError instead of replacing dst."""
     try:
         os.link(src, dst)
+    except FileExistsError:
+        raise
     except OSError as err:
-        if err.errno not in {errno.EPERM, errno.EOPNOTSUPP, errno.ENOTSUP}:
-            raise
-        # Filesystem without hard link support, fall back to check and rename
+        # Network and FUSE filesystems report missing hard link support with
+        # various errors, fall back to check and rename for all of them
         if dst.exists():
             raise FileExistsError(
                 errno.EEXIST, os.strerror(errno.EEXIST), str(dst)
