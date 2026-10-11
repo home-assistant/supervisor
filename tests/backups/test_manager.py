@@ -2710,7 +2710,9 @@ async def test_import_backup_already_imported(coresys: CoreSys):
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-@pytest.mark.parametrize("error_num", [errno.EPERM, errno.EOPNOTSUPP])
+@pytest.mark.parametrize(
+    "error_num", [errno.EPERM, errno.EOPNOTSUPP, errno.ENOSYS, errno.EACCES]
+)
 async def test_import_backup_no_hardlink_support(coresys: CoreSys, error_num: int):
     """Test import backup on a filesystem without hard link support."""
     tar_file = Path(
