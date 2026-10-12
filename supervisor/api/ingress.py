@@ -36,7 +36,7 @@ from ..const import (
     IngressSessionData,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import HomeAssistantAPIError
+from ..exceptions import APIError, HomeAssistantAPIError
 from .const import COOKIE_INGRESS, WEBSOCKETS
 from .utils import api_process, api_validate, require_home_assistant, stop_on_disconnect
 
@@ -121,13 +121,12 @@ class APIIngress(CoreSysAttributes):
             user = await self._find_user_by_id(user_id)
         except HomeAssistantAPIError as err:
             _LOGGER.warning("Could not fetch list of users: %s", err)
-            # Keep the ID so the role can be resolved on first use
+            # Keep the ID so the user can be resolved on first use
             data = IngressSessionData(HomeAssistantUser(user_id))
         else:
-            data = IngressSessionData(
-                user or HomeAssistantUser(user_id),
-                admin=user is not None and user.is_admin,
-            )
+            if user is None:
+                raise APIError(f"User {user_id} does not exist")
+            data = IngressSessionData(user, admin=user.is_admin)
 
         session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
@@ -158,9 +157,9 @@ class APIIngress(CoreSysAttributes):
         app = self._extract_app(request)
         path = request.match_info.get("path", "")
         session_data = self.sys_ingress.get_session_data(session)
-        if app.panel_admin and not await self._resolve_session_admin(
-            session, session_data
-        ):
+        if session_data is not None and session_data.admin is None:
+            session_data = await self._resolve_session(session, session_data)
+        if app.panel_admin and not (session_data is not None and session_data.admin):
             _LOGGER.warning("Non-admin ingress session denied for %s", app.slug)
             raise HTTPForbidden
         try:
@@ -336,29 +335,29 @@ class APIIngress(CoreSysAttributes):
         users = await self.sys_homeassistant.list_users()
         return next((user for user in users if user.id == user_id), None)
 
-    async def _resolve_session_admin(
-        self, session: str, session_data: IngressSessionData | None
-    ) -> bool:
-        """Resolve the admin role of a session from its Core user record.
+    async def _resolve_session(
+        self, session: str, session_data: IngressSessionData
+    ) -> IngressSessionData:
+        """Refresh the user record and role of a session from Core.
 
-        The result is cached on the session. While Core is unreachable the
-        session is treated as non-admin without caching.
+        While Core is unreachable the data is returned unresolved, which
+        denies admin access without caching. Sessions of removed users are
+        invalidated.
         """
-        if session_data is None:
-            return False
-        if session_data.admin is not None:
-            return session_data.admin
-
         try:
             user = await self._find_user_by_id(session_data.user.id)
         except HomeAssistantAPIError as err:
             _LOGGER.warning("Could not fetch list of users: %s", err)
-            return False
+            return session_data
 
-        # A removed user keeps the session until it expires but loses admin access
-        admin = user is not None and user.is_admin
-        self.sys_ingress.set_session_admin(session, admin)
-        return admin
+        if user is None:
+            _LOGGER.warning("Ingress session of removed user %s", session_data.user.id)
+            self.sys_ingress.remove_session(session)
+            raise HTTPUnauthorized
+
+        session_data = IngressSessionData(user, admin=user.is_admin)
+        self.sys_ingress.set_session_data(session, session_data)
+        return session_data
 
 
 def _init_header(

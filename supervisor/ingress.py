@@ -141,9 +141,14 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
         return session
 
-    def set_session_admin(self, session: str, admin: bool) -> None:
-        """Store the resolved admin role of a session."""
-        self.sessions_data[session]["admin"] = admin
+    def set_session_data(self, session: str, data: IngressSessionData) -> None:
+        """Replace the data of an existing session."""
+        self.sessions_data[session] = data.to_dict()
+
+    def remove_session(self, session: str) -> None:
+        """Invalidate a session."""
+        self.sessions.pop(session, None)
+        self.sessions_data.pop(session, None)
 
     def validate_session(self, session: str) -> bool:
         """Return True if session valid and make it longer valid."""

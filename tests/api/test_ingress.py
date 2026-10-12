@@ -12,7 +12,7 @@ import pytest
 
 from supervisor.api.const import WEBSOCKETS
 from supervisor.apps.app import App
-from supervisor.const import CoreState
+from supervisor.const import CoreState, HomeAssistantUser, IngressSessionData
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantWSError
 
@@ -161,7 +161,6 @@ async def test_create_session_requires_user_id(api_client: TestClient):
             [{**ADMIN_USER, "is_active": False}], "admin-id", False, id="inactive"
         ),
         pytest.param([REGULAR_USER], "user-id", False, id="regular_user"),
-        pytest.param([REGULAR_USER], "unknown-id", False, id="unknown_user"),
         pytest.param(
             HomeAssistantWSError("offline"), "admin-id", None, id="lookup_error"
         ),
@@ -188,6 +187,13 @@ async def test_create_session_resolves_role(
     assert session_data is not None
     assert session_data.user.id == user_id
     assert session_data.admin is expected_admin
+
+
+@pytest.mark.usefixtures("core_users")
+async def test_create_session_unknown_user(api_client: TestClient):
+    """Test session creation is rejected for a user Core does not know."""
+    resp = await api_client.post("/ingress/session", json={"user_id": "unknown-id"})
+    assert resp.status == 400
 
 
 @pytest.mark.parametrize(
@@ -244,23 +250,49 @@ async def test_ingress_proxy_enforces_panel_admin(
 
 
 @pytest.mark.parametrize(
-    ("users", "expected_status", "expected_admin"),
+    ("users", "panel_admin", "expected_status", "expected_data"),
     [
-        pytest.param([ADMIN_USER], 200, True, id="resolved_admin"),
-        pytest.param([REGULAR_USER], 403, False, id="resolved_removed_user"),
-        pytest.param(HomeAssistantWSError("offline"), 403, None, id="still_offline"),
+        pytest.param(
+            [ADMIN_USER],
+            True,
+            200,
+            IngressSessionData(
+                HomeAssistantUser("admin-id", username="admin", name="Admin"),
+                admin=True,
+            ),
+            id="resolved_admin",
+        ),
+        pytest.param(
+            [{**ADMIN_USER, "name": "Renamed", "group_ids": []}],
+            False,
+            200,
+            IngressSessionData(
+                HomeAssistantUser("admin-id", username="admin", name="Renamed"),
+                admin=False,
+            ),
+            id="resolved_renamed_demoted_user",
+        ),
+        pytest.param([REGULAR_USER], True, 401, None, id="removed_user"),
+        pytest.param(
+            HomeAssistantWSError("offline"),
+            True,
+            403,
+            IngressSessionData(HomeAssistantUser("admin-id")),
+            id="still_offline",
+        ),
     ],
 )
-async def test_ingress_proxy_resolves_unresolved_role(
+async def test_ingress_proxy_resolves_unresolved_session(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
     ha_ws_client: AsyncMock,
     real_websession: aiohttp.ClientSession,
     users: list[dict[str, Any]] | Exception,
+    panel_admin: bool,
     expected_status: int,
-    expected_admin: bool | None,
+    expected_data: IngressSessionData | None,
 ):
-    """Test a session without a resolved role is resolved on first use."""
+    """Test a session without a resolved user is refreshed from Core on first use."""
     api_client, prefix = api_client_with_prefix
 
     async def mock_app_handler(request: web.Request) -> web.Response:
@@ -287,7 +319,7 @@ async def test_ingress_proxy_resolves_unresolved_role(
 
         mock_app = MagicMock(spec=App)
         mock_app.slug = "test_addon"
-        mock_app.panel_admin = True
+        mock_app.panel_admin = panel_admin
         mock_app.ip_address = app_server.host
         mock_app.ingress_port = app_server.port
         mock_app.ingress_stream = False
@@ -299,7 +331,8 @@ async def test_ingress_proxy_resolves_unresolved_role(
                 cookies={"ingress_session": session},
             )
             assert resp.status == expected_status
-        assert coresys.ingress.get_session_data(session).admin is expected_admin
+        assert coresys.ingress.get_session_data(session) == expected_data
+        assert (session in coresys.ingress.sessions) is (expected_data is not None)
     finally:
         await app_server.close()
 
