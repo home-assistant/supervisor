@@ -111,23 +111,6 @@ def test_user_is_admin(user: dict[str, Any], expected: bool) -> None:
     assert HomeAssistantUser.from_dict(user).is_admin is expected
 
 
-@pytest.mark.parametrize(
-    ("data", "expected_admin"),
-    [
-        pytest.param({"user": {"id": "123"}}, None, id="unresolved"),
-        pytest.param({"user": {"id": "123"}, "admin": False}, False, id="non_admin"),
-        pytest.param({"user": {"id": "123"}, "admin": True}, True, id="admin"),
-    ],
-)
-def test_session_data_from_dict(
-    data: dict[str, Any], expected_admin: bool | None
-) -> None:
-    """Test deserializing ingress session data."""
-    session_data = IngressSessionData.from_dict(data)
-    assert session_data.user.id == "123"
-    assert session_data.admin is expected_admin
-
-
 async def test_save_on_unload(coresys: CoreSys):
     """Test called save on unload."""
     coresys.ingress.create_session()
@@ -155,43 +138,13 @@ async def test_dynamic_ports(coresys: CoreSys):
     assert port_test1 <= 65500
 
 
-@pytest.mark.parametrize(
-    ("admin", "expected"),
-    [
-        pytest.param(
-            True,
-            {"admin": True, "user": {"id": "123", "name": "Test", "username": "test"}},
-            id="admin",
-        ),
-        pytest.param(
-            False,
-            {
-                "admin": False,
-                "user": {"id": "123", "name": "Test", "username": "test"},
-            },
-            id="non_admin",
-        ),
-        pytest.param(
-            None,
-            {"user": {"id": "123", "name": "Test", "username": "test"}},
-            id="unresolved",
-        ),
-    ],
-)
-async def test_ingress_save_data(
-    coresys: CoreSys,
-    tmp_supervisor_data: Path,
-    admin: bool | None,
-    expected: dict[str, Any],
-):
+async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
     """Test saving ingress session data to file."""
     config_file = tmp_supervisor_data / "ingress.json"
     with patch("supervisor.ingress.FILE_HASSIO_INGRESS", new=config_file):
         ingress = await Ingress(coresys).load_config()
         session = ingress.create_session(
-            IngressSessionData(
-                HomeAssistantUser("123", name="Test", username="test"), admin=admin
-            )
+            IngressSessionData(HomeAssistantUser("123", name="Test", username="test"))
         )
         await ingress.save_data()
 
@@ -201,13 +154,17 @@ async def test_ingress_save_data(
 
     assert await coresys.run_in_executor(get_config) == {
         "session": {session: ANY},
-        "session_data": {session: expected},
+        "session_data": {
+            session: {"user": {"id": "123", "name": "Test", "username": "test"}}
+        },
         "ports": {},
     }
 
 
-async def test_ingress_load_resets_roles(coresys: CoreSys, tmp_supervisor_data: Path):
-    """Test loading drops cached roles and sessions without user data."""
+async def test_ingress_load_drops_sessions_without_data(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test loading drops sessions without user data."""
     config_file = tmp_supervisor_data / "ingress.json"
     with_user = "a" * 128
     without_user = "b" * 128
@@ -215,7 +172,7 @@ async def test_ingress_load_resets_roles(coresys: CoreSys, tmp_supervisor_data: 
         json.dumps(
             {
                 "session": {with_user: 9999999999.0, without_user: 9999999999.0},
-                "session_data": {with_user: {"user": {"id": "123"}, "admin": True}},
+                "session_data": {with_user: {"user": {"id": "123"}}},
                 "ports": {},
             }
         )
@@ -227,7 +184,7 @@ async def test_ingress_load_resets_roles(coresys: CoreSys, tmp_supervisor_data: 
 
     assert without_user not in ingress.sessions
     assert ingress.get_session_data(with_user) == IngressSessionData(
-        HomeAssistantUser("123"), admin=None
+        HomeAssistantUser("123")
     )
 
 

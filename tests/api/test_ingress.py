@@ -138,7 +138,7 @@ async def test_validate_session_with_user_id(
         assert coresys.ingress.get_session_data(session).user.id == "some-id"
         assert coresys.ingress.get_session_data(session).user.username == "sn"
         assert coresys.ingress.get_session_data(session).user.name == "Some Name"
-        assert coresys.ingress.get_session_data(session).admin is False
+        assert coresys.ingress.user_roles == {"some-id": False}
 
 
 async def test_create_session_requires_user_id(api_client: TestClient):
@@ -148,24 +148,30 @@ async def test_create_session_requires_user_id(api_client: TestClient):
 
 
 @pytest.mark.parametrize(
-    ("list_users_mock", "user_id", "expected_admin"),
+    ("list_users_mock", "user_id", "expected_roles"),
     [
         pytest.param(
-            {"return_value": [ADMIN_USER]}, "admin-id", True, id="admin_group"
+            {"return_value": [ADMIN_USER]},
+            "admin-id",
+            {"admin-id": True},
+            id="admin_group",
         ),
         pytest.param(
             {"return_value": [{"id": "owner-id", "is_owner": True, "is_active": True}]},
             "owner-id",
-            True,
+            {"owner-id": True},
             id="owner",
         ),
         pytest.param(
-            {"return_value": [REGULAR_USER]}, "user-id", False, id="regular_user"
+            {"return_value": [REGULAR_USER]},
+            "user-id",
+            {"user-id": False},
+            id="regular_user",
         ),
         pytest.param(
             {"side_effect": HomeAssistantWSError("offline")},
             "admin-id",
-            None,
+            {},
             id="lookup_error",
         ),
     ],
@@ -176,7 +182,7 @@ async def test_create_session_resolves_role(
     ha_ws_client: AsyncMock,
     list_users_mock: dict[str, Any],
     user_id: str,
-    expected_admin: bool | None,
+    expected_roles: dict[str, bool],
 ):
     """Test the admin role is derived from the Core user record on creation."""
     ha_ws_client.async_send_command.configure_mock(**list_users_mock)
@@ -187,7 +193,20 @@ async def test_create_session_resolves_role(
     session_data = coresys.ingress.get_session_data(session)
     assert session_data is not None
     assert session_data.user.id == user_id
-    assert session_data.admin is expected_admin
+    assert coresys.ingress.user_roles == expected_roles
+
+
+async def test_create_session_refreshes_shared_role(
+    api_client: TestClient, coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test a new session updates the role shared by all sessions of a user."""
+    ha_ws_client.async_send_command.return_value = [ADMIN_USER]
+    await api_client.post("/ingress/session", json={"user_id": "admin-id"})
+    assert coresys.ingress.user_roles == {"admin-id": True}
+
+    ha_ws_client.async_send_command.return_value = [{**ADMIN_USER, "group_ids": []}]
+    await api_client.post("/ingress/session", json={"user_id": "admin-id"})
+    assert coresys.ingress.user_roles == {"admin-id": False}
 
 
 @pytest.mark.parametrize(
@@ -264,16 +283,22 @@ async def test_ingress_proxy_enforces_panel_admin(
 
 
 @pytest.mark.parametrize(
-    ("list_users_mock", "panel_admin", "expected_status", "expected_data"),
+    (
+        "list_users_mock",
+        "panel_admin",
+        "expected_status",
+        "expected_data",
+        "expected_roles",
+    ),
     [
         pytest.param(
             {"return_value": [ADMIN_USER]},
             True,
             200,
             IngressSessionData(
-                HomeAssistantUser("admin-id", username="admin", name="Admin"),
-                admin=True,
+                HomeAssistantUser("admin-id", username="admin", name="Admin")
             ),
+            {"admin-id": True},
             id="resolved_admin",
         ),
         pytest.param(
@@ -281,19 +306,20 @@ async def test_ingress_proxy_enforces_panel_admin(
             False,
             200,
             IngressSessionData(
-                HomeAssistantUser("admin-id", username="admin", name="Renamed"),
-                admin=False,
+                HomeAssistantUser("admin-id", username="admin", name="Renamed")
             ),
+            {"admin-id": False},
             id="resolved_renamed_demoted_user",
         ),
         pytest.param(
-            {"return_value": [REGULAR_USER]}, True, 401, None, id="removed_user"
+            {"return_value": [REGULAR_USER]}, True, 401, None, {}, id="removed_user"
         ),
         pytest.param(
             {"return_value": [{**ADMIN_USER, "is_active": False}]},
             False,
             401,
             None,
+            {},
             id="inactive_user",
         ),
         pytest.param(
@@ -301,6 +327,7 @@ async def test_ingress_proxy_enforces_panel_admin(
             True,
             403,
             IngressSessionData(HomeAssistantUser("admin-id")),
+            {},
             id="still_offline",
         ),
     ],
@@ -314,6 +341,7 @@ async def test_ingress_proxy_resolves_unresolved_session(
     panel_admin: bool,
     expected_status: int,
     expected_data: IngressSessionData | None,
+    expected_roles: dict[str, bool],
 ):
     """Test a session without a resolved user is refreshed from Core on first use."""
     api_client, prefix = api_client_with_prefix
@@ -332,7 +360,7 @@ async def test_ingress_proxy_resolves_unresolved_session(
             f"{prefix}/ingress/session", json={"user_id": "admin-id"}
         )
         session = (await resp.json())["data"]["session"]
-        assert coresys.ingress.get_session_data(session).admin is None
+        assert coresys.ingress.user_roles == {}
 
         ha_ws_client.async_send_command.configure_mock(
             **{"side_effect": None, **list_users_mock}
@@ -354,6 +382,7 @@ async def test_ingress_proxy_resolves_unresolved_session(
             assert resp.status == expected_status
         assert coresys.ingress.get_session_data(session) == expected_data
         assert (session in coresys.ingress.sessions) is (expected_data is not None)
+        assert coresys.ingress.user_roles == expected_roles
     finally:
         await app_server.close()
 

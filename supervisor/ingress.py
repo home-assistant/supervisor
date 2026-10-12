@@ -34,6 +34,9 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         super().__init__(FILE_HASSIO_INGRESS, SCHEMA_INGRESS_CONFIG)
         self.coresys: CoreSys = coresys
         self.tokens: dict[str, str] = {}
+        # Admin role by user ID, resolved from Core and not persisted so a
+        # restart picks up role changes. Only known users are ever added.
+        self.user_roles: dict[str, bool] = {}
 
     def get(self, token: str) -> App | None:
         """Return app they have this ingress token."""
@@ -76,9 +79,6 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         """Update internal data."""
         self._update_token_list()
         self._cleanup_sessions()
-        # Roles may have changed while Supervisor was down, resolve them again
-        for session_data in self.sessions_data.values():
-            session_data.pop("admin", None)
 
         _LOGGER.info("Loaded %d ingress sessions", len(self.sessions))
 

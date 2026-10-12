@@ -122,13 +122,13 @@ class APIIngress(CoreSysAttributes):
         except HomeAssistantAPIError as err:
             _LOGGER.warning("Could not fetch list of users: %s", err)
             # Keep the ID so the user can be resolved on first use
-            data = IngressSessionData(HomeAssistantUser(user_id))
+            user = HomeAssistantUser(user_id)
         else:
             if user is None or not user.is_active:
                 raise APIError(f"User {user_id} does not exist or is inactive")
-            data = IngressSessionData(user, admin=user.is_admin)
+            self.sys_ingress.user_roles[user.id] = user.is_admin
 
-        session = self.sys_ingress.create_session(data)
+        session = self.sys_ingress.create_session(IngressSessionData(user))
         return {ATTR_SESSION: session}
 
     @api_process
@@ -157,9 +157,15 @@ class APIIngress(CoreSysAttributes):
         app = self._extract_app(request)
         path = request.match_info.get("path", "")
         session_data = self.sys_ingress.get_session_data(session)
-        if session_data is not None and session_data.admin is None:
+        if (
+            session_data is not None
+            and session_data.user.id not in self.sys_ingress.user_roles
+        ):
             session_data = await self._resolve_session(session, session_data)
-        if app.panel_admin and not (session_data is not None and session_data.admin):
+        if app.panel_admin and not (
+            session_data is not None
+            and self.sys_ingress.user_roles.get(session_data.user.id, False)
+        ):
             _LOGGER.warning("Non-admin ingress session denied for %s", app.slug)
             raise HTTPForbidden
         try:
@@ -338,7 +344,7 @@ class APIIngress(CoreSysAttributes):
     async def _resolve_session(
         self, session: str, session_data: IngressSessionData
     ) -> IngressSessionData:
-        """Refresh the user record and role of a session from Core.
+        """Refresh the user record of a session and cache the user's role.
 
         While Core is unreachable the data is returned unresolved, which
         denies admin access without caching. Sessions of removed or
@@ -357,7 +363,8 @@ class APIIngress(CoreSysAttributes):
             self.sys_ingress.remove_session(session)
             raise HTTPUnauthorized
 
-        session_data = IngressSessionData(user, admin=user.is_admin)
+        self.sys_ingress.user_roles[user.id] = user.is_admin
+        session_data = IngressSessionData(user)
         self.sys_ingress.set_session_data(session, session_data)
         return session_data
 
