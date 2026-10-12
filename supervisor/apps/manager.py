@@ -3,7 +3,6 @@
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
-from dataclasses import replace
 import logging
 from typing import Self, Union
 
@@ -156,7 +155,7 @@ class AppManager(CoreSysAttributes):
                     wait_boot.append(start_task)
             except HassioError:
                 self.sys_resolution.add_issue(
-                    replace(app.boot_failed_issue),
+                    app.boot_failed_issue,
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,
@@ -176,7 +175,7 @@ class AppManager(CoreSysAttributes):
         for app in tasks:
             if app.state in {AppState.ERROR, AppState.UNKNOWN}:
                 self.sys_resolution.add_issue(
-                    replace(app.boot_failed_issue),
+                    app.boot_failed_issue,
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,

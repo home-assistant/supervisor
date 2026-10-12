@@ -3,7 +3,6 @@
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
-from dataclasses import replace
 import logging
 from pathlib import Path
 from typing import Self, cast
@@ -146,7 +145,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 await async_capture_exception(err)
 
             self.sys_resolution.add_issue(
-                replace(mounts[i].failed_issue),
+                mounts[i].failed_issue,
                 suggestions=[
                     SuggestionType.EXECUTE_RELOAD,
                     SuggestionType.EXECUTE_REMOVE,
@@ -163,7 +162,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         just gains the extra suggestion.
         """
         self.sys_resolution.add_issue(
-            replace(mount.failed_issue),
+            mount.failed_issue,
             suggestions=[
                 SuggestionType.MOVE_LOCAL_DATA,
                 SuggestionType.EXECUTE_RELOAD,
@@ -369,7 +368,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         """Surface a failed mount as resolution issue if not already there."""
         if mount.failed_issue not in self.sys_resolution.issues:
             self.sys_resolution.add_issue(
-                replace(mount.failed_issue),
+                mount.failed_issue,
                 suggestions=[
                     SuggestionType.EXECUTE_RELOAD,
                     SuggestionType.EXECUTE_REMOVE,
