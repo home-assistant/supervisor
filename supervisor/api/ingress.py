@@ -124,8 +124,8 @@ class APIIngress(CoreSysAttributes):
             # Keep the ID so the user can be resolved on first use
             data = IngressSessionData(HomeAssistantUser(user_id))
         else:
-            if user is None:
-                raise APIError(f"User {user_id} does not exist")
+            if user is None or not user.is_active:
+                raise APIError(f"User {user_id} does not exist or is inactive")
             data = IngressSessionData(user, admin=user.is_admin)
 
         session = self.sys_ingress.create_session(data)
@@ -341,8 +341,8 @@ class APIIngress(CoreSysAttributes):
         """Refresh the user record and role of a session from Core.
 
         While Core is unreachable the data is returned unresolved, which
-        denies admin access without caching. Sessions of removed users are
-        invalidated.
+        denies admin access without caching. Sessions of removed or
+        deactivated users are invalidated.
         """
         try:
             user = await self._find_user_by_id(session_data.user.id)
@@ -350,8 +350,10 @@ class APIIngress(CoreSysAttributes):
             _LOGGER.warning("Could not fetch list of users: %s", err)
             return session_data
 
-        if user is None:
-            _LOGGER.warning("Ingress session of removed user %s", session_data.user.id)
+        if user is None or not user.is_active:
+            _LOGGER.warning(
+                "Ingress session of removed or inactive user %s", session_data.user.id
+            )
             self.sys_ingress.remove_session(session)
             raise HTTPUnauthorized
 

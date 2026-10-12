@@ -107,7 +107,7 @@ async def test_validate_session_with_user_id(
         return_value=coresys.homeassistant,
     ):
         ha_ws_client.async_send_command.return_value = [
-            {"id": "some-id", "name": "Some Name", "username": "sn"}
+            {"id": "some-id", "name": "Some Name", "username": "sn", "is_active": True}
         ]
 
         resp = await api_client.post(
@@ -148,21 +148,25 @@ async def test_create_session_requires_user_id(api_client: TestClient):
 
 
 @pytest.mark.parametrize(
-    ("users", "user_id", "expected_admin"),
+    ("list_users_mock", "user_id", "expected_admin"),
     [
-        pytest.param([ADMIN_USER], "admin-id", True, id="admin_group"),
         pytest.param(
-            [{"id": "owner-id", "is_owner": True, "is_active": True}],
+            {"return_value": [ADMIN_USER]}, "admin-id", True, id="admin_group"
+        ),
+        pytest.param(
+            {"return_value": [{"id": "owner-id", "is_owner": True, "is_active": True}]},
             "owner-id",
             True,
             id="owner",
         ),
         pytest.param(
-            [{**ADMIN_USER, "is_active": False}], "admin-id", False, id="inactive"
+            {"return_value": [REGULAR_USER]}, "user-id", False, id="regular_user"
         ),
-        pytest.param([REGULAR_USER], "user-id", False, id="regular_user"),
         pytest.param(
-            HomeAssistantWSError("offline"), "admin-id", None, id="lookup_error"
+            {"side_effect": HomeAssistantWSError("offline")},
+            "admin-id",
+            None,
+            id="lookup_error",
         ),
     ],
 )
@@ -170,15 +174,12 @@ async def test_create_session_resolves_role(
     api_client: TestClient,
     coresys: CoreSys,
     ha_ws_client: AsyncMock,
-    users: list[dict[str, Any]] | Exception,
+    list_users_mock: dict[str, Any],
     user_id: str,
     expected_admin: bool | None,
 ):
     """Test the admin role is derived from the Core user record on creation."""
-    if isinstance(users, Exception):
-        ha_ws_client.async_send_command.side_effect = users
-    else:
-        ha_ws_client.async_send_command.return_value = users
+    ha_ws_client.async_send_command.configure_mock(**list_users_mock)
 
     resp = await api_client.post("/ingress/session", json={"user_id": user_id})
     session = (await resp.json())["data"]["session"]
@@ -189,10 +190,23 @@ async def test_create_session_resolves_role(
     assert session_data.admin is expected_admin
 
 
-@pytest.mark.usefixtures("core_users")
-async def test_create_session_unknown_user(api_client: TestClient):
-    """Test session creation is rejected for a user Core does not know."""
-    resp = await api_client.post("/ingress/session", json={"user_id": "unknown-id"})
+@pytest.mark.parametrize(
+    ("users", "user_id"),
+    [
+        pytest.param([REGULAR_USER], "unknown-id", id="unknown_user"),
+        pytest.param([{**ADMIN_USER, "is_active": False}], "admin-id", id="inactive"),
+    ],
+)
+async def test_create_session_rejects_invalid_user(
+    api_client: TestClient,
+    ha_ws_client: AsyncMock,
+    users: list[dict[str, Any]],
+    user_id: str,
+):
+    """Test session creation is rejected for unknown or deactivated users."""
+    ha_ws_client.async_send_command.return_value = users
+
+    resp = await api_client.post("/ingress/session", json={"user_id": user_id})
     assert resp.status == 400
 
 
@@ -250,10 +264,10 @@ async def test_ingress_proxy_enforces_panel_admin(
 
 
 @pytest.mark.parametrize(
-    ("users", "panel_admin", "expected_status", "expected_data"),
+    ("list_users_mock", "panel_admin", "expected_status", "expected_data"),
     [
         pytest.param(
-            [ADMIN_USER],
+            {"return_value": [ADMIN_USER]},
             True,
             200,
             IngressSessionData(
@@ -263,7 +277,7 @@ async def test_ingress_proxy_enforces_panel_admin(
             id="resolved_admin",
         ),
         pytest.param(
-            [{**ADMIN_USER, "name": "Renamed", "group_ids": []}],
+            {"return_value": [{**ADMIN_USER, "name": "Renamed", "group_ids": []}]},
             False,
             200,
             IngressSessionData(
@@ -272,9 +286,18 @@ async def test_ingress_proxy_enforces_panel_admin(
             ),
             id="resolved_renamed_demoted_user",
         ),
-        pytest.param([REGULAR_USER], True, 401, None, id="removed_user"),
         pytest.param(
-            HomeAssistantWSError("offline"),
+            {"return_value": [REGULAR_USER]}, True, 401, None, id="removed_user"
+        ),
+        pytest.param(
+            {"return_value": [{**ADMIN_USER, "is_active": False}]},
+            False,
+            401,
+            None,
+            id="inactive_user",
+        ),
+        pytest.param(
+            {"side_effect": HomeAssistantWSError("offline")},
             True,
             403,
             IngressSessionData(HomeAssistantUser("admin-id")),
@@ -287,7 +310,7 @@ async def test_ingress_proxy_resolves_unresolved_session(
     coresys: CoreSys,
     ha_ws_client: AsyncMock,
     real_websession: aiohttp.ClientSession,
-    users: list[dict[str, Any]] | Exception,
+    list_users_mock: dict[str, Any],
     panel_admin: bool,
     expected_status: int,
     expected_data: IngressSessionData | None,
@@ -311,11 +334,9 @@ async def test_ingress_proxy_resolves_unresolved_session(
         session = (await resp.json())["data"]["session"]
         assert coresys.ingress.get_session_data(session).admin is None
 
-        if isinstance(users, Exception):
-            ha_ws_client.async_send_command.side_effect = users
-        else:
-            ha_ws_client.async_send_command.side_effect = None
-            ha_ws_client.async_send_command.return_value = users
+        ha_ws_client.async_send_command.configure_mock(
+            **{"side_effect": None, **list_users_mock}
+        )
 
         mock_app = MagicMock(spec=App)
         mock_app.slug = "test_addon"
