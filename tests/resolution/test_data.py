@@ -51,7 +51,7 @@ def test_uuid_stable_for_same_identity(
 
 
 @pytest.mark.parametrize(
-    ("changes"),
+    "changes",
     [
         pytest.param({"type": IssueType.BOOT_FAIL}, id="type"),
         pytest.param({"context": ContextType.CORE}, id="context"),

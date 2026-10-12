@@ -2,12 +2,16 @@
 
 from enum import StrEnum
 from pathlib import Path
+from uuid import UUID
 
 from awesomeversion import AwesomeVersion
 
 from ..const import SUPERVISOR_DATA
 
 FILE_CONFIG_RESOLUTION = Path(SUPERVISOR_DATA, "resolution.json")
+
+# Namespace of the uuids derived from issue and suggestion identities
+NAMESPACE_RESOLUTION = UUID("c822cec1-f675-44e3-a89d-55d7d46355fc")
 
 SCHEDULED_HEALTHCHECK = 3600
 

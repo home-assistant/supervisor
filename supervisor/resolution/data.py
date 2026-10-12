@@ -3,17 +3,16 @@
 from dataclasses import dataclass, field
 import json
 from typing import Any
-from uuid import UUID, uuid5
+from uuid import uuid5
 
 from .const import (
+    NAMESPACE_RESOLUTION,
     ContextType,
     IssueType,
     SuggestionType,
     UnhealthyReason,
     UnsupportedReason,
 )
-
-NAMESPACE_RESOLUTION = UUID("c822cec1-f675-44e3-a89d-55d7d46355fc")
 
 
 def _identity_uuid(
