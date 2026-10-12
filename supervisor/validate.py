@@ -9,6 +9,7 @@ import voluptuous as vol
 from .const import (
     ATTR_ADDON,
     ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_ADMIN,
     ATTR_APP,
     ATTR_APPS_CUSTOM_LIST,
     ATTR_AUDIO,
@@ -268,7 +269,8 @@ SCHEMA_SESSION_DATA = vol.Schema(
                         # Legacy key, replaced by ATTR_NAME
                         vol.Optional(ATTR_DISPLAYNAME): vol.Maybe(str),
                     }
-                )
+                ),
+                vol.Optional(ATTR_ADMIN): vol.Boolean(),
             }
         )
     }

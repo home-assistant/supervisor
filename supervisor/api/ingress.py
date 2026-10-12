@@ -9,6 +9,7 @@ import aiohttp
 from aiohttp import ClientTimeout, ClientWSTimeout, WSCloseCode, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
+    HTTPForbidden,
     HTTPServiceUnavailable,
     HTTPUnauthorized,
 )
@@ -48,7 +49,7 @@ VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
 """Expected optional payload of create session request"""
 SCHEMA_INGRESS_CREATE_SESSION_DATA = vol.Schema(
     {
-        vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
+        vol.Required(ATTR_SESSION_DATA_USER_ID): str,
     }
 )
 
@@ -113,17 +114,20 @@ class APIIngress(CoreSysAttributes):
     @require_home_assistant
     async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
-        schema_ingress_config_session_data = await api_validate(
-            SCHEMA_INGRESS_CREATE_SESSION_DATA, request
-        )
-        data: IngressSessionData | None = None
+        body = await api_validate(SCHEMA_INGRESS_CREATE_SESSION_DATA, request)
+        user_id = body[ATTR_SESSION_DATA_USER_ID]
 
-        if ATTR_SESSION_DATA_USER_ID in schema_ingress_config_session_data:
-            user = await self._find_user_by_id(
-                schema_ingress_config_session_data[ATTR_SESSION_DATA_USER_ID]
+        try:
+            user = await self._find_user_by_id(user_id)
+        except HomeAssistantAPIError as err:
+            _LOGGER.warning("Could not fetch list of users: %s", err)
+            # Keep the ID so the role can be resolved on first use
+            data = IngressSessionData(HomeAssistantUser(user_id))
+        else:
+            data = IngressSessionData(
+                user or HomeAssistantUser(user_id),
+                admin=user is not None and user.is_admin,
             )
-            if user:
-                data = IngressSessionData(user)
 
         session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
@@ -154,6 +158,11 @@ class APIIngress(CoreSysAttributes):
         app = self._extract_app(request)
         path = request.match_info.get("path", "")
         session_data = self.sys_ingress.get_session_data(session)
+        if app.panel_admin and not await self._resolve_session_admin(
+            session, session_data
+        ):
+            _LOGGER.warning("Non-admin ingress session denied for %s", app.slug)
+            raise HTTPForbidden
         try:
             # Websocket
             if _is_websocket(request):
@@ -320,14 +329,36 @@ class APIIngress(CoreSysAttributes):
             return response
 
     async def _find_user_by_id(self, user_id: str) -> HomeAssistantUser | None:
-        """Find user object by the user's ID."""
+        """Find user object by the user's ID.
+
+        Raises HomeAssistantAPIError if the user list cannot be fetched.
+        """
+        users = await self.sys_homeassistant.list_users()
+        return next((user for user in users if user.id == user_id), None)
+
+    async def _resolve_session_admin(
+        self, session: str, session_data: IngressSessionData | None
+    ) -> bool:
+        """Resolve the admin role of a session from its Core user record.
+
+        The result is cached on the session. While Core is unreachable the
+        session is treated as non-admin without caching.
+        """
+        if session_data is None:
+            return False
+        if session_data.admin is not None:
+            return session_data.admin
+
         try:
-            users = await self.sys_homeassistant.list_users()
+            user = await self._find_user_by_id(session_data.user.id)
         except HomeAssistantAPIError as err:
             _LOGGER.warning("Could not fetch list of users: %s", err)
-            return None
+            return False
 
-        return next((user for user in users if user.id == user_id), None)
+        # A removed user keeps the session until it expires but loses admin access
+        admin = user is not None and user.is_admin
+        self.sys_ingress.set_session_admin(session, admin)
+        return admin
 
 
 def _init_header(

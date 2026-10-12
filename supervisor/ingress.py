@@ -76,6 +76,9 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         """Update internal data."""
         self._update_token_list()
         self._cleanup_sessions()
+        # Roles may have changed while Supervisor was down, resolve them again
+        for session_data in self.sessions_data.values():
+            session_data.pop("admin", None)
 
         _LOGGER.info("Loaded %d ingress sessions", len(self.sessions))
 
@@ -105,10 +108,12 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             if valid_dt < now:
                 continue
 
-            # Is valid
+            # Sessions without user data predate Core 2023.9 and cannot be authorized
+            if not (session_data := self.sessions_data.get(session)):
+                continue
+
             sessions[session] = valid
-            if session_data := self.sessions_data.get(session):
-                sessions_data[session] = session_data
+            sessions_data[session] = session_data
 
         # Write back
         self.sessions.clear()
@@ -135,6 +140,10 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             self.sessions_data[session] = data.to_dict()
 
         return session
+
+    def set_session_admin(self, session: str, admin: bool) -> None:
+        """Store the resolved admin role of a session."""
+        self.sessions_data[session]["admin"] = admin
 
     def validate_session(self, session: str) -> bool:
         """Return True if session valid and make it longer valid."""

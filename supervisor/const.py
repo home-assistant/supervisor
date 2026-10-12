@@ -609,6 +609,9 @@ class FeatureFlag(StrEnum):
     SUPERVISOR_WEBSOCKET_V2_API = "supervisor_websocket_v2_api"
 
 
+HOMEASSISTANT_GROUP_ID_ADMIN = "system-admin"
+
+
 @dataclass
 class HomeAssistantUser:
     """A Home Assistant Core user.
@@ -626,6 +629,13 @@ class HomeAssistantUser:
     local_only: bool = False
     system_generated: bool = False
     group_ids: list[str] | None = None
+
+    @property
+    def is_admin(self) -> bool:
+        """Return if the user is an admin, mirroring Core's User.is_admin."""
+        return self.is_owner or (
+            self.is_active and HOMEASSISTANT_GROUP_ID_ADMIN in (self.group_ids or [])
+        )
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> Self:
@@ -658,6 +668,7 @@ class IngressSessionDataDict(TypedDict):
     """Serialization format for ingress session data."""
 
     user: IngressSessionDataUserDict
+    admin: NotRequired[bool]
 
 
 @dataclass
@@ -665,21 +676,28 @@ class IngressSessionData:
     """Ingress session data attached to a session token."""
 
     user: HomeAssistantUser
+    # None until the role has been resolved from the Core user record
+    admin: bool | None = None
 
     def to_dict(self) -> IngressSessionDataDict:
         """Get dictionary representation."""
-        return IngressSessionDataDict(
+        data = IngressSessionDataDict(
             user=IngressSessionDataUserDict(
                 id=self.user.id,
                 name=self.user.name,
                 username=self.user.username,
             )
         )
+        if self.admin is not None:
+            data["admin"] = self.admin
+        return data
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> Self:
         """Return object from dictionary representation."""
-        return cls(user=HomeAssistantUser.from_dict(data["user"]))
+        return cls(
+            user=HomeAssistantUser.from_dict(data["user"]), admin=data.get("admin")
+        )
 
 
 STARTING_STATES = [
