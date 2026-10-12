@@ -5,7 +5,12 @@ import logging
 
 from ...const import AppState, CoreState
 from ...coresys import CoreSys
-from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
+from ...exceptions import (
+    PwnedConnectivityError,
+    PwnedError,
+    PwnedSecret,
+    ResolutionCheckSkipped,
+)
 from ...jobs.const import JobCondition, JobThrottle
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
@@ -77,6 +82,7 @@ class CheckAppPwned(CheckBase):
     @Job(
         name="check_app_pwned_approve",
         conditions=[JobCondition.INTERNET_SYSTEM],
+        on_condition=ResolutionCheckSkipped,
         internal=True,
     )
     async def approve_check(self, issue: Issue) -> bool:
