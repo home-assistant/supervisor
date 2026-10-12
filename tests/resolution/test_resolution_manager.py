@@ -18,7 +18,12 @@ from supervisor.resolution.const import (
     UnsupportedReason,
 )
 from supervisor.resolution.data import Issue, Suggestion
-from supervisor.resolution.validate import _migrate_checks_config
+from supervisor.resolution.module import ResolutionManager
+from supervisor.resolution.validate import (
+    SCHEMA_RESOLUTION_CONFIG,
+    _migrate_checks_config,
+)
+from supervisor.utils.common import FileConfiguration
 
 
 def test_properies_unsupported(coresys: CoreSys):
@@ -533,3 +538,124 @@ async def test_core_compatible_suggestions(coresys: CoreSys):
             coresys.config.set_feature_flag(
                 FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
             )
+
+
+async def test_save_data_stores_issues_raised_by_checks(coresys: CoreSys) -> None:
+    """Test only issues raised by checks are stored, with their suggestions."""
+    coresys.resolution.create_issue(
+        IssueType.DETACHED_APP_REMOVED,
+        ContextType.ADDON,
+        reference="local_ssh",
+        suggestions=[SuggestionType.EXECUTE_REMOVE],
+    )
+    coresys.resolution.create_issue(
+        IssueType.BOOT_FAIL,
+        ContextType.ADDON,
+        reference="local_ssh",
+        suggestions=[SuggestionType.EXECUTE_START],
+    )
+
+    with patch.object(FileConfiguration, "save_data") as save_data:
+        await ResolutionManager.save_data(coresys.resolution)
+
+    save_data.assert_awaited_once()
+    assert coresys.resolution.data["issues"] == [
+        {
+            "type": IssueType.DETACHED_APP_REMOVED,
+            "context": ContextType.ADDON,
+            "reference": "local_ssh",
+            "reference_extra": None,
+            "suggestions": [SuggestionType.EXECUTE_REMOVE],
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("issue_type", "check_enabled", "restored"),
+    [
+        pytest.param(IssueType.DETACHED_APP_REMOVED, True, True, id="check"),
+        pytest.param(IssueType.DETACHED_APP_REMOVED, False, False, id="check_disabled"),
+        pytest.param(IssueType.BOOT_FAIL, True, False, id="no_check"),
+    ],
+)
+async def test_load_restores_issues_raised_by_checks(
+    coresys: CoreSys, issue_type: IssueType, check_enabled: bool, restored: bool
+) -> None:
+    """Test stored issues of enabled checks are restored before the healthcheck."""
+    coresys.resolution.check.get("detached_app_removed").enabled = check_enabled
+    coresys.resolution.data["issues"] = [
+        {
+            "type": issue_type,
+            "context": ContextType.ADDON,
+            "reference": "local_ssh",
+            "reference_extra": None,
+            "suggestions": [SuggestionType.EXECUTE_REMOVE],
+        }
+    ]
+    issue = Issue(issue_type, ContextType.ADDON, reference="local_ssh")
+
+    with patch.object(coresys.resolution, "healthcheck") as healthcheck:
+        await coresys.resolution.load()
+
+    healthcheck.assert_awaited_once()
+    assert (issue in coresys.resolution.issues) is restored
+    assert (
+        Suggestion(SuggestionType.EXECUTE_REMOVE, ContextType.ADDON, "local_ssh")
+        in coresys.resolution.suggestions
+    ) is restored
+
+
+async def test_restored_issue_keeps_uuid(coresys: CoreSys) -> None:
+    """Test a restored issue has the uuid Home Assistant keyed its repair on."""
+    issue = Issue(IssueType.DETACHED_APP_REMOVED, ContextType.ADDON, "local_ssh")
+    coresys.resolution.data["issues"] = [
+        {
+            "type": issue.type,
+            "context": issue.context,
+            "reference": issue.reference,
+            "reference_extra": None,
+            "suggestions": [],
+        }
+    ]
+
+    with patch.object(coresys.resolution, "healthcheck"):
+        await coresys.resolution.load()
+
+    assert coresys.resolution.get_issue_by_id(issue.uuid) == issue
+
+
+def test_resolution_file_drops_invalid_stored_issues() -> None:
+    """Test an invalid stored issue is dropped without resetting the file."""
+    config = SCHEMA_RESOLUTION_CONFIG(
+        {
+            "checks": {"app_pwned": {"enabled": False}},
+            "issues": [
+                {"type": "no_such_issue", "context": "addon"},
+                {"type": "pwned", "context": "addon", "reference": "local_ssh"},
+            ],
+        }
+    )
+
+    assert config["checks"]["app_pwned"]["enabled"] is False
+    assert config["issues"] == [
+        {
+            "type": IssueType.PWNED,
+            "context": ContextType.ADDON,
+            "reference": "local_ssh",
+            "reference_extra": None,
+            "suggestions": [],
+        }
+    ]
+
+
+async def test_healthcheck_saves_issues(coresys: CoreSys) -> None:
+    """Test issues are stored after each healthcheck."""
+    with (
+        patch.object(coresys.resolution.check, "check_system") as check_system,
+        patch.object(coresys.resolution.evaluate, "evaluate_system"),
+        patch.object(coresys.resolution.fixup, "run_autofix"),
+    ):
+        await coresys.resolution.healthcheck()
+
+    check_system.assert_awaited_once()
+    coresys.resolution.save_data.assert_awaited_once()
