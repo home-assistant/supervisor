@@ -110,6 +110,7 @@ from ..const import (
     AppState,
 )
 from ..docker.const import Capabilities
+from ..host.const import LogFormatter
 from ..validate import (
     docker_image,
     docker_ports,
@@ -123,6 +124,7 @@ from .const import (
     ATTR_BACKUP,
     ATTR_BREAKING_VERSIONS,
     ATTR_CODENOTARY,
+    ATTR_LOG_FORMAT,
     ATTR_PATH,
     ATTR_READ_ONLY,
     RE_SLUG,
@@ -464,6 +466,9 @@ _SCHEMA_APP_CONFIG = vol.Schema(
             AppStartup
         ),
         vol.Optional(ATTR_BOOT, default=AppBootConfig.AUTO): vol.Coerce(AppBootConfig),
+        vol.Optional(ATTR_LOG_FORMAT, default=LogFormatter.PLAIN): vol.Coerce(
+            LogFormatter
+        ),
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
         vol.Optional(ATTR_STAGE, default=AppStage.STABLE): vol.Coerce(AppStage),

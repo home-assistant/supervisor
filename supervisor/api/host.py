@@ -311,10 +311,10 @@ class APIHost(CoreSysAttributes):
         follow: bool = False,
         latest: bool = False,
         no_colors: bool = False,
-        default_verbose: bool = False,
+        default_format: LogFormatter = LogFormatter.PLAIN,
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
-        log_formatter = LogFormatter.VERBOSE if default_verbose else LogFormatter.PLAIN
+        log_formatter = default_format
         params: dict[str, Any] = {}
         if identifier:
             params[PARAM_SYSLOG_IDENTIFIER] = identifier
@@ -443,11 +443,11 @@ class APIHost(CoreSysAttributes):
         follow: bool = False,
         latest: bool = False,
         no_colors: bool = False,
-        default_verbose: bool = False,
+        default_format: LogFormatter = LogFormatter.PLAIN,
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
         return await self.advanced_logs_handler(
-            request, identifier, follow, latest, no_colors, default_verbose
+            request, identifier, follow, latest, no_colors, default_format
         )
 
     @api_process
