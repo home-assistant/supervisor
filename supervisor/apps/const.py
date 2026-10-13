@@ -36,6 +36,7 @@ class MappingType(StrEnum):
 ATTR_BACKUP = "backup"
 ATTR_BREAKING_VERSIONS = "breaking_versions"
 ATTR_CODENOTARY = "codenotary"
+ATTR_LOG_FORMAT = "log_format"
 ATTR_READ_ONLY = "read_only"
 ATTR_PATH = "path"
 WATCHDOG_RETRY_SECONDS = 10
