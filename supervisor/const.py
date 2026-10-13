@@ -609,6 +609,9 @@ class FeatureFlag(StrEnum):
     SUPERVISOR_WEBSOCKET_V2_API = "supervisor_websocket_v2_api"
 
 
+HOMEASSISTANT_GROUP_ID_ADMIN = "system-admin"
+
+
 @dataclass
 class HomeAssistantUser:
     """A Home Assistant Core user.
@@ -626,6 +629,13 @@ class HomeAssistantUser:
     local_only: bool = False
     system_generated: bool = False
     group_ids: list[str] | None = None
+
+    @property
+    def is_admin(self) -> bool:
+        """Return if the user is an admin, mirroring Core's User.is_admin."""
+        return self.is_owner or (
+            self.is_active and HOMEASSISTANT_GROUP_ID_ADMIN in (self.group_ids or [])
+        )
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> Self:
