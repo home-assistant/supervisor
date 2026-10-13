@@ -349,7 +349,15 @@ class APIHost(CoreSysAttributes):
                 "supported for now."
             )
 
-        if "verbose" in request.query or accept_header == CONTENT_TYPE_X_LOG:
+        if "format" in request.query:
+            try:
+                log_formatter = LogFormatter(request.query["format"])
+            except ValueError as err:
+                raise APIError(
+                    "Invalid log format requested. Supported formats: "
+                    f"{', '.join(LogFormatter)}."
+                ) from err
+        elif "verbose" in request.query or accept_header == CONTENT_TYPE_X_LOG:
             log_formatter = LogFormatter.VERBOSE
 
         if "no_colors" in request.query:
