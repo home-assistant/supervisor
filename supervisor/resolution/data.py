@@ -1,16 +1,37 @@
 """Data objects."""
 
 from dataclasses import dataclass, field
+import json
 from typing import Any
-from uuid import uuid4
+from uuid import uuid5
 
 from .const import (
+    NAMESPACE_RESOLUTION,
     ContextType,
     IssueType,
     SuggestionType,
     UnhealthyReason,
     UnsupportedReason,
 )
+
+
+def _identity_uuid(
+    kind: str,
+    type_: str,
+    context: str,
+    reference: str | None,
+    reference_extra: dict[str, Any] | None,
+) -> str:
+    """Derive a uuid from the identity of an issue or suggestion.
+
+    Home Assistant keys repairs (and their ignored state) on this uuid, so it
+    has to stay the same when a check raises the same issue after a restart.
+    """
+    # JSON keeps field boundaries, e.g. None distinct from "None"
+    name = json.dumps(
+        [kind, type_, context, reference, reference_extra], sort_keys=True
+    )
+    return uuid5(NAMESPACE_RESOLUTION, name).hex
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,7 +42,17 @@ class Issue:
     context: ContextType
     reference: str | None = None
     reference_extra: dict[str, Any] | None = field(default=None, hash=False)
-    uuid: str = field(default_factory=lambda: uuid4().hex, compare=False, init=False)
+    uuid: str = field(init=False, compare=False)
+
+    def __post_init__(self) -> None:
+        """Derive uuid from identity."""
+        object.__setattr__(
+            self,
+            "uuid",
+            _identity_uuid(
+                "issue", self.type, self.context, self.reference, self.reference_extra
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +63,21 @@ class Suggestion:
     context: ContextType
     reference: str | None = None
     reference_extra: dict[str, Any] | None = field(default=None, hash=False)
-    uuid: str = field(default_factory=lambda: uuid4().hex, compare=False, init=False)
+    uuid: str = field(init=False, compare=False)
+
+    def __post_init__(self) -> None:
+        """Derive uuid from identity."""
+        object.__setattr__(
+            self,
+            "uuid",
+            _identity_uuid(
+                "suggestion",
+                self.type,
+                self.context,
+                self.reference,
+                self.reference_extra,
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True)
