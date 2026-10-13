@@ -3,7 +3,7 @@
 # pylint: disable=W0212
 import asyncio
 from contextlib import suppress
-import datetime
+from datetime import UTC, datetime, timedelta
 import errno
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -59,7 +59,7 @@ async def test_write_state(run_supervisor_state: MagicMock, coresys: CoreSys):
 
 async def test_adjust_system_datetime(coresys: CoreSys, websession: MagicMock):
     """Test _adjust_system_datetime method with successful retrieve_whoami."""
-    utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC)
+    utc_ts = datetime.now().replace(tzinfo=UTC)
     with patch(
         "supervisor.core.retrieve_whoami",
         new_callable=AsyncMock,
@@ -79,7 +79,7 @@ async def test_adjust_system_datetime_without_ssl(
     coresys: CoreSys, websession: MagicMock
 ):
     """Test _adjust_system_datetime method when retrieve_whoami raises WhoamiSSLError."""
-    utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC)
+    utc_ts = datetime.now().replace(tzinfo=UTC)
     with patch(
         "supervisor.core.retrieve_whoami",
         new_callable=AsyncMock,
@@ -104,9 +104,7 @@ async def test_adjust_system_datetime_if_time_behind(
     systemd_unit_service.active_state = "active"
     systemd_unit_service.active_state_read.clear()
 
-    utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC) + datetime.timedelta(
-        hours=1, minutes=1
-    )
+    utc_ts = datetime.now().replace(tzinfo=UTC) + timedelta(hours=1, minutes=1)
     with (
         patch(
             "supervisor.core.retrieve_whoami",
