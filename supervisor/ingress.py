@@ -13,6 +13,7 @@ from .const import (
     FILE_HASSIO_INGRESS,
     INGRESS_DYNAMIC_PORT_MAX,
     INGRESS_DYNAMIC_PORT_MIN,
+    HomeAssistantUser,
     IngressSessionData,
     IngressSessionDataDict,
 )
@@ -34,9 +35,9 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         super().__init__(FILE_HASSIO_INGRESS, SCHEMA_INGRESS_CONFIG)
         self.coresys: CoreSys = coresys
         self.tokens: dict[str, str] = {}
-        # Admin role by user ID, resolved from Core and not persisted so a
-        # restart picks up role changes. Only known users are ever added.
-        self.user_roles: dict[str, bool] = {}
+        # User records by ID, resolved from Core and not persisted so a
+        # restart picks up user changes. Only known users are ever added.
+        self.users: dict[str, HomeAssistantUser] = {}
 
     def get(self, token: str) -> App | None:
         """Return app they have this ingress token."""
@@ -140,10 +141,6 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             self.sessions_data[session] = data.to_dict()
 
         return session
-
-    def set_session_data(self, session: str, data: IngressSessionData) -> None:
-        """Replace the data of an existing session."""
-        self.sessions_data[session] = data.to_dict()
 
     def remove_session(self, session: str) -> None:
         """Invalidate a session."""

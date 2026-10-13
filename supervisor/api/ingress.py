@@ -126,7 +126,7 @@ class APIIngress(CoreSysAttributes):
         else:
             if user is None or not user.is_active:
                 raise APIError(f"User {user_id} does not exist or is inactive")
-            self.sys_ingress.user_roles[user.id] = user.is_admin
+            self.sys_ingress.users[user.id] = user
 
         session = self.sys_ingress.create_session(IngressSessionData(user))
         return {ATTR_SESSION: session}
@@ -157,24 +157,21 @@ class APIIngress(CoreSysAttributes):
         app = self._extract_app(request)
         path = request.match_info.get("path", "")
         session_data = self.sys_ingress.get_session_data(session)
-        if (
-            session_data is not None
-            and session_data.user.id not in self.sys_ingress.user_roles
-        ):
-            session_data = await self._resolve_session(session, session_data)
-        if app.panel_admin and not (
-            session_data is not None
-            and self.sys_ingress.user_roles.get(session_data.user.id, False)
-        ):
-            _LOGGER.warning("Non-admin ingress session denied for %s", app.slug)
+        user = await self._get_user(session, session_data) if session_data else None
+        if app.panel_admin and (user is None or not user.is_admin):
+            _LOGGER.warning(
+                "Ingress access to %s denied for non-admin user %s",
+                app.slug,
+                user.id if user else None,
+            )
             raise HTTPForbidden
         try:
             # Websocket
             if _is_websocket(request):
-                return await self._handle_websocket(request, app, path, session_data)
+                return await self._handle_websocket(request, app, path, user)
 
             # Request
-            return await self._handle_request(request, app, path, session_data)
+            return await self._handle_request(request, app, path, user)
 
         except aiohttp.ClientError as err:
             _LOGGER.error("Ingress error: %s", err)
@@ -186,7 +183,7 @@ class APIIngress(CoreSysAttributes):
         request: web.Request,
         app: App,
         path: str,
-        session_data: IngressSessionData | None,
+        user: HomeAssistantUser | None,
     ) -> web.WebSocketResponse:
         """Ingress route for websocket."""
         if hdrs.SEC_WEBSOCKET_PROTOCOL in request.headers:
@@ -212,7 +209,7 @@ class APIIngress(CoreSysAttributes):
 
         # Preparing
         url = self._create_url(app, path)
-        source_header = _init_header(request, app, session_data)
+        source_header = _init_header(request, app, user)
 
         # Support GET query
         if request.query_string:
@@ -252,11 +249,11 @@ class APIIngress(CoreSysAttributes):
         request: web.Request,
         app: App,
         path: str,
-        session_data: IngressSessionData | None,
+        user: HomeAssistantUser | None,
     ) -> web.Response | web.StreamResponse:
         """Ingress route for request."""
         url = self._create_url(app, path)
-        source_header = _init_header(request, app, session_data)
+        source_header = _init_header(request, app, user)
 
         # Passing the raw stream breaks requests for some webservers
         # since we just need it for POST requests really, for all other methods
@@ -341,20 +338,23 @@ class APIIngress(CoreSysAttributes):
         users = await self.sys_homeassistant.list_users()
         return next((user for user in users if user.id == user_id), None)
 
-    async def _resolve_session(
+    async def _get_user(
         self, session: str, session_data: IngressSessionData
-    ) -> IngressSessionData:
-        """Refresh the user record of a session and cache the user's role.
+    ) -> HomeAssistantUser:
+        """Return the user record of a session, resolved from Core once.
 
-        While Core is unreachable the data is returned unresolved, which
-        denies admin access without caching. Sessions of removed or
-        deactivated users are invalidated.
+        While Core is unreachable the record stored with the session is
+        returned, which denies admin access without caching. Sessions of
+        removed or deactivated users are invalidated.
         """
+        if user := self.sys_ingress.users.get(session_data.user.id):
+            return user
+
         try:
             user = await self._find_user_by_id(session_data.user.id)
         except HomeAssistantAPIError as err:
             _LOGGER.warning("Could not fetch list of users: %s", err)
-            return session_data
+            return session_data.user
 
         if user is None or not user.is_active:
             _LOGGER.warning(
@@ -363,24 +363,22 @@ class APIIngress(CoreSysAttributes):
             self.sys_ingress.remove_session(session)
             raise HTTPUnauthorized
 
-        self.sys_ingress.user_roles[user.id] = user.is_admin
-        session_data = IngressSessionData(user)
-        self.sys_ingress.set_session_data(session, session_data)
-        return session_data
+        self.sys_ingress.users[user.id] = user
+        return user
 
 
 def _init_header(
-    request: web.Request, app: App, session_data: IngressSessionData | None
+    request: web.Request, app: App, user: HomeAssistantUser | None
 ) -> CIMultiDict[str]:
     """Create initial header."""
     headers = CIMultiDict[str]()
 
-    if session_data is not None:
-        headers[HEADER_REMOTE_USER_ID] = session_data.user.id
-        if session_data.user.username is not None:
-            headers[HEADER_REMOTE_USER_NAME] = session_data.user.username
-        if session_data.user.name is not None:
-            headers[HEADER_REMOTE_USER_DISPLAY_NAME] = session_data.user.name
+    if user is not None:
+        headers[HEADER_REMOTE_USER_ID] = user.id
+        if user.username is not None:
+            headers[HEADER_REMOTE_USER_NAME] = user.username
+        if user.name is not None:
+            headers[HEADER_REMOTE_USER_DISPLAY_NAME] = user.name
 
     # filter flags
     for name, value in request.headers.items():

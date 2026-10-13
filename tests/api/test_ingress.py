@@ -12,7 +12,7 @@ import pytest
 
 from supervisor.api.const import WEBSOCKETS
 from supervisor.apps.app import App
-from supervisor.const import CoreState, HomeAssistantUser, IngressSessionData
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantWSError
 
@@ -138,7 +138,7 @@ async def test_validate_session_with_user_id(
         assert coresys.ingress.get_session_data(session).user.id == "some-id"
         assert coresys.ingress.get_session_data(session).user.username == "sn"
         assert coresys.ingress.get_session_data(session).user.name == "Some Name"
-        assert coresys.ingress.user_roles == {"some-id": False}
+        assert coresys.ingress.users["some-id"].is_admin is False
 
 
 async def test_create_session_requires_user_id(api_client: TestClient):
@@ -148,30 +148,24 @@ async def test_create_session_requires_user_id(api_client: TestClient):
 
 
 @pytest.mark.parametrize(
-    ("list_users_mock", "user_id", "expected_roles"),
+    ("list_users_mock", "user_id", "expected_admin"),
     [
         pytest.param(
-            {"return_value": [ADMIN_USER]},
-            "admin-id",
-            {"admin-id": True},
-            id="admin_group",
+            {"return_value": [ADMIN_USER]}, "admin-id", True, id="admin_group"
         ),
         pytest.param(
             {"return_value": [{"id": "owner-id", "is_owner": True, "is_active": True}]},
             "owner-id",
-            {"owner-id": True},
+            True,
             id="owner",
         ),
         pytest.param(
-            {"return_value": [REGULAR_USER]},
-            "user-id",
-            {"user-id": False},
-            id="regular_user",
+            {"return_value": [REGULAR_USER]}, "user-id", False, id="regular_user"
         ),
         pytest.param(
             {"side_effect": HomeAssistantWSError("offline")},
             "admin-id",
-            {},
+            None,
             id="lookup_error",
         ),
     ],
@@ -182,7 +176,7 @@ async def test_create_session_resolves_role(
     ha_ws_client: AsyncMock,
     list_users_mock: dict[str, Any],
     user_id: str,
-    expected_roles: dict[str, bool],
+    expected_admin: bool | None,
 ):
     """Test the admin role is derived from the Core user record on creation."""
     ha_ws_client.async_send_command.configure_mock(**list_users_mock)
@@ -193,7 +187,8 @@ async def test_create_session_resolves_role(
     session_data = coresys.ingress.get_session_data(session)
     assert session_data is not None
     assert session_data.user.id == user_id
-    assert coresys.ingress.user_roles == expected_roles
+    user = coresys.ingress.users.get(user_id)
+    assert (user.is_admin if user else None) is expected_admin
 
 
 async def test_create_session_refreshes_shared_role(
@@ -202,11 +197,11 @@ async def test_create_session_refreshes_shared_role(
     """Test a new session updates the role shared by all sessions of a user."""
     ha_ws_client.async_send_command.return_value = [ADMIN_USER]
     await api_client.post("/ingress/session", json={"user_id": "admin-id"})
-    assert coresys.ingress.user_roles == {"admin-id": True}
+    assert coresys.ingress.users["admin-id"].is_admin is True
 
     ha_ws_client.async_send_command.return_value = [{**ADMIN_USER, "group_ids": []}]
     await api_client.post("/ingress/session", json={"user_id": "admin-id"})
-    assert coresys.ingress.user_roles == {"admin-id": False}
+    assert coresys.ingress.users["admin-id"].is_admin is False
 
 
 @pytest.mark.parametrize(
@@ -287,48 +282,52 @@ async def test_ingress_proxy_enforces_panel_admin(
         "list_users_mock",
         "panel_admin",
         "expected_status",
-        "expected_data",
-        "expected_roles",
+        "expected_headers",
+        "session_kept",
     ),
     [
         pytest.param(
             {"return_value": [ADMIN_USER]},
             True,
             200,
-            IngressSessionData(
-                HomeAssistantUser("admin-id", username="admin", name="Admin")
-            ),
-            {"admin-id": True},
+            {"X-Remote-User-Name": "admin", "X-Remote-User-Display-Name": "Admin"},
+            True,
             id="resolved_admin",
         ),
         pytest.param(
             {"return_value": [{**ADMIN_USER, "name": "Renamed", "group_ids": []}]},
             False,
             200,
-            IngressSessionData(
-                HomeAssistantUser("admin-id", username="admin", name="Renamed")
-            ),
-            {"admin-id": False},
+            {"X-Remote-User-Name": "admin", "X-Remote-User-Display-Name": "Renamed"},
+            True,
             id="resolved_renamed_demoted_user",
         ),
         pytest.param(
-            {"return_value": [REGULAR_USER]}, True, 401, None, {}, id="removed_user"
+            {"return_value": [REGULAR_USER]}, True, 401, None, False, id="removed_user"
         ),
         pytest.param(
             {"return_value": [{**ADMIN_USER, "is_active": False}]},
             False,
             401,
             None,
-            {},
+            False,
             id="inactive_user",
         ),
         pytest.param(
             {"side_effect": HomeAssistantWSError("offline")},
             True,
             403,
-            IngressSessionData(HomeAssistantUser("admin-id")),
-            {},
+            None,
+            True,
             id="still_offline",
+        ),
+        pytest.param(
+            {"side_effect": HomeAssistantWSError("offline")},
+            False,
+            200,
+            {},
+            True,
+            id="still_offline_regular_panel",
         ),
     ],
 )
@@ -340,13 +339,20 @@ async def test_ingress_proxy_resolves_unresolved_session(
     list_users_mock: dict[str, Any],
     panel_admin: bool,
     expected_status: int,
-    expected_data: IngressSessionData | None,
-    expected_roles: dict[str, bool],
+    expected_headers: dict[str, str] | None,
+    session_kept: bool,
 ):
-    """Test a session without a resolved user is refreshed from Core on first use."""
+    """Test a session without a resolved user is resolved from Core on first use."""
     api_client, prefix = api_client_with_prefix
+    received_headers: dict[str, str] | None = None
 
     async def mock_app_handler(request: web.Request) -> web.Response:
+        nonlocal received_headers
+        received_headers = {
+            key: value
+            for key, value in request.headers.items()
+            if key in ("X-Remote-User-Name", "X-Remote-User-Display-Name")
+        }
         return web.Response(body=b"ok", content_type="text/plain")
 
     app = web.Application()
@@ -360,7 +366,7 @@ async def test_ingress_proxy_resolves_unresolved_session(
             f"{prefix}/ingress/session", json={"user_id": "admin-id"}
         )
         session = (await resp.json())["data"]["session"]
-        assert coresys.ingress.user_roles == {}
+        assert coresys.ingress.users == {}
 
         ha_ws_client.async_send_command.configure_mock(
             **{"side_effect": None, **list_users_mock}
@@ -380,9 +386,68 @@ async def test_ingress_proxy_resolves_unresolved_session(
                 cookies={"ingress_session": session},
             )
             assert resp.status == expected_status
-        assert coresys.ingress.get_session_data(session) == expected_data
-        assert (session in coresys.ingress.sessions) is (expected_data is not None)
-        assert coresys.ingress.user_roles == expected_roles
+        assert received_headers == expected_headers
+        assert (session in coresys.ingress.sessions) is session_kept
+    finally:
+        await app_server.close()
+
+
+async def test_ingress_proxy_uses_cached_user(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    real_websession: aiohttp.ClientSession,
+):
+    """Test a session created while Core was offline gets the cached user record."""
+    api_client, prefix = api_client_with_prefix
+    received_headers: dict[str, str] | None = None
+
+    async def mock_app_handler(request: web.Request) -> web.Response:
+        nonlocal received_headers
+        received_headers = {
+            key: value
+            for key, value in request.headers.items()
+            if key in ("X-Remote-User-Name", "X-Remote-User-Display-Name")
+        }
+        return web.Response(body=b"ok", content_type="text/plain")
+
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        ha_ws_client.async_send_command.side_effect = HomeAssistantWSError("offline")
+        resp = await api_client.post(
+            f"{prefix}/ingress/session", json={"user_id": "admin-id"}
+        )
+        offline_session = (await resp.json())["data"]["session"]
+
+        ha_ws_client.async_send_command.configure_mock(
+            side_effect=None, return_value=[ADMIN_USER]
+        )
+        await api_client.post(f"{prefix}/ingress/session", json={"user_id": "admin-id"})
+        ha_ws_client.async_send_command.reset_mock()
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_addon"
+        mock_app.panel_admin = True
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+        mock_app.ingress_stream = False
+
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_app):
+            resp = await api_client.get(
+                f"{prefix}/ingress/{ingress_token}/",
+                cookies={"ingress_session": offline_session},
+            )
+            assert resp.status == 200
+        assert received_headers == {
+            "X-Remote-User-Name": "admin",
+            "X-Remote-User-Display-Name": "Admin",
+        }
+        ha_ws_client.async_send_command.assert_not_called()
     finally:
         await app_server.close()
 
