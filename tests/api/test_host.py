@@ -10,6 +10,7 @@ import gc
 import time
 from typing import Any
 from unittest.mock import ANY, MagicMock, PropertyMock, patch
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientPayloadError, ClientSession, web
 from aiohttp.test_utils import TestClient
@@ -421,7 +422,9 @@ async def test_advanced_logs_query_parameters(
         range_header=DEFAULT_RANGE,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE, False)
+    journal_logs_reader.assert_called_with(
+        ANY, LogFormatter.VERBOSE, False, tz=coresys.timezone_tzinfo
+    )
 
     journal_logs_reader.reset_mock()
     journald_logs.reset_mock()
@@ -439,7 +442,9 @@ async def test_advanced_logs_query_parameters(
         range_header="entries=:-52:53",
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE, False)
+    journal_logs_reader.assert_called_with(
+        ANY, LogFormatter.VERBOSE, False, tz=coresys.timezone_tzinfo
+    )
 
     journal_logs_reader.reset_mock()
     journald_logs.reset_mock()
@@ -451,7 +456,9 @@ async def test_advanced_logs_query_parameters(
         range_header=DEFAULT_RANGE,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE, True)
+    journal_logs_reader.assert_called_with(
+        ANY, LogFormatter.VERBOSE, True, tz=coresys.timezone_tzinfo
+    )
 
 
 async def test_advanced_logs_boot_id_offset(
@@ -508,31 +515,57 @@ async def test_advanced_logs_formatters(
     api_client, prefix = api_client_with_prefix
 
     await api_client.get(f"{prefix}/host/logs")
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE, False)
+    journal_logs_reader.assert_called_once_with(
+        ANY, LogFormatter.VERBOSE, False, tz=coresys.timezone_tzinfo
+    )
 
     journal_logs_reader.reset_mock()
 
     headers = {"Accept": "text/x-log"}
     await api_client.get(f"{prefix}/host/logs", headers=headers)
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE, False)
+    journal_logs_reader.assert_called_once_with(
+        ANY, LogFormatter.VERBOSE, False, tz=coresys.timezone_tzinfo
+    )
 
     journal_logs_reader.reset_mock()
 
     await api_client.get(f"{prefix}/host/logs/identifiers/test")
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.PLAIN, False)
+    journal_logs_reader.assert_called_once_with(
+        ANY, LogFormatter.PLAIN, False, tz=coresys.timezone_tzinfo
+    )
 
     journal_logs_reader.reset_mock()
 
     headers = {"Accept": "text/x-log"}
     await api_client.get(f"{prefix}/host/logs/identifiers/test", headers=headers)
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE, False)
+    journal_logs_reader.assert_called_once_with(
+        ANY, LogFormatter.VERBOSE, False, tz=coresys.timezone_tzinfo
+    )
 
     journal_logs_reader.reset_mock()
 
     await api_client.get(
         f"{prefix}/host/logs/identifiers/test", skip_auto_headers={"Accept"}
     )
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.PLAIN, False)
+    journal_logs_reader.assert_called_once_with(
+        ANY, LogFormatter.PLAIN, False, tz=coresys.timezone_tzinfo
+    )
+
+
+@pytest.mark.usefixtures("journald_gateway")
+async def test_advanced_logs_timezone(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    journal_logs_reader: MagicMock,
+):
+    """Test advanced logs use the configured system timezone."""
+    api_client, prefix = api_client_with_prefix
+    await coresys.config.set_timezone("Europe/Prague")
+
+    await api_client.get(f"{prefix}/host/logs")
+    journal_logs_reader.assert_called_once_with(
+        ANY, LogFormatter.VERBOSE, False, tz=ZoneInfo("Europe/Prague")
+    )
 
 
 async def test_advanced_logs_errors(

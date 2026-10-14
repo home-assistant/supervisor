@@ -39,7 +39,9 @@ async def _common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, formatter, False)
+    journal_logs_reader.assert_called_with(
+        ANY, formatter, False, tz=coresys.timezone_tzinfo
+    )
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
@@ -53,7 +55,9 @@ async def _common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, formatter, True)
+    journal_logs_reader.assert_called_with(
+        ANY, formatter, True, tz=coresys.timezone_tzinfo
+    )
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
@@ -67,7 +71,9 @@ async def _common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE_FOLLOW,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, formatter, False)
+    journal_logs_reader.assert_called_with(
+        ANY, formatter, False, tz=coresys.timezone_tzinfo
+    )
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
@@ -93,7 +99,9 @@ async def _common_test_api_advanced_logs(
     assert logs_call[1]["params"]["SYSLOG_IDENTIFIER"] == syslog_identifier
     assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"
     assert logs_call[1]["range_header"] == "entries=:0:18446744073709551615"
-    journal_logs_reader.assert_called_with(ANY, formatter, True)
+    journal_logs_reader.assert_called_with(
+        ANY, formatter, True, tz=coresys.timezone_tzinfo
+    )
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()

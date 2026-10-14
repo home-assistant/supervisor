@@ -388,7 +388,7 @@ class APIHost(CoreSysAttributes):
         ):
             try:
                 async for cursor, line in journal_logs_reader(
-                    resp, log_formatter, no_colors
+                    resp, log_formatter, no_colors, tz=self.sys_timezone_tzinfo
                 ):
                     if not headers_returned:
                         if cursor:

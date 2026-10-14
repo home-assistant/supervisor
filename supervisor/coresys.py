@@ -745,6 +745,11 @@ class CoreSysAttributes:
         return self.coresys.timezone
 
     @property
+    def sys_timezone_tzinfo(self) -> tzinfo:
+        """Return system internal used timezone as tzinfo object."""
+        return self.coresys.timezone_tzinfo
+
+    @property
     def sys_machine(self) -> str | None:
         """Return running machine type of the Supervisor system."""
         return self.coresys.machine
