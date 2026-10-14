@@ -7,9 +7,14 @@ from functools import partial
 from importlib import import_module
 from inspect import getclosurevars
 import json
+import os
 from pathlib import Path
+import re
+import threading
 from typing import Any, Self
 
+from aiohttp import web
+from aiohttp.typedefs import Handler, Middleware
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -92,6 +97,87 @@ async def wait_for(
         if asyncio.get_running_loop().time() >= deadline:
             raise AssertionError(f"Predicate did not become true within {timeout}s")
         await asyncio.sleep(interval)
+
+
+API_RECORD_DIR_ENV = "SUPERVISOR_API_RECORD_DIR"
+
+_API_RECORD_PARAM_RE = re.compile(r"\{(\w+)\}")
+_api_record_lock = threading.Lock()
+
+
+def _write_api_record(path: Path, line: str) -> None:
+    """Append a record line, serialized across executor threads."""
+    with _api_record_lock, path.open("a", encoding="utf-8") as file:
+        file.write(line)
+
+
+def api_record_middleware() -> Middleware:
+    """Return a middleware recording JSON API responses for client compat checks.
+
+    No-op unless the ``SUPERVISOR_API_RECORD_DIR`` environment variable is set.
+    When set, each ``web.Response`` whose body is a Supervisor JSON envelope is
+    appended as one line to ``<dir>/<PYTEST_XDIST_WORKER or "main">.jsonl``:
+
+        {"method": "GET", "template": "/host/disks/{disk}/usage",
+         "params": ["default"], "query": [["max_depth", "2"]], "status": 200,
+         "body": {...}, "test": "tests/api/test_host.py::test_disk_usage_api"}
+
+    ``template`` is the matched route with each parameter as ``{name}``, including
+    the ``/v2`` prefix for v2 routes. ``params`` holds the actual values in
+    template order. ``query`` holds the query string as ``[key, value]`` pairs in
+    request order, keys may repeat. ``test`` is the id of the test that made the
+    request.
+
+    This format is the contract read by ``tests/compat/check_responses.py`` in
+    python-supervisor-client, keep them in sync.
+    """
+
+    @web.middleware
+    async def _api_record_middleware(
+        request: web.Request, handler: Handler
+    ) -> web.StreamResponse:
+        response = await handler(request)
+        if not (record_dir := os.environ.get(API_RECORD_DIR_ENV)):
+            return response
+        if (
+            not isinstance(response, web.Response)
+            or response.content_type != "application/json"
+            or not isinstance(response.body, bytes)
+            or not response.body
+            or (resource := request.match_info.route.resource) is None
+        ):
+            return response
+        # Skip bodies passed through from elsewhere, e.g. the Core API proxy
+        try:
+            body = json.loads(response.body)
+        except ValueError:
+            return response
+        if not isinstance(body, dict) or "result" not in body:
+            return response
+
+        template = resource.canonical
+        record = {
+            "method": request.method,
+            "template": template,
+            "params": [
+                request.match_info[name]
+                for name in _API_RECORD_PARAM_RE.findall(template)
+            ],
+            "query": [[key, value] for key, value in request.query.items()],
+            "status": response.status,
+            "body": body,
+            "test": os.environ.get("PYTEST_CURRENT_TEST", "").rsplit(" ", 1)[0],
+        }
+        worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
+        await asyncio.get_running_loop().run_in_executor(
+            None,
+            _write_api_record,
+            Path(record_dir, f"{worker}.jsonl"),
+            json.dumps(record) + "\n",
+        )
+        return response
+
+    return _api_record_middleware
 
 
 def get_fixture_path(filename: str) -> Path:
