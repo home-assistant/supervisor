@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import re
 import threading
-from typing import Any, Self
+from typing import Any, Final, Self
 
 from aiohttp import web
 from aiohttp.typedefs import Handler, Middleware
@@ -101,22 +101,40 @@ async def wait_for(
 
 API_RECORD_DIR_ENV = "SUPERVISOR_API_RECORD_DIR"
 
+# fmt: off
+
+# Route templates passing through Core and app responses, not recorded
+API_RECORD_PASSTHROUGH: Final = re.compile(
+    r"^(?:/v2)?(?:"  # both implicit v1 and v2 paths
+    r"|/core/api/.*"
+    r"|/core/websocket"
+    r"|/homeassistant/api/.*"
+    r"|/homeassistant/websocket"
+    r"|/ingress/\{token\}/\{path\}"
+    r")$"
+)
+
+# fmt: on
+
 _API_RECORD_PARAM_RE = re.compile(r"\{(\w+)\}")
 _api_record_lock = threading.Lock()
 
 
 def _write_api_record(path: Path, line: str) -> None:
     """Append a record line, serialized across executor threads."""
-    with _api_record_lock, path.open("a", encoding="utf-8") as file:
-        file.write(line)
+    with _api_record_lock:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as file:
+            file.write(line)
 
 
 def api_record_middleware() -> Middleware:
     """Return a middleware recording JSON API responses for client compat checks.
 
     No-op unless the ``SUPERVISOR_API_RECORD_DIR`` environment variable is set.
-    When set, each ``web.Response`` whose body is a Supervisor JSON envelope is
-    appended as one line to ``<dir>/<PYTEST_XDIST_WORKER or "main">.jsonl``:
+    When set, each JSON ``web.Response`` is appended as one line to
+    ``<dir>/<PYTEST_XDIST_WORKER or "main">.jsonl``, creating the directory if
+    needed:
 
         {"method": "GET", "template": "/host/disks/{disk}/usage",
          "params": ["default"], "query": [["max_depth", "2"]], "status": 200,
@@ -126,7 +144,7 @@ def api_record_middleware() -> Middleware:
     the ``/v2`` prefix for v2 routes. ``params`` holds the actual values in
     template order. ``query`` holds the query string as ``[key, value]`` pairs in
     request order, keys may repeat. ``test`` is the id of the test that made the
-    request.
+    request. Routes matching ``API_RECORD_PASSTHROUGH`` are not recorded.
 
     This format is the contract read by ``tests/compat/check_responses.py`` in
     python-supervisor-client, keep them in sync.
@@ -147,15 +165,9 @@ def api_record_middleware() -> Middleware:
             or (resource := request.match_info.route.resource) is None
         ):
             return response
-        # Skip bodies passed through from elsewhere, e.g. the Core API proxy
-        try:
-            body = json.loads(response.body)
-        except ValueError:
-            return response
-        if not isinstance(body, dict) or "result" not in body:
+        if API_RECORD_PASSTHROUGH.match(template := resource.canonical):
             return response
 
-        template = resource.canonical
         record = {
             "method": request.method,
             "template": template,
@@ -165,7 +177,7 @@ def api_record_middleware() -> Middleware:
             ],
             "query": [[key, value] for key, value in request.query.items()],
             "status": response.status,
-            "body": body,
+            "body": json.loads(response.body),
             "test": os.environ.get("PYTEST_CURRENT_TEST", "").rsplit(" ", 1)[0],
         }
         worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
