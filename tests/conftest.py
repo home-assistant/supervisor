@@ -66,6 +66,7 @@ from supervisor.utils.dt import utcnow
 from .common import (
     AsyncIterator,
     MockResponse,
+    api_record_middleware,
     load_fixture,
     load_json_fixture,
     mock_dbus_services,
@@ -817,7 +818,9 @@ async def api_client(
         return await handler(request)
 
     api = RestAPI(coresys)
-    api.webapp = web.Application(middlewares=[_security_middleware])
+    api.webapp = web.Application(
+        middlewares=[api_record_middleware(), _security_middleware]
+    )
     api.start = AsyncMock()
     await api.load()
     return await aiohttp_client(api.webapp)
