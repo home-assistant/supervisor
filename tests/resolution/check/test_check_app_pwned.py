@@ -118,3 +118,25 @@ async def test_did_run(coresys: CoreSys):
             await app_pwned()
             check.assert_not_called()
             check.reset_mock()
+
+
+async def test_offline_keeps_issue(coresys: CoreSys) -> None:
+    """Test an issue is kept while it cannot be verified without internet."""
+    app_pwned = CheckAppPwned(coresys)
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    app = FakeApp()
+    coresys.apps.local[app.slug] = app
+    app.pwned.add("123456")
+    coresys.resolution.create_issue(IssueType.PWNED, ContextType.ADDON, app.slug)
+
+    coresys.supervisor.check_and_update_connectivity = AsyncMock()
+    coresys.supervisor._connectivity = False
+    coresys.security.verify_secret = AsyncMock()
+
+    await app_pwned()
+
+    coresys.security.verify_secret.assert_not_called()
+    assert coresys.resolution.issues == [
+        Issue(IssueType.PWNED, ContextType.ADDON, reference=app.slug)
+    ]
