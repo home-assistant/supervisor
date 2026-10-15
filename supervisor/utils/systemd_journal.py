@@ -48,10 +48,11 @@ def journal_plain_formatter(
 
 def _format_timestamp(timestamp: str, tz: tzinfo) -> str:
     """Format a journal timestamp in the given timezone with millisecond precision."""
-    ts = datetime.fromtimestamp(int(timestamp) / 1e6, tz).isoformat(
-        sep=" ", timespec="milliseconds"
+    return (
+        datetime.fromtimestamp(int(timestamp) / 1e6, tz)
+        .replace(tzinfo=None)
+        .isoformat(sep=" ", timespec="milliseconds")
     )
-    return ts[: ts.index(".") + 4]  # strip TZ offset
 
 
 @formatter(["__REALTIME_TIMESTAMP", "MESSAGE"])
@@ -76,11 +77,7 @@ def journal_verbose_formatter(
     entries: dict[str, str], no_colors: bool = False, tz: tzinfo = UTC
 ) -> str:
     """Format parsed journal entries to a journalctl-like format."""
-    ts = (
-        datetime.fromtimestamp(int(entries["__REALTIME_TIMESTAMP"]) / 1e6, tz)
-        .replace(tzinfo=None)
-        .isoformat(sep=" ", timespec="milliseconds")
-    )
+    ts = _format_timestamp(entries["__REALTIME_TIMESTAMP"], tz)
 
     identifier = (
         f"{entries.get('SYSLOG_IDENTIFIER', '_UNKNOWN_')}[{entries['_PID']}]"
