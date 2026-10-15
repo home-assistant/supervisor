@@ -2,7 +2,7 @@
 
 from asyncio import IncompleteReadError
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from functools import wraps
 import json
 import re
@@ -39,7 +39,9 @@ def formatter(required_fields: list[str]):
 
 
 @formatter(["MESSAGE"])
-def journal_plain_formatter(entries: dict[str, str], no_colors: bool = False) -> str:
+def journal_plain_formatter(
+    entries: dict[str, str], no_colors: bool = False, tz: tzinfo = UTC
+) -> str:
     """Format parsed journal entries as a plain message."""
     return _strip_ansi_colors(entries["MESSAGE"]) if no_colors else entries["MESSAGE"]
 
@@ -53,12 +55,15 @@ def journal_plain_formatter(entries: dict[str, str], no_colors: bool = False) ->
         "MESSAGE",
     ]
 )
-def journal_verbose_formatter(entries: dict[str, str], no_colors: bool = False) -> str:
+def journal_verbose_formatter(
+    entries: dict[str, str], no_colors: bool = False, tz: tzinfo = UTC
+) -> str:
     """Format parsed journal entries to a journalctl-like format."""
-    ts = datetime.fromtimestamp(
-        int(entries["__REALTIME_TIMESTAMP"]) / 1e6, UTC
-    ).isoformat(sep=" ", timespec="milliseconds")
-    ts = ts[: ts.index(".") + 4]  # strip TZ offset
+    ts = (
+        datetime.fromtimestamp(int(entries["__REALTIME_TIMESTAMP"]) / 1e6, tz)
+        .replace(tzinfo=None)
+        .isoformat(sep=" ", timespec="milliseconds")
+    )
 
     identifier = (
         f"{entries.get('SYSLOG_IDENTIFIER', '_UNKNOWN_')}[{entries['_PID']}]"
@@ -79,10 +84,12 @@ async def journal_logs_reader(
     journal_logs: ClientResponse,
     log_formatter: LogFormatter = LogFormatter.PLAIN,
     no_colors: bool = False,
+    tz: tzinfo = UTC,
 ) -> AsyncGenerator[tuple[str | None, str]]:
     """Read logs from systemd journal line by line, formatted using the given formatter.
 
-    Optionally strip ANSI color codes from the entries' messages.
+    Optionally strip ANSI color codes from the entries' messages. Timestamps are
+    converted to the given timezone.
 
     Returns a generator of (cursor, formatted_entry) tuples.
     """
@@ -104,7 +111,7 @@ async def journal_logs_reader(
                 if entries:
                     yield (
                         entries.get("__CURSOR"),
-                        formatter_(entries, no_colors=no_colors),
+                        formatter_(entries, no_colors=no_colors, tz=tz),
                     )
                 entries = {}
                 continue

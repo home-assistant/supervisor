@@ -2,6 +2,7 @@
 
 import asyncio
 from unittest.mock import ANY, MagicMock
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -71,6 +72,34 @@ def test_format_verbose():
     )
 
 
+@pytest.mark.parametrize(
+    ("tz", "expected_ts"),
+    [
+        pytest.param(
+            ZoneInfo("Europe/Prague"), "2013-09-17 09:32:51.000", id="europe_prague"
+        ),
+        pytest.param(
+            ZoneInfo("America/New_York"),
+            "2013-09-17 03:32:51.000",
+            id="america_new_york",
+        ),
+    ],
+)
+def test_format_verbose_timezone(tz: ZoneInfo, expected_ts: str):
+    """Test verbose formatter converts timestamp to the given timezone."""
+    fields = {
+        "__REALTIME_TIMESTAMP": "1379403171000000",
+        "_HOSTNAME": "homeassistant",
+        "SYSLOG_IDENTIFIER": "python",
+        "_PID": "666",
+        "MESSAGE": "Hello, world!",
+    }
+    assert (
+        journal_verbose_formatter(fields, tz=tz)
+        == f"{expected_ts} homeassistant python[666]: Hello, world!"
+    )
+
+
 def test_format_verbose_newlines():
     """Test verbose formatter with newlines in message."""
     fields = {
@@ -124,6 +153,26 @@ async def test_parsing_verbose():
         journal_logs_reader(journal_logs, log_formatter=LogFormatter.VERBOSE)
     )
     assert line == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello, world!"
+
+
+async def test_parsing_verbose_timezone():
+    """Test verbose formatter uses timezone passed to the reader."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"__REALTIME_TIMESTAMP=1379403171000000\n"
+        b"_HOSTNAME=homeassistant\n"
+        b"SYSLOG_IDENTIFIER=python\n"
+        b"_PID=666\n"
+        b"MESSAGE=Hello, world!\n\n"
+    )
+    _, line = await anext(
+        journal_logs_reader(
+            journal_logs,
+            log_formatter=LogFormatter.VERBOSE,
+            tz=ZoneInfo("Europe/Prague"),
+        )
+    )
+    assert line == "2013-09-17 09:32:51.000 homeassistant python[666]: Hello, world!"
 
 
 async def test_parsing_newlines_in_message():
