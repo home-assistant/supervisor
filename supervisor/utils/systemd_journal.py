@@ -59,9 +59,11 @@ def journal_verbose_formatter(
     entries: dict[str, str], no_colors: bool = False, tz: tzinfo = UTC
 ) -> str:
     """Format parsed journal entries to a journalctl-like format."""
-    ts = datetime.fromtimestamp(
-        int(entries["__REALTIME_TIMESTAMP"]) / 1e6, tz
-    ).replace(tzinfo=None).isoformat(sep=" ", timespec="milliseconds")
+    ts = (
+        datetime.fromtimestamp(int(entries["__REALTIME_TIMESTAMP"]) / 1e6, tz)
+        .replace(tzinfo=None)
+        .isoformat(sep=" ", timespec="milliseconds")
+    )
 
     identifier = (
         f"{entries.get('SYSLOG_IDENTIFIER', '_UNKNOWN_')}[{entries['_PID']}]"
