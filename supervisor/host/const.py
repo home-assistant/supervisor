@@ -101,6 +101,7 @@ class LogFormatter(StrEnum):
     """Log formatter."""
 
     PLAIN = "plain"
+    TIMESTAMP = "timestamp"
     VERBOSE = "verbose"
 
 

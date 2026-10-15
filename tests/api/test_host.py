@@ -568,6 +568,105 @@ async def test_advanced_logs_timezone(
     )
 
 
+@pytest.mark.usefixtures("journald_gateway")
+@pytest.mark.parametrize(
+    "path",
+    [
+        pytest.param("/host/logs", id="host"),
+        pytest.param("/host/logs/identifiers/test", id="identifier"),
+        pytest.param("/host/logs/identifiers/test/follow", id="follow"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("query", "accept", "formatter", "no_colors"),
+    [
+        pytest.param(
+            "format=plain", "text/plain", LogFormatter.PLAIN, False, id="plain"
+        ),
+        pytest.param(
+            "format=timestamp",
+            "text/plain",
+            LogFormatter.TIMESTAMP,
+            False,
+            id="timestamp",
+        ),
+        pytest.param(
+            "format=verbose", "text/plain", LogFormatter.VERBOSE, False, id="verbose"
+        ),
+        pytest.param(
+            "format=timestamp&no_colors",
+            "text/plain",
+            LogFormatter.TIMESTAMP,
+            True,
+            id="no-colors",
+        ),
+        pytest.param(
+            "format=plain&verbose",
+            "text/x-log",
+            LogFormatter.PLAIN,
+            False,
+            id="plain-overrides-legacy",
+        ),
+        pytest.param(
+            "format=timestamp&verbose",
+            "text/x-log",
+            LogFormatter.TIMESTAMP,
+            False,
+            id="timestamp-overrides-legacy",
+        ),
+        pytest.param(
+            "verbose", "text/plain", LogFormatter.VERBOSE, False, id="legacy-verbose"
+        ),
+    ],
+)
+async def test_advanced_logs_format_query(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    journal_logs_reader: MagicMock,
+    path: str,
+    query: str,
+    accept: str,
+    formatter: LogFormatter,
+    no_colors: bool,
+) -> None:
+    """Test explicit log formats take precedence over defaults and legacy options."""
+    api_client, prefix = api_client_with_prefix
+    resp = await api_client.get(f"{prefix}{path}?{query}", headers={"Accept": accept})
+
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
+    journal_logs_reader.assert_called_once_with(
+        ANY, formatter, no_colors, tz=coresys.timezone_tzinfo
+    )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        pytest.param("format=invalid", id="unknown"),
+        pytest.param("format=", id="empty"),
+        pytest.param("format=TIMESTAMP", id="uppercase"),
+        pytest.param("format=invalid&verbose", id="legacy-override"),
+    ],
+)
+async def test_advanced_logs_invalid_format(
+    api_client_with_prefix: tuple[TestClient, str],
+    journald_logs: MagicMock,
+    journal_logs_reader: MagicMock,
+    query: str,
+) -> None:
+    """Test invalid formats fail before opening the journal stream."""
+    api_client, prefix = api_client_with_prefix
+    resp = await api_client.get(f"{prefix}/host/logs?{query}")
+
+    assert resp.status == 400
+    assert await resp.text() == (
+        "Invalid log format requested. Supported formats: plain, timestamp, verbose."
+    )
+    journald_logs.assert_not_called()
+    journal_logs_reader.assert_not_called()
+
+
 async def test_advanced_logs_errors(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
