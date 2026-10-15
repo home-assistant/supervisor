@@ -21,6 +21,8 @@ from supervisor.exceptions import (
     DBusNotConnectedError,
     DockerError,
     HassioError,
+    HomeAssistantCrashError,
+    HomeAssistantError,
     JobException,
     SupervisorUpdateError,
     WhoamiSSLError,
@@ -723,6 +725,32 @@ async def test_start_after_supervisor_restart_releases_port_before_core_start(
         await coresys.core.start()
 
     assert call_sequence.index("port_released") < call_sequence.index("core_start")
+
+
+@pytest.mark.parametrize(
+    ("start_error", "rebuild_called"),
+    [
+        pytest.param(HomeAssistantCrashError(), True, id="crash_rebuilds"),
+        pytest.param(HomeAssistantError(), False, id="error_captured"),
+    ],
+)
+@pytest.mark.usefixtures("core_start_base_mocks")
+async def test_start_core_start_failure(
+    coresys: CoreSys, start_error: HomeAssistantError, rebuild_called: bool
+):
+    """A Core crash on start triggers a rebuild, other errors are only captured."""
+    coresys.homeassistant.core.start.side_effect = start_error
+
+    with (
+        patch.object(coresys.homeassistant.core, "rebuild", new=AsyncMock()),
+        patch("supervisor.core.async_capture_exception") as capture_mock,
+    ):
+        await coresys.core.start()
+
+        capture_mock.assert_awaited_once_with(start_error)
+        assert coresys.homeassistant.core.rebuild.await_count == int(rebuild_called)
+
+    assert coresys.core.state == CoreState.RUNNING
 
 
 @pytest.mark.usefixtures("core_start_base_mocks")
