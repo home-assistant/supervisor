@@ -29,6 +29,7 @@ async def test_base(coresys: CoreSys):
 
 async def test_check(coresys: CoreSys):
     """Test check."""
+    coresys.security.pwned = True
     app_pwned = CheckAppPwned(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
