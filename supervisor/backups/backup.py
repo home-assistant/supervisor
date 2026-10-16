@@ -528,7 +528,7 @@ class Backup(JobGroup):
         try:
             yield
             await self._create_finalize(outer_secure_tarfile)
-        except Exception:
+        except BaseException:
             self._outer_secure_tarfile = None
             # Close may fail (e.g. ENOSPC writing end-of-archive
             # markers), but tarfile's finally ensures the file handle
