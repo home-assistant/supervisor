@@ -26,6 +26,7 @@ from ..const import (
     ATTR_SESSION_DATA_USER_ID,
     ATTR_TITLE,
     HEADER_REMOTE_USER_DISPLAY_NAME,
+    HEADER_REMOTE_USER_GROUPS,
     HEADER_REMOTE_USER_ID,
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
@@ -379,6 +380,8 @@ def _init_header(
             headers[HEADER_REMOTE_USER_NAME] = user.username
         if user.name is not None:
             headers[HEADER_REMOTE_USER_DISPLAY_NAME] = user.name
+        if groups := user.effective_group_ids:
+            headers[HEADER_REMOTE_USER_GROUPS] = ",".join(groups)
 
     # filter flags
     for name, value in request.headers.items():
@@ -395,6 +398,7 @@ def _init_header(
             istr(HEADER_REMOTE_USER_ID),
             istr(HEADER_REMOTE_USER_NAME),
             istr(HEADER_REMOTE_USER_DISPLAY_NAME),
+            istr(HEADER_REMOTE_USER_GROUPS),
         ):
             continue
         headers.add(name, value)

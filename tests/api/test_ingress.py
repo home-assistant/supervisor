@@ -290,7 +290,11 @@ async def test_ingress_proxy_enforces_panel_admin(
             {"return_value": [ADMIN_USER]},
             True,
             200,
-            {"X-Remote-User-Name": "admin", "X-Remote-User-Display-Name": "Admin"},
+            {
+                "X-Remote-User-Name": "admin",
+                "X-Remote-User-Display-Name": "Admin",
+                "X-Remote-User-Groups": "system-admin",
+            },
             True,
             id="resolved_admin",
         ),
@@ -301,6 +305,18 @@ async def test_ingress_proxy_enforces_panel_admin(
             {"X-Remote-User-Name": "admin", "X-Remote-User-Display-Name": "Renamed"},
             True,
             id="resolved_renamed_demoted_user",
+        ),
+        pytest.param(
+            {"return_value": [{**ADMIN_USER, "is_owner": True, "group_ids": []}]},
+            True,
+            200,
+            {
+                "X-Remote-User-Name": "admin",
+                "X-Remote-User-Display-Name": "Admin",
+                "X-Remote-User-Groups": "system-admin",
+            },
+            True,
+            id="resolved_owner_without_admin_group",
         ),
         pytest.param(
             {"return_value": [REGULAR_USER]}, True, 401, None, False, id="removed_user"
@@ -351,7 +367,12 @@ async def test_ingress_proxy_resolves_unresolved_session(
         received_headers = {
             key: value
             for key, value in request.headers.items()
-            if key in ("X-Remote-User-Name", "X-Remote-User-Display-Name")
+            if key
+            in (
+                "X-Remote-User-Name",
+                "X-Remote-User-Display-Name",
+                "X-Remote-User-Groups",
+            )
         }
         return web.Response(body=b"ok", content_type="text/plain")
 
@@ -407,7 +428,12 @@ async def test_ingress_proxy_uses_cached_user(
         received_headers = {
             key: value
             for key, value in request.headers.items()
-            if key in ("X-Remote-User-Name", "X-Remote-User-Display-Name")
+            if key
+            in (
+                "X-Remote-User-Name",
+                "X-Remote-User-Display-Name",
+                "X-Remote-User-Groups",
+            )
         }
         return web.Response(body=b"ok", content_type="text/plain")
 
@@ -446,8 +472,69 @@ async def test_ingress_proxy_uses_cached_user(
         assert received_headers == {
             "X-Remote-User-Name": "admin",
             "X-Remote-User-Display-Name": "Admin",
+            "X-Remote-User-Groups": "system-admin",
         }
         ha_ws_client.async_send_command.assert_not_called()
+    finally:
+        await app_server.close()
+
+
+@pytest.mark.usefixtures("core_users")
+async def test_ingress_proxy_replaces_client_user_headers(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    real_websession: aiohttp.ClientSession,
+):
+    """Test user headers sent by the client are replaced by the session's user."""
+    api_client, prefix = api_client_with_prefix
+    received_headers: dict[str, str] | None = None
+
+    async def mock_app_handler(request: web.Request) -> web.Response:
+        nonlocal received_headers
+        received_headers = {
+            key: value
+            for key, value in request.headers.items()
+            if key.startswith("X-Remote-User-")
+        }
+        return web.Response(body=b"ok", content_type="text/plain")
+
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        resp = await api_client.post(
+            f"{prefix}/ingress/session", json={"user_id": "user-id"}
+        )
+        session = (await resp.json())["data"]["session"]
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_addon"
+        mock_app.panel_admin = False
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+        mock_app.ingress_stream = False
+
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_app):
+            resp = await api_client.get(
+                f"{prefix}/ingress/{ingress_token}/",
+                cookies={"ingress_session": session},
+                headers={
+                    "X-Remote-User-Id": "admin-id",
+                    "X-Remote-User-Name": "admin",
+                    "X-Remote-User-Display-Name": "Admin",
+                    "X-Remote-User-Groups": "system-admin",
+                },
+            )
+            assert resp.status == 200
+        assert received_headers == {
+            "X-Remote-User-Id": "user-id",
+            "X-Remote-User-Name": "user",
+            "X-Remote-User-Display-Name": "User",
+            "X-Remote-User-Groups": "system-users",
+        }
     finally:
         await app_server.close()
 
