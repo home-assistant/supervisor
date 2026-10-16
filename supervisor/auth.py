@@ -99,18 +99,21 @@ class Auth(FileConfiguration, CoreSysAttributes):
             _LOGGER.info("Home Assistant not running, checking cache")
             return cache_hit is True
 
-        # No cache hit
-        if cache_hit is None:
+        # A mismatch may be a changed password, so only trust positive hits
+        if cache_hit is not True:
             return await self._backend_login(app, username, password)
 
         # Home Assistant Core take over 1-2sec to validate it
         # Let's use the cache and update the cache in background
         if username not in self._running:
-            self._running[username] = self.sys_create_task(
+            task = self.sys_create_task(
                 self._refresh_cached_login(app, username, password)
             )
+            # Cleanup must also run if the task is cancelled before it starts
+            task.add_done_callback(lambda _: self._running.pop(username, None))
+            self._running[username] = task
 
-        return cache_hit
+        return True
 
     async def _refresh_cached_login(
         self, app: App, username: str, password: str
@@ -150,8 +153,6 @@ class Auth(FileConfiguration, CoreSysAttributes):
             raise
         except HomeAssistantAPIError as err:
             _LOGGER.error("Can't request auth on Home Assistant: %s", err)
-        finally:
-            self._running.pop(username, None)
 
         raise AuthHomeAssistantAPIValidationError
 
