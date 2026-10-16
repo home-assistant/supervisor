@@ -1,8 +1,9 @@
 """Test scheduled tasks."""
 
 import asyncio
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from shutil import copy
+from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, call, patch
 
 from aiodocker.containers import DockerContainer
@@ -110,6 +111,41 @@ async def test_watchdog_homeassistant_api_error_state(
         restart.assert_not_called()
 
     assert coresys.homeassistant.error_state is error_state
+
+
+async def _block_forever(**_: Any) -> None:
+    """Never return, like a Core job that is still running."""
+    await asyncio.Event().wait()
+
+
+@pytest.mark.parametrize(
+    "stop_side_effect",
+    [
+        pytest.param(None, id="job_finished"),
+        pytest.param(_block_forever, id="job_running"),
+    ],
+)
+async def test_watchdog_homeassistant_api_keeps_error_state_after_core_job(
+    tasks: Tasks, coresys: CoreSys, stop_side_effect: Callable | None
+):
+    """Test a Core job during the API check keeps the error state."""
+    core = coresys.homeassistant.core
+    core._error_state = True
+    job_tasks: list[asyncio.Task] = []
+
+    async def check_api_state(*_: Any) -> bool:
+        job_tasks.append(asyncio.create_task(core.stop()))
+        await asyncio.wait(job_tasks, timeout=0.1)
+        return True
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=stop_side_effect),
+        patch.object(HomeAssistantAPI, "check_api_state", new=check_api_state),
+    ):
+        await tasks._watchdog_homeassistant_api()
+        job_tasks[0].cancel()
+
+    assert coresys.homeassistant.error_state is True
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")

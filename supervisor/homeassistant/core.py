@@ -95,9 +95,12 @@ class HomeAssistantCore(JobGroup):
         """Return True if system is in error."""
         return self._error_state
 
-    def clear_error_state(self) -> None:
-        """Clear error state once Core was observed running again."""
-        if self._error_state:
+    def clear_error_state(self, generation: int) -> None:
+        """Clear error state once Core was observed running again.
+
+        Skipped if a Core job ran since the observation started at generation.
+        """
+        if self._error_state and generation == self.generation:
             _LOGGER.info("Home Assistant Core is running again, clearing error state")
             self._error_state = False
 
