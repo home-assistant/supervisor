@@ -288,7 +288,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 # pylint: disable=no-value-for-parameter
 SCHEMA_SECURITY_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_PWNED, default=True): vol.Boolean(),
+        vol.Optional(ATTR_PWNED, default=False): vol.Boolean(),
         vol.Optional(ATTR_FORCE_SECURITY, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
