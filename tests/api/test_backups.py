@@ -958,6 +958,31 @@ async def test_upload_duplicate_backup_new_location(
     assert coresys.backups.get("7fed74c8").location is None
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_upload_filename_taken(api_client: TestClient, coresys: CoreSys):
+    """Test uploading a backup with the filename of a different backup."""
+    existing_file = Path(
+        copy(
+            get_fixture_path("test_consolidate.tar"),
+            coresys.config.path_backup / "taken.tar",
+        )
+    )
+    existing_content = existing_file.read_bytes()
+    await coresys.backups.reload()
+
+    backup_file = get_fixture_path("backup_example.tar")
+    with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
+        mp.append(file)
+        resp = await api_client.post("/backups/new/upload?filename=taken.tar", data=mp)
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert "already exists" in body["message"]
+    assert existing_file.read_bytes() == existing_content
+    assert not coresys.backups.get("7fed74c8")
+    assert not list(coresys.config.path_tmp.iterdir())
+
+
 @pytest.mark.parametrize(
     ("filename", "expected_status"),
     [("good.tar", 200), ("../bad.tar", 400), ("bad", 400)],

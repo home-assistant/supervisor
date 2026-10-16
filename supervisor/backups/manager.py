@@ -7,6 +7,7 @@ from collections.abc import Awaitable
 from contextlib import suppress
 import errno
 import logging
+import os
 from pathlib import Path
 from shutil import copy
 from typing import cast
@@ -52,6 +53,29 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 JOB_FULL_RESTORE = "backup_manager_full_restore"
 JOB_PARTIAL_RESTORE = "backup_manager_partial_restore"
+
+
+def _move_no_replace(src: Path, dst: Path) -> None:
+    """Move a file, raising FileExistsError instead of replacing dst."""
+    try:
+        os.link(src, dst)
+    except FileExistsError:
+        raise
+    except OSError as err:
+        # Network and FUSE filesystems report missing hard link support with
+        # various errors, fall back to check and rename for all of them
+        if dst.exists():
+            raise FileExistsError(
+                errno.EEXIST, os.strerror(errno.EEXIST), str(dst)
+            ) from err
+        src.rename(dst)
+        return
+
+    # dst is complete at this point, a leftover src must not fail the move
+    try:
+        src.unlink()
+    except OSError as err:
+        _LOGGER.warning("Can't remove %s after moving it: %s", src, err)
 
 
 class BackupManager(FileConfiguration, JobGroup):
@@ -456,8 +480,24 @@ class BackupManager(FileConfiguration, JobGroup):
         else:
             tar_file = Path(self._get_base_path(location), f"{backup.slug}.tar")
 
+        location_name = self._get_location_name(location)
         try:
-            await self.sys_run_in_executor(backup.tarfile.rename, tar_file)
+            await self.sys_run_in_executor(_move_no_replace, backup.tarfile, tar_file)
+        except FileExistsError:
+            existing = self._backups.get(backup.slug)
+            if (
+                not existing
+                or not (existing_location := existing.all_locations.get(location_name))
+                or existing_location.path != tar_file
+            ):
+                raise BackupFileExistError(
+                    f"Cannot import backup to {tar_file.as_posix()}, file already exists!",
+                    _LOGGER.error,
+                ) from None
+            _LOGGER.info("Backup %s already exists at %s", backup.slug, tar_file)
+            if additional_locations:
+                await self._copy_to_additional_locations(existing, additional_locations)
+            return existing
         except OSError as err:
             if location in {LOCATION_CLOUD_BACKUP, None}:
                 self.sys_resolution.check_oserror(err)
@@ -469,7 +509,7 @@ class BackupManager(FileConfiguration, JobGroup):
             self.coresys,
             tar_file,
             backup.slug,
-            self._get_location_name(location),
+            location_name,
             backup.data,
         )
         if not await backup.load():
