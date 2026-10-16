@@ -206,6 +206,8 @@ class App(AppModel):
                 return (
                     AppState.STARTUP if self.instance.healthcheck else AppState.STARTED
                 )
+            case ContainerState.STARTING:
+                return AppState.STARTUP
             case ContainerState.HEALTHY | ContainerState.UNHEALTHY:
                 return AppState.STARTED
             case ContainerState.STOPPED:
