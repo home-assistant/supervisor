@@ -143,6 +143,21 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         rebuild.assert_not_called()
         start.assert_not_called()
 
+        # Do not restart while the healthcheck is still starting
+        current_state.return_value = ContainerState.STARTING
+        await fire_bus_event(
+            coresys,
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name=plugin.instance.name,
+                state=ContainerState.STARTING,
+                id="abc123",
+                time=1,
+            ),
+        )
+        rebuild.assert_not_called()
+        start.assert_not_called()
+
         # Other containers ignored
         await fire_bus_event(
             coresys,
