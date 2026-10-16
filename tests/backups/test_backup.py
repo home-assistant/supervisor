@@ -329,14 +329,20 @@ async def test_backup_oserror_close_suppressed_on_error(
             ValueError,
             id="invalid_metadata",
         ),
+        pytest.param(
+            "supervisor.backups.backup.Backup._create_finalize",
+            asyncio.CancelledError(),
+            asyncio.CancelledError,
+            id="cancelled",
+        ),
     ],
 )
 async def test_backup_finalize_error_closes_tar(
     coresys: CoreSys,
     tmp_path: Path,
     target: str,
-    side_effect: Exception,
-    expected: type[Exception],
+    side_effect: BaseException,
+    expected: type[BaseException],
 ):
     """Test the outer tar is closed when finalizing the backup fails."""
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
