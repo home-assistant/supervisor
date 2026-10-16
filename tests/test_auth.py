@@ -135,3 +135,22 @@ async def test_auth_foreground_login_keeps_background_refresh(
     assert "username" not in coresys.auth._running
     assert make_request.call_count == 2
     assert coresys.auth._check_cache("username", "password") is None
+
+
+async def test_auth_background_refresh_cancelled_before_start(
+    coresys: CoreSys, mock_auth_backend: AsyncMock, mock_api_state: AsyncMock
+):
+    """Test a background refresh cancelled before it runs is not left tracked."""
+    app = MagicMock()
+    mock_api_state.return_value = True
+
+    await coresys.auth._update_cache("username", "password")
+
+    assert await coresys.auth.check_login(app, "username", "password")
+    task = coresys.auth._running["username"]
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert "username" not in coresys.auth._running
+    mock_auth_backend.assert_not_awaited()

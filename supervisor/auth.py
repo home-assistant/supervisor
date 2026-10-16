@@ -106,9 +106,12 @@ class Auth(FileConfiguration, CoreSysAttributes):
         # Home Assistant Core take over 1-2sec to validate it
         # Let's use the cache and update the cache in background
         if username not in self._running:
-            self._running[username] = self.sys_create_task(
+            task = self.sys_create_task(
                 self._refresh_cached_login(app, username, password)
             )
+            # Cleanup must also run if the task is cancelled before it starts
+            task.add_done_callback(lambda _: self._running.pop(username, None))
+            self._running[username] = task
 
         return True
 
@@ -120,11 +123,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
         Nothing awaits this task, so failures already logged by the request
         path are consumed here instead of surfacing as unretrieved task errors.
         """
-        try:
-            with suppress(AuthHomeAssistantAPIValidationError, HomeAssistantAuthError):
-                await self._backend_login(app, username, password)
-        finally:
-            self._running.pop(username, None)
+        with suppress(AuthHomeAssistantAPIValidationError, HomeAssistantAuthError):
+            await self._backend_login(app, username, password)
 
     async def _backend_login(self, app: App, username: str, password: str) -> bool:
         """Check username login on core."""
