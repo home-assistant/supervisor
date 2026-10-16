@@ -291,7 +291,11 @@ async def test_ingress_proxy_enforces_panel_admin(
             {"return_value": [ADMIN_USER]},
             True,
             200,
-            {"X-Remote-User-Name": "admin", "X-Remote-User-Display-Name": "Admin"},
+            {
+                "X-Remote-User-Name": "admin",
+                "X-Remote-User-Display-Name": "Admin",
+                "X-Remote-User-Groups": "system-admin",
+            },
             True,
             id="resolved_admin",
         ),
@@ -302,6 +306,18 @@ async def test_ingress_proxy_enforces_panel_admin(
             {"X-Remote-User-Name": "admin", "X-Remote-User-Display-Name": "Renamed"},
             True,
             id="resolved_renamed_demoted_user",
+        ),
+        pytest.param(
+            {"return_value": [{**ADMIN_USER, "is_owner": True, "group_ids": []}]},
+            True,
+            200,
+            {
+                "X-Remote-User-Name": "admin",
+                "X-Remote-User-Display-Name": "Admin",
+                "X-Remote-User-Groups": "system-admin",
+            },
+            True,
+            id="resolved_owner_without_admin_group",
         ),
         pytest.param(
             {"return_value": [REGULAR_USER]}, True, 401, None, False, id="removed_user"
@@ -352,7 +368,12 @@ async def test_ingress_proxy_resolves_unresolved_session(
         received_headers = {
             key: value
             for key, value in request.headers.items()
-            if key in ("X-Remote-User-Name", "X-Remote-User-Display-Name")
+            if key
+            in (
+                "X-Remote-User-Name",
+                "X-Remote-User-Display-Name",
+                "X-Remote-User-Groups",
+            )
         }
         return web.Response(body=b"ok", content_type="text/plain")
 
@@ -408,7 +429,12 @@ async def test_ingress_proxy_uses_cached_user(
         received_headers = {
             key: value
             for key, value in request.headers.items()
-            if key in ("X-Remote-User-Name", "X-Remote-User-Display-Name")
+            if key
+            in (
+                "X-Remote-User-Name",
+                "X-Remote-User-Display-Name",
+                "X-Remote-User-Groups",
+            )
         }
         return web.Response(body=b"ok", content_type="text/plain")
 
@@ -447,6 +473,7 @@ async def test_ingress_proxy_uses_cached_user(
         assert received_headers == {
             "X-Remote-User-Name": "admin",
             "X-Remote-User-Display-Name": "Admin",
+            "X-Remote-User-Groups": "system-admin",
         }
         ha_ws_client.async_send_command.assert_not_called()
     finally:
@@ -714,6 +741,7 @@ FORGED_HEADERS = {
     "X-Remote-User-Id": "victim-id",
     "X-Remote-User-Name": "victim",
     "X-Remote-User-Display-Name": "Victim",
+    "X-Remote-User-Groups": "system-admin",
     "X-Supervisor-Token": "forged-token",
     "X-Hassio-Key": "forged-key",
 }
@@ -721,6 +749,7 @@ EXPECTED_IDENTITY_HEADERS = {
     "x-remote-user-id": "user-id",
     "x-remote-user-name": "user",
     "x-remote-user-display-name": "User",
+    "x-remote-user-groups": "system-users",
 }
 
 HEADER_CASES = [
