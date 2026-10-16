@@ -5,14 +5,18 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
+import pytest
 
 from supervisor.const import BusEvent, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import HomeAssistantError
+from supervisor.exceptions import HomeAssistantCrashError, HomeAssistantError
+from supervisor.homeassistant.const import WATCHDOG_MAX_ATTEMPTS
 
 from tests.common import fire_bus_event
+
+# pylint: disable=protected-access
 
 
 async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
@@ -254,3 +258,63 @@ async def test_home_assistant_watchdog_unregisters_on_shutdown(
             )
             start.assert_not_called()
             restart.assert_not_called()
+
+
+def _limit_sleep() -> AsyncMock:
+    """Return a sleep mock that aborts a watchdog loop which never ends."""
+    return AsyncMock(
+        side_effect=[None] * (WATCHDOG_MAX_ATTEMPTS * 2)
+        + [RuntimeError("watchdog loop did not end")]
+    )
+
+
+async def test_home_assistant_watchdog_retries_after_own_failure(
+    coresys: CoreSys,
+) -> None:
+    """Test watchdog keeps retrying when its own restart set the error state."""
+    core = coresys.homeassistant.core
+
+    def crash(*_, **__) -> None:
+        core._error_state = True
+        raise HomeAssistantCrashError
+
+    with (
+        patch.object(type(core), "start", side_effect=crash) as start,
+        patch.object(type(core), "rebuild", side_effect=crash) as rebuild,
+        patch.object(
+            type(core.instance), "current_state", return_value=ContainerState.FAILED
+        ),
+        patch("supervisor.homeassistant.core.asyncio.sleep", new=_limit_sleep()),
+    ):
+        await core._restart_after_problem(ContainerState.FAILED, 1)
+
+    start.assert_called_once()
+    assert rebuild.call_count == WATCHDOG_MAX_ATTEMPTS
+
+
+@pytest.mark.parametrize(
+    "state", [ContainerState.FAILED, ContainerState.UNHEALTHY], ids=lambda s: s.value
+)
+async def test_home_assistant_watchdog_gives_up_in_error_state(
+    coresys: CoreSys, state: ContainerState, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test watchdog stops waiting on an error state it did not cause."""
+    core = coresys.homeassistant.core
+    core._error_state = True
+
+    with (
+        patch.object(type(core), "start") as start,
+        patch.object(type(core), "rebuild") as rebuild,
+        patch.object(type(core), "restart") as restart,
+        patch.object(type(core.instance), "current_state", return_value=state),
+        patch(
+            "supervisor.homeassistant.core.asyncio.sleep", new=_limit_sleep()
+        ) as sleep,
+    ):
+        await core._restart_after_problem(state, 1)
+
+    start.assert_not_called()
+    rebuild.assert_not_called()
+    restart.assert_not_called()
+    assert sleep.call_count == WATCHDOG_MAX_ATTEMPTS - 1
+    assert "Watchdog cannot restart Home Assistant" in caplog.text

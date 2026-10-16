@@ -95,6 +95,15 @@ class HomeAssistantCore(JobGroup):
         """Return True if system is in error."""
         return self._error_state
 
+    def clear_error_state(self, generation: int) -> None:
+        """Clear error state once Core was observed running again.
+
+        Skipped if a Core job ran since the observation started at generation.
+        """
+        if self._error_state and generation == self.generation:
+            _LOGGER.info("Home Assistant Core is running again, clearing error state")
+            self._error_state = False
+
     async def load(self) -> None:
         """Prepare Home Assistant object."""
         self._watchdog_listener = self.sys_bus.register_event(
@@ -743,9 +752,16 @@ class HomeAssistantCore(JobGroup):
     ):
         """Restart unhealthy or failed Home Assistant."""
         attempts = 0
+        restarted = False
         while await self.instance.current_state() == state:
-            # Don't interrupt a task in progress or if rollback is handling it
-            if not (self.in_progress or self.error_state):
+            if self.in_progress:
+                # Don't interrupt a task in progress, e.g. an update rollback
+                pass
+            elif self.error_state and not restarted:
+                # Core failed to start outside the watchdog, give up eventually
+                attempts += 1
+            else:
+                restarted = True
                 if state == ContainerState.FAILED:
                     _LOGGER.warning(
                         "Watchdog found Home Assistant exited with code %d, "
