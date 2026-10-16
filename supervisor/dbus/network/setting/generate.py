@@ -295,9 +295,12 @@ def get_connection_from_interface(
             CONF_ATTR_802_WIRELESS_POWERSAVE: Variant("i", 0),
         }
         if interface.wifi and interface.wifi.ssid:
-            wireless[CONF_ATTR_802_WIRELESS_SSID] = Variant(
-                "ay", interface.wifi.ssid.encode("UTF-8")
-            )
+            ssid_raw = interface.wifi.ssid_raw
+            if ssid_raw is None or interface.wifi.ssid != ssid_raw.decode(
+                errors="replace"
+            ):
+                ssid_raw = interface.wifi.ssid.encode("UTF-8")
+            wireless[CONF_ATTR_802_WIRELESS_SSID] = Variant("ay", ssid_raw)
 
         conn[CONF_ATTR_802_WIRELESS] = wireless
 

@@ -90,6 +90,9 @@ class WifiConfig:
     # connection rather than the stored profile - unlike `ssid` above, this
     # reflects observed state and is `None` when not actually connected.
     active_ssid: str | None = None
+    # Stored profile's SSID bytes, written back unchanged while `ssid` still
+    # matches them, so non-UTF-8 SSIDs survive a round-trip through `ssid`.
+    ssid_raw: bytes | None = None
 
 
 @dataclass(slots=True)
@@ -409,6 +412,7 @@ class Interface:
             psk=psk,
             signal=signal,
             active_ssid=active_ssid,
+            ssid_raw=settings.wireless.ssid_raw if settings.wireless else None,
         )
 
     @staticmethod
