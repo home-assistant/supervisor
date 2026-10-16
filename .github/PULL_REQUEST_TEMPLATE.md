@@ -58,7 +58,7 @@
 
 If API endpoints or add-on configuration are added/changed:
 
-- [ ] Documentation added/updated for [developers.home-assistant.io][docs-repository]
+- [ ] Documentation added/updated for [contributors.home-assistant.io][docs-repository]
 - [ ] [CLI][cli-repository] updated (if necessary)
 - [ ] [Client library][client-library-repository] updated (if necessary)
 
@@ -68,7 +68,7 @@ If API endpoints or add-on configuration are added/changed:
   Below, some useful links you could explore:
 -->
 
-[dev-checklist]: https://developers.home-assistant.io/docs/en/development_checklist.html
-[docs-repository]: https://github.com/home-assistant/developers.home-assistant
+[dev-checklist]: https://contributors.home-assistant.io/core/development/checklist/
+[docs-repository]: https://github.com/home-assistant/contributors.home-assistant.io
 [cli-repository]: https://github.com/home-assistant/cli
 [client-library-repository]: https://github.com/home-assistant-libs/python-supervisor-client/
