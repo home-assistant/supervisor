@@ -77,9 +77,11 @@ RE_FILENAME_FALLBACK = re.compile(r'[^\x20-\x7e]|["\\]')
 def _content_disposition_attachment(filename: str) -> str:
     """Return an RFC 6266 attachment header value for any filename."""
     fallback = RE_FILENAME_FALLBACK.sub("_", filename)
+    # Names read from disk may carry undecodable bytes as surrogate escapes
+    utf8_filename = filename.encode(errors="surrogateescape").decode(errors="replace")
     return (
         f'attachment; filename="{fallback}"; '
-        f"filename*=UTF-8''{quote(filename, safe='')}"
+        f"filename*=UTF-8''{quote(utf8_filename, safe='')}"
     )
 
 

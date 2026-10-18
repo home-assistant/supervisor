@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 import errno
+import os
 from pathlib import Path, PurePath
 from shutil import copy
 from typing import Any
@@ -1066,6 +1067,12 @@ async def test_backup_full_filename_control_characters(
             "new\nline.tar",
             "attachment; filename=\"new_line.tar\"; filename*=UTF-8''new%0Aline.tar",
             id="newline",
+        ),
+        pytest.param(
+            os.fsdecode(b"backup-\xff.tar"),
+            'attachment; filename="backup-_.tar"; '
+            "filename*=UTF-8''backup-%EF%BF%BD.tar",
+            id="non-utf8-bytes",
         ),
     ],
 )
