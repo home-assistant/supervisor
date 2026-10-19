@@ -45,7 +45,7 @@ class Security(FileConfiguration, CoreSysAttributes):
     async def verify_secret(self, pwned_hash: str) -> None:
         """Verify pwned state of a secret."""
         if not self.pwned:
-            _LOGGER.warning("Disabled pwned, skip validation")
+            _LOGGER.debug("Disabled pwned, skip validation")
             return
 
         try:

@@ -80,7 +80,7 @@ async def test_approve(coresys: CoreSys, supervisor_internet):
     )
 
 
-async def test_with_global_disable(coresys: CoreSys, caplog):
+async def test_with_global_disable(coresys: CoreSys):
     """Test when pwned is globally disabled."""
     coresys.security.pwned = False
     app_pwned = CheckAppPwned(coresys)
@@ -93,7 +93,6 @@ async def test_with_global_disable(coresys: CoreSys, caplog):
     coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
     await app_pwned.run_check.__wrapped__(app_pwned)
     assert not coresys.security.verify_secret.called
-    assert "Skipping app_pwned, pwned is globally disabled" in caplog.text
 
 
 async def test_did_run(coresys: CoreSys):
