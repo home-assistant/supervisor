@@ -38,7 +38,7 @@ class CheckAppPwned(CheckBase):
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         if not self.sys_security.pwned:
-            _LOGGER.warning("Skipping %s, pwned is globally disabled", self.slug)
+            _LOGGER.debug("Skipping %s, pwned is globally disabled", self.slug)
             return
         await self.sys_homeassistant.secrets.reload()
 
