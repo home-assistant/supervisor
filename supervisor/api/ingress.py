@@ -13,7 +13,7 @@ from aiohttp.web_exceptions import (
     HTTPServiceUnavailable,
     HTTPUnauthorized,
 )
-from multidict import CIMultiDict, istr
+from multidict import CIMultiDict
 import voluptuous as vol
 
 from ..apps.app import App
@@ -41,6 +41,34 @@ from .const import COOKIE_INGRESS, WEBSOCKETS
 from .utils import api_process, api_validate, require_home_assistant, stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Header name comparisons must be case-insensitive, istr equality is not
+_REQUEST_HEADERS_FILTER = frozenset(
+    name.lower()
+    for name in (
+        hdrs.CONTENT_LENGTH,
+        hdrs.CONTENT_ENCODING,
+        hdrs.TRANSFER_ENCODING,
+        hdrs.SEC_WEBSOCKET_EXTENSIONS,
+        hdrs.SEC_WEBSOCKET_PROTOCOL,
+        hdrs.SEC_WEBSOCKET_VERSION,
+        hdrs.SEC_WEBSOCKET_KEY,
+        HEADER_TOKEN,
+        HEADER_TOKEN_OLD,
+        HEADER_REMOTE_USER_ID,
+        HEADER_REMOTE_USER_NAME,
+        HEADER_REMOTE_USER_DISPLAY_NAME,
+    )
+)
+_RESPONSE_HEADERS_FILTER = frozenset(
+    name.lower()
+    for name in (
+        hdrs.TRANSFER_ENCODING,
+        hdrs.CONTENT_LENGTH,
+        hdrs.CONTENT_TYPE,
+        hdrs.CONTENT_ENCODING,
+    )
+)
 
 MAX_WEBSOCKET_MESSAGE_SIZE = 16 * 1024 * 1024  # 16 MiB
 
@@ -373,31 +401,18 @@ def _init_header(
     """Create initial header."""
     headers = CIMultiDict[str]()
 
+    for name, value in request.headers.items():
+        if name.lower() in _REQUEST_HEADERS_FILTER:
+            continue
+        headers.add(name, value)
+
+    # Set after copying so a client cannot smuggle these in any letter case
     if user is not None:
         headers[HEADER_REMOTE_USER_ID] = user.id
         if user.username is not None:
             headers[HEADER_REMOTE_USER_NAME] = user.username
         if user.name is not None:
             headers[HEADER_REMOTE_USER_DISPLAY_NAME] = user.name
-
-    # filter flags
-    for name, value in request.headers.items():
-        if name in (
-            hdrs.CONTENT_LENGTH,
-            hdrs.CONTENT_ENCODING,
-            hdrs.TRANSFER_ENCODING,
-            hdrs.SEC_WEBSOCKET_EXTENSIONS,
-            hdrs.SEC_WEBSOCKET_PROTOCOL,
-            hdrs.SEC_WEBSOCKET_VERSION,
-            hdrs.SEC_WEBSOCKET_KEY,
-            istr(HEADER_TOKEN),
-            istr(HEADER_TOKEN_OLD),
-            istr(HEADER_REMOTE_USER_ID),
-            istr(HEADER_REMOTE_USER_NAME),
-            istr(HEADER_REMOTE_USER_DISPLAY_NAME),
-        ):
-            continue
-        headers.add(name, value)
 
     # Update X-Forwarded-For
     if request.transport:
@@ -413,12 +428,7 @@ def _response_header(response: aiohttp.ClientResponse) -> CIMultiDict[str]:
     headers = CIMultiDict[str]()
 
     for name, value in response.headers.items():
-        if name in (
-            hdrs.TRANSFER_ENCODING,
-            hdrs.CONTENT_LENGTH,
-            hdrs.CONTENT_TYPE,
-            hdrs.CONTENT_ENCODING,
-        ):
+        if name.lower() in _RESPONSE_HEADERS_FILTER:
             continue
         headers.add(name, value)
 

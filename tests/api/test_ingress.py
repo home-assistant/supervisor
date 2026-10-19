@@ -1,13 +1,14 @@
 """Test ingress API."""
 
 import asyncio
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 from aiohttp import WSCloseCode, WSMsgType, hdrs, web
 from aiohttp.test_utils import TestClient, TestServer
+from multidict import CIMultiDictProxy
 import pytest
 
 from supervisor.api.const import WEBSOCKETS
@@ -707,3 +708,140 @@ async def test_ingress_websocket_closed_when_stopping(
 
     assert msg.type == WSMsgType.CLOSE
     assert msg.data == WSCloseCode.GOING_AWAY
+
+
+FORGED_HEADERS = {
+    "X-Remote-User-Id": "victim-id",
+    "X-Remote-User-Name": "victim",
+    "X-Remote-User-Display-Name": "Victim",
+    "X-Supervisor-Token": "forged-token",
+    "X-Hassio-Key": "forged-key",
+}
+EXPECTED_IDENTITY_HEADERS = {
+    "x-remote-user-id": "user-id",
+    "x-remote-user-name": "user",
+    "x-remote-user-display-name": "User",
+}
+
+HEADER_CASES = [
+    pytest.param(str, id="exact_case"),
+    pytest.param(str.lower, id="lower_case"),
+    pytest.param(str.upper, id="upper_case"),
+    pytest.param(str.title, id="title_case"),
+]
+
+
+def _identity_headers(headers: CIMultiDictProxy[str]) -> dict[str, list[str]]:
+    """Collect every variant of the identity and token headers an app received."""
+    return {
+        name.lower(): headers.getall(name)
+        for name in {name.lower() for name in headers}
+        if name.lower() in {key.lower() for key in FORGED_HEADERS}
+    }
+
+
+@pytest.mark.usefixtures("core_users")
+@pytest.mark.parametrize("header_case", HEADER_CASES)
+async def test_ingress_proxy_drops_forged_identity_headers(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    real_websession: aiohttp.ClientSession,
+    header_case: Callable[[str], str],
+):
+    """Test client-supplied identity headers are dropped in any letter case."""
+    api_client, prefix = api_client_with_prefix
+    received_headers: dict[str, list[str]] | None = None
+
+    async def mock_app_handler(request: web.Request) -> web.Response:
+        nonlocal received_headers
+        received_headers = _identity_headers(request.headers)
+        return web.Response(body=b"ok", content_type="text/plain")
+
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        resp = await api_client.post(
+            f"{prefix}/ingress/session", json={"user_id": "user-id"}
+        )
+        session = (await resp.json())["data"]["session"]
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_app"
+        mock_app.panel_admin = False
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+        mock_app.ingress_stream = False
+
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_app):
+            resp = await api_client.get(
+                f"{prefix}/ingress/{ingress_token}/",
+                cookies={"ingress_session": session},
+                headers={
+                    header_case(name): value for name, value in FORGED_HEADERS.items()
+                },
+            )
+            assert resp.status == 200
+        assert received_headers == {
+            name: [value] for name, value in EXPECTED_IDENTITY_HEADERS.items()
+        }
+    finally:
+        await app_server.close()
+
+
+@pytest.mark.usefixtures("core_users")
+@pytest.mark.parametrize("header_case", HEADER_CASES)
+async def test_ingress_websocket_drops_forged_identity_headers(
+    api_client: TestClient,
+    coresys: CoreSys,
+    real_websession: aiohttp.ClientSession,
+    header_case: Callable[[str], str],
+):
+    """Test client-supplied identity headers are dropped on websocket upgrades."""
+    received_headers: dict[str, list[str]] | None = None
+
+    async def mock_app_handler(request: web.Request) -> web.WebSocketResponse:
+        nonlocal received_headers
+        received_headers = _identity_headers(request.headers)
+        websocket = web.WebSocketResponse()
+        await websocket.prepare(request)
+        await websocket.close()
+        return websocket
+
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        resp = await api_client.post("/ingress/session", json={"user_id": "user-id"})
+        session = (await resp.json())["data"]["session"]
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_app"
+        mock_app.panel_admin = False
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_app):
+            websocket = await api_client.ws_connect(
+                f"/ingress/{ingress_token}/ws",
+                headers={
+                    hdrs.COOKIE: f"ingress_session={session}",
+                    **{
+                        header_case(name): value
+                        for name, value in FORGED_HEADERS.items()
+                    },
+                },
+            )
+            await websocket.receive()
+            await websocket.close()
+        assert received_headers == {
+            name: [value] for name, value in EXPECTED_IDENTITY_HEADERS.items()
+        }
+    finally:
+        await app_server.close()
