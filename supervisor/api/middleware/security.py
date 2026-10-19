@@ -56,24 +56,26 @@ OBSERVER_CHECK: Final = re.compile(
     r")$"
 )
 
+# Multi-keyword patterns are anchored per line and use atomic lazy scans so
+# matching stays linear; unanchored ".*" chains backtrack cubically.
 FILTERS: Final = re.compile(
     r"(?:"
 
     # Common exploits
     r"proc/self/environ"
-    r"|(<|%3C).*script.*(>|%3E)"
+    r"|^(?>.*?(?:<|%3C))(?>.*?script).*?(?:>|%3E)"
 
     # File Injections
     r"|(\.\.//?)+"  # ../../anywhere
     r"|[a-zA-Z0-9_]=/([a-z0-9_.]//?)+"  # .html?v=/.//test
 
     # SQL Injections
-    r"|union.*select.*\("
-    r"|union.*all.*select.*"
-    r"|concat.*\("
+    r"|^(?>.*?union)(?>.*?select).*?\("
+    r"|^(?>.*?union)(?>.*?all).*?select"
+    r"|^(?>.*?concat).*?\("
 
     r")",
-    flags=re.IGNORECASE,
+    flags=re.IGNORECASE | re.MULTILINE,
 )
 
 @dataclass(slots=True, frozen=True)

@@ -2,6 +2,7 @@
 
 import asyncio
 from http import HTTPStatus
+import time
 from unittest.mock import patch
 
 from aiohttp import web
@@ -10,6 +11,7 @@ import pytest
 import urllib3
 
 from supervisor.api import RestAPI
+from supervisor.api.middleware.security import FILTERS
 from supervisor.apps.app import App
 from supervisor.const import ROLE_ALL, CoreState
 from supervisor.coresys import CoreSys
@@ -176,6 +178,40 @@ async def test_bad_requests(
     if fail_on_query_string:
         message = "Filtered a request with a potential harmful query string:"
     assert message in caplog.text
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param("<script" * 3500, id="xss"),
+        pytest.param("%3Cscript" * 2700, id="xss-encoded"),
+        pytest.param("union" * 4900, id="union-select"),
+        pytest.param("unionall" * 3000, id="union-all-select"),
+        pytest.param("concat" * 4000, id="concat"),
+    ],
+)
+def test_filters_no_catastrophic_backtracking(payload: str) -> None:
+    """Test near-miss payloads at max request line size are matched quickly."""
+    start = time.perf_counter()
+    assert FILTERS.search(payload) is None
+    assert time.perf_counter() - start < 1
+
+
+@pytest.mark.parametrize(
+    ("value", "blocked"),
+    [
+        pytest.param("a <b> script", False, id="no-close-after-script"),
+        pytest.param("<\nscript>", False, id="xss-across-lines"),
+        pytest.param("x\n<SCRIPT src=y>", True, id="xss-second-line"),
+        pytest.param("select union (", False, id="select-before-union"),
+        pytest.param("union all select", True, id="union-all-select"),
+        pytest.param("union\nselect (", False, id="union-across-lines"),
+        pytest.param("concat ( ", True, id="concat"),
+    ],
+)
+def test_filters_keyword_order(value: str, blocked: bool) -> None:
+    """Test multi-keyword filters require keyword order within a line."""
+    assert bool(FILTERS.search(value)) is blocked
 
 
 def _versioned_path(prefix: str, path: str) -> str:
