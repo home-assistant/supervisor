@@ -47,11 +47,9 @@ def journal_plain_formatter(
 
 
 def _format_timestamp(timestamp: str, tz: tzinfo) -> str:
-    """Format a journal timestamp in the given timezone with millisecond precision."""
-    return (
-        datetime.fromtimestamp(int(timestamp) / 1e6, tz)
-        .replace(tzinfo=None)
-        .isoformat(sep=" ", timespec="milliseconds")
+    """Format a journal timestamp in `tz` with milliseconds and the UTC offset."""
+    return datetime.fromtimestamp(int(timestamp) / 1e6, tz).isoformat(
+        sep=" ", timespec="milliseconds"
     )
 
 
