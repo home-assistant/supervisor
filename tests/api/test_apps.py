@@ -67,6 +67,7 @@ async def test_apps_info(
     assert result["data"]["ingress_panel"] is True
     assert result["data"]["protected"] is True
     assert result["data"]["watchdog"] is False
+    assert result["data"]["log_format"] == "plain"
 
 
 @pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
