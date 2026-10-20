@@ -21,6 +21,8 @@ from supervisor.exceptions import (
     DBusNotConnectedError,
     DockerError,
     HassioError,
+    HomeAssistantCrashError,
+    HomeAssistantError,
     JobException,
     SupervisorUpdateError,
     WhoamiSSLError,
@@ -655,6 +657,102 @@ async def test_start_skips_port_reservation_when_core_already_running(
         await coresys.core.start()
 
     assert systemd_service.StartTransientUnit.calls == []
+
+
+@pytest.mark.parametrize(
+    ("boot", "container_exists", "core_started"),
+    [
+        pytest.param(True, False, True, id="container_missing"),
+        pytest.param(True, True, False, id="container_stopped"),
+        pytest.param(False, False, False, id="boot_disabled"),
+    ],
+)
+@pytest.mark.usefixtures("core_start_base_mocks")
+async def test_start_after_supervisor_restart_starts_core_if_container_missing(
+    coresys: CoreSys, boot: bool, container_exists: bool, core_started: bool
+):
+    """Core is started on a Supervisor restart only if its container is gone.
+
+    A stopped container means the user stopped Core and must stay stopped. A
+    missing container means an update, rebuild or restore was interrupted by
+    the Supervisor restart, since those start Core again when they complete.
+    """
+    coresys.config.last_boot = await coresys.hardware.helper.last_boot()
+    coresys.homeassistant.boot = boot
+
+    with patch.object(
+        coresys.homeassistant.core.instance,
+        "is_initialize",
+        new=AsyncMock(return_value=container_exists),
+    ):
+        await coresys.core.start()
+
+    coresys.services.reset.assert_not_awaited()
+    assert coresys.homeassistant.core.start.await_count == int(core_started)
+
+
+@pytest.mark.usefixtures("core_start_base_mocks")
+async def test_start_after_supervisor_restart_releases_port_before_core_start(
+    coresys: CoreSys,
+):
+    """The port reservation is released before Core is started on a Supervisor restart."""
+    coresys.config.last_boot = await coresys.hardware.helper.last_boot()
+    coresys.homeassistant.http_server_host = None
+
+    call_sequence: list[str] = []
+
+    async def tracking_release() -> bool:
+        call_sequence.append("port_released")
+        return True
+
+    async def tracking_core_start() -> None:
+        call_sequence.append("core_start")
+
+    # Reservation is mocked so its stale-unit cleanup does not call the release
+    # helper itself, leaving only the release that precedes the Core start.
+    with (
+        patch.object(
+            coresys.homeassistant.core.instance,
+            "is_initialize",
+            new=AsyncMock(return_value=False),
+        ),
+        patch.object(
+            coresys.core, "_reserve_core_port", new=AsyncMock(return_value=True)
+        ),
+        patch.object(coresys.core, "_release_core_port", side_effect=tracking_release),
+        patch.object(
+            coresys.homeassistant.core, "start", side_effect=tracking_core_start
+        ),
+    ):
+        await coresys.core.start()
+
+    assert call_sequence == ["port_released", "core_start"]
+
+
+@pytest.mark.parametrize(
+    ("start_error", "rebuild_called"),
+    [
+        pytest.param(HomeAssistantCrashError(), True, id="crash_rebuilds"),
+        pytest.param(HomeAssistantError(), False, id="error_captured"),
+    ],
+)
+@pytest.mark.usefixtures("core_start_base_mocks")
+async def test_start_core_start_failure(
+    coresys: CoreSys, start_error: HomeAssistantError, rebuild_called: bool
+):
+    """A Core crash on start triggers a rebuild, other errors are only captured."""
+    coresys.homeassistant.core.start.side_effect = start_error
+
+    with (
+        patch.object(coresys.homeassistant.core, "rebuild", new=AsyncMock()),
+        patch("supervisor.core.async_capture_exception") as capture_mock,
+    ):
+        await coresys.core.start()
+
+        capture_mock.assert_awaited_once_with(start_error)
+        assert coresys.homeassistant.core.rebuild.await_count == int(rebuild_called)
+
+    assert coresys.core.state == CoreState.RUNNING
 
 
 @pytest.mark.usefixtures("core_start_base_mocks")
