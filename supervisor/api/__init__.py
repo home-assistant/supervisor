@@ -23,6 +23,7 @@ from ..exceptions import (
     HostJournalGatewaydConnectionError,
     HostNotSupportedError,
 )
+from ..host.const import LogFormatter
 from ..utils.sentry import async_capture_exception
 from .apps import APIApps
 from .audio import APIAudio
@@ -178,7 +179,7 @@ class RestAPI(CoreSysAttributes):
         path: str,
         syslog_identifier: str,
         app: web.Application,
-        default_verbose: bool = False,
+        default_format: LogFormatter = LogFormatter.PLAIN,
     ) -> None:
         """Register logs endpoint for a given path, returning logs for single syslog identifier."""
         app.add_routes(
@@ -188,7 +189,7 @@ class RestAPI(CoreSysAttributes):
                     partial(
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
-                        default_verbose=default_verbose,
+                        default_format=default_format,
                     ),
                 ),
                 web.get(
@@ -197,7 +198,7 @@ class RestAPI(CoreSysAttributes):
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
                         follow=True,
-                        default_verbose=default_verbose,
+                        default_format=default_format,
                     ),
                 ),
                 web.get(
@@ -207,7 +208,7 @@ class RestAPI(CoreSysAttributes):
                         identifier=syslog_identifier,
                         latest=True,
                         no_colors=True,
-                        default_verbose=default_verbose,
+                        default_format=default_format,
                     ),
                 ),
                 web.get(
@@ -215,7 +216,7 @@ class RestAPI(CoreSysAttributes):
                     partial(
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
-                        default_verbose=default_verbose,
+                        default_format=default_format,
                     ),
                 ),
                 web.get(
@@ -224,7 +225,7 @@ class RestAPI(CoreSysAttributes):
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
                         follow=True,
-                        default_verbose=default_verbose,
+                        default_format=default_format,
                     ),
                 ),
             ]
@@ -244,11 +245,17 @@ class RestAPI(CoreSysAttributes):
                 ),
                 web.get(
                     "/host/logs",
-                    partial(api_host.advanced_logs, default_verbose=True),
+                    partial(
+                        api_host.advanced_logs, default_format=LogFormatter.VERBOSE
+                    ),
                 ),
                 web.get(
                     "/host/logs/follow",
-                    partial(api_host.advanced_logs, follow=True, default_verbose=True),
+                    partial(
+                        api_host.advanced_logs,
+                        follow=True,
+                        default_format=LogFormatter.VERBOSE,
+                    ),
                 ),
                 web.get("/host/logs/identifiers", api_host.list_identifiers),
                 web.get("/host/logs/identifiers/{identifier}", api_host.advanced_logs),
@@ -259,11 +266,17 @@ class RestAPI(CoreSysAttributes):
                 web.get("/host/logs/boots", api_host.list_boots),
                 web.get(
                     "/host/logs/boots/{bootid}",
-                    partial(api_host.advanced_logs, default_verbose=True),
+                    partial(
+                        api_host.advanced_logs, default_format=LogFormatter.VERBOSE
+                    ),
                 ),
                 web.get(
                     "/host/logs/boots/{bootid}/follow",
-                    partial(api_host.advanced_logs, follow=True, default_verbose=True),
+                    partial(
+                        api_host.advanced_logs,
+                        follow=True,
+                        default_format=LogFormatter.VERBOSE,
+                    ),
                 ),
                 web.get(
                     "/host/logs/boots/{bootid}/identifiers/{identifier}",
@@ -469,7 +482,10 @@ class RestAPI(CoreSysAttributes):
             ]
         )
         self._register_advanced_logs(
-            "/multicast", "hassio_multicast", default_verbose=True, app=app
+            "/multicast",
+            "hassio_multicast",
+            default_format=LogFormatter.VERBOSE,
+            app=app,
         )
 
     def _register_hardware(self, app: web.Application) -> None:
@@ -741,6 +757,7 @@ class RestAPI(CoreSysAttributes):
                     f"addon_{app_obj.slug}",
                     f"app_{app_obj.slug}",
                 ]
+                kwargs["default_format"] = app_obj.log_format
                 return await self._api_host.advanced_logs(request, *args, **kwargs)
 
             # Legacy routing to support requests for not installed apps
@@ -805,6 +822,7 @@ class RestAPI(CoreSysAttributes):
                     f"addon_{app_obj.slug}",
                     f"app_{app_obj.slug}",
                 ]
+                kwargs["default_format"] = app_obj.log_format
                 return await self._api_host.advanced_logs(request, *args, **kwargs)
 
             app.add_routes(
@@ -975,7 +993,7 @@ class RestAPI(CoreSysAttributes):
         )
 
         self._register_advanced_logs(
-            "/dns", "hassio_dns", default_verbose=True, app=app
+            "/dns", "hassio_dns", default_format=LogFormatter.VERBOSE, app=app
         )
 
     def _register_audio(self, app: web.Application) -> None:
@@ -1005,7 +1023,7 @@ class RestAPI(CoreSysAttributes):
         )
 
         self._register_advanced_logs(
-            "/audio", "hassio_audio", default_verbose=True, app=app
+            "/audio", "hassio_audio", default_format=LogFormatter.VERBOSE, app=app
         )
 
     def _register_mounts(self, app: web.Application) -> None:

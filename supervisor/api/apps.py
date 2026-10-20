@@ -10,6 +10,7 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..apps.app import App
+from ..apps.const import ATTR_LOG_FORMAT
 from ..apps.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
@@ -310,6 +311,7 @@ class APIApps(CoreSysAttributes):
             ATTR_DEVICES: app.static_devices + [device.path for device in app.devices],
             ATTR_SYSTEM_MANAGED: app.system_managed,
             ATTR_SYSTEM_MANAGED_CONFIG_ENTRY: app.system_managed_config_entry,
+            ATTR_LOG_FORMAT: app.log_format,
         }
 
     async def info_data_v1(self, app: App, request: web.Request) -> dict[str, Any]:
