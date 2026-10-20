@@ -123,16 +123,30 @@ def _mock_ws_client(messages: list[dict]) -> MagicMock:
     return client
 
 
-async def test_ws_connect_error():
-    """Test _ws_connect wraps ClientConnectorError."""
+@pytest.mark.parametrize(
+    ("error", "match"),
+    [
+        pytest.param(
+            aiohttp.ClientConnectorError(MagicMock(), OSError("Connection refused")),
+            "Can't connect: Cannot connect to host",
+            id="connector",
+        ),
+        pytest.param(
+            aiohttp.WSServerHandshakeError(
+                MagicMock(), (), status=503, message="Service Unavailable"
+            ),
+            "Can't connect: .*Service Unavailable",
+            id="handshake",
+        ),
+        pytest.param(TimeoutError(), "Can't connect: TimeoutError", id="timeout"),
+    ],
+)
+async def test_ws_connect_error(error: Exception, match: str):
+    """Test _ws_connect wraps every connect failure as a connection error."""
     session = AsyncMock()
-    session.ws_connect = AsyncMock(
-        side_effect=aiohttp.ClientConnectorError(
-            MagicMock(), OSError("Connection refused")
-        )
-    )
+    session.ws_connect = AsyncMock(side_effect=error)
 
-    with pytest.raises(HomeAssistantWSConnectionError, match="Can't connect"):
+    with pytest.raises(HomeAssistantWSConnectionError, match=match):
         await WSClient._ws_connect(session, "ws://localhost/api/websocket")
 
 
