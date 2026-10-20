@@ -35,9 +35,14 @@ class NetworkWirelessAP(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def ssid(self) -> str:
-        """Return details about ssid."""
-        return bytes(self.properties[DBUS_ATTR_SSID]).decode()
+    def ssid(self) -> bytes | None:
+        """Return details about ssid.
+
+        None when the access point has no SSID property (e.g. a hidden
+        network that has not broadcast it), since dbus_property maps the
+        missing key to None.
+        """
+        return bytes(self.properties[DBUS_ATTR_SSID])
 
     @property
     @dbus_property

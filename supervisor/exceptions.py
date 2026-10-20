@@ -1256,6 +1256,31 @@ class HostNetworkWifiPskRequiredError(HostNetworkError, APIError):
         super().__init__(None, logger)
 
 
+class HostNetworkWifiSsidUnresolvedError(HostNetworkError, APIError):
+    """Raise when an SSID that is not valid UTF-8 can't be matched to one network."""
+
+    error_key = "host_network_wifi_ssid_unresolved_error"
+    message_template = (
+        "SSID contains replacement characters and does not match exactly one "
+        "stored or visible network"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class HostNetworkWifiSsidInvalidError(HostNetworkError, APIError):
+    """Raise when an SSID string cannot be encoded to bytes."""
+
+    error_key = "host_network_wifi_ssid_invalid_error"
+    message_template = "SSID is not a valid string and can't be encoded"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
 class HostLogError(HostError):
     """Internal error with host log."""
 
