@@ -440,65 +440,42 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
 
-  # Resolved once so all targets compare the same versions
   client-compat-versions:
-    name: Resolve aiohasupervisor versions
+    name: Resolve aiohasupervisor releases
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.versions.outputs.versions }}
     steps:
-      - name: Resolve aiohasupervisor versions
+      - name: Resolve aiohasupervisor releases
         id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Version pinned by a Home Assistant Core ref, client tags are bare versions
-          core_pin() {
-            curl -sSfL "https://raw.githubusercontent.com/home-assistant/core/$1/homeassistant/components/hassio/manifest.json" \
-              | jq -r '.requirements[] | select(startswith("aiohasupervisor==")) | ltrimstr("aiohasupervisor==")'
-          }
-          # Version pinned by the Core release of a channel
-          channel_pin() {
-            local version
-            version=$(curl -sSfL "https://raw.githubusercontent.com/home-assistant/version/master/$1.json" \
-              | jq -r '.homeassistant.default') && core_pin "${version}"
-          }
-
-          # A source that can't be read only fails the target using it
-          declare -A versions=(
-            [core-stable]=$(channel_pin stable)
-            [core-beta]=$(channel_pin beta)
-            [core-dev]=$(core_pin dev)
-            [latest]=$(git ls-remote --tags --refs "${CLIENT_REPOSITORY}" \
-              | awk -F/ '{print $3}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
-            [main]=main
-          )
-
-          # Each version is only checked by the first target resolving to it
-          declare -A first=()
-          result='{}'
-          for target in core-stable core-beta core-dev latest main; do
-            ref="${versions[${target}]}"
-            checked_by=""
-            if [ -n "${ref}" ]; then
-              checked_by="${first[${ref}]:-}"
-              [ -n "${checked_by}" ] || first[${ref}]="${target}"
-            fi
-            result=$(jq -c --arg target "${target}" --arg ref "${ref}" --arg checked_by "${checked_by}" \
-              '.[$target] = {ref: $ref, checked_by: $checked_by}' <<< "${result}")
-          done
-          jq . <<< "${result}"
-          echo "versions=${result}" >> "$GITHUB_OUTPUT"
+          releases=$(gh api "repos/${CLIENT_REPOSITORY#https://github.com/}/releases?per_page=100")
+          # Releases of the past year, or the newest one so the matrix is never empty
+          versions=$(jq -c --arg since "$(date -u -d '1 year ago' +%Y-%m-%dT%H:%M:%SZ)" '
+            map(select((.draft or .prerelease) | not))
+            | map(select(.published_at >= $since)) as $recent
+            | if ($recent | length) > 0 then $recent else .[:1] end
+            | map(.tag_name)' <<< "${releases}")
+          if [ "${versions}" = "[]" ]; then
+            echo "::error::No aiohasupervisor releases found"
+            exit 1
+          fi
+          jq . <<< "${versions}"
+          echo "versions=${versions}" >> "$GITHUB_OUTPUT"
 
   client-compat:
-    name: Check aiohasupervisor ${{ matrix.target }}
+    name: Check aiohasupervisor ${{ matrix.version }}
     runs-on: ubuntu-latest
     needs: ["client-compat-versions", "pytest", "prepare"]
-    # main shows whether a client fix is in flight, it does not block
-    continue-on-error: ${{ matrix.target == 'main' }}
     strategy:
       fail-fast: false
       matrix:
-        target: ["core-stable", "core-beta", "core-dev", "latest", "main"]
-    steps:
+        version: ${{ fromJSON(needs.client-compat-versions.outputs.versions) }}
+    env:
+      CLIENT_REF: ${{ matrix.version }}
+    steps: &client-compat-steps
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -508,34 +485,12 @@ jobs:
         with:
           name: api-records
           path: ${{ runner.temp }}/api-records
-      - name: Resolve aiohasupervisor version
-        id: version
-        env:
-          TARGET: ${{ matrix.target }}
-          REF: ${{ fromJSON(needs.client-compat-versions.outputs.versions)[matrix.target].ref }}
-          CHECKED_BY: ${{ fromJSON(needs.client-compat-versions.outputs.versions)[matrix.target].checked_by }}
-        run: |
-          if [ -z "${REF}" ]; then
-            echo "::error::Could not resolve aiohasupervisor version for ${TARGET}"
-            exit 1
-          fi
-
-          skip=false
-          if [ -n "${CHECKED_BY}" ]; then
-            echo "::notice::aiohasupervisor ${REF} is also used by ${CHECKED_BY}, checked there"
-            skip=true
-          fi
-          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
-          echo "skip=${skip}" >> "$GITHUB_OUTPUT"
-      - name: Install aiohasupervisor ${{ steps.version.outputs.ref }}
+      - name: Install aiohasupervisor ${{ env.CLIENT_REF }}
         id: client
-        if: steps.version.outputs.skip != 'true'
-        env:
-          REF: ${{ steps.version.outputs.ref }}
         run: |
-          git -c advice.detachedHead=false clone --quiet --depth 1 --branch "${REF}" "${CLIENT_REPOSITORY}" "${RUNNER_TEMP}/client"
+          git -c advice.detachedHead=false clone --quiet --depth 1 --branch "${CLIENT_REF}" "${CLIENT_REPOSITORY}" "${RUNNER_TEMP}/client"
           if [ ! -f "${RUNNER_TEMP}/client/tests/compat/check_responses.py" ]; then
-            echo "::notice::aiohasupervisor ${REF} predates the compat checker, skipped"
+            echo "::notice::aiohasupervisor ${CLIENT_REF} predates the compat checker, skipped"
             echo "checker=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -549,3 +504,29 @@ jobs:
           "${RUNNER_TEMP}/client-venv/bin/python" \
             "${RUNNER_TEMP}/client/tests/compat/check_responses.py" \
             "${RUNNER_TEMP}/api-records"
+
+  # Unreleased, a failure shows a client fix is needed before the next release
+  client-compat-main:
+    name: Check aiohasupervisor main
+    runs-on: ubuntu-latest
+    needs: ["pytest", "prepare"]
+    continue-on-error: true
+    env:
+      CLIENT_REF: main
+    steps: *client-compat-steps
+
+  # Stable name to require, the matrix job names change with each release
+  client-compat-result:
+    name: Check aiohasupervisor releases
+    runs-on: ubuntu-latest
+    needs: ["client-compat"]
+    if: always()
+    steps:
+      - name: Check all releases passed
+        env:
+          RESULT: ${{ needs.client-compat.result }}
+        run: |
+          if [ "${RESULT}" != "success" ]; then
+            echo "::error::aiohasupervisor release checks did not pass: ${RESULT}"
+            exit 1
+          fi
