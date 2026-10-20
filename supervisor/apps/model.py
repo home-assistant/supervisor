@@ -98,6 +98,7 @@ from ..exceptions import (
     AppNotSupportedMachineTypeError,
     HassioArchNotFound,
 )
+from ..host.const import LogFormatter
 from ..jobs.const import JOB_GROUP_APP
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
@@ -106,6 +107,7 @@ from .configuration import FolderMapping
 from .const import (
     ATTR_BACKUP,
     ATTR_BREAKING_VERSIONS,
+    ATTR_LOG_FORMAT,
     ATTR_PATH,
     ATTR_READ_ONLY,
     AppBackupMode,
@@ -157,6 +159,11 @@ class AppModel(JobGroup, ABC):
     def options(self) -> dict[str, Any]:
         """Return options with local changes."""
         return self.data[ATTR_OPTIONS]
+
+    @property
+    def log_format(self) -> LogFormatter:
+        """Return the default log format."""
+        return LogFormatter(self.data[ATTR_LOG_FORMAT])
 
     @property
     def boot_config(self) -> AppBootConfig:

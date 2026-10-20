@@ -20,6 +20,8 @@ def test_basic_config():
     assert valid_config["name"] == "Test Add-on"
     assert valid_config["image"] == "test/{arch}-my-custom-addon"
 
+    assert valid_config["log_format"] == "plain"
+
     # Check defaults
     assert not valid_config["host_network"]
     assert not valid_config["host_ipc"]
@@ -668,3 +670,25 @@ def test_non_dict_config_raises_invalid():
 
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_APP_CONFIG(["list", "not", "dict"])
+
+
+@pytest.mark.parametrize(
+    "log_format",
+    [pytest.param(value, id=value) for value in ("plain", "timestamp", "verbose")],
+)
+def test_log_format(log_format: str):
+    """Validate supported default log formats."""
+    config = load_json_fixture("basic-app-config.json")
+    config["log_format"] = log_format
+    assert vd.SCHEMA_APP_CONFIG(config)["log_format"] == log_format
+
+
+@pytest.mark.parametrize(
+    "log_format", [pytest.param("invalid", id="unknown"), pytest.param(None, id="null")]
+)
+def test_invalid_log_format(log_format: str | None):
+    """Reject unsupported default log formats."""
+    config = load_json_fixture("basic-app-config.json")
+    config["log_format"] = log_format
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_APP_CONFIG(config)

@@ -24,11 +24,11 @@ async def test_api_security_options_pwned(
 ):
     """Test security options pwned."""
     api_client, prefix = api_client_with_prefix
-    assert coresys.security.pwned
-
-    await api_client.post(f"{prefix}/security/options", json={"pwned": False})
-
     assert not coresys.security.pwned
+
+    await api_client.post(f"{prefix}/security/options", json={"pwned": True})
+
+    assert coresys.security.pwned
 
 
 async def test_api_integrity_check(

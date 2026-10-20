@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from pathlib import PurePath
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
@@ -21,6 +21,7 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HassioError
+from supervisor.host.const import LogFormatter
 from supervisor.store.repository import Repository
 
 from ..common import force_app_state, load_json_fixture
@@ -66,6 +67,7 @@ async def test_apps_info(
     assert result["data"]["ingress_panel"] is True
     assert result["data"]["protected"] is True
     assert result["data"]["watchdog"] is False
+    assert result["data"]["log_format"] == "plain"
 
 
 @pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
@@ -136,14 +138,29 @@ async def test_apps_info_not_installed(
     }
 
 
-@pytest.mark.usefixtures("install_app_ssh")
+@pytest.mark.parametrize(
+    ("config", "formatter"),
+    [
+        pytest.param({}, LogFormatter.PLAIN, id="default"),
+        pytest.param({"log_format": "plain"}, LogFormatter.PLAIN, id="plain"),
+        pytest.param(
+            {"log_format": "timestamp"}, LogFormatter.TIMESTAMP, id="timestamp"
+        ),
+        pytest.param({"log_format": "verbose"}, LogFormatter.VERBOSE, id="verbose"),
+    ],
+)
 async def test_api_app_logs(
-    advanced_logs_tester: Callable[[str, str | list[str]], Awaitable[None]],
+    advanced_logs_tester: Callable[..., Awaitable[None]],
+    install_app_ssh: App,
+    config: dict[str, str],
+    formatter: LogFormatter,
 ):
     """Test app logs."""
+    install_app_ssh.data.update(config)
     await advanced_logs_tester(
         "/addons/local_ssh",
         ["addon_local_ssh", "app_local_ssh"],
+        formatter,
         v2_path_prefix="/apps/local_ssh",
     )
 
@@ -916,3 +933,44 @@ async def test_apps_info_versioned_advanced_field(
         assert "advanced" in data
     else:
         assert "advanced" not in data
+
+
+@pytest.mark.usefixtures("os_available", "journald_logs")
+@pytest.mark.parametrize(
+    ("query", "accept", "formatter"),
+    [
+        pytest.param("format=plain", "text/plain", LogFormatter.PLAIN, id="plain"),
+        pytest.param(
+            "format=verbose", "text/plain", LogFormatter.VERBOSE, id="verbose"
+        ),
+        pytest.param(
+            "verbose", "text/plain", LogFormatter.VERBOSE, id="legacy-verbose"
+        ),
+        pytest.param("", "text/x-log", LogFormatter.VERBOSE, id="legacy-accept"),
+        pytest.param(
+            "format=plain&verbose",
+            "text/x-log",
+            LogFormatter.PLAIN,
+            id="explicit-priority",
+        ),
+    ],
+)
+async def test_api_app_logs_format_override(
+    app_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    journal_logs_reader: MagicMock,
+    query: str,
+    accept: str,
+    formatter: LogFormatter,
+):
+    """Request formatting overrides the app's default log format."""
+    client, root = app_api_client_with_root
+    install_app_ssh.data["log_format"] = "timestamp"
+    resp = await client.get(
+        f"{root}/local_ssh/logs?{query}", headers={"Accept": accept}
+    )
+    assert resp.status == 200
+    journal_logs_reader.assert_called_once_with(
+        ANY, formatter, False, tz=coresys.timezone_tzinfo
+    )

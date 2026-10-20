@@ -8,8 +8,8 @@ contact_links:
     url: https://github.com/home-assistant/frontend/issues
     about: The Supervisor panel is a part of the Home Assistant frontend
 
-  - name: Report incorrect or missing information on our developer documentation
-    url: https://github.com/home-assistant/developers.home-assistant.io/issues
+  - name: Report incorrect or missing information on our contributor documentation
+    url: https://github.com/home-assistant/contributors.home-assistant.io/issues
     about: Our documentation has its own issue tracker. Please report issues with the website there.
 
   - name: Request a feature for the Supervisor

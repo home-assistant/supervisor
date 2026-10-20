@@ -1,4 +1,4 @@
-# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
+# https://contributors.home-assistant.io/apps/guides/dockerfile/#buildyaml
 build_from:
   aarch64: "ghcr.io/home-assistant/aarch64-base:3.15"
   amd64: "ghcr.io/home-assistant/amd64-base:3.15"

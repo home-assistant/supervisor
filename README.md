@@ -28,7 +28,7 @@ Releases are done in 3 stages (channels) with this structure:
 5. The [`stable.json`][stable] file is updated.
 6. The build that was pushed to `beta` will now be pushed to `stable`.
 
-[development]: https://developers.home-assistant.io/docs/supervisor/development
+[development]: https://contributors.home-assistant.io/os/supervisor/development/
 [stable]: https://github.com/home-assistant/version/blob/master/stable.json
 
 [![Home Assistant - A project from the Open Home Foundation](https://www.openhomefoundation.org/badges/home-assistant.png)](https://www.openhomefoundation.org/)

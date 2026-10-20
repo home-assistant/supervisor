@@ -285,6 +285,21 @@ class Core(CoreSysAttributes):
             # HomeAssistant is already running, only Supervisor restarted
             if await self.sys_hardware.helper.last_boot() == self.sys_config.last_boot:
                 _LOGGER.info("Detected Supervisor restart")
+                # Only update, rebuild and restore remove the Core container, so
+                # a missing one means the Supervisor restart interrupted one of
+                # them. An update of a deliberately stopped Core also leaves no
+                # container; starting Core in that case is accepted, since boot
+                # can be disabled to opt out.
+                if (
+                    self.sys_homeassistant.boot
+                    and not await self.sys_homeassistant.core.instance.is_initialize()
+                ):
+                    _LOGGER.warning(
+                        "Home Assistant Core container is missing, starting Core"
+                    )
+                    if core_port_reserved:
+                        core_port_reserved = not await self._release_core_port()
+                    await self._start_core()
                 return
 
             # reset register services / discovery
@@ -308,17 +323,7 @@ class Core(CoreSysAttributes):
                 self.sys_homeassistant.boot
                 and not await self.sys_homeassistant.core.is_running()
             ):
-                _LOGGER.info("Start Home Assistant Core")
-                try:
-                    await self.sys_homeassistant.core.start()
-                except HomeAssistantCrashError as err:
-                    _LOGGER.error("Can't start Home Assistant Core - rebuilding")
-                    await async_capture_exception(err)
-
-                    with suppress(HomeAssistantError):
-                        await self.sys_homeassistant.core.rebuild()
-                except HomeAssistantError as err:
-                    await async_capture_exception(err)
+                await self._start_core()
             else:
                 _LOGGER.info("Skipping start of Home Assistant")
 
@@ -490,6 +495,20 @@ class Core(CoreSysAttributes):
             await self.sys_plugins.shutdown()
         finally:
             self._shutdown_event.set()
+
+    async def _start_core(self) -> None:
+        """Start Home Assistant Core, rebuilding it if it crashes."""
+        _LOGGER.info("Start Home Assistant Core")
+        try:
+            await self.sys_homeassistant.core.start()
+        except HomeAssistantCrashError as err:
+            _LOGGER.error("Can't start Home Assistant Core - rebuilding")
+            await async_capture_exception(err)
+
+            with suppress(HomeAssistantError):
+                await self.sys_homeassistant.core.rebuild()
+        except HomeAssistantError as err:
+            await async_capture_exception(err)
 
     async def _update_last_boot(self) -> None:
         """Update last boot time."""

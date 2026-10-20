@@ -202,3 +202,64 @@ async def test_watching_updated_signal(
     await connection_settings_service.ping()
     await connection_settings_service.ping()
     assert connection_settings_service.GetSettings.calls == [(), ()]
+
+
+@pytest.mark.parametrize(
+    ("section", "attribute", "data"),
+    [
+        pytest.param(
+            "connection",
+            "connection",
+            {"id": Variant("s", "Test"), "type": Variant("s", "802-3-ethernet")},
+            id="connection",
+        ),
+        pytest.param(
+            "802-11-wireless-security",
+            "wireless_security",
+            {"key-mgmt": Variant("s", "wpa-psk")},
+            id="wireless_security",
+        ),
+        pytest.param(
+            "802-11-wireless",
+            "wireless",
+            {"ssid": Variant("ay", b"TestSSID")},
+            id="wireless",
+        ),
+        pytest.param(
+            "802-3-ethernet",
+            "ethernet",
+            {"assigned-mac-address": Variant("s", "preserve")},
+            id="ethernet",
+        ),
+        pytest.param(
+            "vlan",
+            "vlan",
+            {"id": Variant("u", 10), "parent": Variant("s", "eth0")},
+            id="vlan",
+        ),
+        pytest.param("ipv4", "ipv4", {"method": Variant("s", "auto")}, id="ipv4"),
+        pytest.param("ipv6", "ipv6", {"method": Variant("s", "auto")}, id="ipv6"),
+        pytest.param(
+            "match",
+            "match",
+            {"path": Variant("as", ["platform-ff3f0000.ethernet"])},
+            id="match",
+        ),
+    ],
+)
+async def test_reload_clears_removed_section(
+    connection_settings_service: ConnectionSettingsService,
+    dbus_session_bus: MessageBus,
+    section: str,
+    attribute: str,
+    data: dict[str, Variant],
+):
+    """Test reload clears a section NetworkManager no longer reports."""
+    connection_settings_service.settings[section] = data
+    settings = NetworkSetting("/org/freedesktop/NetworkManager/Settings/1")
+    await settings.connect(dbus_session_bus)
+    assert getattr(settings, attribute) is not None
+
+    del connection_settings_service.settings[section]
+    await settings.reload()
+    assert getattr(settings, attribute) is None

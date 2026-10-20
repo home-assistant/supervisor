@@ -6,7 +6,7 @@ import logging
 from typing import Any, cast
 
 from aiohttp import BasicAuth, web
-from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE, WWW_AUTHENTICATE
+from aiohttp.hdrs import AUTHORIZATION, WWW_AUTHENTICATE
 from aiohttp.web import FileField
 from aiohttp.web_exceptions import HTTPUnauthorized
 from multidict import MultiDictProxy
@@ -15,7 +15,7 @@ import voluptuous as vol
 from ..apps.app import App
 from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIForbidden, AuthInvalidNonStringValueError
+from ..exceptions import APIError, APIForbidden, AuthInvalidNonStringValueError
 from .const import (
     ATTR_GROUP_IDS,
     ATTR_IS_ACTIVE,
@@ -86,21 +86,24 @@ class APIAuth(CoreSysAttributes):
         if not isinstance(app, App) or not app.access_auth_api:
             raise APIForbidden("Can't use Home Assistant auth!")
 
-        # BasicAuth
-        if AUTHORIZATION in request.headers:
+        # BasicAuth, other schemes may carry the app's own Supervisor token
+        auth_scheme = request.headers.get(AUTHORIZATION, "").partition(" ")[0]
+        if auth_scheme.lower() == "basic":
             if not await self._process_basic(request, app):
                 raise HTTPUnauthorized(headers=REALM_HEADER)
             return True
 
         # Json
-        if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_JSON:
+        if request.content_type == CONTENT_TYPE_JSON:
             data = await request.json(loads=json_loads)
+            if not isinstance(data, dict):
+                raise APIError("Invalid json")
             if not await self._process_dict(request, app, data):
                 raise HTTPUnauthorized
             return True
 
         # URL encoded
-        if request.headers.get(CONTENT_TYPE) == CONTENT_TYPE_URL:
+        if request.content_type == CONTENT_TYPE_URL:
             data = await request.post()
             if not await self._process_dict(request, app, data):
                 raise HTTPUnauthorized
