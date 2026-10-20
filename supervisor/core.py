@@ -285,9 +285,11 @@ class Core(CoreSysAttributes):
             # HomeAssistant is already running, only Supervisor restarted
             if await self.sys_hardware.helper.last_boot() == self.sys_config.last_boot:
                 _LOGGER.info("Detected Supervisor restart")
-                # Only update, rebuild and restore remove the Core container, and
-                # all of them start Core again afterwards. A missing container
-                # means one of them was interrupted by the Supervisor restart.
+                # Only update, rebuild and restore remove the Core container, so
+                # a missing one means the Supervisor restart interrupted one of
+                # them. An update of a deliberately stopped Core also leaves no
+                # container; starting Core in that case is accepted, since boot
+                # can be disabled to opt out.
                 if (
                     self.sys_homeassistant.boot
                     and not await self.sys_homeassistant.core.instance.is_initialize()

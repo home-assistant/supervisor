@@ -701,21 +701,23 @@ async def test_start_after_supervisor_restart_releases_port_before_core_start(
 
     call_sequence: list[str] = []
 
-    orig_release = coresys.core._release_core_port
-
     async def tracking_release() -> bool:
-        result = await orig_release()
         call_sequence.append("port_released")
-        return result
+        return True
 
     async def tracking_core_start() -> None:
         call_sequence.append("core_start")
 
+    # Reservation is mocked so its stale-unit cleanup does not call the release
+    # helper itself, leaving only the release that precedes the Core start.
     with (
         patch.object(
             coresys.homeassistant.core.instance,
             "is_initialize",
             new=AsyncMock(return_value=False),
+        ),
+        patch.object(
+            coresys.core, "_reserve_core_port", new=AsyncMock(return_value=True)
         ),
         patch.object(coresys.core, "_release_core_port", side_effect=tracking_release),
         patch.object(
@@ -724,7 +726,7 @@ async def test_start_after_supervisor_restart_releases_port_before_core_start(
     ):
         await coresys.core.start()
 
-    assert call_sequence.index("port_released") < call_sequence.index("core_start")
+    assert call_sequence == ["port_released", "core_start"]
 
 
 @pytest.mark.parametrize(
