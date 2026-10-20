@@ -7,6 +7,9 @@ on:
       - main
   pull_request: ~
 
+permissions:
+  contents: read
+
 env:
   DEFAULT_PYTHON: "3.14.8"
   PRE_COMMIT_CACHE: ~/.cache/pre-commit
@@ -450,18 +453,23 @@ jobs:
         id: versions
         env:
           GH_TOKEN: ${{ github.token }}
+          # Releases with known incompatibilities fixed later, one per line with the reason
+          BLOCKED: |
+            0.7.0  # Fails core/stats one_shot and uninstalled app info, fixed in 0.8.0
         run: |
+          blocked=$(jq -Rnc '[inputs | capture("^\\s*(?<version>[^#\\s]+)\\s*(#\\s*(?<reason>.*))?$")]' <<< "${BLOCKED}")
           releases=$(gh api "repos/${CLIENT_REPOSITORY#https://github.com/}/releases?per_page=100")
-          # Releases of the past year, or the newest one so the matrix is never empty
-          versions=$(jq -c --arg since "$(date -u -d '1 year ago' +%Y-%m-%dT%H:%M:%SZ)" '
-            map(select((.draft or .prerelease) | not))
-            | map(select(.published_at >= $since)) as $recent
-            | if ($recent | length) > 0 then $recent else .[:1] end
+          # Releases of the past year, and always the newest since releases are infrequent
+          versions=$(jq -c --arg since "$(date -u -d '1 year ago' +%Y-%m-%dT%H:%M:%SZ)" --argjson blocked "${blocked}" '
+            map(select((.draft or .prerelease or (.tag_name | IN($blocked[].version))) | not))
+            | .[0] as $newest
+            | map(select(.published_at >= $since or . == $newest))
             | map(.tag_name)' <<< "${releases}")
           if [ "${versions}" = "[]" ]; then
             echo "::error::No aiohasupervisor releases found"
             exit 1
           fi
+          jq -r '.[] | "::notice::Skipping blocked aiohasupervisor \(.version): \(.reason // "no reason given")"' <<< "${blocked}"
           jq . <<< "${versions}"
           echo "versions=${versions}" >> "$GITHUB_OUTPUT"
 
