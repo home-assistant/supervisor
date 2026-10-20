@@ -46,8 +46,10 @@ def test_format_simple_newlines():
 @pytest.mark.parametrize(
     ("timestamp", "expected_timestamp"),
     [
-        pytest.param("1000", "1970-01-01 00:00:00.001", id="milliseconds"),
-        pytest.param("1379403171123456", "2013-09-17 07:32:51.123", id="microseconds"),
+        pytest.param("1000", "1970-01-01 00:00:00.001+00:00", id="milliseconds"),
+        pytest.param(
+            "1379403171123456", "2013-09-17 07:32:51.123+00:00", id="microseconds"
+        ),
     ],
 )
 @pytest.mark.parametrize(
@@ -87,7 +89,7 @@ def test_format_timestamp_timezone() -> None:
     fields = {"__REALTIME_TIMESTAMP": "1379403171000000", "MESSAGE": "Hello, world!"}
     assert (
         journal_timestamp_formatter(fields, tz=ZoneInfo("Europe/Prague"))
-        == "2013-09-17 09:32:51.000 Hello, world!"
+        == "2013-09-17 09:32:51.000+02:00 Hello, world!"
     )
 
 
@@ -116,7 +118,7 @@ async def test_parsing_timestamp(no_colors: bool, expected_message: str) -> None
         async for entry in journal_logs_reader(
             journal_logs, log_formatter=LogFormatter.TIMESTAMP, no_colors=no_colors
         )
-    ] == [("cursor1", f"2013-09-17 07:32:51.000 {expected_message}")]
+    ] == [("cursor1", f"2013-09-17 07:32:51.000+00:00 {expected_message}")]
 
 
 def test_format_verbose_timestamp():
@@ -129,7 +131,7 @@ def test_format_verbose_timestamp():
         "MESSAGE": "x",
     }
     formatted = journal_verbose_formatter(fields)
-    assert formatted.startswith("1970-01-01 00:00:00.001 "), (
+    assert formatted.startswith("1970-01-01 00:00:00.001+00:00 "), (
         f"Invalid log timestamp: {formatted}"
     )
 
@@ -145,7 +147,7 @@ def test_format_verbose():
     }
     assert (
         journal_verbose_formatter(fields)
-        == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello, world!"
+        == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: Hello, world!"
     )
 
 
@@ -153,11 +155,13 @@ def test_format_verbose():
     ("tz", "expected_ts"),
     [
         pytest.param(
-            ZoneInfo("Europe/Prague"), "2013-09-17 09:32:51.000", id="europe_prague"
+            ZoneInfo("Europe/Prague"),
+            "2013-09-17 09:32:51.000+02:00",
+            id="europe_prague",
         ),
         pytest.param(
             ZoneInfo("America/New_York"),
-            "2013-09-17 03:32:51.000",
+            "2013-09-17 03:32:51.000-04:00",
             id="america_new_york",
         ),
     ],
@@ -188,7 +192,7 @@ def test_format_verbose_newlines():
     }
     assert (
         journal_verbose_formatter(fields)
-        == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello,\nworld!\n"
+        == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: Hello,\nworld!\n"
     )
 
 
@@ -204,7 +208,7 @@ def test_format_verbose_colors():
 
     assert (
         journal_verbose_formatter(fields)
-        == "2013-09-17 07:32:51.000 homeassistant python[666]: \x1b[32mHello, world!\x1b[0m"
+        == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: \x1b[32mHello, world!\x1b[0m"
     )
 
 
@@ -229,7 +233,9 @@ async def test_parsing_verbose():
     _, line = await anext(
         journal_logs_reader(journal_logs, log_formatter=LogFormatter.VERBOSE)
     )
-    assert line == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello, world!"
+    assert (
+        line == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: Hello, world!"
+    )
 
 
 async def test_parsing_verbose_timezone():
@@ -249,7 +255,9 @@ async def test_parsing_verbose_timezone():
             tz=ZoneInfo("Europe/Prague"),
         )
     )
-    assert line == "2013-09-17 09:32:51.000 homeassistant python[666]: Hello, world!"
+    assert (
+        line == "2013-09-17 09:32:51.000+02:00 homeassistant python[666]: Hello, world!"
+    )
 
 
 async def test_parsing_newlines_in_message():
@@ -458,7 +466,7 @@ def test_format_verbose_no_colors():
     }
     assert (
         journal_verbose_formatter(fields, no_colors=True)
-        == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello, world!"
+        == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: Hello, world!"
     )
 
 
@@ -478,7 +486,7 @@ async def test_parsing_colored_logs_verbose_no_colors():
             journal_logs, log_formatter=LogFormatter.VERBOSE, no_colors=True
         )
     )
-    assert line == "2013-09-17 07:32:51.000 homeassistant python[666]: ERROR"
+    assert line == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: ERROR"
 
 
 async def test_parsing_multiple_color_codes():

@@ -4,6 +4,7 @@
 import asyncio
 from collections.abc import Callable
 from contextlib import suppress
+from datetime import UTC, datetime
 import logging
 import os
 import signal
@@ -113,8 +114,7 @@ async def initialize_coresys() -> CoreSys:
     if coresys.dev:
         coresys.updater.channel = UpdateChannel.DEV
 
-    # Convert datetime
-    logging.Formatter.converter = lambda *args: coresys.now().timetuple()
+    SupervisorLogFormatter.coresys = coresys
 
     return coresys
 
@@ -303,22 +303,33 @@ def warning_handler(message, category, filename, lineno, file=None, line=None):
         capture_exception(message)
 
 
+class SupervisorLogFormatter(ColoredFormatter):
+    """Colored formatter with milliseconds and the UTC offset in timestamps."""
+
+    coresys: CoreSys | None = None
+
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:
+        """Format the record timestamp as `YYYY-MM-DD HH:MM:SS.mmm+HH:MM`."""
+        tz = self.coresys.timezone_tzinfo if self.coresys else None
+        return (
+            datetime.fromtimestamp(record.created, UTC)
+            .astimezone(tz)
+            .isoformat(sep=" ", timespec="milliseconds")
+        )
+
+
 def initialize_logging() -> None:
     """Initialize the logging."""
     logging.basicConfig(level=logging.INFO)
-    fmt = (
-        "%(asctime)s.%(msecs)03d %(levelname)s (%(threadName)s) [%(name)s] %(message)s"
-    )
+    fmt = "%(asctime)s %(levelname)s (%(threadName)s) [%(name)s] %(message)s"
     colorfmt = f"%(log_color)s{fmt}%(reset)s"
-    datefmt = "%Y-%m-%d %H:%M:%S"
 
     # suppress overly verbose logs from libraries that aren't helpful
     logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
     logging.getLogger().handlers[0].setFormatter(
-        ColoredFormatter(
+        SupervisorLogFormatter(
             colorfmt,
-            datefmt=datefmt,
             reset=True,
             log_colors={
                 "DEBUG": "cyan",
