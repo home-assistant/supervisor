@@ -248,7 +248,11 @@ class HomeAssistantAPI(CoreSysAttributes):
                     self._access_token = None
                     if attempt == 2:
                         raise
-        except HomeAssistantWSConnectionError as err:
+        except (
+            HomeAssistantWSConnectionError,
+            TimeoutError,
+            aiohttp.ClientError,
+        ) as err:
             raise await self._request_error(
                 self.ws_url, err, HomeAssistantWSConnectionError
             ) from err

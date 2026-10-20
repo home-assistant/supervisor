@@ -741,6 +741,39 @@ async def test_connect_websocket_connection_error(
         await api.connect_websocket()
 
 
+@pytest.mark.parametrize(
+    ("is_running", "match"),
+    [
+        pytest.param({"return_value": True}, "connection refused", id="running"),
+        pytest.param(
+            {"return_value": False}, "Core container is not running", id="stopped"
+        ),
+    ],
+)
+@pytest.mark.usefixtures("websession")
+async def test_connect_websocket_tcp_token_fetch_error(
+    coresys: CoreSys, is_running: dict[str, Any], match: str
+):
+    """Test a failed token fetch before a TCP connect raises a connection error."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.core.instance.is_running = AsyncMock(**is_running)
+    coresys.websession.post = MagicMock(
+        side_effect=aiohttp.ClientConnectionError("connection refused")
+    )
+
+    with (
+        patch.object(type(api), "use_unix_socket", False),
+        patch(
+            "supervisor.homeassistant.api.WSClient.connect_with_auth",
+            new_callable=AsyncMock,
+        ) as mock_connect,
+        pytest.raises(HomeAssistantWSConnectionError, match=match),
+    ):
+        await api.connect_websocket()
+
+    mock_connect.assert_not_called()
+
+
 @pytest.mark.usefixtures("websession")
 async def test_connect_websocket_tcp(coresys: CoreSys):
     """Test connect_websocket fetches token and connects with auth for TCP."""
