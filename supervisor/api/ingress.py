@@ -26,6 +26,7 @@ from ..const import (
     ATTR_SESSION_DATA_USER_ID,
     ATTR_TITLE,
     HEADER_REMOTE_USER_DISPLAY_NAME,
+    HEADER_REMOTE_USER_GROUPS,
     HEADER_REMOTE_USER_ID,
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
@@ -58,6 +59,7 @@ _REQUEST_HEADERS_FILTER = frozenset(
         HEADER_REMOTE_USER_ID,
         HEADER_REMOTE_USER_NAME,
         HEADER_REMOTE_USER_DISPLAY_NAME,
+        HEADER_REMOTE_USER_GROUPS,
     )
 )
 _RESPONSE_HEADERS_FILTER = frozenset(
@@ -413,6 +415,8 @@ def _init_header(
             headers[HEADER_REMOTE_USER_NAME] = user.username
         if user.name is not None:
             headers[HEADER_REMOTE_USER_DISPLAY_NAME] = user.name
+        if groups := user.effective_group_ids:
+            headers[HEADER_REMOTE_USER_GROUPS] = ",".join(groups)
 
     # Update X-Forwarded-For
     if request.transport:

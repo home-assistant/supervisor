@@ -111,6 +111,37 @@ def test_user_is_admin(user: dict[str, Any], expected: bool) -> None:
     assert HomeAssistantUser.from_dict(user).is_admin is expected
 
 
+@pytest.mark.parametrize(
+    ("user", "expected"),
+    [
+        pytest.param(
+            {"id": "1", "is_owner": True, "is_active": True, "group_ids": []},
+            ["system-admin"],
+            id="owner_without_admin_group",
+        ),
+        pytest.param(
+            {"id": "1", "is_owner": True, "group_ids": ["system-admin"]},
+            ["system-admin"],
+            id="owner_with_admin_group",
+        ),
+        pytest.param(
+            {"id": "1", "is_active": True, "group_ids": ["system-users"]},
+            ["system-users"],
+            id="users_group",
+        ),
+        pytest.param(
+            {"id": "1", "is_active": False, "group_ids": ["system-admin"]},
+            ["system-admin"],
+            id="inactive_admin_group_passed_through",
+        ),
+        pytest.param({"id": "1"}, [], id="unknown_groups"),
+    ],
+)
+def test_user_effective_group_ids(user: dict[str, Any], expected: list[str]) -> None:
+    """Test group IDs include the admin group whenever the user is an admin."""
+    assert HomeAssistantUser.from_dict(user).effective_group_ids == expected
+
+
 async def test_save_on_unload(coresys: CoreSys):
     """Test called save on unload."""
     coresys.ingress.create_session()

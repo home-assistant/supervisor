@@ -103,6 +103,7 @@ RESULT_OK = "ok"
 HEADER_REMOTE_USER_ID = "X-Remote-User-Id"
 HEADER_REMOTE_USER_NAME = "X-Remote-User-Name"
 HEADER_REMOTE_USER_DISPLAY_NAME = "X-Remote-User-Display-Name"
+HEADER_REMOTE_USER_GROUPS = "X-Remote-User-Groups"
 HEADER_TOKEN_OLD = "X-Hassio-Key"
 HEADER_TOKEN = "X-Supervisor-Token"
 
@@ -636,6 +637,14 @@ class HomeAssistantUser:
         return self.is_owner or (
             self.is_active and HOMEASSISTANT_GROUP_ID_ADMIN in (self.group_ids or [])
         )
+
+    @property
+    def effective_group_ids(self) -> list[str]:
+        """Return the group IDs, with the admin group folded in for owners."""
+        groups = list(self.group_ids or [])
+        if self.is_admin and HOMEASSISTANT_GROUP_ID_ADMIN not in groups:
+            groups.insert(0, HOMEASSISTANT_GROUP_ID_ADMIN)
+        return groups
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> Self:
