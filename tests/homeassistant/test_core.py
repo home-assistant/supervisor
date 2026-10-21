@@ -1611,6 +1611,27 @@ async def test_release_port_unconfirmed_when_unit_lookup_fails(
     assert systemd_service.StopUnit.calls == []
 
 
+async def test_reserve_port_flags_unconfirmed_stale_cleanup(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Stale units whose cleanup can't be confirmed stay flagged for a later release."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    coresys.homeassistant.http_server_host = ["0.0.0.0"]
+
+    with patch.object(
+        coresys.dbus.systemd,
+        "get_unit",
+        side_effect=DBusFatalError("busy", type_="org.freedesktop.DBus.Error.Failed"),
+    ):
+        result = await coresys.homeassistant.core.reserve_port()
+
+    assert result is False
+    assert systemd_service.StartTransientUnit.calls == []
+    assert coresys.homeassistant.core._port_reserved is True
+
+
 async def test_reserve_port_returns_false_when_unit_ends_up_failed(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],

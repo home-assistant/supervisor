@@ -692,6 +692,8 @@ class HomeAssistantCore(JobGroup):
                 hosts,
                 port,
             )
+            # Stale units may still hold the port: keep release_port retrying
+            self._port_reserved = True
             return False
 
         service_properties: list[tuple[str, Variant]] = [
