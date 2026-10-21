@@ -473,7 +473,7 @@ class HomeAssistantCore(JobGroup):
         if self.error_state and rollback_version:
             _LOGGER.critical("HomeAssistant update failed -> rollback!")
             self.sys_resolution.create_issue(
-                IssueType.UPDATE_ROLLBACK, ContextType.CORE
+                IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference=str(to_version)
             )
 
             # Make a copy of the current log file if it exists
@@ -490,7 +490,9 @@ class HomeAssistantCore(JobGroup):
             await _install_image(rollback_version)
             await _start_update(rollback_version)
         else:
-            self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
+            self.sys_resolution.create_issue(
+                IssueType.UPDATE_FAILED, ContextType.CORE, reference=str(to_version)
+            )
             raise HomeAssistantUpdateError
 
     @Job(

@@ -623,9 +623,41 @@ async def test_update_frontend_check_fails_triggers_rollback(
     assert update_call_count == 2
     # An update_rollback issue should be created
     assert (
-        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2025.8.3")
+        in coresys.resolution.issues
     )
     # Old image should not be cleaned up so rollback doesn't need to re-download
+    mock_cleanup.assert_not_called()
+
+
+async def test_update_failed_without_rollback_creates_issue(
+    core_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+):
+    """Test a failed update without a rollback version raises an update_failed issue."""
+    api_client, root = core_api_client_with_root
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+    # Core was already in error state before the update, so there is nothing to roll back to
+    coresys.homeassistant.core._error_state = True  # pylint: disable=protected-access
+
+    with (
+        patch.object(DockerInterface, "update"),
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=True)),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(DockerInterface, "cleanup") as mock_cleanup,
+    ):
+        resp = await api_client.post(f"{root}/update", json={"version": "2025.8.3"})
+
+    assert resp.status == 400
+    assert (
+        Issue(IssueType.UPDATE_FAILED, ContextType.CORE, reference="2025.8.3")
+        in coresys.resolution.issues
+    )
     mock_cleanup.assert_not_called()
 
 
@@ -676,7 +708,8 @@ async def test_update_websocket_api_missing_triggers_rollback(
     assert update_call_count == 2
     mock_frontend_check.assert_not_called()
     assert (
-        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2025.8.3")
+        in coresys.resolution.issues
     )
     mock_cleanup.assert_not_called()
 
@@ -723,7 +756,8 @@ async def test_update_get_config_error_triggers_rollback(
     assert update_call_count == 2
     mock_frontend_check.assert_not_called()
     assert (
-        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2025.8.3")
+        in coresys.resolution.issues
     )
     mock_cleanup.assert_not_called()
 
@@ -778,7 +812,7 @@ async def test_update_image_install_failure_surfaces_error(
     # Version is unchanged and no rollback issue is created.
     assert coresys.homeassistant.version == AwesomeVersion("2025.8.0")
     assert (
-        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE)
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2025.8.3")
         not in coresys.resolution.issues
     )
 
@@ -837,7 +871,7 @@ async def test_update_skips_health_check_when_core_not_running(
     # Caller (restore flow) is responsible for cleanup later.
     mock_cleanup.assert_not_called()
     assert (
-        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE)
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2026.4.4")
         not in coresys.resolution.issues
     )
     assert coresys.homeassistant.version == AwesomeVersion("2026.4.4")
