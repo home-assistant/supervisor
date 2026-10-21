@@ -178,6 +178,18 @@ async def test_defaults(coresys):
     assert filtered["user"]["id"] == coresys.machine_id
 
 
+@pytest.mark.parametrize("state", list(CoreState))
+async def test_supervisor_state_tag(coresys: CoreSys, state: CoreState):
+    """Test events are tagged with the Supervisor state."""
+    coresys.config.diagnostics = True
+
+    await coresys.core.set_state(state)
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
+        filtered = filter_data(coresys, {"sample": "event"}, {})
+
+    assert filtered["tags"]["supervisor_state"] == state.value
+
+
 async def test_defaults_without_machine(coresys: CoreSys, sys_machine: PropertyMock):
     """Test event defaults when machine type is unknown."""
     coresys.config.diagnostics = True
