@@ -165,6 +165,11 @@ async def test_app_state_listener(coresys: CoreSys, install_app_ssh: App) -> Non
         assert install_app_ssh.state == AppState.STOPPED
 
         await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STARTING
+        )
+        assert install_app_ssh.state == AppState.STARTUP
+
+        await _fire_test_event(
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
         )
         assert install_app_ssh.state == AppState.STARTED
@@ -311,6 +316,14 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
             f"app_{TEST_ADDON_SLUG}",
             ContainerState.FAILED,
             exit_code=1,
+        )
+        restart.assert_not_called()
+        start.assert_not_called()
+
+        # Do not restart while the healthcheck is still starting
+        current_state.return_value = ContainerState.STARTING
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STARTING
         )
         restart.assert_not_called()
         start.assert_not_called()
@@ -523,16 +536,76 @@ async def test_listeners_removed_on_uninstall(
         )
 
 
+@pytest.mark.parametrize(
+    ("config", "state", "expected"),
+    [
+        pytest.param({}, {}, AppState.STARTED, id="no-healthcheck"),
+        pytest.param(
+            {"Healthcheck": "exists"},
+            {"Health": {"Status": "starting"}},
+            AppState.STARTUP,
+            id="health-starting",
+        ),
+        pytest.param(
+            {"Healthcheck": "exists"},
+            {"Health": {"Status": "healthy"}},
+            AppState.STARTED,
+            id="health-healthy",
+        ),
+        pytest.param(
+            {"Healthcheck": "exists"},
+            {"Health": {"Status": "unhealthy"}},
+            AppState.STARTED,
+            id="health-unhealthy",
+        ),
+    ],
+)
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_load_settles_state_from_running_container(
-    install_app_ssh: App, container: DockerContainer
+    install_app_ssh: App,
+    container: DockerContainer,
+    config: dict[str, Any],
+    state: dict[str, Any],
+    expected: AppState,
 ) -> None:
     """Test load derives the state from a running container, not the default."""
-    container.show.return_value["State"]["Status"] = "running"
-    container.show.return_value["State"]["Running"] = True
+    container.show.return_value["Config"] = config
+    container.show.return_value["State"] |= {"Status": "running", "Running": True}
+    container.show.return_value["State"] |= state
     await install_app_ssh.load()
     # State is settled synchronously from current_state(), so it reflects the
     # running container immediately rather than the image-only STOPPED default.
+    assert install_app_ssh.state == expected
+
+
+@pytest.mark.parametrize("state", [ContainerState.HEALTHY, ContainerState.UNHEALTHY])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_running_healthcheck_starting_waits(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: DockerContainer,
+    state: ContainerState,
+) -> None:
+    """Test start on a container in its healthcheck start period waits for health."""
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["State"] |= {
+        "Status": "running",
+        "Running": True,
+        "Health": {"Status": "starting"},
+    }
+    await install_app_ssh.load()
+    await asyncio.sleep(0)
+    assert install_app_ssh.state == AppState.STARTUP
+
+    start_task = await install_app_ssh.start()
+    await asyncio.sleep(0)
+
+    assert not start_task.done()
+    assert install_app_ssh.state == AppState.STARTUP
+
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", state)
+
+    assert start_task.done()
     assert install_app_ssh.state == AppState.STARTED
 
 
@@ -571,6 +644,11 @@ async def test_start_wait_healthcheck(
     assert start_task
 
     await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+
+    assert not start_task.done()
+    assert install_app_ssh.state == AppState.STARTUP
+
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STARTING)
 
     assert not start_task.done()
     assert install_app_ssh.state == AppState.STARTUP

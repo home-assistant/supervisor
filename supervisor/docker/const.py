@@ -69,6 +69,7 @@ class ContainerState(StrEnum):
     FAILED = "failed"
     HEALTHY = "healthy"
     RUNNING = "running"
+    STARTING = "starting"
     STOPPED = "stopped"
     UNHEALTHY = "unhealthy"
     UNKNOWN = "unknown"
