@@ -334,9 +334,14 @@ class Job(CoreSysAttributes):
                         return self._handle_job_condition_exception(err)
 
                 if detach:
-                    # The group lock is handed down to nested calls, which only
-                    # works while the caller waits for the nested job to finish.
-                    if job_group and job_group.has_lock:
+                    # The group lock is handed down to nested group concurrency
+                    # calls, which only works while the caller waits for the
+                    # nested job to finish. Other jobs never take the lock.
+                    if (
+                        job_group
+                        and self._is_group_concurrency()
+                        and job_group.has_lock
+                    ):
                         raise JobStartException(
                             f"Job {self.name} cannot be detached while the current job holds the group lock"
                         )
