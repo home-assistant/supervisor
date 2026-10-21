@@ -871,7 +871,7 @@ async def test_update_skips_health_check_when_core_not_running(
     # Caller (restore flow) is responsible for cleanup later.
     mock_cleanup.assert_not_called()
     assert (
-        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2026.5.0b0")
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2026.4.4")
         not in coresys.resolution.issues
     )
     assert coresys.homeassistant.version == AwesomeVersion("2026.4.4")
