@@ -7,10 +7,14 @@ on:
       - main
   pull_request: ~
 
+permissions:
+  contents: read
+
 env:
   DEFAULT_PYTHON: "3.14.8"
   PRE_COMMIT_CACHE: ~/.cache/pre-commit
   MYPY_CACHE_VERSION: 1
+  CLIENT_REPOSITORY: https://github.com/home-assistant-libs/python-supervisor-client
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
@@ -386,12 +390,20 @@ jobs:
             --cov supervisor \
             -o console_output_style=count \
             tests
+        env:
+          SUPERVISOR_API_RECORD_DIR: ${{ runner.temp }}/api-records
       - name: Upload coverage artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage
           path: .coverage
           include-hidden-files: true
+      - name: Upload API records artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: api-records
+          path: ${{ runner.temp }}/api-records
+          if-no-files-found: error
 
   coverage:
     name: Process test coverage
@@ -430,3 +442,99 @@ jobs:
           coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+
+  client-compat-versions:
+    name: Resolve aiohasupervisor releases
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+    steps:
+      - name: Resolve aiohasupervisor releases
+        id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Releases with known incompatibilities fixed later, one per line with the reason
+          BLOCKED: |
+            0.7.0  # Fails core/stats one_shot and uninstalled app info, fixed in 0.8.0
+        run: |
+          blocked=$(jq -Rnc '[inputs | capture("^\\s*(?<version>[^#\\s]+)\\s*(#\\s*(?<reason>.*))?$")]' <<< "${BLOCKED}")
+          releases=$(gh api "repos/${CLIENT_REPOSITORY#https://github.com/}/releases?per_page=100")
+          # Releases of the past year, and always the newest since releases are infrequent
+          versions=$(jq -c --arg since "$(date -u -d '1 year ago' +%Y-%m-%dT%H:%M:%SZ)" --argjson blocked "${blocked}" '
+            map(select((.draft or .prerelease or (.tag_name | IN($blocked[].version))) | not))
+            | .[0] as $newest
+            | map(select(.published_at >= $since or . == $newest))
+            | map(.tag_name)' <<< "${releases}")
+          if [ "${versions}" = "[]" ]; then
+            echo "::error::No aiohasupervisor releases found"
+            exit 1
+          fi
+          jq -r '.[] | "::notice::Skipping blocked aiohasupervisor \(.version): \(.reason // "no reason given")"' <<< "${blocked}"
+          jq . <<< "${versions}"
+          echo "versions=${versions}" >> "$GITHUB_OUTPUT"
+
+  client-compat:
+    name: Check aiohasupervisor ${{ matrix.version }}
+    runs-on: ubuntu-latest
+    needs: ["client-compat-versions", "pytest", "prepare"]
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJSON(needs.client-compat-versions.outputs.versions) }}
+    env:
+      CLIENT_REF: ${{ matrix.version }}
+    steps: &client-compat-steps
+      - name: Set up Python ${{ needs.prepare.outputs.python-version }}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ needs.prepare.outputs.python-version }}
+      - name: Download API records artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: api-records
+          path: ${{ runner.temp }}/api-records
+      - name: Install aiohasupervisor ${{ env.CLIENT_REF }}
+        id: client
+        run: |
+          git -c advice.detachedHead=false clone --quiet --depth 1 --branch "${CLIENT_REF}" "${CLIENT_REPOSITORY}" "${RUNNER_TEMP}/client"
+          if [ ! -f "${RUNNER_TEMP}/client/tests/compat/check_responses.py" ]; then
+            echo "::notice::aiohasupervisor ${CLIENT_REF} predates the compat checker, skipped"
+            echo "checker=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python -m venv "${RUNNER_TEMP}/client-venv"
+          "${RUNNER_TEMP}/client-venv/bin/pip" install --quiet --disable-pip-version-check \
+            "${RUNNER_TEMP}/client"
+          echo "checker=true" >> "$GITHUB_OUTPUT"
+      - name: Check recorded responses
+        if: steps.client.outputs.checker == 'true'
+        run: |
+          "${RUNNER_TEMP}/client-venv/bin/python" \
+            "${RUNNER_TEMP}/client/tests/compat/check_responses.py" \
+            "${RUNNER_TEMP}/api-records"
+
+  # Unreleased, a failure shows a client fix is needed before the next release
+  client-compat-main:
+    name: Check aiohasupervisor main
+    runs-on: ubuntu-latest
+    needs: ["pytest", "prepare"]
+    continue-on-error: true
+    env:
+      CLIENT_REF: main
+    steps: *client-compat-steps
+
+  # Stable name to require, the matrix job names change with each release
+  client-compat-result:
+    name: Check aiohasupervisor releases
+    runs-on: ubuntu-latest
+    needs: ["client-compat"]
+    if: always()
+    steps:
+      - name: Check all releases passed
+        env:
+          RESULT: ${{ needs.client-compat.result }}
+        run: |
+          if [ "${RESULT}" != "success" ]; then
+            echo "::error::aiohasupervisor release checks did not pass: ${RESULT}"
+            exit 1
+          fi
