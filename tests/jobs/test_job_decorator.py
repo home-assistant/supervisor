@@ -2166,6 +2166,62 @@ async def test_scheduled_job_group_concurrency(coresys: CoreSys):
     assert job.done
 
 
+@pytest.mark.parametrize(
+    "concurrency",
+    [
+        pytest.param(None, id="no_concurrency"),
+        pytest.param(JobConcurrency.REJECT, id="reject"),
+        pytest.param(JobConcurrency.QUEUE, id="queue"),
+    ],
+)
+async def test_scheduled_job_on_group_while_holding_group_lock(
+    coresys: CoreSys, concurrency: JobConcurrency | None
+):
+    """Test a job without group concurrency can be scheduled while the caller holds the group lock."""
+    event = asyncio.Event()
+
+    class TestClass(JobGroup):
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            super().__init__(
+                coresys,
+                f"test_scheduled_job_on_group_while_holding_group_lock_{concurrency}",
+            )
+
+        @Job(
+            name=f"test_scheduled_job_on_group_while_holding_group_lock_execute_{concurrency}",
+            concurrency=concurrency,
+        )
+        async def execute(self) -> None:
+            """Execute the class method."""
+            await event.wait()
+
+        @Job(
+            name=f"test_scheduled_job_on_group_while_holding_group_lock_schedule_{concurrency}",
+            concurrency=JobConcurrency.GROUP_REJECT,
+        )
+        async def schedule_nested(
+            self,
+        ) -> tuple[SupervisorJob, asyncio.Task | asyncio.TimerHandle]:
+            """Schedule the job while holding the group lock."""
+            return await self.coresys.jobs.schedule_job(
+                self.execute, JobSchedulerOptions()
+            )
+
+    test = TestClass(coresys)
+    job, task = await test.schedule_nested()
+
+    assert job.parent_id is None
+    assert not job.done
+    assert test.active_job is None
+
+    event.set()
+    await task
+    assert job.done
+
+
 @pytest.mark.parametrize("detach", [False, True], ids=["regular", "declared_detach"])
 async def test_delayed_scheduled_job_rejection_is_logged(
     coresys: CoreSys,
