@@ -160,8 +160,10 @@ class WSClient:
                 max_msg_size=MAX_MESSAGE_SIZE_FROM_CORE,
                 timeout=aiohttp.ClientWSTimeout(ws_close=WEBSOCKET_CLOSE_TIMEOUT),
             )
-        except aiohttp.client_exceptions.ClientConnectorError:
-            raise HomeAssistantWSConnectionError("Can't connect") from None
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise HomeAssistantWSConnectionError(
+                f"Can't connect: {str(err) or type(err).__name__}"
+            ) from err
 
     @classmethod
     async def connect(
