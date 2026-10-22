@@ -700,6 +700,24 @@ class AudioUnknownError(AudioError, APIUnknownSupervisorError):
     message_template = "An unknown error occurred with Audio"
 
 
+class AudioInvalidSource(AudioError, APIError):
+    """Raise when an invalid source value is provided for an audio API."""
+
+    error_key = "audio_invalid_source"
+    message_template = "Invalid audio source {source}, must be one of: {stream_types}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        source: str,
+        stream_types: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"source": source, "stream_types": stream_types}
+        super().__init__(None, logger)
+
+
 # Apps
 
 
