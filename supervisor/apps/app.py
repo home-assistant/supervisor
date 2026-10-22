@@ -811,8 +811,8 @@ class App(AppModel):
         return options_schema.devices
 
     @property
-    def pwned(self) -> set[str]:
-        """Extract pwned data for app options."""
+    def pwned(self) -> dict[str, str]:
+        """Return option paths of password values mapped to their SHA-1 hash."""
         options_schema = self.schema
         with suppress(vol.Invalid):
             options_schema.validate(self.options)

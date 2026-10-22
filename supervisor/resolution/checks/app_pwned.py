@@ -3,7 +3,7 @@
 from datetime import timedelta
 import logging
 
-from ...const import AppState, CoreState
+from ...const import ATTR_OPTIONS, AppState, CoreState
 from ...coresys import CoreSys
 from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
 from ...jobs.const import JobCondition, JobThrottle
@@ -43,36 +43,46 @@ class CheckAppPwned(CheckBase):
         await self.sys_homeassistant.secrets.reload()
 
         for app in self.sys_apps.installed:
-            secrets = app.pwned
-            if not secrets:
+            try:
+                options = await self._pwned_options(app.pwned)
+            except PwnedConnectivityError:
+                # Nudge a fresh connectivity check; the probe is
+                # authoritative, this error path only hints that
+                # something may be wrong.
+                self.sys_supervisor.request_connectivity_check()
+                return
+            if not options:
                 continue
 
-            # check passwords
-            for secret in secrets:
-                try:
-                    await self.sys_security.verify_secret(secret)
-                except PwnedConnectivityError:
-                    # Nudge a fresh connectivity check; the probe is
-                    # authoritative, this error path only hints that
-                    # something may be wrong.
-                    self.sys_supervisor.request_connectivity_check()
-                    return
-                except PwnedSecret:
-                    # Check possible suggestion
-                    if app.state == AppState.STARTED:
-                        suggestions = [SuggestionType.EXECUTE_STOP]
-                    else:
-                        suggestions = None
+            if app.state == AppState.STARTED:
+                suggestions = [SuggestionType.EXECUTE_STOP]
+            else:
+                suggestions = None
 
-                    self.sys_resolution.create_issue(
-                        IssueType.PWNED,
-                        ContextType.ADDON,
-                        reference=app.slug,
-                        suggestions=suggestions,
-                    )
-                    break
-                except PwnedError:
-                    pass
+            self.sys_resolution.create_issue(
+                IssueType.PWNED,
+                ContextType.ADDON,
+                reference=app.slug,
+                suggestions=suggestions,
+                reference_extra={ATTR_OPTIONS: options},
+            )
+
+    async def _pwned_options(self, secrets: dict[str, str]) -> list[str]:
+        """Return the option paths whose secret is pwned."""
+        pwned_hashes: set[str] = set()
+        for secret in set(secrets.values()):
+            try:
+                await self.sys_security.verify_secret(secret)
+            except PwnedSecret:
+                pwned_hashes.add(secret)
+            except PwnedConnectivityError:
+                raise
+            except PwnedError:
+                pass
+
+        return sorted(
+            path for path, secret in secrets.items() if secret in pwned_hashes
+        )
 
     @Job(
         name="check_app_pwned_approve",
@@ -88,21 +98,14 @@ class CheckAppPwned(CheckBase):
         if not (app := self.sys_apps.get_local_only(issue.reference)):
             return False
 
-        # Not in use anymore
-        secrets = app.pwned
-        if not secrets:
-            return False
+        try:
+            options = await self._pwned_options(app.pwned)
+        except PwnedConnectivityError:
+            # Cannot verify, keep the issue until the next check
+            return True
 
-        # Check if still pwned
-        for secret in secrets:
-            try:
-                await self.sys_security.verify_secret(secret)
-            except PwnedSecret:
-                return True
-            except PwnedError:
-                pass
-
-        return False
+        # Dismiss on any change so the check raises an issue listing the current options
+        return bool(options) and issue.reference_extra == {ATTR_OPTIONS: options}
 
     @property
     def issue(self) -> IssueType:
