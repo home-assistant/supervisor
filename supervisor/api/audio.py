@@ -26,7 +26,7 @@ from ..const import (
     ATTR_VOLUME,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIError, AudioInvalidSource
 from ..host.sound import StreamType
 from ..validate import version_tag
 from .utils import api_process, api_return_stats, api_validate, require_running_system
@@ -55,6 +55,19 @@ SCHEMA_DEFAULT = vol.Schema({vol.Required(ATTR_NAME): str})
 SCHEMA_PROFILE = vol.Schema(
     {vol.Required(ATTR_CARD): str, vol.Required(ATTR_NAME): str}
 )
+
+SCHEMA_STREAM_TYPE = vol.Coerce(StreamType)
+
+
+def _get_stream_type(request: web.Request) -> StreamType:
+    """Return validated stream type from request path."""
+    source = request.match_info["source"]
+    try:
+        return SCHEMA_STREAM_TYPE(source)
+    except vol.Invalid as err:
+        raise AudioInvalidSource(
+            source=source, stream_types=", ".join(StreamType)
+        ) from err
 
 
 class APIAudio(CoreSysAttributes):
@@ -117,7 +130,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_volume(self, request: web.Request) -> None:
         """Set audio volume on stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_VOLUME, request)
 
@@ -130,7 +143,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_mute(self, request: web.Request) -> None:
         """Mute audio volume on stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_MUTE, request)
 
@@ -143,7 +156,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_default(self, request: web.Request) -> None:
         """Set audio default stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         body = await api_validate(SCHEMA_DEFAULT, request)
 
         await asyncio.shield(self.sys_host.sound.set_default(source, body[ATTR_NAME]))
