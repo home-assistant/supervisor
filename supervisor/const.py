@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
-from pathlib import Path
+from pathlib import Path, PurePath
 from sys import version_info as systemversion
 from typing import TYPE_CHECKING, Any, NotRequired, Self, TypedDict
 
@@ -48,7 +48,10 @@ FILE_SUFFIX_CONFIGURATION = [".yaml", ".yml", ".json"]
 
 MACHINE_ID = Path("/etc/machine-id")
 RUN_SUPERVISOR_STATE = Path("/run/supervisor")
-SOCKET_CORE = Path("/run/os/core.sock")
+# Host /run/supervisor as seen from inside the Supervisor container
+RUN_OS = Path("/run/os")
+HOST_RUN_SUPERVISOR = PurePath("/run/supervisor")
+SOCKET_NAME_CORE = "core.sock"
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
 SYSTEMD_JOURNAL_PERSISTENT = Path("/var/log/journal")

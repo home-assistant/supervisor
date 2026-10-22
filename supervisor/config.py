@@ -24,6 +24,8 @@ from .const import (
     ATTR_WAIT_BOOT,
     ENV_SUPERVISOR_SHARE,
     FILE_HASSIO_CONFIG,
+    HOST_RUN_SUPERVISOR,
+    RUN_OS,
     SUPERVISOR_DATA,
     FeatureFlag,
     LogLevel,
@@ -422,6 +424,16 @@ class CoreConfig(FileConfiguration):
     def path_extern_cid_files(self) -> PurePath:
         """Return CID files folder."""
         return PurePath(self.path_extern_supervisor, CID_FILES)
+
+    @property
+    def path_run(self) -> Path:
+        """Return the shared run folder for sockets inside supervisor."""
+        return RUN_OS
+
+    @property
+    def path_extern_run(self) -> PurePath:
+        """Return the shared run folder for sockets external for Docker."""
+        return HOST_RUN_SUPERVISOR
 
     @property
     def apps_repositories(self) -> list[str]:

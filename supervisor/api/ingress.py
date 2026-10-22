@@ -418,10 +418,10 @@ def _init_header(
         if groups := user.effective_group_ids:
             headers[HEADER_REMOTE_USER_GROUPS] = ",".join(groups)
 
-    # Update X-Forwarded-For
-    if request.transport:
+    # Update X-Forwarded-For, a Unix socket peer has no address to append
+    if request.transport and (peername := request.transport.get_extra_info("peername")):
         forward_for = request.headers.get(hdrs.X_FORWARDED_FOR)
-        connected_ip = ip_address(request.transport.get_extra_info("peername")[0])
+        connected_ip = ip_address(peername[0])
         headers[hdrs.X_FORWARDED_FOR] = f"{forward_for}, {connected_ip!s}"
 
     return headers
