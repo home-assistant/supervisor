@@ -3,10 +3,11 @@
 import logging
 from unittest.mock import Mock, PropertyMock, patch
 
+from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.dbus.const import ConnectionState
+from supervisor.dbus.const import ConnectionState, DeviceType
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting import NetworkSetting
@@ -22,7 +23,10 @@ from supervisor.utils.dbus import DBus
 
 from tests.const import TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.network_connection_settings import SETTINGS_1_FIXTURE
+from tests.dbus_service_mocks.network_connection_settings import (
+    SETTINGS_1_FIXTURE,
+    ConnectionSettings as ConnectionSettingsService,
+)
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
 )
@@ -164,6 +168,144 @@ async def test_find_connection_settings_no_match(
     inet = network_manager.get(TEST_INTERFACE_WLAN_NAME)
 
     assert await network_manager.find_connection_settings(inet) is None
+
+
+async def test_find_connection_settings_imported_profile(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test a profile marked for import is found for the only device of its type."""
+    wlan = await network_manager.find_connection_settings(
+        network_manager.get(TEST_INTERFACE_WLAN_NAME)
+    )
+    eth = await network_manager.find_connection_settings(
+        network_manager.get(TEST_INTERFACE_ETH_NAME)
+    )
+
+    assert wlan is not None
+    assert wlan.object_path == imported_wifi_settings_service.object_path
+    assert eth is not None
+    assert eth.object_path == "/org/freedesktop/NetworkManager/Settings/1"
+    wlan.shutdown()
+    eth.shutdown()
+
+
+@pytest.mark.usefixtures("imported_wifi_settings_service")
+async def test_find_connection_settings_imported_profile_not_for_another_device(
+    network_manager: NetworkManager,
+):
+    """Test a profile marked for import is unused with another device of its type."""
+    with patch.object(
+        NetworkManager, "is_only_device_of_type", return_value=False
+    ) as only_device:
+        assert (
+            await network_manager.find_connection_settings(
+                network_manager.get(TEST_INTERFACE_WLAN_NAME)
+            )
+            is None
+        )
+    only_device.assert_called_once()
+
+
+async def test_find_connection_settings_imported_profiles_ambiguous(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test profiles marked for import are unused when it's unclear which is meant."""
+    # The same profile listed twice stands in for two of them
+    network_manager_services["network_settings"].connections.append(
+        imported_wifi_settings_service.object_path
+    )
+
+    assert (
+        await network_manager.find_connection_settings(
+            network_manager.get(TEST_INTERFACE_WLAN_NAME)
+        )
+        is None
+    )
+
+
+async def test_is_only_device_of_type(network_manager: NetworkManager):
+    """Test whether another interface has the same type."""
+    wlan = network_manager.get(TEST_INTERFACE_WLAN_NAME)
+    assert network_manager.is_only_device_of_type(wlan) is True
+
+    other = Mock(type=DeviceType.WIRELESS)
+    with patch.object(
+        NetworkManager,
+        "interfaces",
+        new_callable=PropertyMock,
+        return_value={wlan, other},
+    ):
+        assert network_manager.is_only_device_of_type(wlan) is False
+
+
+async def test_find_connection_settings_unmarked_profile_not_used(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test a profile bound to no device is only used with the import marker."""
+    del imported_wifi_settings_service.settings["user"]
+
+    assert (
+        await network_manager.find_connection_settings(
+            network_manager.get(TEST_INTERFACE_WLAN_NAME)
+        )
+        is None
+    )
+
+
+async def test_find_connection_settings_bound_profile_wins(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test a profile bound to the device wins over an unbound one listed first."""
+    imported_wifi_settings_service.settings["connection"]["type"] = Variant(
+        "s", "802-3-ethernet"
+    )
+    network_manager_services["network_settings"].connections.reverse()
+
+    settings = await network_manager.find_connection_settings(
+        network_manager.get(TEST_INTERFACE_ETH_NAME)
+    )
+
+    assert settings is not None
+    assert settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
+    settings.shutdown()
+
+
+@pytest.mark.parametrize(
+    ("section", "key", "value"),
+    [
+        pytest.param(
+            "match", "interface-name", Variant("as", ["wl*"]), id="match-rule"
+        ),
+        pytest.param(
+            "802-11-wireless",
+            "mac-address",
+            Variant("ay", b"\x00\x11\x22\x33\x44\x55"),
+            id="mac-address",
+        ),
+    ],
+)
+async def test_find_connection_settings_profile_naming_a_device_otherwise(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+    section: str,
+    key: str,
+    value: Variant,
+):
+    """Test a profile naming a device in another way is not taken as unbound."""
+    imported_wifi_settings_service.settings.setdefault(section, {})[key] = value
+
+    assert (
+        await network_manager.find_connection_settings(
+            network_manager.get(TEST_INTERFACE_WLAN_NAME)
+        )
+        is None
+    )
 
 
 @pytest.mark.parametrize(

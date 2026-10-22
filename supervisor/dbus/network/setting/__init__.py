@@ -7,7 +7,7 @@ from typing import Any
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
-from ...const import DBUS_NAME_NM, MulticastDnsValue
+from ...const import DBUS_NAME_NM, DeviceType, MulticastDnsValue
 from ...interface import DBusInterface
 from ...utils import dbus_connected
 from ..configuration import (
@@ -30,6 +30,7 @@ CONF_ATTR_802_WIRELESS_SECURITY = "802-11-wireless-security"
 CONF_ATTR_VLAN = "vlan"
 CONF_ATTR_IPV4 = "ipv4"
 CONF_ATTR_IPV6 = "ipv6"
+CONF_ATTR_USER = "user"
 
 CONF_ATTR_CONNECTION_ID = "id"
 CONF_ATTR_CONNECTION_UUID = "uuid"
@@ -41,14 +42,23 @@ CONF_ATTR_CONNECTION_INTERFACE_NAME = "interface-name"
 
 CONF_ATTR_MATCH_PATH = "path"
 
+CONF_ATTR_USER_DATA = "data"
+
+# Set by a tool that writes a profile for the Supervisor to take over, such as
+# the Home Assistant installer through a CONFIG folder
+IMPORT_MARKER_KEY = "io.home-assistant.import"
+IMPORT_MARKER_VALUE = "supervisor"
+
 CONF_ATTR_VLAN_FLAGS = "flags"
 CONF_ATTR_VLAN_ID = "id"
 CONF_ATTR_VLAN_PARENT = "parent"
 
 CONF_ATTR_802_ETHERNET_ASSIGNED_MAC = "assigned-mac-address"
+CONF_ATTR_802_ETHERNET_MAC = "mac-address"
 
 CONF_ATTR_802_WIRELESS_MODE = "mode"
 CONF_ATTR_802_WIRELESS_ASSIGNED_MAC = "assigned-mac-address"
+CONF_ATTR_802_WIRELESS_MAC = "mac-address"
 CONF_ATTR_802_WIRELESS_SSID = "ssid"
 CONF_ATTR_802_WIRELESS_POWERSAVE = "powersave"
 CONF_ATTR_802_WIRELESS_SECURITY_AUTH_ALG = "auth-alg"
@@ -130,6 +140,7 @@ class NetworkSetting(DBusInterface):
         self._ipv4: Ip4Properties | None = None
         self._ipv6: Ip6Properties | None = None
         self._match: MatchProperties | None = None
+        self._user_data: dict[str, str] | None = None
         super().__init__()
 
     @property
@@ -176,6 +187,11 @@ class NetworkSetting(DBusInterface):
     def match(self) -> MatchProperties | None:
         """Return match properties if any."""
         return self._match
+
+    @property
+    def user_data(self) -> dict[str, str] | None:
+        """Return user data if any."""
+        return self._user_data
 
     @dbus_connected
     async def get_settings(self) -> dict[str, Any]:
@@ -261,6 +277,7 @@ class NetworkSetting(DBusInterface):
         self._ipv4 = None
         self._ipv6 = None
         self._match = None
+        self._user_data = None
 
         # Get configuration settings we care about
         # See: https://networkmanager.dev/docs/api/latest/nm-settings-dbus.html
@@ -288,6 +305,9 @@ class NetworkSetting(DBusInterface):
                 assigned_mac=data[CONF_ATTR_802_ETHERNET].get(
                     CONF_ATTR_802_ETHERNET_ASSIGNED_MAC
                 ),
+                mac_address=data[CONF_ATTR_802_ETHERNET].get(
+                    CONF_ATTR_802_ETHERNET_MAC
+                ),
             )
 
         if CONF_ATTR_802_WIRELESS in data:
@@ -301,6 +321,9 @@ class NetworkSetting(DBusInterface):
                 mode=data[CONF_ATTR_802_WIRELESS].get(CONF_ATTR_802_WIRELESS_MODE),
                 powersave=data[CONF_ATTR_802_WIRELESS].get(
                     CONF_ATTR_802_WIRELESS_POWERSAVE
+                ),
+                mac_address=data[CONF_ATTR_802_WIRELESS].get(
+                    CONF_ATTR_802_WIRELESS_MAC
                 ),
             )
 
@@ -360,6 +383,14 @@ class NetworkSetting(DBusInterface):
                 data[CONF_ATTR_MATCH].get(CONF_ATTR_MATCH_PATH)
             )
 
+        if CONF_ATTR_USER in data:
+            self._user_data = data[CONF_ATTR_USER].get(CONF_ATTR_USER_DATA)
+
+
+def connection_is_marked_for_import(setting: NetworkSetting) -> bool:
+    """Return true if setting is marked for the Supervisor to take over."""
+    return (setting.user_data or {}).get(IMPORT_MARKER_KEY) == IMPORT_MARKER_VALUE
+
 
 def connection_matches_device(
     setting: NetworkSetting, *, interface_name: str, path: str
@@ -379,4 +410,27 @@ def connection_matches_device(
     return (
         setting.connection is not None
         and setting.connection.interface_name == interface_name
+    )
+
+
+def connection_is_unbound_for_type(
+    setting: NetworkSetting, device_type: DeviceType
+) -> bool:
+    """Return true if setting names no device and is for this device type.
+
+    NetworkManager can activate such a profile on any device of its type.
+    Profiles imported from a CONFIG folder usually look like this. Any match
+    rule, interface name or MAC address counts as naming a device.
+    """
+    return (
+        setting.match is None
+        and setting.connection is not None
+        and not setting.connection.interface_name
+        and not (setting.ethernet and setting.ethernet.mac_address)
+        and not (setting.wireless and setting.wireless.mac_address)
+        and setting.connection.type
+        == {
+            DeviceType.ETHERNET: CONF_ATTR_802_ETHERNET,
+            DeviceType.WIRELESS: CONF_ATTR_802_WIRELESS,
+        }.get(device_type)
     )

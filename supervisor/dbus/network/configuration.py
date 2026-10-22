@@ -37,6 +37,7 @@ class WirelessProperties:
     assigned_mac: str | None
     mode: str | None
     powersave: int | None
+    mac_address: bytes | None = None
 
 
 @dataclass(slots=True)
@@ -53,6 +54,7 @@ class EthernetProperties:
     """Ethernet properties object for Network Manager."""
 
     assigned_mac: str | None
+    mac_address: bytes | None = None
 
 
 @dataclass(slots=True)

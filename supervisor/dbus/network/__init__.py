@@ -34,7 +34,12 @@ from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .dns import NetworkManagerDNS
 from .interface import NetworkInterface
-from .setting import NetworkSetting, connection_matches_device
+from .setting import (
+    NetworkSetting,
+    connection_is_marked_for_import,
+    connection_is_unbound_for_type,
+    connection_matches_device,
+)
 from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -148,14 +153,21 @@ class NetworkManager(DBusInterfaceProxy):
         first one whose match/interface-name identifies this device. This keeps
         configuration visible/editable even when the device has no active
         connection (e.g. cable unplugged, wrong wifi password). Best-effort: if
-        multiple stored profiles match, the first one found wins.
+        multiple stored profiles match, the first one found wins. Without one,
+        a single profile marked for the Supervisor to take over and bound to
+        no device is returned if this is the only device of its type (see
+        `connection_is_marked_for_import()`,
+        `connection_is_unbound_for_type()`).
 
-        Matching is device-type agnostic (see `connection_matches_device()`).
+        Matching a bound profile is device-type agnostic (see
+        `connection_matches_device()`).
         Callers that don't support VLAN devices yet (currently the v2 API) are
         responsible for filtering those out themselves - this is a temporary
         restriction expected to be lifted in a subsequent PR, so it's kept out
         of this shared lookup to avoid spreading it across layers.
         """
+        only_device_of_type = self.is_only_device_of_type(inet)
+        unbound: list[str] = []
         for object_path in await self.settings.list_connections():
             setting = NetworkSetting(object_path)
             try:
@@ -181,9 +193,29 @@ class NetworkManager(DBusInterfaceProxy):
             ):
                 return setting
 
+            if (
+                only_device_of_type
+                and connection_is_marked_for_import(setting)
+                and connection_is_unbound_for_type(setting, inet.type)
+            ):
+                unbound.append(object_path)
             setting.shutdown()
 
-        return None
+        # Several marked profiles leave it open which one is meant
+        if len(unbound) != 1:
+            return None
+        setting = NetworkSetting(unbound[0])
+        try:
+            await setting.connect(self.connected_dbus.bus)
+        except DBusError, DBusInterfaceError, DBusObjectError:
+            return None
+        return setting
+
+    def is_only_device_of_type(self, inet: NetworkInterface) -> bool:
+        """Return true if no other interface has the type of this one."""
+        return all(
+            other is inet or other.type != inet.type for other in self.interfaces
+        )
 
     @dbus_connected
     async def check_connectivity(self, *, force: bool = False) -> ConnectivityState:

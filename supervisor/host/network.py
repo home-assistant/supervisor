@@ -597,7 +597,11 @@ class NetworkManager(CoreSysAttributes):
         if (
             existing_settings
             and existing_settings.connection
-            and interface.matches_settings(inet, existing_settings)
+            # Without an active connection, existing settings were resolved
+            # for this device by `NetworkManager.find_connection_settings()`
+            and (
+                not inet.settings or interface.matches_settings(inet, existing_settings)
+            )
             and interface.enabled
         ):
             con = await self._apply_update(
