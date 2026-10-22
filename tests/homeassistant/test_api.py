@@ -1,6 +1,7 @@
 """Test Home Assistant API."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -125,19 +126,58 @@ async def test_supports_unix_socket(coresys: CoreSys, version: str, expected: bo
 @pytest.mark.parametrize(
     ("version", "env", "expected"),
     [
-        ("2024.1.0", [], False),
-        ("2026.4.0", ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"], True),
-        ("2026.4.0", ["TZ=UTC", "SUPERVISOR_TOKEN=abc"], False),
+        pytest.param("2024.1.0", [], None, id="unsupported-version"),
+        pytest.param(
+            "2024.1.0",
+            ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"],
+            None,
+            id="unsupported-version-with-env",
+        ),
+        pytest.param(
+            "2026.4.0",
+            ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"],
+            Path("/run/os/core.sock"),
+            id="default-path",
+        ),
+        pytest.param(
+            "2026.4.0",
+            ["TZ=UTC", "SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"],
+            Path("/run/os/core/core.sock"),
+            id="non-default-path",
+        ),
+        pytest.param(
+            "2026.4.0",
+            ["SUPERVISOR_CORE_API_SOCKET=/somewhere/else/core.sock"],
+            Path("/run/os/core.sock"),
+            id="unmapped-path-fallback",
+        ),
+        pytest.param("2026.4.0", ["TZ=UTC", "SUPERVISOR_TOKEN=abc"], None, id="no-env"),
     ],
 )
-async def test_use_unix_socket(
-    coresys: CoreSys, version: str, env: list[str], expected: bool
+async def test_core_socket_path(
+    coresys: CoreSys, version: str, env: list[str], expected: Path | None
 ):
-    """Test use_unix_socket based on version and container env."""
+    """Test Core socket path and use_unix_socket based on version and container env."""
     coresys.homeassistant.version = AwesomeVersion(version)
     # pylint: disable-next=protected-access
     coresys.homeassistant.core.instance._meta = {"Config": {"Env": env}}
-    assert coresys.homeassistant.api.use_unix_socket is expected
+    assert coresys.homeassistant.api.core_socket_path == expected
+    assert coresys.homeassistant.api.use_unix_socket is (expected is not None)
+
+
+async def test_unix_session_uses_core_socket_path(coresys: CoreSys):
+    """Test the Unix session connects to the path from the Core container env."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.core.instance._meta = {
+        "Config": {"Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]}
+    }
+    session = coresys.homeassistant.api.session
+    try:
+        assert isinstance(session.connector, aiohttp.UnixConnector)
+        assert session.connector.path == "/run/os/core/core.sock"
+    finally:
+        await coresys.homeassistant.api.close()
 
 
 # --- api_url / ws_url ---
@@ -404,7 +444,7 @@ async def test_http_config_pulled_on_connect(
     assert coresys.homeassistant.http_server_host is None
 
     with (
-        patch.object(type(api), "use_unix_socket", True),
+        patch.object(type(api), "core_socket_path", Path("/run/os/core.sock")),
         patch.object(api, "_get_json", return_value=TEST_HTTP_CONFIG) as get_json,
     ):
         await api.get_api_state()
@@ -428,7 +468,7 @@ async def test_http_config_pulled_on_connect(
         )
     )
     with (
-        patch.object(type(api), "use_unix_socket", True),
+        patch.object(type(api), "core_socket_path", Path("/run/os/core.sock")),
         patch.object(api, "_get_json", return_value=TEST_HTTP_CONFIG) as get_json,
     ):
         await api.get_api_state()
@@ -448,7 +488,7 @@ async def test_http_config_unchanged_not_saved(
 
     config = {**TEST_HTTP_CONFIG, "server_host": ["172.30.32.1"]}
     with (
-        patch.object(type(api), "use_unix_socket", True),
+        patch.object(type(api), "core_socket_path", Path("/run/os/core.sock")),
         patch.object(api, "_get_json", return_value=config),
     ):
         await api.get_api_state()

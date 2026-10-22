@@ -7,11 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 from aiohttp import WSCloseCode, WSMsgType, hdrs, web
-from aiohttp.test_utils import TestClient, TestServer
+from aiohttp.test_utils import TestClient, TestServer, make_mocked_request
 from multidict import CIMultiDictProxy
 import pytest
 
 from supervisor.api.const import WEBSOCKETS
+from supervisor.api.ingress import _init_header
 from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -874,3 +875,26 @@ async def test_ingress_websocket_drops_forged_identity_headers(
         }
     finally:
         await app_server.close()
+
+
+@pytest.mark.parametrize(
+    ("peername", "expected"),
+    [
+        pytest.param(("172.30.32.1", 54321), "192.168.1.10, 172.30.32.1", id="tcp"),
+        pytest.param("", "192.168.1.10", id="unix"),
+    ],
+)
+def test_init_header_forwarded_for(peername: tuple[str, int] | str, expected: str):
+    """Test X-Forwarded-For only appends the peer when it has an address."""
+    transport = MagicMock()
+    transport.get_extra_info.return_value = peername
+    request = make_mocked_request(
+        "GET",
+        "/",
+        headers={hdrs.X_FORWARDED_FOR: "192.168.1.10"},
+        transport=transport,
+    )
+
+    headers = _init_header(request, MagicMock(spec=App), None)
+
+    assert headers.getall(hdrs.X_FORWARDED_FOR) == [expected]

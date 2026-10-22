@@ -162,6 +162,9 @@ class Ulimit:
 
 
 ENV_CORE_API_SOCKET = "SUPERVISOR_CORE_API_SOCKET"
+ENV_HOMEASSISTANT_API_SOCKET = "HOMEASSISTANT_API_SOCKET"
+ENV_SUPERVISOR_INGRESS_SOCKET = "SUPERVISOR_INGRESS_SOCKET"
+ENV_SUPERVISOR_SOCKET = "SUPERVISOR_SOCKET"
 ENV_DUPLICATE_LOG_FILE = "HA_DUPLICATE_LOG_FILE"
 ENV_TIME = "TZ"
 ENV_TOKEN = "SUPERVISOR_TOKEN"
@@ -211,6 +214,9 @@ PATH_SSL = PurePath("/ssl")
 PATH_BACKUP = PurePath("/backup")
 PATH_SHARE = PurePath("/share")
 PATH_MEDIA = PurePath("/media")
+PATH_RUN_API = PurePath("/run/supervisor/api")
+PATH_RUN_CORE = PurePath("/run/supervisor/core")
+PATH_RUN_INGRESS = PurePath("/run/supervisor/ingress")
 # Legacy, deprecated as of 2026.07
 PATH_ALL_ADDON_CONFIGS = PurePath("/addon_configs")
 PATH_LOCAL_ADDONS = PurePath("/addons")
