@@ -60,10 +60,6 @@ APP_CONFIGS = PurePath("app_configs")
 CORE_BACKUP_DATA = PurePath("core/backup")
 CID_FILES = PurePath("cid_files")
 
-RUN_SUPERVISOR = PurePath("supervisor")
-RUN_CORE = PurePath("core")
-RUN_INGRESS = PurePath("ingress")
-
 DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
 
 # We filter out UTC because it's the system default fallback
@@ -438,36 +434,6 @@ class CoreConfig(FileConfiguration):
     def path_extern_run(self) -> PurePath:
         """Return the shared run folder for sockets external for Docker."""
         return HOST_RUN_SUPERVISOR
-
-    @property
-    def path_run_supervisor(self) -> Path:
-        """Return folder for sockets Supervisor listens on."""
-        return self.path_run / RUN_SUPERVISOR
-
-    @property
-    def path_extern_run_supervisor(self) -> PurePath:
-        """Return folder for sockets Supervisor listens on external for Docker."""
-        return PurePath(self.path_extern_run, RUN_SUPERVISOR)
-
-    @property
-    def path_run_core(self) -> Path:
-        """Return folder for sockets Core listens on."""
-        return self.path_run / RUN_CORE
-
-    @property
-    def path_extern_run_core(self) -> PurePath:
-        """Return folder for sockets Core listens on external for Docker."""
-        return PurePath(self.path_extern_run, RUN_CORE)
-
-    @property
-    def path_run_ingress(self) -> Path:
-        """Return folder for ingress sockets."""
-        return self.path_run / RUN_INGRESS
-
-    @property
-    def path_extern_run_ingress(self) -> PurePath:
-        """Return folder for ingress sockets external for Docker."""
-        return PurePath(self.path_extern_run, RUN_INGRESS)
 
     @property
     def apps_repositories(self) -> list[str]:

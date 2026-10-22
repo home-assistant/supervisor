@@ -2,11 +2,12 @@
 
 from ipaddress import IPv4Address
 import logging
+from pathlib import PurePath
 import re
 
 from awesomeversion import AwesomeVersion
 
-from ..const import LABEL_MACHINE, LABEL_TYPE
+from ..const import LABEL_MACHINE, LABEL_TYPE, SOCKET_NAME_CORE
 from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE, LANDINGPAGE_TYPE
@@ -198,7 +199,9 @@ class DockerHomeAssistant(DockerInterface):
         if restore_job_id:
             environment[ENV_RESTORE_JOB_ID] = restore_job_id
         if self.sys_homeassistant.api.supports_unix_socket:
-            environment[ENV_CORE_API_SOCKET] = "/run/supervisor/core.sock"
+            environment[ENV_CORE_API_SOCKET] = PurePath(
+                MOUNT_CORE_RUN.target, SOCKET_NAME_CORE
+            ).as_posix()
         if self.sys_homeassistant.duplicate_log_file:
             environment[ENV_DUPLICATE_LOG_FILE] = "1"
         await self._run(
