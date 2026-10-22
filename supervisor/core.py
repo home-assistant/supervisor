@@ -256,8 +256,7 @@ class Core(CoreSysAttributes):
         # path that starts Core in the meantime (API, watchdog, restore)
         # releases it too: HomeAssistantCore.start()/restart() own that.
         try:
-            if not await self.sys_homeassistant.core.is_running():
-                await self.sys_homeassistant.core.reserve_port()
+            await self.sys_homeassistant.core.reserve_port()
 
             # Start app mark as initialize
             await self.sys_apps.boot(AppStartup.INITIALIZE)

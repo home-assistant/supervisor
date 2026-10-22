@@ -1471,6 +1471,75 @@ async def test_start_waits_for_in_flight_port_reservation(
     assert coresys.homeassistant.core._port_reserved is False
 
 
+async def test_reserve_port_waits_for_in_flight_core_start(
+    coresys: CoreSys,
+    container: DockerContainer,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """reserve_port() during start() waits for the container and then skips the reservation."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    coresys.homeassistant.http_server_host = None
+    coresys.docker.images.inspect.return_value = {"Id": "123"}
+    container.show.return_value["Image"] = "123"
+    container.show.return_value["State"]["Status"] = "exited"
+    container.show.return_value["State"]["Running"] = False
+
+    container_start_entered = asyncio.Event()
+    container_start_release = asyncio.Event()
+
+    async def gated_container_start() -> None:
+        container_start_entered.set()
+        await container_start_release.wait()
+        container.show.return_value["State"]["Status"] = "running"
+        container.show.return_value["State"]["Running"] = True
+
+    container.start.side_effect = gated_container_start
+
+    with (
+        patch.object(
+            HomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2023.7.0")),
+        ),
+        patch.object(HomeAssistantCore, "_block_till_run"),
+    ):
+        start_task = asyncio.create_task(coresys.homeassistant.core.start())
+        await container_start_entered.wait()
+        reserve_task = asyncio.create_task(coresys.homeassistant.core.reserve_port())
+        for _ in range(10):
+            await asyncio.sleep(0)
+        # The reservation must be parked behind the container start
+        assert not reserve_task.done()
+        assert systemd_service.StartTransientUnit.calls == []
+
+        container_start_release.set()
+        await start_task
+        assert await reserve_task is False
+
+    container.start.assert_called_once()
+    assert systemd_service.StartTransientUnit.calls == []
+    assert coresys.homeassistant.core._port_reserved is False
+
+
+async def test_reserve_port_skipped_when_core_running(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """No reservation is made for a Core that is already running."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    with patch.object(
+        coresys.homeassistant.core, "is_running", new=AsyncMock(return_value=True)
+    ):
+        result = await coresys.homeassistant.core.reserve_port()
+
+    assert result is False
+    assert systemd_service.StartTransientUnit.calls == []
+    assert coresys.homeassistant.core._port_reserved is False
+
+
 async def test_start_proceeds_when_port_release_not_confirmed(
     coresys: CoreSys,
     container: DockerContainer,

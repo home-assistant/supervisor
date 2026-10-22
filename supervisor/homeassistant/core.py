@@ -532,33 +532,34 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.warning("Home Assistant is already running!")
             return
 
-        # Give the port back before the container needs it, in case the boot
-        # flow still holds it (e.g. Core started via the API during app boot)
-        await self.release_port()
+        # Hold the port lock from the release until the container is up, so
+        # the boot flow can't reserve the port in between (see reserve_port)
+        async with self._port_lock:
+            await self._release_port()
 
-        # Instance/Container exists, simple start
-        if await self.instance.is_initialize():
-            try:
-                await self.instance.start()
-            except DockerError as err:
-                raise HomeAssistantError from err
+            # Instance/Container exists, simple start
+            if await self.instance.is_initialize():
+                try:
+                    await self.instance.start()
+                except DockerError as err:
+                    raise HomeAssistantError from err
+            # No Instance/Container found, extended start
+            else:
+                # Create new API token
+                self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
+                await self.sys_homeassistant.save_data()
 
-            await self._block_till_run()
-        # No Instance/Container found, extended start
-        else:
-            # Create new API token
-            self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
-            await self.sys_homeassistant.save_data()
+                # Write audio settings
+                await self.sys_homeassistant.write_pulse()
 
-            # Write audio settings
-            await self.sys_homeassistant.write_pulse()
+                try:
+                    await self.instance.run(
+                        restore_job_id=self.sys_backups.current_restore
+                    )
+                except DockerError as err:
+                    raise HomeAssistantError from err
 
-            try:
-                await self.instance.run(restore_job_id=self.sys_backups.current_restore)
-            except DockerError as err:
-                raise HomeAssistantError from err
-
-            await self._block_till_run()
+        await self._block_till_run()
 
     @Job(
         name="home_assistant_core_stop",
@@ -587,12 +588,13 @@ class HomeAssistantCore(JobGroup):
             )
 
         # See start(): Core rebinds its port on restart
-        await self.release_port()
+        async with self._port_lock:
+            await self._release_port()
 
-        try:
-            await self.instance.restart()
-        except DockerError as err:
-            raise HomeAssistantError from err
+            try:
+                await self.instance.restart()
+            except DockerError as err:
+                raise HomeAssistantError from err
 
         await self._block_till_run()
 
@@ -658,16 +660,17 @@ class HomeAssistantCore(JobGroup):
         (via ``aux``) with a no-op oneshot service so it has a valid
         activation target.
 
-        The reservation is released by ``release_port``, which ``start`` and
-        ``restart`` call themselves before touching the container, so it is
-        safe no matter which path ends up starting Core first.
+        ``start`` and ``restart`` release the reservation themselves and keep
+        the same lock held until their container is up, so a reservation can
+        neither interleave with a Core start nor be created once Core runs.
 
-        Returns True if reserved, or False if it couldn't be reserved
-        (non-fatal, boot continues without the protection).
+        Returns True if reserved, or False if it couldn't be reserved or Core
+        is already running (non-fatal, boot continues without the protection).
         """
-        # Serialized with release_port so a concurrent Core start waits for
-        # an in-flight reservation instead of racing it
         async with self._port_lock:
+            if await self.is_running():
+                _LOGGER.debug("Home Assistant Core is running, no port reservation")
+                return False
             return await self._reserve_port()
 
     async def _reserve_port(self) -> bool:
@@ -766,12 +769,16 @@ class HomeAssistantCore(JobGroup):
         later call retries.
         """
         async with self._port_lock:
-            if not self._port_reserved:
-                return True
+            return await self._release_port()
 
-            released = await self._stop_port_reserve_units()
-            self._port_reserved = not released
-            return released
+    async def _release_port(self) -> bool:
+        """Release the reservation if held; caller must hold the port lock."""
+        if not self._port_reserved:
+            return True
+
+        released = await self._stop_port_reserve_units()
+        self._port_reserved = not released
+        return released
 
     async def _stop_unit_confirmed(self, unit_name: str) -> bool:
         """Stop a transient unit and confirm it actually reached INACTIVE.
