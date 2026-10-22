@@ -1,8 +1,8 @@
 """Home Assistant control object."""
 
 import asyncio
-from collections.abc import Awaitable
-from contextlib import suppress
+from collections.abc import AsyncIterator, Awaitable
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
@@ -532,11 +532,7 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.warning("Home Assistant is already running!")
             return
 
-        # Hold the port lock from the release until the container is up, so
-        # the boot flow can't reserve the port in between (see reserve_port)
-        async with self._port_lock:
-            await self._release_port()
-
+        async with self.port_released():
             # Instance/Container exists, simple start
             if await self.instance.is_initialize():
                 try:
@@ -587,10 +583,7 @@ class HomeAssistantCore(JobGroup):
                 (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
             )
 
-        # See start(): Core rebinds its port on restart
-        async with self._port_lock:
-            await self._release_port()
-
+        async with self.port_released():
             try:
                 await self.instance.restart()
             except DockerError as err:
@@ -649,7 +642,7 @@ class HomeAssistantCore(JobGroup):
         """Return True if a task is in progress."""
         return self.instance.in_progress or self.active_job is not None
 
-    async def reserve_port(self) -> bool:
+    async def reserve_port(self) -> None:
         """Reserve Core's host TCP port(s) using a transient systemd socket.
 
         Used by the Supervisor boot flow to keep host-network apps from
@@ -660,20 +653,22 @@ class HomeAssistantCore(JobGroup):
         (via ``aux``) with a no-op oneshot service so it has a valid
         activation target.
 
-        ``start`` and ``restart`` release the reservation themselves and keep
+        ``start`` and ``restart`` run inside ``port_released``, which keeps
         the same lock held until their container is up, so a reservation can
         neither interleave with a Core start nor be created once Core runs.
 
-        Returns True if reserved, or False if it couldn't be reserved or Core
-        is already running (non-fatal, boot continues without the protection).
+        Failing to reserve is non-fatal: boot continues without the
+        protection. Whether the units may still hold the port afterwards is
+        tracked in ``_port_reserved`` so ``port_released`` keeps retrying.
         """
         async with self._port_lock:
             if await self.is_running():
                 _LOGGER.debug("Home Assistant Core is running, no port reservation")
-                return False
-            return await self._reserve_port()
+                return
+            await self._reserve_port()
 
-    async def _reserve_port(self) -> bool:
+    async def _reserve_port(self) -> None:
+        """Create the reservation units with the port lock held."""
         hosts = self.sys_homeassistant.http_server_host or ["0.0.0.0", "::"]
         port = self.sys_homeassistant.api_port
 
@@ -683,7 +678,7 @@ class HomeAssistantCore(JobGroup):
                 hosts,
                 port,
             )
-            return False
+            return
 
         # Clean up any unit left behind by a crashed Supervisor boot -- systemd
         # refuses to redefine a transient unit that's still loaded under the
@@ -695,9 +690,9 @@ class HomeAssistantCore(JobGroup):
                 hosts,
                 port,
             )
-            # Stale units may still hold the port: keep release_port retrying
+            # Stale units may still hold the port: keep port_released retrying
             self._port_reserved = True
-            return False
+            return
 
         service_properties: list[tuple[str, Variant]] = [
             (
@@ -748,9 +743,9 @@ class HomeAssistantCore(JobGroup):
                 err,
             )
             # The unit may have been created: stay flagged if that can't be
-            # ruled out so release_port keeps retrying
+            # ruled out so port_released keeps retrying
             self._port_reserved = not await self._stop_port_reserve_units()
-            return False
+            return
 
         _LOGGER.debug(
             "Reserved Home Assistant Core port(s) %s:%d during app startup",
@@ -758,27 +753,23 @@ class HomeAssistantCore(JobGroup):
             port,
         )
         self._port_reserved = True
-        return True
 
-    async def release_port(self) -> bool:
-        """Release the port reservation made by ``reserve_port``, if any.
+    async def release_port(self) -> None:
+        """Release the port reservation made by ``reserve_port``, if any."""
+        async with self.port_released():
+            pass
 
-        Cheap no-op when nothing is reserved. Returns True once the port is
-        confirmed free (or was never held), False if the release could not
-        be confirmed -- in which case the reservation stays flagged so a
-        later call retries.
+    @asynccontextmanager
+    async def port_released(self) -> AsyncIterator[None]:
+        """Release the port reservation and keep it from being retaken until exit.
+
+        Cheap no-op when nothing is reserved. If the release can't be
+        confirmed the reservation stays flagged so a later call retries.
         """
         async with self._port_lock:
-            return await self._release_port()
-
-    async def _release_port(self) -> bool:
-        """Release the reservation if held; caller must hold the port lock."""
-        if not self._port_reserved:
-            return True
-
-        released = await self._stop_port_reserve_units()
-        self._port_reserved = not released
-        return released
+            if self._port_reserved:
+                self._port_reserved = not await self._stop_port_reserve_units()
+            yield
 
     async def _stop_unit_confirmed(self, unit_name: str) -> bool:
         """Stop a transient unit and confirm it actually reached INACTIVE.

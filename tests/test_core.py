@@ -579,15 +579,13 @@ async def test_start_port_held_during_app_boot_released_before_core_start(
     orig_reserve = coresys.homeassistant.core.reserve_port
     orig_release = coresys.homeassistant.core.release_port
 
-    async def tracking_reserve() -> bool:
-        result = await orig_reserve()
+    async def tracking_reserve() -> None:
+        await orig_reserve()
         call_sequence.append("port_reserved")
-        return result
 
-    async def tracking_release() -> bool:
-        result = await orig_release()
+    async def tracking_release() -> None:
+        await orig_release()
         call_sequence.append("port_released")
-        return result
 
     async def tracking_boot(stage: AppStartup) -> None:
         call_sequence.append(f"boot:{stage}")
@@ -689,9 +687,8 @@ async def test_start_after_supervisor_restart_releases_port_before_core_start(
 
     call_sequence: list[str] = []
 
-    async def tracking_release() -> bool:
+    async def tracking_release() -> None:
         call_sequence.append("port_released")
-        return True
 
     async def tracking_core_start() -> None:
         call_sequence.append("core_start")
@@ -704,9 +701,7 @@ async def test_start_after_supervisor_restart_releases_port_before_core_start(
             "is_initialize",
             new=AsyncMock(return_value=False),
         ),
-        patch.object(
-            coresys.homeassistant.core, "reserve_port", new=AsyncMock(return_value=True)
-        ),
+        patch.object(coresys.homeassistant.core, "reserve_port", new=AsyncMock()),
         patch.object(
             coresys.homeassistant.core, "release_port", side_effect=tracking_release
         ),

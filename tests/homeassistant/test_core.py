@@ -1308,7 +1308,8 @@ async def fixture_held_port_reservation(
     systemd_service.mock_systemd_unit = systemd_unit_service
     coresys.homeassistant.http_server_host = None
 
-    assert await coresys.homeassistant.core.reserve_port() is True
+    await coresys.homeassistant.core.reserve_port()
+    assert coresys.homeassistant.core._port_reserved is True
     systemd_service.StopUnit.calls.clear()
     return systemd_service
 
@@ -1355,7 +1356,7 @@ async def test_start_releases_held_port_reservation(
     assert stop_calls_at_start == [2]
     # Flag cleared: a later release is a no-op
     held_port_reservation.StopUnit.calls.clear()
-    assert await coresys.homeassistant.core.release_port() is True
+    await coresys.homeassistant.core.release_port()
     assert held_port_reservation.StopUnit.calls == []
 
 
@@ -1460,7 +1461,7 @@ async def test_start_waits_for_in_flight_port_reservation(
         container.start.assert_not_called()
 
         unit_creation_release.set()
-        assert await reserve_task is True
+        await reserve_task
         await start_task
 
     container.start.assert_called_once()
@@ -1515,7 +1516,7 @@ async def test_reserve_port_waits_for_in_flight_core_start(
 
         container_start_release.set()
         await start_task
-        assert await reserve_task is False
+        await reserve_task
 
     container.start.assert_called_once()
     assert systemd_service.StartTransientUnit.calls == []
@@ -1533,9 +1534,8 @@ async def test_reserve_port_skipped_when_core_running(
     with patch.object(
         coresys.homeassistant.core, "is_running", new=AsyncMock(return_value=True)
     ):
-        result = await coresys.homeassistant.core.reserve_port()
+        await coresys.homeassistant.core.reserve_port()
 
-    assert result is False
     assert systemd_service.StartTransientUnit.calls == []
     assert coresys.homeassistant.core._port_reserved is False
 
@@ -1596,9 +1596,9 @@ async def test_release_port_resets_failed_unit(
     systemd_unit_service.active_state = "failed"
 
     coresys.homeassistant.core._port_reserved = True
-    result = await coresys.homeassistant.core.release_port()
+    await coresys.homeassistant.core.release_port()
 
-    assert result is False
+    assert coresys.homeassistant.core._port_reserved is True
     assert (
         "homeassistant-core-port-reserve.socket",
         "replace",
@@ -1621,9 +1621,9 @@ async def test_release_port_confirms_success_when_unit_goes_inactive(
     systemd_unit_service.active_state = "active"
 
     coresys.homeassistant.core._port_reserved = True
-    result = await coresys.homeassistant.core.release_port()
+    await coresys.homeassistant.core.release_port()
 
-    assert result is True
+    assert coresys.homeassistant.core._port_reserved is False
 
 
 async def test_reserve_port_skips_when_dbus_not_connected(
@@ -1636,9 +1636,9 @@ async def test_reserve_port_skips_when_dbus_not_connected(
 
     with patch.object(coresys.dbus.systemd, "dbus", None):
         coresys.homeassistant.http_server_host = ["0.0.0.0"]
-        result = await coresys.homeassistant.core.reserve_port()
+        await coresys.homeassistant.core.reserve_port()
 
-    assert result is False
+    assert coresys.homeassistant.core._port_reserved is False
     assert systemd_service.StartTransientUnit.calls == []
 
 
@@ -1652,9 +1652,8 @@ async def test_release_port_unconfirmed_when_dbus_not_connected(
 
     with patch.object(coresys.dbus.systemd, "dbus", None):
         coresys.homeassistant.core._port_reserved = True
-        result = await coresys.homeassistant.core.release_port()
+        await coresys.homeassistant.core.release_port()
 
-    assert result is False
     assert coresys.homeassistant.core._port_reserved is True
     assert systemd_service.StopUnit.calls == []
 
@@ -1673,9 +1672,8 @@ async def test_release_port_unconfirmed_when_unit_lookup_fails(
         "get_unit",
         side_effect=DBusFatalError("busy", type_="org.freedesktop.DBus.Error.Failed"),
     ):
-        result = await coresys.homeassistant.core.release_port()
+        await coresys.homeassistant.core.release_port()
 
-    assert result is False
     assert coresys.homeassistant.core._port_reserved is True
     assert systemd_service.StopUnit.calls == []
 
@@ -1694,14 +1692,13 @@ async def test_reserve_port_flags_unconfirmed_stale_cleanup(
         "get_unit",
         side_effect=DBusFatalError("busy", type_="org.freedesktop.DBus.Error.Failed"),
     ):
-        result = await coresys.homeassistant.core.reserve_port()
+        await coresys.homeassistant.core.reserve_port()
 
-    assert result is False
     assert systemd_service.StartTransientUnit.calls == []
     assert coresys.homeassistant.core._port_reserved is True
 
 
-async def test_reserve_port_returns_false_when_unit_ends_up_failed(
+async def test_reserve_port_fails_when_unit_ends_up_failed(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ):
@@ -1728,9 +1725,8 @@ async def test_reserve_port_returns_false_when_unit_ends_up_failed(
     systemd_service.StartTransientUnit.calls.clear()
 
     coresys.homeassistant.http_server_host = ["0.0.0.0"]
-    result = await coresys.homeassistant.core.reserve_port()
+    await coresys.homeassistant.core.reserve_port()
 
-    assert result is False
     assert len(systemd_service.StartTransientUnit.calls) == 1
     # Cleanup of the FAILED unit can't be confirmed either (unlinked mock
     # never clears), so the port must stay flagged for release_port to retry
@@ -1761,9 +1757,9 @@ async def test_reserve_port_handles_dbus_disconnect_mid_call(
         side_effect=DBusNotConnectedError(),
     ):
         coresys.homeassistant.http_server_host = ["0.0.0.0"]
-        result = await coresys.homeassistant.core.reserve_port()
+        await coresys.homeassistant.core.reserve_port()
 
-    assert result is False
+    assert coresys.homeassistant.core._port_reserved is False
 
 
 async def test_release_port_handles_dbus_disconnect_mid_call(
@@ -1786,6 +1782,6 @@ async def test_release_port_handles_dbus_disconnect_mid_call(
         ),
     ):
         coresys.homeassistant.core._port_reserved = True
-        result = await coresys.homeassistant.core.release_port()
+        await coresys.homeassistant.core.release_port()
 
-    assert result is False
+    assert coresys.homeassistant.core._port_reserved is True
