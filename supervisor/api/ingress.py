@@ -37,7 +37,7 @@ from ..const import (
     IngressSessionData,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, HomeAssistantAPIError
+from ..exceptions import APIError, APIUnauthorized, HomeAssistantAPIError
 from .const import COOKIE_INGRESS, WEBSOCKETS
 from .utils import api_process, api_validate, require_home_assistant, stop_on_disconnect
 
@@ -170,7 +170,7 @@ class APIIngress(CoreSysAttributes):
         # Check Ingress Session
         if not self.sys_ingress.validate_session(data[ATTR_SESSION]):
             _LOGGER.warning("No valid ingress session %s", data[ATTR_SESSION])
-            raise HTTPUnauthorized
+            raise APIUnauthorized("Ingress session is not valid")
 
     async def handler(
         self, request: web.Request

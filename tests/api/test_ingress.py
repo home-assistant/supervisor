@@ -89,6 +89,27 @@ async def test_validate_session(
         assert coresys.ingress.sessions[session] > valid_time
 
 
+async def test_validate_session_invalid(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test validating an unknown ingress session returns a JSON error."""
+    api_client, prefix = api_client_with_prefix
+    with patch(
+        "aiohttp.web_request.BaseRequest.__getitem__",
+        return_value=coresys.homeassistant,
+    ):
+        resp = await api_client.post(
+            f"{prefix}/ingress/validate_session",
+            json={"session": "non-existing"},
+        )
+
+    assert resp.status == 401
+    assert await resp.json() == {
+        "result": "error",
+        "message": "Ingress session is not valid",
+    }
+
+
 async def test_validate_session_with_user_id(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,
