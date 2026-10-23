@@ -2,12 +2,11 @@
 
 from ipaddress import IPv4Address
 import logging
-from pathlib import PurePath
 import re
 
 from awesomeversion import AwesomeVersion
 
-from ..const import LABEL_MACHINE, LABEL_TYPE, SOCKET_NAME_CORE
+from ..const import LABEL_MACHINE, LABEL_TYPE, SOCKET_NAME_CORE, SOCKET_NAME_SUPERVISOR
 from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE, LANDINGPAGE_TYPE
@@ -16,16 +15,18 @@ from ..jobs.decorator import Job
 from .const import (
     ENV_CORE_API_SOCKET,
     ENV_DUPLICATE_LOG_FILE,
+    ENV_SUPERVISOR_SOCKET,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_OLD,
-    MOUNT_CORE_RUN,
     MOUNT_DBUS,
     MOUNT_DEV,
     MOUNT_MACHINE_ID,
     MOUNT_UDEV,
     PATH_MEDIA,
     PATH_PUBLIC_CONFIG,
+    PATH_RUN_API,
+    PATH_RUN_CORE,
     PATH_SHARE,
     PATH_SSL,
     DockerMount,
@@ -178,7 +179,24 @@ class DockerHomeAssistant(DockerInterface):
             mounts.append(MOUNT_MACHINE_ID)
 
         if self.sys_homeassistant.api.supports_unix_socket:
-            mounts.append(MOUNT_CORE_RUN)
+            mounts.extend(
+                [
+                    # Core listens for Supervisor in here
+                    DockerMount(
+                        type=MountType.BIND,
+                        source=self.sys_config.path_extern_run_core.as_posix(),
+                        target=PATH_RUN_CORE.as_posix(),
+                        read_only=False,
+                    ),
+                    # Supervisor listens for Core in here
+                    DockerMount(
+                        type=MountType.BIND,
+                        source=self.sys_homeassistant.path_extern_run_supervisor.as_posix(),
+                        target=PATH_RUN_API.as_posix(),
+                        read_only=True,
+                    ),
+                ]
+            )
 
         return mounts
 
@@ -199,8 +217,11 @@ class DockerHomeAssistant(DockerInterface):
         if restore_job_id:
             environment[ENV_RESTORE_JOB_ID] = restore_job_id
         if self.sys_homeassistant.api.supports_unix_socket:
-            environment[ENV_CORE_API_SOCKET] = PurePath(
-                MOUNT_CORE_RUN.target, SOCKET_NAME_CORE
+            environment[ENV_CORE_API_SOCKET] = (
+                PATH_RUN_CORE / SOCKET_NAME_CORE
+            ).as_posix()
+            environment[ENV_SUPERVISOR_SOCKET] = (
+                PATH_RUN_API / SOCKET_NAME_SUPERVISOR
             ).as_posix()
         if self.sys_homeassistant.duplicate_log_file:
             environment[ENV_DUPLICATE_LOG_FILE] = "1"

@@ -135,6 +135,46 @@ class APIUnknownSupervisorError(APIError):
         super().__init__(None, logger, job_id=job_id)
 
 
+class APISocketError(HassioError):
+    """Error listening on a Unix socket for the API."""
+
+
+class APISocketAlreadyRegisteredError(APISocketError, APIConflict):
+    """Raise when the API already listens on a Unix socket path."""
+
+    error_key = "api_socket_already_registered_error"
+    message_template = "API already listens on socket {path}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, path: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"path": path}
+        super().__init__(None, logger)
+
+
+class APISocketPrepareError(APISocketError, APIUnknownSupervisorError):
+    """Raise when the path for an API socket cannot be prepared."""
+
+    error_key = "api_socket_prepare_error"
+    message_template = "Can't prepare path for API socket {path}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, path: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"path": path}
+        super().__init__(logger)
+
+
+class APISocketListenError(APISocketError, APIUnknownSupervisorError):
+    """Raise when the API cannot listen on a Unix socket."""
+
+    error_key = "api_socket_listen_error"
+    message_template = "Can't listen on API socket {path}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, path: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"path": path}
+        super().__init__(logger)
+
+
 class APISystemNotReadyError(APIServiceUnavailable):
     """Raise when an API call is rejected because Supervisor isn't in a state that allows it.
 
@@ -227,6 +267,13 @@ class HomeAssistantUpdateAlreadyInstalledError(HomeAssistantUpdateError):
         """Initialize exception."""
         self.extra_fields = {"version": version}
         super().__init__(None, logger)
+
+
+class HomeAssistantSocketDirsError(HomeAssistantError, APIUnknownSupervisorError):
+    """Raise when the folders for Home Assistant's socket mounts cannot be created."""
+
+    error_key = "homeassistant_socket_dirs_error"
+    message_template = "Can't create the socket folders for Home Assistant"
 
 
 class HomeAssistantCrashError(HomeAssistantError):

@@ -162,6 +162,7 @@ class Ulimit:
 
 
 ENV_CORE_API_SOCKET = "SUPERVISOR_CORE_API_SOCKET"
+ENV_SUPERVISOR_SOCKET = "SUPERVISOR_SOCKET"
 ENV_DUPLICATE_LOG_FILE = "HA_DUPLICATE_LOG_FILE"
 ENV_TIME = "TZ"
 ENV_TOKEN = "SUPERVISOR_TOKEN"
@@ -191,12 +192,6 @@ MOUNT_MACHINE_ID = DockerMount(
     target=MACHINE_ID.as_posix(),
     read_only=True,
 )
-MOUNT_CORE_RUN = DockerMount(
-    type=MountType.BIND,
-    source="/run/supervisor",
-    target="/run/supervisor",
-    read_only=False,
-)
 MOUNT_UDEV = DockerMount(
     type=MountType.BIND, source="/run/udev", target="/run/udev", read_only=True
 )
@@ -211,6 +206,8 @@ PATH_SSL = PurePath("/ssl")
 PATH_BACKUP = PurePath("/backup")
 PATH_SHARE = PurePath("/share")
 PATH_MEDIA = PurePath("/media")
+PATH_RUN_API = PurePath("/run/supervisor/api")
+PATH_RUN_CORE = PurePath("/run/supervisor/core")
 # Legacy, deprecated as of 2026.07
 PATH_ALL_ADDON_CONFIGS = PurePath("/addon_configs")
 PATH_LOCAL_ADDONS = PurePath("/addons")
