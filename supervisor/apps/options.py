@@ -76,7 +76,8 @@ class AppOptions(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.raw_schema: dict[str, Any] = raw_schema
         self.devices: set[Device] = set()
-        self.pwned: set[str] = set()
+        # Option path (e.g. logins[1].password) to SHA-1 of the value
+        self.pwned: dict[str, str] = {}
         self._name = name
         self._slug = slug
         self._resolve_secrets = resolve_secrets
@@ -104,7 +105,7 @@ class AppOptions(CoreSysAttributes):
 
             typ = self.raw_schema[key]
             try:
-                options[key] = self._validate_element(typ, value, key)
+                options[key] = self._validate_element(typ, value, key, key)
             except IndexError, KeyError:
                 raise vol.Invalid(
                     f"Type error for option '{key}' in {self._name} ({self._slug})"
@@ -114,18 +115,18 @@ class AppOptions(CoreSysAttributes):
         return options
 
     # pylint: disable=no-value-for-parameter
-    def _validate_element(self, typ: Any, value: Any, key: str) -> Any:
+    def _validate_element(self, typ: Any, value: Any, key: str, path: str) -> Any:
         """Validate a value against a type specification."""
         if isinstance(typ, list):
             # nested value list
-            return self._nested_validate_list(typ[0], value, key)
+            return self._nested_validate_list(typ[0], value, key, path)
         if isinstance(typ, dict):
             # nested value dict
-            return self._nested_validate_dict(typ, value, key)
+            return self._nested_validate_dict(typ, value, key, path)
         # normal value
-        return self._single_validate(typ, value, key)
+        return self._single_validate(typ, value, key, path)
 
-    def _single_validate(self, typ: str, value: Any, key: str) -> Any:
+    def _single_validate(self, typ: str, value: Any, key: str, path: str) -> Any:
         """Validate a single element."""
         # if required argument
         if value is None:
@@ -140,14 +141,14 @@ class AppOptions(CoreSysAttributes):
                 raise vol.Invalid(
                     f"Unknown secret '{secret}' in {self._name} ({self._slug})"
                 ) from None
-            validated = self._validate_typed(typ, resolved, key)
+            validated = self._validate_typed(typ, resolved, key, path)
             # Persisting callers keep the reference; write_options resolves it again
             return validated if self._resolve_secrets else value
 
-        return self._validate_typed(typ, value, key)
+        return self._validate_typed(typ, value, key, path)
 
     # pylint: disable=no-value-for-parameter
-    def _validate_typed(self, typ: str, value: Any, key: str) -> Any:
+    def _validate_typed(self, typ: str, value: Any, key: str, path: str) -> Any:
         """Validate and coerce a value against its schema type."""
         # parse extend data from type
         match = RE_SCHEMA_ELEMENT.match(typ)
@@ -166,7 +167,7 @@ class AppOptions(CoreSysAttributes):
 
         if typ.startswith(_STR) or typ.startswith(_PASSWORD):
             if typ.startswith(_PASSWORD) and value:
-                self.pwned.add(hashlib.sha1(str(value).encode()).hexdigest())
+                self.pwned[path] = hashlib.sha1(str(value).encode()).hexdigest()
             return vol.All(str, vol.Length(**range_args))(value)
         if typ.startswith(_INT):
             return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
@@ -244,7 +245,9 @@ class AppOptions(CoreSysAttributes):
                 if value:
                     paths.add(Path(str(value)))
 
-    def _nested_validate_list(self, typ: Any, data_list: Any, key: str) -> list[Any]:
+    def _nested_validate_list(
+        self, typ: Any, data_list: Any, key: str, path: str
+    ) -> list[Any]:
         """Validate nested items."""
         options = []
 
@@ -255,14 +258,15 @@ class AppOptions(CoreSysAttributes):
             ) from None
 
         # Process list
-        for element in data_list:
-            # Nested?
-            options.append(self._validate_element(typ, element, key))
+        for index, element in enumerate(data_list):
+            options.append(
+                self._validate_element(typ, element, key, f"{path}[{index}]")
+            )
 
         return options
 
     def _nested_validate_dict(
-        self, typ: dict[Any, Any], data_dict: Any, key: str
+        self, typ: dict[Any, Any], data_dict: Any, key: str, path: str
     ) -> dict[Any, Any]:
         """Validate nested items."""
         options = {}
@@ -282,8 +286,9 @@ class AppOptions(CoreSysAttributes):
                 )
                 continue
 
-            # Nested?
-            options[c_key] = self._validate_element(typ[c_key], c_value, c_key)
+            options[c_key] = self._validate_element(
+                typ[c_key], c_value, c_key, f"{path}.{c_key}"
+            )
 
         self._check_missing_options(typ, options, key)
         return options
