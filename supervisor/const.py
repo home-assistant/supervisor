@@ -24,7 +24,8 @@ DNS_DOCKER_NAME: str = f"{DOCKER_PREFIX}_dns"
 OBSERVER_DOCKER_NAME: str = f"{DOCKER_PREFIX}_observer"
 SUPERVISOR_DOCKER_NAME: str = f"{DOCKER_PREFIX}_supervisor"
 
-URL_HASSIO_APPS = "https://github.com/home-assistant/addons"
+URL_HASSIO_APPS = "https://github.com/home-assistant/apps"
+URL_HASSIO_APPS_LEGACY = "https://github.com/home-assistant/addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor_{channel}.txt"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 
