@@ -224,7 +224,7 @@ async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
 
     capture_exception.assert_called_once_with(err)
     assert (
-        Issue(IssueType.UPDATE_FAILED, ContextType.SUPERVISOR)
+        Issue(IssueType.UPDATE_FAILED, ContextType.SUPERVISOR, reference="1.0")
         in coresys.resolution.issues
     )
 

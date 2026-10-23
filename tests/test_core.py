@@ -29,7 +29,13 @@ from supervisor.hardware.helper import HwHelper
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.host.control import SystemControl
 from supervisor.host.info import InfoCenter
-from supervisor.resolution.const import IssueType, SuggestionType, UnhealthyReason
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+)
+from supervisor.resolution.data import Issue
 from supervisor.supervisor import Supervisor
 from supervisor.utils.dt import utcnow
 from supervisor.utils.whoami import WhoamiData
@@ -238,6 +244,26 @@ async def test_setup_app_file_read_error_not_captured(
     assert "Fatal error happening on load Task" not in caplog.text
     assert "Error on load Task" in caplog.text
     assert UnhealthyReason.SETUP in coresys.resolution.unhealthy
+
+
+async def test_connect_failed_supervisor_update_creates_rollback_issue(
+    coresys: CoreSys,
+):
+    """Test a Supervisor update that did not take raises a rollback issue."""
+    coresys.config.version = AwesomeVersion("2099.1.0")
+    with (
+        patch.object(Supervisor, "load", new=AsyncMock()),
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(type(coresys.resolution.evaluate), "evaluate_system"),
+    ):
+        await coresys.core.connect()
+
+    assert (
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.SUPERVISOR, reference="2099.1.0")
+        in coresys.resolution.issues
+    )
+    assert UnhealthyReason.SUPERVISOR in coresys.resolution.unhealthy
+    assert coresys.config.version == coresys.supervisor.version
 
 
 @pytest.mark.usefixtures("mocked_setup_loads")

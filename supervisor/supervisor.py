@@ -242,7 +242,7 @@ class Supervisor(CoreSysAttributes):
             await self.instance.update_start_tag(image, version)
         except DockerError as err:
             self.sys_resolution.create_issue(
-                IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
+                IssueType.UPDATE_FAILED, ContextType.SUPERVISOR, reference=str(version)
             )
             await async_capture_exception(err)
             raise SupervisorUpdateError(
