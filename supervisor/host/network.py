@@ -1,7 +1,6 @@
 """Info control for host."""
 
 import asyncio
-from contextlib import suppress
 import logging
 from typing import Any
 
@@ -32,6 +31,7 @@ from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
     DBusNotConnectedError,
+    HassioError,
     HostNetworkActivationFailedError,
     HostNetworkActivationTimeoutError,
     HostNetworkCreateConfigError,
@@ -202,25 +202,6 @@ class NetworkManager(CoreSysAttributes):
     )
     async def load(self):
         """Load network information and reapply defaults over dbus."""
-        # Apply current settings on each interface so OS can update any out of date defaults
-        interfaces = [
-            Interface.from_dbus_interface(interface)
-            for interface in self.sys_dbus.network.interfaces
-            if not CheckNetworkInterfaceIPV4.check_interface(interface)
-        ]
-        with suppress(HostNetworkNotFound):
-            await asyncio.gather(
-                *[
-                    self.apply_changes(interface, update_only=True)
-                    for interface in interfaces
-                    if interface.enabled
-                    and (
-                        interface.ipv4setting.method != InterfaceMethod.DISABLED
-                        or interface.ipv6setting.method != InterfaceMethod.DISABLED
-                    )
-                ]
-            )
-
         self.sys_dbus.network.dbus.properties.on(
             "properties_changed", self._check_connectivity_changed
         )
@@ -228,6 +209,40 @@ class NetworkManager(CoreSysAttributes):
         self.sys_dbus.network.dns.dbus.properties.on(
             "properties_changed", self._check_dns_changed
         )
+
+        # Apply current settings on each interface so OS can update any out of date defaults
+        interfaces = [
+            Interface.from_dbus_interface(interface)
+            for interface in self.sys_dbus.network.interfaces
+            if not CheckNetworkInterfaceIPV4.check_interface(interface)
+        ]
+        interfaces = [
+            interface
+            for interface in interfaces
+            if interface.enabled
+            and (
+                interface.ipv4setting.method != InterfaceMethod.DISABLED
+                or interface.ipv6setting.method != InterfaceMethod.DISABLED
+            )
+        ]
+        results = await asyncio.gather(
+            *[
+                self.apply_changes(interface, update_only=True)
+                for interface in interfaces
+            ],
+            return_exceptions=True,
+        )
+        for interface, result in zip(interfaces, results, strict=True):
+            if isinstance(result, HostNetworkNotFound):
+                continue
+            if isinstance(result, HassioError):
+                _LOGGER.warning(
+                    "Can't apply network settings to interface %s: %s",
+                    interface.name,
+                    result,
+                )
+            elif isinstance(result, BaseException):
+                raise result
 
     async def _check_connectivity_changed(
         self, interface: str, changed: dict[str, Any], invalidated: list[str]

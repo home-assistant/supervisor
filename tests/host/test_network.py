@@ -19,12 +19,14 @@ from supervisor.dbus.network.setting import (
 )
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.exceptions import (
+    HassioError,
     HostNetworkActivationFailedError,
     HostNetworkError,
+    HostNetworkUpdateConfigError,
     HostNotSupportedError,
 )
 from supervisor.homeassistant.const import WSEvent, WSType
-from supervisor.host.configuration import WifiConfig
+from supervisor.host.configuration import Interface, WifiConfig
 from supervisor.host.const import AuthMethod, MulticastDnsMode, WifiMode
 
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -39,6 +41,7 @@ from tests.dbus_service_mocks.network_device import Device as DeviceService
 from tests.dbus_service_mocks.network_device_wireless import (
     DeviceWireless as DeviceWirelessService,
 )
+from tests.dbus_service_mocks.network_dns_manager import DnsManager as DnsManagerService
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
 )
@@ -754,3 +757,57 @@ async def test_apply_changes_background_shuts_down_activated_connection(
 
     assert len(activated_connections) == 1
     _assert_connection_shut_down(activated_connections[0])
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(HostNetworkUpdateConfigError(interface="eth0"), id="update"),
+        pytest.param(HostNetworkActivationFailedError(), id="activation"),
+    ],
+)
+async def test_load_apply_changes_fails(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    dns_manager_service: DnsManagerService,
+    device_eth0_service: DeviceService,
+    caplog: pytest.LogCaptureFixture,
+    error: HassioError,
+):
+    """Test a failing interface neither stops the others nor the signal handlers."""
+    device_eth0_service.Reapply.calls.clear()
+    apply_changes = coresys.host.network.apply_changes
+
+    async def _apply_changes(interface: Interface, **kwargs: Any) -> str | None:
+        if interface.name == "eth0":
+            raise error
+        return await apply_changes(interface, **kwargs)
+
+    with patch.object(coresys.host.network, "apply_changes", new=_apply_changes):
+        await coresys.host.network.load()
+
+    assert "Can't apply network settings to interface eth0" in caplog.text
+    # eth0.10 is still updated
+    assert device_eth0_service.Reapply.calls == [
+        ("/org/freedesktop/NetworkManager/Devices/38", {}, 0, 0)
+    ]
+
+    network_manager_service.emit_properties_changed({"ConnectivityCheckEnabled": False})
+    await network_manager_service.ping()
+    assert coresys.host.network.connectivity is None
+
+    with patch.object(coresys.plugins.dns, "notify_locals_changed") as notify:
+        dns_manager_service.emit_properties_changed(
+            {
+                "Configuration": [
+                    {
+                        "nameservers": Variant("as", ["192.168.30.2"]),
+                        "interface": Variant("s", "eth0"),
+                        "priority": Variant("i", 100),
+                        "vpn": Variant("b", False),
+                    }
+                ]
+            }
+        )
+        await dns_manager_service.ping()
+    notify.assert_called_once()
