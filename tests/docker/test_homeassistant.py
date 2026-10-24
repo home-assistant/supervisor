@@ -1,6 +1,9 @@
 """Test Home Assistant container."""
 
+import asyncio
 from ipaddress import IPv4Address
+from pathlib import Path
+from typing import Any
 from unittest.mock import ANY, patch
 
 from aiodocker.containers import DockerContainer
@@ -9,7 +12,6 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import (
-    MOUNT_CORE_RUN,
     DockerMount,
     MountBindOptions,
     MountType,
@@ -147,13 +149,25 @@ async def test_homeassistant_start_with_duplicate_log_file(
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_homeassistant_start_with_unix_socket(
-    coresys: CoreSys, container: DockerContainer
+    coresys: CoreSys, container: DockerContainer, tmp_run_dir: Path
 ):
-    """Test starting homeassistant with unix socket env var for supported version."""
+    """Test starting homeassistant with its socket folders for supported version."""
     coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    run_dirs_at_run: list[bool] = []
+
+    def run_dirs_state() -> list[bool]:
+        return [
+            (tmp_run_dir / "core").is_dir(),
+            (tmp_run_dir / "supervisor" / "core").is_dir(),
+        ]
+
+    async def check_run_dirs(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        loop = asyncio.get_running_loop()
+        run_dirs_at_run.extend(await loop.run_in_executor(None, run_dirs_state))
+        return container.show.return_value
 
     with (
-        patch.object(DockerAPI, "run", return_value=container.show.return_value) as run,
+        patch.object(DockerAPI, "run", side_effect=check_run_dirs) as run,
         patch.object(
             DockerHomeAssistant, "is_running", side_effect=[False, False, True]
         ),
@@ -162,10 +176,30 @@ async def test_homeassistant_start_with_unix_socket(
         await coresys.homeassistant.core.start()
 
         run.assert_called_once()
+        assert run_dirs_at_run == [True, True]
         env = run.call_args.kwargs["environment"]
-        assert "SUPERVISOR_CORE_API_SOCKET" in env
-        assert env["SUPERVISOR_CORE_API_SOCKET"] == "/run/supervisor/core.sock"
-        assert MOUNT_CORE_RUN in run.call_args.kwargs["mounts"]
+        assert env["SUPERVISOR_CORE_API_SOCKET"] == "/run/supervisor/core/core.sock"
+        assert env["SUPERVISOR_SOCKET"] == "/run/supervisor/api/supervisor.sock"
+        mounts = run.call_args.kwargs["mounts"]
+        assert (
+            DockerMount(
+                type=MountType.BIND,
+                source="/run/supervisor/core",
+                target="/run/supervisor/core",
+                read_only=False,
+            )
+            in mounts
+        )
+        assert (
+            DockerMount(
+                type=MountType.BIND,
+                source="/run/supervisor/supervisor/core",
+                target="/run/supervisor/api",
+                read_only=True,
+            )
+            in mounts
+        )
+        assert not [mount for mount in mounts if mount.target == "/run/supervisor"]
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")

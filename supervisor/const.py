@@ -56,6 +56,7 @@ RUN_SUPERVISOR_STATE = Path("/run/supervisor")
 RUN_OS = Path("/run/os")
 HOST_RUN_SUPERVISOR = PurePath("/run/supervisor")
 SOCKET_NAME_CORE = "core.sock"
+SOCKET_NAME_SUPERVISOR = "supervisor.sock"
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
 SYSTEMD_JOURNAL_PERSISTENT = Path("/var/log/journal")

@@ -1,6 +1,7 @@
 """Init file for Supervisor RESTful API."""
 
 import asyncio
+from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
 import logging
@@ -12,6 +13,7 @@ from aiohttp import WSCloseCode, hdrs, web
 
 from ..apps.app import App
 from ..const import (
+    SOCKET_NAME_SUPERVISOR,
     SUPERVISOR_DOCKER_NAME,
     WEBSOCKET_CLOSE_TIMEOUT,
     AppState,
@@ -20,6 +22,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     APIAppNotInstalled,
+    APISocketError,
     HostJournalGatewaydConnectionError,
     HostNotSupportedError,
 )
@@ -50,6 +53,7 @@ from .resolution import APIResolution
 from .root import APIRoot
 from .security import APISecurity
 from .services import APIServices
+from .sockets import SocketRegistry
 from .store import APIStore
 from .supervisor import APISupervisor
 from .time import APITime
@@ -59,6 +63,9 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 MAX_CLIENT_SIZE: int = 1024**2 * 16
+# Backoff for retrying Core's socket, the s6 watchdog bounds the total time
+CORE_SOCKET_RETRY_MIN: int = 1
+CORE_SOCKET_RETRY_MAX: int = 60
 MAX_LINE_SIZE: int = 24570
 
 
@@ -76,7 +83,7 @@ class RestAPI(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
         self.coresys: CoreSys = coresys
-        self.security: SecurityMiddleware = SecurityMiddleware(coresys)
+        self.security: SecurityMiddleware = SecurityMiddleware(coresys, self)
         self.webapp: web.Application = web.Application(
             client_max_size=MAX_CLIENT_SIZE,
             middlewares=[
@@ -96,6 +103,8 @@ class RestAPI(CoreSysAttributes):
         # service stuff
         self._runner: web.AppRunner = web.AppRunner(self.webapp, shutdown_timeout=5)
         self._site: web.TCPSite | None = None
+        self.sockets: SocketRegistry = SocketRegistry(coresys, self._runner)
+        self._core_socket_retry: asyncio.Task | None = None
 
         # share single host API handler for reuse in logging endpoints
         self._api_host: APIHost = APIHost()
@@ -1178,13 +1187,47 @@ class RestAPI(CoreSysAttributes):
         """Run RESTful API webserver."""
         await self._runner.setup()
         self._site = web.TCPSite(self._runner, host="0.0.0.0", port=80)
+        listening: list[str] = []
 
         try:
             await self._site.start()
         except OSError as err:
             _LOGGER.critical("Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
         else:
-            _LOGGER.info("Starting API on %s", self.sys_docker.network.supervisor)
+            listening.append(str(self.sys_docker.network.supervisor))
+
+        if not await self._listen_for_core():
+            self._core_socket_retry = self.sys_create_background_task(
+                self._retry_listen_for_core()
+            )
+        listening.extend(self.sockets.paths)
+
+        if listening:
+            _LOGGER.info("Starting API on %s", ", ".join(listening))
+
+    async def _listen_for_core(self) -> bool:
+        """Listen for Core on its socket, return whether it worked."""
+        try:
+            await self.sockets.register(
+                self.sys_homeassistant,
+                self.sys_homeassistant.path_run_supervisor / SOCKET_NAME_SUPERVISOR,
+            )
+        except APISocketError as err:
+            _LOGGER.error("Failed to create API socket for Core -> %s", err)
+            return False
+        return True
+
+    async def _retry_listen_for_core(self) -> None:
+        """Retry listening for Core on its socket until it works."""
+        # Serving Core defines a working Supervisor, so never give up
+        delay = CORE_SOCKET_RETRY_MIN
+        while True:
+            _LOGGER.info("Retrying API socket for Core in %d seconds", delay)
+            await asyncio.sleep(delay)
+            if await self._listen_for_core():
+                _LOGGER.info("Starting API on %s", ", ".join(self.sockets.paths))
+                return
+            delay = min(delay * 2, CORE_SOCKET_RETRY_MAX)
 
     async def stop(self) -> None:
         """Stop RESTful API webserver."""
@@ -1192,7 +1235,12 @@ class RestAPI(CoreSysAttributes):
             return
 
         # Shutdown running API
+        if self._core_socket_retry:
+            self._core_socket_retry.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._core_socket_retry
         await self._site.stop()
+        await self.sockets.stop_all()
         await self._runner.cleanup()
 
         _LOGGER.info("Stopping API on %s", self.sys_docker.network.supervisor)
