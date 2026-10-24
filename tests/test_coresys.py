@@ -7,7 +7,9 @@ import gc
 from unittest.mock import AsyncMock, MagicMock, patch
 import weakref
 
+from aiohttp import web
 from aiohttp.hdrs import USER_AGENT
+from aiohttp.test_utils import TestServer
 import pytest
 
 from supervisor.const import CoreState
@@ -55,6 +57,24 @@ async def test_custom_user_agent(coresys: CoreSys):
             "HomeAssistantSupervisor/9999.09.9.dev9999"
             in mock_session.call_args_list[0][1]["headers"][USER_AGENT]
         )
+
+
+@pytest.mark.no_mock_init_websession
+async def test_websession_accepts_large_headers(coresys: CoreSys):
+    """Test websession handles header fields larger than aiohttp's default limit."""
+    large_value = "x" * 9300
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="ok", headers={"Content-Security-Policy": large_value})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    async with TestServer(app) as server:
+        await coresys.init_websession()
+        async with coresys.websession.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+            assert resp.headers["Content-Security-Policy"] == large_value
+        await coresys.websession.close()
 
 
 @pytest.mark.no_mock_init_websession
