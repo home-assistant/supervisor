@@ -257,6 +257,10 @@ class App(AppModel):
                 ):
                     self.sys_resolution.dismiss_issue(issue)
 
+        # Home Assistant lists discovery messages only of started apps
+        if new_state != AppState.STARTED:
+            self.sys_discovery.mark_unannounced(self)
+
         # Dismiss device access missing issue if present and we stopped
         if new_state == AppState.STOPPED and (
             access_issue := self.sys_resolution.get_issue_if_present(

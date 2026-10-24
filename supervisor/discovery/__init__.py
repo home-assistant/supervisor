@@ -46,6 +46,8 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         super().__init__(FILE_HASSIO_DISCOVERY, SCHEMA_DISCOVERY_CONFIG)
         self.coresys: CoreSys = coresys
         self.message_obj: dict[str, Message] = {}
+        # Home Assistant may have missed these, so their next send is pushed
+        self._unannounced: set[str] = set()
 
     async def load(self) -> None:
         """Load exists discovery message into storage."""
@@ -56,6 +58,8 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
         _LOGGER.info("Loaded %d messages", len(messages))
         self.message_obj = messages
+        # Supervisor does not know which of these Home Assistant has seen
+        self._unannounced = set(messages)
 
     async def save(self) -> None:
         """Write discovery message into data file."""
@@ -88,6 +92,8 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             if exists_msg.config != config:
                 message = exists_msg
                 message.config = config
+            elif exists_msg.uuid in self._unannounced:
+                message = exists_msg
             else:
                 _LOGGER.debug("Duplicate discovery message from %s", app.slug)
                 return exists_msg
@@ -97,14 +103,22 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             "Sending discovery to Home Assistant %s from %s", service, app.slug
         )
         self.message_obj[message.uuid] = message
+        self._unannounced.discard(message.uuid)
         await self.save()
 
         self.sys_create_task(self._push_discovery(message, CMD_NEW))
         return message
 
+    def mark_unannounced(self, app: App) -> None:
+        """Push the messages of an app on their next send, even if unchanged."""
+        self._unannounced.update(
+            message.uuid for message in self.list_messages if message.app == app.slug
+        )
+
     async def remove(self, message: Message) -> None:
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
+        self._unannounced.discard(message.uuid)
         await self.save()
 
         _LOGGER.info(
