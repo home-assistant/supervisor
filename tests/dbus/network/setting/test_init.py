@@ -263,3 +263,16 @@ async def test_reload_clears_removed_section(
     del connection_settings_service.settings[section]
     await settings.reload()
     assert getattr(settings, attribute) is None
+
+
+async def test_non_utf8_wireless_ssid(
+    connection_settings_service: ConnectionSettingsService, dbus_session_bus: MessageBus
+):
+    """Test a wireless profile whose SSID is not valid UTF-8 is kept as bytes."""
+    connection_settings_service.settings["802-11-wireless"] = {
+        "ssid": Variant("ay", b"Caf\xe9")
+    }
+    settings = NetworkSetting("/org/freedesktop/NetworkManager/Settings/1")
+    await settings.connect(dbus_session_bus)
+
+    assert settings.wireless.ssid == b"Caf\xe9"

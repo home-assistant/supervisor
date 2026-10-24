@@ -28,7 +28,7 @@ def init_sentry(coresys: CoreSys) -> None:
     """Initialize sentry client."""
     if not sentry_sdk.is_initialized():
         _LOGGER.info("Initializing Supervisor Sentry")
-        denylist = DEFAULT_DENYLIST + ["psk", "ssid"]
+        denylist = DEFAULT_DENYLIST + ["psk", "ssid", "ssids"]
         # Don't use AsyncioIntegration(). We commonly handle task exceptions
         # outside of tasks. This would cause exception we gracefully handle to
         # be captured by sentry.

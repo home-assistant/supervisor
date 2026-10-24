@@ -1,5 +1,7 @@
 """Test network v2 API."""
 
+from dataclasses import replace
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -118,11 +120,11 @@ async def test_api_network_interface_info_v2_unsupported_auth(
     resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
     resolved.interface.wifi = WifiConfig(
         mode=WifiMode.INFRASTRUCTURE,
-        ssid="EnterpriseNetwork",
+        ssid=b"EnterpriseNetwork",
         auth=AuthMethod.UNSUPPORTED,
         psk=None,
         signal=80,
-        active_ssid="EnterpriseNetwork",
+        active_ssid=b"EnterpriseNetwork",
     )
     existing = ResolvedInterface(
         resolved.interface, has_profile=True, enabled=resolved.enabled
@@ -162,7 +164,7 @@ async def test_api_network_update_config_v2_unsupported_auth_wifi_null_round_tri
     resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
     resolved.interface.wifi = WifiConfig(
         mode=WifiMode.INFRASTRUCTURE,
-        ssid="EnterpriseNetwork",
+        ssid=b"EnterpriseNetwork",
         auth=AuthMethod.UNSUPPORTED,
         psk=None,
         signal=None,
@@ -608,7 +610,7 @@ async def test_api_network_update_config_v2_wifi_psk_set_round_trip(
     resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
     resolved.interface.wifi = WifiConfig(
         mode=WifiMode.INFRASTRUCTURE,
-        ssid="MY_TEST",
+        ssid=b"MY_TEST",
         auth=AuthMethod.WPA_PSK,
         psk=None,
         signal=None,
@@ -794,3 +796,141 @@ async def test_network_interface_not_found_v2(
     assert resp.status == 404
     body = await resp.json()
     assert body["message"] == "Interface bad does not exist"
+
+
+@pytest.mark.parametrize(
+    ("stored_ssid", "visible_ssid", "ssid", "expected_ssid"),
+    [
+        pytest.param(b"Caf\xe9", b"Other", "Caf�", b"Caf\xe9", id="echoed_stored_ssid"),
+        pytest.param(b"Other", b"Caf\xe9", "Caf�", b"Caf\xe9", id="scanned_ssid"),
+        pytest.param(b"Caf\xe9", b"Other", "Café", "Café".encode(), id="new_utf8_ssid"),
+    ],
+)
+async def test_api_network_update_config_v2_non_utf8_ssid(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    stored_ssid: bytes,
+    visible_ssid: bytes,
+    ssid: str,
+    expected_ssid: bytes,
+):
+    """Test a non-UTF-8 SSID round-trips as the stored or scanned SSID bytes."""
+    network_manager_service.AddAndActivateConnection.calls.clear()
+    existing = await _set_up_wifi_ssids(
+        coresys, network_manager_services, stored_ssid, visible_ssid
+    )
+
+    with patch.object(
+        coresys.host.network, "get_with_config", AsyncMock(return_value=existing)
+    ):
+        resp = await api_client_v2.get(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}"
+        )
+        result = await resp.json()
+        assert result["data"]["config"]["wifi"]["ssid"] == stored_ssid.decode(
+            errors="replace"
+        )
+
+        resp = await api_client_v2.put(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config",
+            json=_wifi_config_body(ssid),
+        )
+    assert resp.status == 200, await resp.text()
+
+    assert len(network_manager_service.AddAndActivateConnection.calls) == 1
+    settings = network_manager_service.AddAndActivateConnection.calls[0][0]
+    assert settings["802-11-wireless"]["ssid"] == Variant("ay", expected_ssid)
+
+    await coresys.block_till_done()
+
+
+@pytest.mark.parametrize(
+    ("stored_ssid", "visible_ssid"),
+    [
+        pytest.param(b"Caf\xe9", b"Caf\xff", id="ambiguous"),
+        pytest.param(b"Other", b"Other", id="unknown"),
+    ],
+)
+async def test_api_network_update_config_v2_unresolved_ssid(
+    api_client_v2: TestClient,
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    stored_ssid: bytes,
+    visible_ssid: bytes,
+):
+    """Test a non-UTF-8 SSID matching no or several networks is rejected."""
+    network_manager_service.AddAndActivateConnection.calls.clear()
+    existing = await _set_up_wifi_ssids(
+        coresys, network_manager_services, stored_ssid, visible_ssid
+    )
+
+    with patch.object(
+        coresys.host.network, "get_with_config", AsyncMock(return_value=existing)
+    ):
+        resp = await api_client_v2.put(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config",
+            json=_wifi_config_body("Caf�"),
+        )
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == "host_network_wifi_ssid_unresolved_error"
+    assert not network_manager_service.AddAndActivateConnection.calls
+
+
+async def test_api_network_accesspoints_v2_non_utf8_ssid(
+    api_client_v2: TestClient,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Test a non-UTF-8 access point SSID is shown with replacement characters."""
+    accesspoint_service = network_manager_services["network_access_point"][
+        "/org/freedesktop/NetworkManager/AccessPoint/43100"
+    ]
+    accesspoint_service.fixture = replace(accesspoint_service.fixture, Ssid=b"Caf\xe9")
+
+    with patch("asyncio.sleep", return_value=AsyncMock()):
+        resp = await api_client_v2.get(
+            f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/accesspoints"
+        )
+    result = await resp.json()
+
+    assert [ap["ssid"] for ap in result["data"]["accesspoints"]] == [
+        "UPC4814466",
+        "Caf�",
+    ]
+
+
+async def _set_up_wifi_ssids(
+    coresys: CoreSys,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    stored_ssid: bytes,
+    visible_ssid: bytes,
+) -> ResolvedInterface:
+    """Return the wlan interface with a stored SSID and set a visible SSID."""
+    resolved = await coresys.host.network.get_with_config(TEST_INTERFACE_WLAN_NAME)
+    resolved.interface.wifi = WifiConfig(
+        WifiMode.INFRASTRUCTURE, stored_ssid, AuthMethod.OPEN, None, None
+    )
+    accesspoint_service = network_manager_services["network_access_point"][
+        "/org/freedesktop/NetworkManager/AccessPoint/43100"
+    ]
+    accesspoint_service.fixture = replace(
+        accesspoint_service.fixture, Ssid=visible_ssid
+    )
+    return ResolvedInterface(
+        resolved.interface, has_profile=True, enabled=resolved.enabled
+    )
+
+
+def _wifi_config_body(ssid: str) -> dict[str, Any]:
+    """Return a v2 config body for an open wifi network."""
+    return {
+        "enabled": True,
+        "ipv4": {"method": "auto"},
+        "ipv6": {"method": "auto"},
+        "mdns": "default",
+        "llmnr": "default",
+        "wifi": {"mode": "infrastructure", "ssid": ssid, "auth": "open"},
+    }

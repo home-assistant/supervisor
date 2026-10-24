@@ -37,12 +37,17 @@ _MULTICAST_DNS_VALUE_MODE_MAPPING: dict[int, MulticastDnsMode] = {
 }
 
 
+def ssid_to_str(ssid: bytes) -> str:
+    """Return an SSID for display, SSIDs are arbitrary bytes without an encoding."""
+    return ssid.decode(errors="replace")
+
+
 @dataclass(slots=True)
 class AccessPoint:
     """Represent a wifi configuration."""
 
     mode: WifiMode
-    ssid: str
+    ssid: bytes
     mac: str
     frequency: int
     signal: int
@@ -82,14 +87,14 @@ class WifiConfig:
     """Represent a wifi configuration."""
 
     mode: WifiMode
-    ssid: str
+    ssid: bytes
     auth: AuthMethod
     psk: str | None
     signal: int | None
     # SSID of the currently connected access point, from the device's active
     # connection rather than the stored profile - unlike `ssid` above, this
     # reflects observed state and is `None` when not actually connected.
-    active_ssid: str | None = None
+    active_ssid: bytes | None = None
 
 
 @dataclass(slots=True)
@@ -404,7 +409,7 @@ class Interface:
 
         return WifiConfig(
             mode=mode,
-            ssid=settings.wireless.ssid if settings.wireless else "",
+            ssid=settings.wireless.ssid if settings.wireless else b"",
             auth=auth,
             psk=psk,
             signal=signal,
