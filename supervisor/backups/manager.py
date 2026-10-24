@@ -290,11 +290,12 @@ class BackupManager(FileConfiguration, JobGroup):
 
         # This is just so we don't have to cast repeatedly. Variable will only be used when location is not DEFAULT
         location_name = "" if location == DEFAULT else cast(str | None, location)
-        locations = (
-            self.backup_locations
-            if location == DEFAULT
-            else {location_name: self.backup_locations[location_name]}
-        )
+        if location == DEFAULT:
+            locations = self.backup_locations
+        elif location_name in self.backup_locations:
+            locations = {location_name: self.backup_locations[location_name]}
+        else:
+            raise BackupMountDownError(_LOGGER.warning, mount=cast(str, location_name))
         # List the backup files of all locations in parallel; a slow or
         # network-backed location should not hold up the others.
         location_items = list(locations.items())
@@ -337,6 +338,13 @@ class BackupManager(FileConfiguration, JobGroup):
 
         return True
 
+    async def reload_location(
+        self, location: str | None | type[DEFAULT] = DEFAULT
+    ) -> None:
+        """Reload a location found out of date, unless it became unavailable."""
+        with suppress(BackupMountDownError):
+            await self.reload(location)
+
     async def remove(
         self,
         backup: Backup,
@@ -359,7 +367,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 await self.sys_run_in_executor(backup_tarfile.unlink)
                 del backup.all_locations[location]
             except FileNotFoundError as err:
-                self.sys_create_task(self.reload(location))
+                self.sys_create_task(self.reload_location(location))
                 raise BackupFileNotFoundError(
                     f"Cannot delete backup at {backup_tarfile.as_posix()}, file does not exist!",
                     _LOGGER.error,
