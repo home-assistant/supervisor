@@ -498,6 +498,54 @@ async def test_api_network_update_config_v2_wifi(
     await coresys.block_till_done()
 
 
+async def test_api_network_update_config_v2_wifi_imported_profile(
+    api_client_v2: TestClient,
+    network_manager_service: NetworkManagerService,
+    imported_wifi_settings_service: ConnectionSettingsService,
+    coresys: CoreSys,
+):
+    """Test v2 shows and updates a stored wifi profile marked for import.
+
+    The installer imports a profile through a CONFIG folder that names no
+    device and carries the import marker; it stays inactive after a wrong
+    password. wlan0 is the only wireless device, so the profile is its: fixing
+    the password must update it instead of adding a second one.
+    """
+    network_manager_service.AddAndActivateConnection.calls.clear()
+    network_manager_service.ActivateConnection.calls.clear()
+
+    resp = await api_client_v2.get(f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}")
+    result = await resp.json()
+    config = result["data"]["config"]
+    assert config["wifi"]["ssid"] == "TestSSID"
+
+    config["wifi"] = {
+        "mode": "infrastructure",
+        "ssid": "TestSSID",
+        "auth": "wpa-psk",
+        "psk": "correctPassword",
+    }
+    resp = await api_client_v2.put(
+        f"/v2/network/interfaces/{TEST_INTERFACE_WLAN_NAME}/config", json=config
+    )
+    assert resp.status == 200, await resp.text()
+
+    assert network_manager_service.AddAndActivateConnection.calls == []
+    settings = imported_wifi_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "Supervisor wlan0")
+    assert settings["match"]["path"] == Variant("as", ["platform.fe300000.mmcnr"])
+    assert settings["802-11-wireless-security"]["psk"] == Variant(
+        "s", "correctPassword"
+    )
+
+    await coresys.block_till_done()
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/3",
+        "/org/freedesktop/NetworkManager/Devices/3",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+
+
 async def test_api_network_update_config_v2_wifi_open_auth_create(
     api_client_v2: TestClient,
     network_manager_service: NetworkManagerService,
