@@ -301,6 +301,7 @@ class DockerNetwork:
 
         # Attach Network
         endpoint_config: dict[str, Any] = {}
+        endpoint_config["GwPriority"] = 1
         if alias:
             endpoint_config["Aliases"] = alias
         if ipv4:
