@@ -136,6 +136,46 @@ async def test_api_send_del_discovery(
     assert coresys.discovery.get(uuid) is None
 
 
+async def test_api_send_discovery_after_load(
+    app_api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+):
+    """Test the first send of a stored discovery message is pushed.
+
+    On a host boot, apps with startup application start after Home Assistant
+    has listed the messages.
+    """
+    api_client, prefix = app_api_client_with_prefix
+    install_app_ssh.data["discovery"] = ["adguard"]
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    with (
+        patch(
+            "supervisor.utils.common.read_json_or_yaml_file",
+            return_value=load_json_fixture("discovery.json"),
+        ),
+        patch("supervisor.utils.common.Path.is_file", return_value=True),
+    ):
+        await coresys.discovery.read_data()
+    await coresys.discovery.load()
+
+    # Same service and config as the stored message of local_ssh
+    message = {"service": "adguard", "config": {"host": "127.0.0.1", "port": 45158}}
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    websession.request.assert_called_once()
+    assert (
+        str(websession.request.call_args.args[1])
+        == "http://172.30.32.1/api/hassio_push/discovery/0658be435a2948ec8b4d706d6708c56e"
+    )
+
+    websession.request.reset_mock()
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    websession.request.assert_not_called()
+
+
 async def test_api_invalid_discovery(
     app_api_client_with_prefix: tuple[TestClient, str],
     install_app_ssh: App,

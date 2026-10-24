@@ -224,6 +224,59 @@ async def test_app_state_event_name_compatibility(
     )
 
 
+@pytest.mark.parametrize(
+    "not_started_state",
+    [
+        pytest.param(AppState.ERROR, id="error"),
+        pytest.param(AppState.STOPPED, id="stopped"),
+        pytest.param(AppState.STARTUP, id="startup"),
+    ],
+)
+async def test_app_not_started_pushes_next_discovery_send(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    install_app_example: App,
+    websession: MagicMock,
+    not_started_state: AppState,
+) -> None:
+    """Test the first discovery send after an app was not started is pushed.
+
+    Home Assistant lists discovery messages only of started apps, so it may have
+    missed the message in the meantime.
+    """
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    force_app_state(install_app_ssh, AppState.STARTED)
+    force_app_state(install_app_example, AppState.STARTED)
+    message = await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.discovery.send(install_app_example, "test", {})
+    await asyncio.sleep(0)
+    websession.request.reset_mock()
+
+    force_app_state(install_app_ssh, not_started_state)
+    force_app_state(install_app_ssh, AppState.STARTED)
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await asyncio.sleep(0)
+
+    websession.request.assert_called_once()
+    assert websession.request.call_args.args[0] == "post"
+    assert (
+        str(websession.request.call_args.args[1])
+        == f"http://172.30.32.1/api/hassio_push/discovery/{message.uuid}"
+    )
+    assert websession.request.call_args.kwargs["json"] == {
+        "addon": TEST_ADDON_SLUG,
+        "service": "test",
+        "uuid": message.uuid,
+    }
+
+    # Only the first send is pushed, and the app which kept running is not
+    websession.request.reset_mock()
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.discovery.send(install_app_example, "test", {})
+    await asyncio.sleep(0)
+    websession.request.assert_not_called()
+
+
 async def test_app_failed_logs_exit_code(
     coresys: CoreSys,
     install_app_ssh: App,
