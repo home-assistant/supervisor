@@ -146,6 +146,57 @@ async def test_equals_dbus_interface_path_match(
     assert test_interface.equals_dbus_interface(network_interface) is True
 
 
+def _eth0_interface() -> Interface:
+    """Return the host interface for eth0 of the mocked NetworkManager."""
+    return Interface(
+        name="eth0",
+        enabled=True,
+        connected=True,
+        primary=False,
+        type=InterfaceType.ETHERNET,
+        ipv4=None,
+        ipv4setting=None,
+        ipv6=None,
+        ipv6setting=None,
+        wifi=None,
+        vlan=None,
+        path="platform-ff3f0000.ethernet",
+        mac="AA:BB:CC:DD:EE:FF",
+        mdns=None,
+        llmnr=None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("user_data", "expected"),
+    [
+        pytest.param({"io.home-assistant.import": "supervisor"}, True, id="marked"),
+        pytest.param(None, False, id="unmarked"),
+        pytest.param({"io.home-assistant.import": "other"}, False, id="other-value"),
+    ],
+)
+def test_matches_settings_active_profile_marked_for_import(
+    user_data: dict[str, str] | None, expected: bool
+):
+    """Test an active profile marked for import belongs to its device."""
+    settings = Mock(match=None, user_data=user_data)
+    settings.connection.interface_name = None
+    mock_network_interface = Mock(type=DeviceType.ETHERNET, settings=settings)
+
+    assert (
+        _eth0_interface().matches_settings(mock_network_interface, settings) is expected
+    )
+
+
+def test_matches_settings_inactive_profile_marked_for_import():
+    """Test a profile marked for import doesn't match a device it isn't active on."""
+    settings = Mock(match=None, user_data={"io.home-assistant.import": "supervisor"})
+    settings.connection.interface_name = None
+    mock_network_interface = Mock(type=DeviceType.ETHERNET, settings=Mock())
+
+    assert _eth0_interface().matches_settings(mock_network_interface, settings) is False
+
+
 def test_equals_dbus_interface_vlan_type_mismatch():
     """Test VLAN interface returns False when NetworkInterface type doesn't match."""
 

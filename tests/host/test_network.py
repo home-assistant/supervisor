@@ -242,6 +242,65 @@ async def test_load_outdated_settings_reapplies(
     assert network_manager_service.ActivateConnection.calls == []
 
 
+def _import_profile(service: ConnectionSettingsService, *, marked: bool) -> None:
+    """Turn eth0's profile into one imported from a CONFIG folder."""
+    del service.settings["connection"]["interface-name"]
+    service.settings["connection"]["id"] = Variant("s", "my-network")
+    if marked:
+        service.settings["user"] = {
+            "data": Variant("a{ss}", {"io.home-assistant.import": "supervisor"})
+        }
+
+
+async def test_load_adopts_active_profile_marked_for_import(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
+):
+    """Test load takes over an active profile marked for the Supervisor."""
+    _import_profile(connection_settings_service, marked=True)
+    await coresys.dbus.network.get("eth0").settings.reload()
+    network_manager_service.ActivateConnection.calls.clear()
+    # NetworkManager can't reapply a new device binding in place
+    device_eth0_service.reapply_error = DBusError(
+        "org.freedesktop.NetworkManager.Device.IncompatibleConnection",
+        "Can't reapply changes to 'match' setting",
+    )
+
+    await coresys.host.network.load()
+
+    settings = connection_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "Supervisor eth0")
+    assert settings["match"]["path"] == Variant("as", ["platform-ff3f0000.ethernet"])
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+
+
+async def test_load_leaves_unmarked_unbound_profile_alone(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    device_eth0_service: DeviceService,
+):
+    """Test load doesn't touch a profile bound to no device without the marker."""
+    _import_profile(connection_settings_service, marked=False)
+    await coresys.dbus.network.get("eth0").settings.reload()
+    network_manager_service.ActivateConnection.calls.clear()
+    device_eth0_service.Reapply.calls.clear()
+
+    await coresys.host.network.load()
+
+    settings = connection_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "my-network")
+    assert "match" not in settings
+    assert device_eth0_service.Reapply.calls == []
+    assert network_manager_service.ActivateConnection.calls == []
+
+
 async def test_load_reapply_fails_activates(
     coresys: CoreSys,
     network_manager_service: NetworkManagerService,
