@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 SUPERVISOR_VERSION = "9999.09.9.dev9999"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
 
+# aiohttp's 8190 byte default is too small for some servers, e.g. GitHub's
+# release download redirects carry a ~9 KiB Content-Security-Policy header.
+WEBSESSION_MAX_HEADER_SIZE: int = 65536
+
 DOCKER_PREFIX: str = "hassio"
 AUDIO_DOCKER_NAME: str = f"{DOCKER_PREFIX}_audio"
 CLI_DOCKER_NAME: str = f"{DOCKER_PREFIX}_cli"
