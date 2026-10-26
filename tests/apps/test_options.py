@@ -1,5 +1,6 @@
 """Test apps schema to UI schema conversion."""
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -542,6 +543,25 @@ def test_pwned_nested_option_paths(coresys: CoreSys):
         "logins[0].password": "7110eda4d09e062aa5e4a390b0a572ac0d2c0220",
         "logins[1].password": "f3bbbd66a63d4bf1747940578ec3d0103530e21d",
         "mqtt.password": "7110eda4d09e062aa5e4a390b0a572ac0d2c0220",
+    }
+
+
+def test_pwned_option_path_collision(coresys: CoreSys):
+    """Test literal keys with separators cannot overwrite nested option paths."""
+    validate = AppOptions(
+        coresys,
+        {"mqtt.password": "password", "mqtt": {"password": "password?"}},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )
+
+    assert validate(
+        {"mqtt.password": "flat-secret", "mqtt": {"password": "nested-secret"}}
+    )
+
+    assert validate.pwned == {
+        "mqtt\\.password": hashlib.sha1(b"flat-secret").hexdigest(),
+        "mqtt.password": hashlib.sha1(b"nested-secret").hexdigest(),
     }
 
 

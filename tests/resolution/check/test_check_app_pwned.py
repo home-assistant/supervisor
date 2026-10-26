@@ -103,7 +103,7 @@ async def test_approve(coresys: CoreSys, supervisor_internet):
 
 
 async def test_approve_options_changed(coresys: CoreSys, supervisor_internet):
-    """Test issue is dismissed when the set of pwned options changed."""
+    """Test issue is refreshed in place when the set of pwned options changed."""
     app_pwned = CheckAppPwned(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
@@ -112,14 +112,50 @@ async def test_approve_options_changed(coresys: CoreSys, supervisor_internet):
     app.pwned = {"logins[0].password": "pwned", "logins[1].password": "safe"}
     coresys.security.verify_secret = AsyncMock(side_effect=verify_pwned)
 
-    assert not await app_pwned.approve_check(
-        Issue(
-            IssueType.PWNED,
-            ContextType.ADDON,
-            reference=app.slug,
-            reference_extra={"options": ["logins[0].password", "logins[1].password"]},
-        )
+    coresys.resolution.create_issue(
+        IssueType.PWNED,
+        ContextType.ADDON,
+        reference=app.slug,
+        reference_extra={"options": ["logins[0].password", "logins[1].password"]},
     )
+    issue = coresys.resolution.issues[0]
+
+    # One option is still pwned: keep the issue, listing only the current option
+    assert await app_pwned.approve_check(issue)
+    assert len(coresys.resolution.issues) == 1
+    assert coresys.resolution.issues[0].reference_extra == {
+        "options": ["logins[0].password"]
+    }
+
+
+async def test_remaining_warning_survives_throttled_check(
+    coresys: CoreSys, supervisor_internet
+):
+    """Test a remaining pwned option keeps its issue when run_check is throttled."""
+    app_pwned = CheckAppPwned(coresys)
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    app = FakeApp()
+    coresys.apps.local[app.slug] = app
+    app.pwned = {"logins[0].password": "pwned", "logins[1].password": "safe"}
+    coresys.security.verify_secret = AsyncMock(side_effect=verify_pwned)
+
+    coresys.resolution.create_issue(
+        IssueType.PWNED,
+        ContextType.ADDON,
+        reference=app.slug,
+        reference_extra={"options": ["logins[0].password", "logins[1].password"]},
+    )
+
+    # run_check is throttled (no-op); the healthcheck must still keep the warning
+    # for the option that is still compromised, with a refreshed list
+    with patch.object(CheckAppPwned, "run_check", AsyncMock()):
+        await app_pwned()
+
+    assert len(coresys.resolution.issues) == 1
+    assert coresys.resolution.issues[0].reference_extra == {
+        "options": ["logins[0].password"]
+    }
 
 
 async def test_with_global_disable(coresys: CoreSys):

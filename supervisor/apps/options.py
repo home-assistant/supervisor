@@ -105,7 +105,9 @@ class AppOptions(CoreSysAttributes):
 
             typ = self.raw_schema[key]
             try:
-                options[key] = self._validate_element(typ, value, key, key)
+                options[key] = self._validate_element(
+                    typ, value, key, self._escape_path_key(key)
+                )
             except IndexError, KeyError:
                 raise vol.Invalid(
                     f"Type error for option '{key}' in {self._name} ({self._slug})"
@@ -115,6 +117,11 @@ class AppOptions(CoreSysAttributes):
         return options
 
     # pylint: disable=no-value-for-parameter
+    @staticmethod
+    def _escape_path_key(key: str) -> str:
+        """Escape path separators so literal keys cannot collide with structure."""
+        return key.replace("\\", "\\\\").replace(".", "\\.").replace("[", "\\[")
+
     def _validate_element(self, typ: Any, value: Any, key: str, path: str) -> Any:
         """Validate a value against a type specification."""
         if isinstance(typ, list):
@@ -287,7 +294,7 @@ class AppOptions(CoreSysAttributes):
                 continue
 
             options[c_key] = self._validate_element(
-                typ[c_key], c_value, c_key, f"{path}.{c_key}"
+                typ[c_key], c_value, c_key, f"{path}.{self._escape_path_key(c_key)}"
             )
 
         self._check_missing_options(typ, options, key)

@@ -3,6 +3,7 @@
 from datetime import timedelta
 import logging
 
+from ...apps.app import App
 from ...const import ATTR_OPTIONS, AppState, CoreState
 from ...coresys import CoreSys
 from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
@@ -54,18 +55,7 @@ class CheckAppPwned(CheckBase):
             if not options:
                 continue
 
-            if app.state == AppState.STARTED:
-                suggestions = [SuggestionType.EXECUTE_STOP]
-            else:
-                suggestions = None
-
-            self.sys_resolution.create_issue(
-                IssueType.PWNED,
-                ContextType.ADDON,
-                reference=app.slug,
-                suggestions=suggestions,
-                reference_extra={ATTR_OPTIONS: options},
-            )
+            self._create_issue(app, options)
 
     async def _pwned_options(self, secrets: dict[str, str]) -> list[str]:
         """Return the option paths whose secret is pwned."""
@@ -82,6 +72,21 @@ class CheckAppPwned(CheckBase):
 
         return sorted(
             path for path, secret in secrets.items() if secret in pwned_hashes
+        )
+
+    def _create_issue(self, app: App, options: list[str]) -> None:
+        """Create or refresh the pwned issue listing the affected options."""
+        if app.state == AppState.STARTED:
+            suggestions = [SuggestionType.EXECUTE_STOP]
+        else:
+            suggestions = None
+
+        self.sys_resolution.create_issue(
+            IssueType.PWNED,
+            ContextType.ADDON,
+            reference=app.slug,
+            suggestions=suggestions,
+            reference_extra={ATTR_OPTIONS: options},
         )
 
     @Job(
@@ -104,8 +109,15 @@ class CheckAppPwned(CheckBase):
             # Cannot verify, keep the issue until the next check
             return True
 
-        # Dismiss on any change so the check raises an issue listing the current options
-        return bool(options) and issue.reference_extra == {ATTR_OPTIONS: options}
+        if not options:
+            return False
+
+        # Refresh the issue in place when the affected set changed, so the repair
+        # always lists the current options without waiting for the throttled check.
+        if issue.reference_extra != {ATTR_OPTIONS: options}:
+            self.sys_resolution.dismiss_issue(issue)
+            self._create_issue(app, options)
+        return True
 
     @property
     def issue(self) -> IssueType:
