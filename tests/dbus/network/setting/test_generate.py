@@ -123,7 +123,7 @@ async def test_generate_from_wireless(network_manager: NetworkManager):
         ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
         wifi=WifiConfig(
             mode=WifiMode.INFRASTRUCTURE,
-            ssid="TestSSID",
+            ssid=b"TestSSID",
             auth=AuthMethod.OPEN,
             psk=None,
             signal=None,
@@ -181,7 +181,7 @@ async def test_generate_from_wireless_for_update_clears_security(
         ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
         wifi=WifiConfig(
             mode=WifiMode.INFRASTRUCTURE,
-            ssid="TestSSID",
+            ssid=b"TestSSID",
             auth=AuthMethod.OPEN,
             psk=None,
             signal=None,
@@ -226,7 +226,7 @@ async def test_generate_from_wireless_mode_and_security(
         ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
         wifi=WifiConfig(
             mode=WifiMode.MESH,
-            ssid="TestMesh",
+            ssid=b"TestMesh",
             auth=AuthMethod.WPA_PSK,
             psk="supersecret",
             signal=None,
@@ -275,7 +275,7 @@ async def test_generate_from_wireless_unsupported_auth_leaves_security_untouched
         ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
         wifi=WifiConfig(
             mode=WifiMode.INFRASTRUCTURE,
-            ssid="EnterpriseNetwork",
+            ssid=b"EnterpriseNetwork",
             auth=AuthMethod.UNSUPPORTED,
             psk=None,
             signal=None,

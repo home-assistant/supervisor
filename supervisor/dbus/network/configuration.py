@@ -33,7 +33,7 @@ class ConnectionProperties:
 class WirelessProperties:
     """Wireless Properties object for Network Manager."""
 
-    ssid: str
+    ssid: bytes
     assigned_mac: str | None
     mode: str | None
     powersave: int | None

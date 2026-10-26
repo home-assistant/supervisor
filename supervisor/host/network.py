@@ -42,6 +42,8 @@ from ..exceptions import (
     HostNetworkInterfaceUpdateNotFoundError,
     HostNetworkNotFound,
     HostNetworkUpdateConfigError,
+    HostNetworkWifiSsidInvalidError,
+    HostNetworkWifiSsidUnresolvedError,
     HostNotSupportedError,
     NetworkInterfaceNotFound,
 )
@@ -50,7 +52,7 @@ from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
 from ..utils.sentry import async_capture_exception
-from .configuration import AccessPoint, Interface, ResolvedInterface
+from .configuration import AccessPoint, Interface, ResolvedInterface, ssid_to_str
 from .const import InterfaceMethod, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -708,15 +710,57 @@ class NetworkManager(CoreSysAttributes):
 
         await asyncio.sleep(5)
 
-        # Process AP
+        # Process AP, skipping access points without an SSID
         return [
             AccessPoint(
                 WifiMode[WirelessMethodType(accesspoint.mode).name],
-                accesspoint.ssid,
+                ssid,
                 accesspoint.mac,
                 accesspoint.frequency,
                 accesspoint.strength,
             )
             for accesspoint in await inet.wireless.get_all_accesspoints()
-            if accesspoint.dbus
+            if accesspoint.dbus and (ssid := accesspoint.ssid) is not None
         ]
+
+    async def _wifi_ssid_candidates(self, inet_name: str) -> set[bytes]:
+        """Return the SSID bytes of the stored profile and visible networks."""
+        ssids: set[bytes] = set()
+        if wifi := (await self.get_with_config(inet_name)).interface.wifi:
+            ssids.add(wifi.ssid)
+
+        if (inet := self.sys_dbus.network.get(inet_name)).wireless:
+            try:
+                accesspoints = await inet.wireless.get_all_accesspoints()
+            except DBusError as err:
+                raise HostNetworkError(
+                    f"Can't list access points of {inet_name}: {err!s}", _LOGGER.error
+                ) from err
+            ssids.update(
+                ssid for ap in accesspoints if ap.dbus and (ssid := ap.ssid) is not None
+            )
+        return ssids
+
+    async def resolve_ssid(self, inet_name: str, ssid: str) -> bytes:
+        """Return the SSID bytes meant by an SSID string from the API.
+
+        Strings without replacement characters are valid UTF-8 and map back
+        exactly. Others came from displaying arbitrary bytes, so they must
+        match one SSID of the stored profile or the visible networks.
+        """
+        if "\ufffd" not in ssid:
+            try:
+                return ssid.encode()
+            except UnicodeEncodeError as err:
+                raise HostNetworkWifiSsidInvalidError(_LOGGER.warning) from err
+
+        # Gather candidates in a helper so the SSID bytes do not stay as frame
+        # locals here, where Sentry would capture them when resolution fails.
+        ssids = {
+            candidate
+            for candidate in await self._wifi_ssid_candidates(inet_name)
+            if ssid_to_str(candidate) == ssid
+        }
+        if len(ssids) != 1:
+            raise HostNetworkWifiSsidUnresolvedError(_LOGGER.warning)
+        return ssids.pop()
