@@ -25,6 +25,7 @@ from .const import (
     MACHINE_ID,
     SERVER_SOFTWARE,
     VALID_API_STATES,
+    WEBSESSION_MAX_HEADER_SIZE,
 )
 
 if TYPE_CHECKING:
@@ -150,6 +151,8 @@ class CoreSys:
         session = aiohttp.ClientSession(
             headers=MappingProxyType({aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE}),
             connector=connector,
+            max_line_size=WEBSESSION_MAX_HEADER_SIZE,
+            max_field_size=WEBSESSION_MAX_HEADER_SIZE,
         )
 
         self._websession = session

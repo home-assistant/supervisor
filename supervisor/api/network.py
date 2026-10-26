@@ -73,6 +73,7 @@ from ..host.configuration import (
     ResolvedInterface,
     VlanConfig,
     WifiConfig,
+    ssid_to_str,
 )
 from ..host.const import AuthMethod, InterfaceType, WifiMode
 from .utils import api_process, api_validate
@@ -284,7 +285,7 @@ def wifi_struct(config: WifiConfig) -> dict[str, Any]:
     return {
         ATTR_MODE: config.mode,
         ATTR_AUTH: config.auth,
-        ATTR_SSID: config.ssid,
+        ATTR_SSID: ssid_to_str(config.ssid),
         ATTR_SIGNAL: config.signal,
     }
 
@@ -348,7 +349,9 @@ def interface_state_struct(interface: Interface) -> dict[str, Any]:
         if interface.ipv6
         else None,
         ATTR_WIFI: {
-            ATTR_SSID: interface.wifi.active_ssid,
+            ATTR_SSID: ssid_to_str(interface.wifi.active_ssid)
+            if interface.wifi.active_ssid is not None
+            else None,
             ATTR_SIGNAL: interface.wifi.signal,
         }
         if interface.wifi
@@ -403,7 +406,7 @@ def interface_config_struct(resolved: ResolvedInterface) -> dict[str, Any] | Non
         else None,
         ATTR_WIFI: {
             ATTR_MODE: interface.wifi.mode,
-            ATTR_SSID: interface.wifi.ssid,
+            ATTR_SSID: ssid_to_str(interface.wifi.ssid),
             ATTR_AUTH: interface.wifi.auth,
             ATTR_PSK_SET: interface.wifi.auth == AuthMethod.WPA_PSK,
         }
@@ -432,7 +435,7 @@ def accesspoint_struct(accesspoint: AccessPoint) -> dict[str, Any]:
     """Return a dict for AccessPoint."""
     return {
         ATTR_MODE: accesspoint.mode,
-        ATTR_SSID: accesspoint.ssid,
+        ATTR_SSID: ssid_to_str(accesspoint.ssid),
         ATTR_FREQUENCY: accesspoint.frequency,
         ATTR_SIGNAL: accesspoint.signal,
         ATTR_MAC: accesspoint.mac,
@@ -595,7 +598,9 @@ class APINetwork(CoreSysAttributes):
             wifi = body[ATTR_WIFI]
             interface.wifi = WifiConfig(
                 mode=wifi[ATTR_MODE],
-                ssid=wifi[ATTR_SSID],
+                ssid=await self.sys_host.network.resolve_ssid(
+                    interface.name, wifi[ATTR_SSID]
+                ),
                 auth=wifi[ATTR_AUTH],
                 psk=wifi.get(ATTR_PSK),
                 signal=None,
@@ -657,7 +662,9 @@ class APINetwork(CoreSysAttributes):
             elif key == ATTR_WIFI:
                 interface.wifi = WifiConfig(
                     mode=config.get(ATTR_MODE, WifiMode.INFRASTRUCTURE),
-                    ssid=config.get(ATTR_SSID, ""),
+                    ssid=await self.sys_host.network.resolve_ssid(
+                        interface.name, config.get(ATTR_SSID, "")
+                    ),
                     auth=config.get(ATTR_AUTH, AuthMethod.OPEN),
                     psk=config.get(ATTR_PSK, None),
                     signal=None,
