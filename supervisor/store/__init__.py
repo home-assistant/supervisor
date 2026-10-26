@@ -4,7 +4,12 @@ import asyncio
 from collections.abc import Awaitable
 import logging
 
-from ..const import ATTR_REPOSITORIES, REPOSITORY_CORE, URL_HASSIO_APPS
+from ..const import (
+    ATTR_REPOSITORIES,
+    REPOSITORY_CORE,
+    URL_HASSIO_APPS,
+    URL_HASSIO_APPS_LEGACY,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     StoreError,
@@ -143,7 +148,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         self, url: str, *, persist: bool = True, issue_on_error: bool = False
     ) -> None:
         """Add a repository."""
-        if url == URL_HASSIO_APPS:
+        if url in (URL_HASSIO_APPS, URL_HASSIO_APPS_LEGACY):
             url = REPOSITORY_CORE
 
         repository = Repository.create(self.coresys, url)
