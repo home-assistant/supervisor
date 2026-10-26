@@ -117,7 +117,9 @@ class Core(CoreSysAttributes):
 
         if self.sys_supervisor.need_update:
             self.sys_resolution.create_issue(
-                IssueType.UPDATE_ROLLBACK, ContextType.SUPERVISOR
+                IssueType.UPDATE_ROLLBACK,
+                ContextType.SUPERVISOR,
+                reference=str(self.sys_config.version),
             )
             self.sys_resolution.add_unhealthy_reason(UnhealthyReason.SUPERVISOR)
 
