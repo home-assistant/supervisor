@@ -57,7 +57,7 @@ class SocketRegistry(JobGroup):
     async def register(
         self,
         principal: CoreSysAttributes,
-        path: PurePath,
+        path: Path,
         runner: web.BaseRunner | None = None,
     ) -> None:
         """Listen on a Unix socket and identify every request on it as principal."""
