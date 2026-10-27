@@ -236,6 +236,7 @@ class NetworkSetting(DBusInterface):
             ignore_current_value=_IP_IGNORE_FIELDS,
         )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_MATCH)
+        _merge_settings_attribute(new_settings, settings, CONF_ATTR_USER)
 
         await self.connected_dbus.Settings.Connection.call("update", new_settings)
 
@@ -382,6 +383,33 @@ class NetworkSetting(DBusInterface):
 def connection_is_marked_for_import(setting: NetworkSetting) -> bool:
     """Return true if setting is marked for the Supervisor to take over."""
     return (setting.user_data or {}).get(IMPORT_MARKER_KEY) == IMPORT_MARKER_VALUE
+
+
+def get_import_settings(
+    setting: NetworkSetting, *, interface_name: str, path: str
+) -> dict[str, dict[str, Variant]]:
+    """Return the update that turns a marked profile into the device's own.
+
+    It binds the profile to the device and names it like
+    `get_connection_from_interface()` does, without the marker.
+    """
+    connection = {CONF_ATTR_CONNECTION_ID: Variant("s", f"Supervisor {interface_name}")}
+    settings: dict[str, dict[str, Variant]] = {CONF_ATTR_CONNECTION: connection}
+    if path:
+        settings[CONF_ATTR_MATCH] = {CONF_ATTR_MATCH_PATH: Variant("as", [path])}
+    else:
+        connection[CONF_ATTR_CONNECTION_INTERFACE_NAME] = Variant("s", interface_name)
+
+    # An empty section removes it (see `_merge_settings_attribute()`)
+    user_data = {
+        key: value
+        for key, value in (setting.user_data or {}).items()
+        if key != IMPORT_MARKER_KEY
+    }
+    settings[CONF_ATTR_USER] = (
+        {CONF_ATTR_USER_DATA: Variant("a{ss}", user_data)} if user_data else {}
+    )
+    return settings
 
 
 def connection_matches_device(

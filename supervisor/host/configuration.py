@@ -16,11 +16,7 @@ from ..dbus.const import (
 )
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from ..dbus.network.setting import (
-    NetworkSetting,
-    connection_is_marked_for_import,
-    connection_matches_device,
-)
+from ..dbus.network.setting import NetworkSetting, connection_matches_device
 from .const import (
     AuthMethod,
     InterfaceAddrGenMode,
@@ -144,8 +140,7 @@ class Interface:
         Unlike `equals_dbus_interface()`, this does not require `settings` to
         come from an active connection (`inet.settings`), so it can also be
         used against settings resolved independent of activation (see
-        `NetworkManager.find_connection_settings()`). The active connection
-        also matches when it is marked for the Supervisor to take over.
+        `NetworkManager.find_connection_settings()`).
         """
         # Special handling for VLAN interfaces
         if self.type == InterfaceType.VLAN and inet.type == DeviceType.VLAN:
@@ -165,12 +160,6 @@ class Interface:
             (InterfaceType.WIRELESS, DeviceType.WIRELESS),
         ]:
             return False
-
-        # A profile marked for the Supervisor to take over, such as one the
-        # installer wrote into a CONFIG folder, belongs to the device it is
-        # active on
-        if settings is inet.settings and connection_is_marked_for_import(settings):
-            return True
 
         return connection_matches_device(
             settings, interface_name=self.name, path=self.path

@@ -19,6 +19,7 @@ from supervisor.dbus.network.setting import (
 )
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.exceptions import (
+    DBusNotConnectedError,
     HostNetworkActivationFailedError,
     HostNetworkError,
     HostNotSupportedError,
@@ -252,13 +253,13 @@ def _import_profile(service: ConnectionSettingsService, *, marked: bool) -> None
         }
 
 
-async def test_load_adopts_active_profile_marked_for_import(
+async def test_load_imports_active_profile_marked_for_import(
     coresys: CoreSys,
     network_manager_service: NetworkManagerService,
     connection_settings_service: ConnectionSettingsService,
     device_eth0_service: DeviceService,
 ):
-    """Test load takes over an active profile marked for the Supervisor."""
+    """Test load imports an active marked profile, then updates it like its own."""
     _import_profile(connection_settings_service, marked=True)
     await coresys.dbus.network.get("eth0").settings.reload()
     network_manager_service.ActivateConnection.calls.clear()
@@ -273,11 +274,31 @@ async def test_load_adopts_active_profile_marked_for_import(
     settings = connection_settings_service.settings
     assert settings["connection"]["id"] == Variant("s", "Supervisor eth0")
     assert settings["match"]["path"] == Variant("as", ["platform-ff3f0000.ethernet"])
+    assert "user" not in settings
     assert (
         "/org/freedesktop/NetworkManager/Settings/1",
         "/org/freedesktop/NetworkManager/Devices/1",
         "/",
     ) in network_manager_service.ActivateConnection.calls
+
+
+async def test_load_import_fails(
+    coresys: CoreSys,
+    device_eth0_service: DeviceService,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test load still updates the interfaces when importing profiles fails."""
+    device_eth0_service.Reapply.calls.clear()
+
+    with patch.object(
+        type(coresys.dbus.network),
+        "import_marked_connections",
+        side_effect=DBusNotConnectedError(),
+    ):
+        await coresys.host.network.load()
+
+    assert "Can't import network profiles" in caplog.text
+    assert device_eth0_service.Reapply.calls
 
 
 async def test_load_leaves_unmarked_unbound_profile_alone(
