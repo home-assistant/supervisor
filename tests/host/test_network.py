@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator
 from ipaddress import IPv4Address, IPv6Address
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from dbus_fast import DBusError, Variant
 import pytest
@@ -22,6 +22,8 @@ from supervisor.exceptions import (
     DBusNotConnectedError,
     HostNetworkActivationFailedError,
     HostNetworkError,
+    HostNetworkWifiSsidInvalidError,
+    HostNetworkWifiSsidUnresolvedError,
     HostNotSupportedError,
 )
 from supervisor.homeassistant.const import WSEvent, WSType
@@ -537,6 +539,28 @@ async def test_scan_wifi_with_failures(
     assert "Can't process an AP" in caplog.text
 
 
+async def test_scan_wifi_skips_ssidless_ap(coresys: CoreSys):
+    """Test scanning skips access points that report no SSID."""
+    wireless = coresys.dbus.network.get("wlan0").wireless
+    accesspoints = [
+        Mock(
+            mode=2, ssid=b"Caf\xe9", mac="AA:BB", frequency=2412, strength=70, dbus=True
+        ),
+        Mock(mode=2, ssid=None, mac="CC:DD", frequency=2412, strength=70, dbus=True),
+    ]
+
+    with (
+        patch("supervisor.host.network.asyncio.sleep"),
+        patch.object(
+            wireless, "get_all_accesspoints", AsyncMock(return_value=accesspoints)
+        ),
+    ):
+        aps = await coresys.host.network.scan_wifi(coresys.host.network.get("wlan0"))
+
+    assert len(aps) == 1
+    assert aps[0].ssid == b"Caf\xe9"
+
+
 async def test_host_connectivity_changed(
     coresys: CoreSys,
     network_manager_service: NetworkManagerService,
@@ -772,7 +796,11 @@ async def test_apply_changes_v2_reenable_reuses_profile(
         pytest.param(
             "wlan0",
             WifiConfig(
-                WifiMode.INFRASTRUCTURE, "MY_TEST", AuthMethod.WPA_PSK, "password", None
+                WifiMode.INFRASTRUCTURE,
+                b"MY_TEST",
+                AuthMethod.WPA_PSK,
+                "password",
+                None,
             ),
             id="create",
         ),
@@ -834,3 +862,84 @@ async def test_apply_changes_background_shuts_down_activated_connection(
 
     assert len(activated_connections) == 1
     _assert_connection_shut_down(activated_connections[0])
+
+
+def _wifi_config(ssid: bytes) -> WifiConfig:
+    """Return an open wifi configuration for an SSID."""
+    return WifiConfig(WifiMode.INFRASTRUCTURE, ssid, AuthMethod.OPEN, None, None)
+
+
+@pytest.mark.parametrize(
+    ("stored", "visible", "ssid", "expected"),
+    [
+        pytest.param(None, [], "Café", "Café".encode(), id="utf8"),
+        pytest.param(_wifi_config(b"Caf\xe9"), [], "Caf�", b"Caf\xe9", id="stored"),
+        pytest.param(None, [b"Caf\xe9", b"Other"], "Caf�", b"Caf\xe9", id="visible"),
+        pytest.param(
+            _wifi_config(b"Caf\xe9"),
+            [b"Caf\xe9"],
+            "Caf�",
+            b"Caf\xe9",
+            id="stored_and_visible",
+        ),
+        pytest.param(
+            None, [b"Caf\xe9", None], "Caf�", b"Caf\xe9", id="visible_with_ssidless"
+        ),
+    ],
+)
+async def test_resolve_ssid(
+    coresys: CoreSys,
+    stored: WifiConfig | None,
+    visible: list[bytes | None],
+    ssid: str,
+    expected: bytes,
+):
+    """Test an SSID string from the API resolves to the SSID bytes it shows."""
+    await _resolve_ssid_test(coresys, stored, visible, ssid, expected)
+
+
+@pytest.mark.parametrize(
+    ("stored", "visible"),
+    [
+        pytest.param(_wifi_config(b"Caf\xe9"), [b"Caf\xff"], id="ambiguous"),
+        pytest.param(_wifi_config(b"Other"), [b"Other"], id="unknown"),
+    ],
+)
+async def test_resolve_ssid_unresolved(
+    coresys: CoreSys, stored: WifiConfig | None, visible: list[bytes | None]
+):
+    """Test a non-UTF-8 SSID string must match exactly one known SSID."""
+    with pytest.raises(HostNetworkWifiSsidUnresolvedError):
+        await _resolve_ssid_test(coresys, stored, visible, "Caf�", b"")
+
+
+async def test_resolve_ssid_unencodable(coresys: CoreSys):
+    """Test an SSID string with a lone surrogate raises instead of crashing."""
+    await coresys.host.network.load()
+    with pytest.raises(HostNetworkWifiSsidInvalidError):
+        await coresys.host.network.resolve_ssid("wlan0", "\ud800")
+
+
+async def _resolve_ssid_test(
+    coresys: CoreSys,
+    stored: WifiConfig | None,
+    visible: list[bytes | None],
+    ssid: str,
+    expected: bytes,
+) -> None:
+    """Resolve an SSID with a given stored profile and visible networks."""
+    await coresys.host.network.load()
+    resolved = await coresys.host.network.get_with_config("wlan0")
+    resolved.interface.wifi = stored
+    wireless = coresys.dbus.network.get("wlan0").wireless
+    accesspoints = [Mock(ssid=visible_ssid, dbus=True) for visible_ssid in visible]
+
+    with (
+        patch.object(
+            coresys.host.network, "get_with_config", AsyncMock(return_value=resolved)
+        ),
+        patch.object(
+            wireless, "get_all_accesspoints", AsyncMock(return_value=accesspoints)
+        ),
+    ):
+        assert await coresys.host.network.resolve_ssid("wlan0", ssid) == expected

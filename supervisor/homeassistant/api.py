@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
+from pathlib import Path, PurePath
 from typing import Any
 
 import aiohttp
@@ -14,7 +15,7 @@ from awesomeversion import AwesomeVersion
 from multidict import MultiMapping
 from yarl import URL
 
-from ..const import SOCKET_CORE
+from ..const import SOCKET_NAME_CORE
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import ENV_CORE_API_SOCKET, ContainerState
 from ..docker.monitor import DockerContainerStateEvent
@@ -88,29 +89,49 @@ class HomeAssistantAPI(CoreSysAttributes):
             )
         )
 
+    def _supervisor_view_of_core_socket(self, core_path: str) -> Path:
+        """Map Core's view of its socket path to Supervisor's view of the same file."""
+        # Core mounts the run folder at the same path as on the host
+        try:
+            relative = PurePath(core_path).relative_to(self.sys_config.path_extern_run)
+        except ValueError:
+            return self.sys_config.path_run / SOCKET_NAME_CORE
+        return self.sys_config.path_run / relative
+
     @property
-    def use_unix_socket(self) -> bool:
-        """Return True if the running Core container is configured for Unix socket.
+    def core_socket_path(self) -> Path | None:
+        """Return the running Core container's Unix socket path, None for TCP.
 
         Checks both version support and that the container was actually started
-        with the SUPERVISOR_CORE_API_SOCKET env var. This prevents failures
-        during Supervisor upgrades where Core is still running with a container
-        started by the old Supervisor.
+        with the SUPERVISOR_CORE_API_SOCKET env var. The path is read from that
+        env var, so it always matches how the running container was started,
+        even when Core is still running with a container started by an older
+        Supervisor.
 
         Raises HomeAssistantAPIError without container metadata, i.e. when no
         Core container exists to connect to.
         """
         if not self.supports_unix_socket:
-            return False
+            return None
         instance = self.sys_homeassistant.core.instance
         if not instance.attached:
             raise HomeAssistantAPIError(
                 "Cannot determine Core connection mode: container metadata not available"
             )
-        return any(
-            env.startswith(f"{ENV_CORE_API_SOCKET}=")
-            for env in instance.meta_config.get("Env", [])
-        )
+        for env in instance.meta_config.get("Env", []):
+            name, _, value = env.partition("=")
+            if name == ENV_CORE_API_SOCKET:
+                return self._supervisor_view_of_core_socket(value)
+        return None
+
+    @property
+    def use_unix_socket(self) -> bool:
+        """Return True if the running Core container is configured for Unix socket.
+
+        Raises HomeAssistantAPIError without container metadata, i.e. when no
+        Core container exists to connect to.
+        """
+        return self.core_socket_path is not None
 
     @property
     def session(self) -> aiohttp.ClientSession:
@@ -126,7 +147,7 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         if self._unix_session is None or self._unix_session.closed:
             self._unix_session = aiohttp.ClientSession(
-                connector=aiohttp.UnixConnector(path=str(SOCKET_CORE))
+                connector=aiohttp.UnixConnector(path=str(self.core_socket_path))
             )
         return self._unix_session
 
@@ -462,7 +483,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             if not self._core_connected:
                 self._core_connected = True
                 transport = (
-                    f"Unix socket {SOCKET_CORE}"
+                    f"Unix socket {self.core_socket_path}"
                     if self.use_unix_socket
                     else f"TCP {self.sys_homeassistant.api_url}"
                 )

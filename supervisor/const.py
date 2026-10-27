@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
-from pathlib import Path
+from pathlib import Path, PurePath
 from sys import version_info as systemversion
 from typing import TYPE_CHECKING, Any, NotRequired, Self, TypedDict
 
@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 SUPERVISOR_VERSION = "9999.09.9.dev9999"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
 
+# aiohttp's 8190 byte default is too small for some servers, e.g. GitHub's
+# release download redirects carry a ~9 KiB Content-Security-Policy header.
+WEBSESSION_MAX_HEADER_SIZE: int = 65536
+
 DOCKER_PREFIX: str = "hassio"
 AUDIO_DOCKER_NAME: str = f"{DOCKER_PREFIX}_audio"
 CLI_DOCKER_NAME: str = f"{DOCKER_PREFIX}_cli"
@@ -24,7 +28,8 @@ DNS_DOCKER_NAME: str = f"{DOCKER_PREFIX}_dns"
 OBSERVER_DOCKER_NAME: str = f"{DOCKER_PREFIX}_observer"
 SUPERVISOR_DOCKER_NAME: str = f"{DOCKER_PREFIX}_supervisor"
 
-URL_HASSIO_APPS = "https://github.com/home-assistant/addons"
+URL_HASSIO_APPS = "https://github.com/home-assistant/apps"
+URL_HASSIO_APPS_LEGACY = "https://github.com/home-assistant/addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor_{channel}.txt"
 URL_HASSIO_VERSION = "https://version.home-assistant.io/{channel}.json"
 
@@ -48,7 +53,11 @@ FILE_SUFFIX_CONFIGURATION = [".yaml", ".yml", ".json"]
 
 MACHINE_ID = Path("/etc/machine-id")
 RUN_SUPERVISOR_STATE = Path("/run/supervisor")
-SOCKET_CORE = Path("/run/os/core.sock")
+# Host /run/supervisor as seen from inside the Supervisor container
+RUN_OS = Path("/run/os")
+HOST_RUN_SUPERVISOR = PurePath("/run/supervisor")
+SOCKET_NAME_CORE = "core.sock"
+SOCKET_NAME_SUPERVISOR = "supervisor.sock"
 SOCKET_DBUS = Path("/run/dbus/system_bus_socket")
 SOCKET_DOCKER = Path("/run/docker.sock")
 SYSTEMD_JOURNAL_PERSISTENT = Path("/var/log/journal")

@@ -7,11 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 from aiohttp import WSCloseCode, WSMsgType, hdrs, web
-from aiohttp.test_utils import TestClient, TestServer
+from aiohttp.test_utils import TestClient, TestServer, make_mocked_request
 from multidict import CIMultiDictProxy
 import pytest
 
 from supervisor.api.const import WEBSOCKETS
+from supervisor.api.ingress import _init_header
 from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -87,6 +88,27 @@ async def test_validate_session(
         assert await resp.json() == {"result": "ok", "data": {}}
 
         assert coresys.ingress.sessions[session] > valid_time
+
+
+async def test_validate_session_invalid(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+):
+    """Test validating an unknown ingress session returns a JSON error."""
+    api_client, prefix = api_client_with_prefix
+    with patch(
+        "aiohttp.web_request.BaseRequest.__getitem__",
+        return_value=coresys.homeassistant,
+    ):
+        resp = await api_client.post(
+            f"{prefix}/ingress/validate_session",
+            json={"session": "non-existing"},
+        )
+
+    assert resp.status == 401
+    assert await resp.json() == {
+        "result": "error",
+        "message": "Ingress session is not valid",
+    }
 
 
 async def test_validate_session_with_user_id(
@@ -874,3 +896,26 @@ async def test_ingress_websocket_drops_forged_identity_headers(
         }
     finally:
         await app_server.close()
+
+
+@pytest.mark.parametrize(
+    ("peername", "expected"),
+    [
+        pytest.param(("172.30.32.1", 54321), "192.168.1.10, 172.30.32.1", id="tcp"),
+        pytest.param("", "192.168.1.10", id="unix"),
+    ],
+)
+def test_init_header_forwarded_for(peername: tuple[str, int] | str, expected: str):
+    """Test X-Forwarded-For only appends the peer when it has an address."""
+    transport = MagicMock()
+    transport.get_extra_info.return_value = peername
+    request = make_mocked_request(
+        "GET",
+        "/",
+        headers={hdrs.X_FORWARDED_FOR: "192.168.1.10"},
+        transport=transport,
+    )
+
+    headers = _init_header(request, MagicMock(spec=App), None)
+
+    assert headers.getall(hdrs.X_FORWARDED_FOR) == [expected]

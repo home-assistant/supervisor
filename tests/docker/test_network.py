@@ -254,6 +254,23 @@ async def test_network_mtu_no_change(docker: DockerAPI):
     docker.docker.networks.create.assert_not_called()
 
 
+async def test_attach_container(docker: DockerAPI):
+    """Test attach_container works."""
+    docker_network = await DockerNetwork(docker.docker).post_init()
+
+    docker_network.network.reset_mock()
+    call_args_list = docker_network.network.connect.call_args_list
+
+    await docker_network.attach_container("abc123", "test")
+    docker_network.network.connect.assert_called_once()
+    for call_arg in [x.args[0] for x in call_args_list]:
+        assert "Container" in call_arg
+        assert call_arg["Container"] == "abc123"
+        assert "EndpointConfig" in call_arg
+        assert "GwPriority" in call_arg["EndpointConfig"]
+        assert call_arg["EndpointConfig"]["GwPriority"] > 0
+
+
 async def test_post_init_get_network_timeout(docker: DockerAPI):
     """Test post_init raises DockerTimeoutError on network get timeout."""
     docker.docker.networks.get.side_effect = TimeoutError()

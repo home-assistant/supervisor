@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.10.0
+ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.24-2026.10.3
 FROM ${BUILD_FROM} AS supervisor-base
 
 ENV \
@@ -22,7 +22,7 @@ RUN \
         openssl \
         yaml \
     \
-    && pip3 install uv==0.13.1
+    && pip3 install uv==0.13.5
 
 #############################################
 # Install requirements and build Supervisor #

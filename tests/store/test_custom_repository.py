@@ -6,6 +6,7 @@ from unittest.mock import PropertyMock, patch
 import pytest
 
 from supervisor.apps.app import App
+from supervisor.const import URL_HASSIO_APPS, URL_HASSIO_APPS_LEGACY
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     StoreError,
@@ -321,6 +322,29 @@ async def test_error_adding_duplicate(
         pytest.raises(StoreError),
     ):
         await store_manager.add_repository(test_repository.source)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        pytest.param(URL_HASSIO_APPS, id="current"),
+        pytest.param(URL_HASSIO_APPS_LEGACY, id="legacy"),
+    ],
+)
+async def test_add_core_repository_url(store_manager: StoreManager, url: str):
+    """Test adding the core repository by URL resolves to the core repository."""
+    with (
+        patch("supervisor.store.git.GitRepo.load", return_value=None),
+        patch(
+            "supervisor.utils.common.read_yaml_file",
+            return_value={"name": "Official apps"},
+        ),
+        patch("pathlib.Path.exists", return_value=True),
+    ):
+        await store_manager.add_repository(url)
+
+    assert BuiltinRepository.CORE.value in store_manager.repositories
+    assert url not in store_manager.repositories
 
 
 async def test_add_with_update_repositories(
