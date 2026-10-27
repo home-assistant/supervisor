@@ -527,6 +527,7 @@ def core_state_event(state: ContainerState) -> DockerContainerStateEvent:
 CONTAINER_STATE_CASES = [
     pytest.param([], None, id="unknown"),
     pytest.param([ContainerState.RUNNING], None, id="running"),
+    pytest.param([ContainerState.STARTING], None, id="starting"),
     pytest.param(
         [ContainerState.STOPPED], "Core container is not running", id="stopped"
     ),

@@ -170,8 +170,10 @@ class HomeAssistantAPI(CoreSysAttributes):
         if event.name != self.sys_homeassistant.core.instance.name:
             return
 
+        # A pending or failed healthcheck still means the process is up
         self._core_container_running = event.state in (
             ContainerState.RUNNING,
+            ContainerState.STARTING,
             ContainerState.HEALTHY,
             ContainerState.UNHEALTHY,
         )
