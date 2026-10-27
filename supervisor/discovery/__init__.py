@@ -103,10 +103,11 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             "Sending discovery to Home Assistant %s from %s", service, app.slug
         )
         self.message_obj[message.uuid] = message
+        # A failed push marks it as unannounced
         self._unannounced.discard(message.uuid)
         await self.save()
 
-        self.sys_create_task(self._push_discovery(message, CMD_NEW))
+        self.sys_create_task(self._announce(message))
         return message
 
     def mark_unannounced(self, app: App) -> None:
@@ -128,11 +129,18 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         )
         self.sys_create_task(self._push_discovery(message, CMD_DEL))
 
-    async def _push_discovery(self, message: Message, command: str) -> None:
-        """Send a discovery request."""
+    async def _announce(self, message: Message) -> None:
+        """Push a message and mark it unannounced if Home Assistant did not get it."""
+        pushed = await self._push_discovery(message, CMD_NEW)
+        # Skip messages removed during the push
+        if not pushed and message.uuid in self.message_obj:
+            self._unannounced.add(message.uuid)
+
+    async def _push_discovery(self, message: Message, command: str) -> bool:
+        """Send a discovery request and return whether Home Assistant got it."""
         if not await self.sys_homeassistant.api.check_api_state():
             _LOGGER.info("Discovery %s message ignore", message.uuid)
-            return
+            return False
 
         data = asdict(message)
         data.pop(ATTR_CONFIG)
@@ -147,6 +155,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
                 timeout=10,
             ):
                 _LOGGER.info("Discovery %s message send", message.uuid)
-                return
+                return True
         except HomeAssistantAPIError as err:
             _LOGGER.error("Discovery %s message failed: %s", message.uuid, err)
+        return False

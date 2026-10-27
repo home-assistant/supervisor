@@ -53,6 +53,7 @@ from supervisor.exceptions import (
     HassioError,
 )
 from supervisor.hardware.helper import HwHelper
+from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.const import WSType
 from supervisor.ingress import Ingress
 from supervisor.resolution.const import (
@@ -275,6 +276,36 @@ async def test_app_not_started_pushes_next_discovery_send(
     await coresys.discovery.send(install_app_example, "test", {})
     await asyncio.sleep(0)
     websession.request.assert_not_called()
+
+
+async def test_app_stopped_during_discovery_push_pushes_next_send(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+) -> None:
+    """Test the next send is pushed if the app stopped while its push was running.
+
+    The push reached Home Assistant, but the app's next start needs it again.
+    """
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    force_app_state(install_app_ssh, AppState.STARTED)
+
+    async def stop_app_during_push() -> APIState:
+        force_app_state(install_app_ssh, AppState.STOPPED)
+        return APIState("RUNNING", False)
+
+    coresys.homeassistant.api.get_api_state.side_effect = stop_app_during_push
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await asyncio.sleep(0)
+    websession.request.assert_called_once()
+
+    # The app starts again and sends the unchanged message
+    coresys.homeassistant.api.get_api_state.side_effect = None
+    websession.request.reset_mock()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await asyncio.sleep(0)
+    websession.request.assert_called_once()
 
 
 async def test_app_failed_logs_exit_code(

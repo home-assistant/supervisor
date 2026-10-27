@@ -10,6 +10,7 @@ from supervisor.apps.app import App
 from supervisor.const import AppState
 from supervisor.coresys import CoreSys
 from supervisor.discovery import Message
+from supervisor.homeassistant.api import APIState
 
 from tests.common import force_app_state, load_json_fixture
 
@@ -170,6 +171,56 @@ async def test_api_send_discovery_after_load(
         == "http://172.30.32.1/api/hassio_push/discovery/0658be435a2948ec8b4d706d6708c56e"
     )
 
+    websession.request.reset_mock()
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    websession.request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("api_state", "request_error"),
+    [
+        pytest.param(APIState("STARTING", False), None, id="core-starting"),
+        pytest.param(APIState("RUNNING", False), TimeoutError, id="request-timeout"),
+    ],
+)
+async def test_api_send_discovery_after_failed_push(
+    app_api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+    api_state: APIState,
+    request_error: type[Exception] | None,
+):
+    """Test a message that did not reach Home Assistant is pushed on the next send.
+
+    Home Assistant can still be starting or restarting when an app sends.
+    """
+    api_client, prefix = app_api_client_with_prefix
+    install_app_ssh.data["discovery"] = ["test"]
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    message = {"service": "test", "config": {}}
+
+    # The first push does not reach Home Assistant
+    coresys.homeassistant.api.get_api_state.return_value = api_state
+    websession.request.side_effect = request_error
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    uuid = (await resp.json())["data"]["uuid"]
+
+    # Home Assistant is running now, so the unchanged message is pushed
+    coresys.homeassistant.api.get_api_state.return_value = APIState("RUNNING", False)
+    websession.request.side_effect = None
+    websession.request.reset_mock()
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    websession.request.assert_called_once()
+    assert (
+        str(websession.request.call_args.args[1])
+        == f"http://172.30.32.1/api/hassio_push/discovery/{uuid}"
+    )
+
+    # Home Assistant got it, so a repeated send is not pushed
     websession.request.reset_mock()
     resp = await api_client.post(f"{prefix}/discovery", json=message)
     assert resp.status == 200
