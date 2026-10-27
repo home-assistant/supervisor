@@ -2,7 +2,7 @@
 
 import logging
 import os
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 from aiohttp import web
 
