@@ -1,20 +1,22 @@
 """Test API security layer."""
 
 import asyncio
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from http import HTTPStatus
+from pathlib import Path
 import time
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from aiohttp import web
-from aiohttp.test_utils import TestClient
+from aiohttp import ClientSession, UnixConnector, web
+from aiohttp.test_utils import TestClient, make_mocked_request
 import pytest
 import urllib3
 
 from supervisor.api import RestAPI
 from supervisor.api.middleware.security import FILTERS
 from supervisor.apps.app import App
-from supervisor.const import ROLE_ALL, CoreState
-from supervisor.coresys import CoreSys
+from supervisor.const import REQUEST_FROM, ROLE_ALL, CoreState
+from supervisor.coresys import CoreSys, CoreSysAttributes
 
 # pylint: disable=redefined-outer-name
 
@@ -41,7 +43,9 @@ async def api_system(aiohttp_client, coresys: CoreSys) -> TestClient:
 
 
 @pytest.fixture
-async def api_token_validation(aiohttp_client, coresys: CoreSys) -> TestClient:
+async def api_token_validation(
+    aiohttp_client, coresys: CoreSys, tmp_run_dir: Path
+) -> AsyncGenerator[TestClient]:
     """Fixture for RestAPI client with token validation middleware."""
     api = RestAPI(coresys)
     api.webapp = web.Application()
@@ -54,7 +58,8 @@ async def api_token_validation(aiohttp_client, coresys: CoreSys) -> TestClient:
     api.webapp.router.add_post("/{all:.*}", mock_handler)
     api.webapp.router.add_delete("/{all:.*}", mock_handler)
 
-    return await aiohttp_client(api.webapp)
+    yield await aiohttp_client(api.webapp)
+    await api.stop()
 
 
 @pytest.fixture(
@@ -227,38 +232,40 @@ def _versioned_path(prefix: str, path: str) -> str:
     return prefix + path.replace("/addons", "/apps")
 
 
+ROLE_PATHS = [
+    ("post", "/auth/reset", {"admin"}),
+    ("get", "/auth/list", {"admin"}),
+    ("delete", "/auth/cache", {"admin", "manager"}),
+    ("get", "/auth", set(ROLE_ALL)),
+    ("post", "/auth", set(ROLE_ALL)),
+    ("get", "/backups/info", set(ROLE_ALL)),
+    ("get", "/backups/abc123/download", {"admin", "manager", "backup"}),
+    ("post", "/backups/new/full", {"admin", "manager", "backup"}),
+    ("post", "/backups/abc123/restore/full", {"admin", "manager", "backup"}),
+    ("get", "/core/info", set(ROLE_ALL)),
+    ("post", "/core/update", {"admin", "manager", "homeassistant"}),
+    ("post", "/core/restart", {"admin", "manager", "homeassistant"}),
+    ("get", "/addons/self/options/config", set(ROLE_ALL)),
+    ("post", "/addons/self/options", set(ROLE_ALL)),
+    ("post", "/addons/self/restart", set(ROLE_ALL)),
+    ("post", "/addons/self/security", {"admin"}),
+    ("get", "/addons/abc123/options/config", {"admin", "manager"}),
+    ("post", "/addons/abc123/options", {"admin", "manager"}),
+    ("post", "/addons/abc123/restart", {"admin", "manager"}),
+    ("post", "/addons/abc123/security", {"admin"}),
+    ("post", "/os/datadisk/wipe", {"admin"}),
+    ("get", "/os/ssh/authorized_keys", set()),
+    ("post", "/os/ssh/authorized_keys", set()),
+    ("delete", "/os/ssh/authorized_keys", set()),
+    ("get", "/time/info", set(ROLE_ALL)),
+    ("post", "/time/options", {"admin", "manager"}),
+    ("post", "/addons/self/sys_options", set()),
+    ("post", "/addons/abc123/sys_options", set()),
+]
+
+
 @pytest.mark.parametrize(
-    ("request_method", "request_path", "success_roles"),
-    [
-        ("post", "/auth/reset", {"admin"}),
-        ("get", "/auth/list", {"admin"}),
-        ("delete", "/auth/cache", {"admin", "manager"}),
-        ("get", "/auth", set(ROLE_ALL)),
-        ("post", "/auth", set(ROLE_ALL)),
-        ("get", "/backups/info", set(ROLE_ALL)),
-        ("get", "/backups/abc123/download", {"admin", "manager", "backup"}),
-        ("post", "/backups/new/full", {"admin", "manager", "backup"}),
-        ("post", "/backups/abc123/restore/full", {"admin", "manager", "backup"}),
-        ("get", "/core/info", set(ROLE_ALL)),
-        ("post", "/core/update", {"admin", "manager", "homeassistant"}),
-        ("post", "/core/restart", {"admin", "manager", "homeassistant"}),
-        ("get", "/addons/self/options/config", set(ROLE_ALL)),
-        ("post", "/addons/self/options", set(ROLE_ALL)),
-        ("post", "/addons/self/restart", set(ROLE_ALL)),
-        ("post", "/addons/self/security", {"admin"}),
-        ("get", "/addons/abc123/options/config", {"admin", "manager"}),
-        ("post", "/addons/abc123/options", {"admin", "manager"}),
-        ("post", "/addons/abc123/restart", {"admin", "manager"}),
-        ("post", "/addons/abc123/security", {"admin"}),
-        ("post", "/os/datadisk/wipe", {"admin"}),
-        ("get", "/os/ssh/authorized_keys", set()),
-        ("post", "/os/ssh/authorized_keys", set()),
-        ("delete", "/os/ssh/authorized_keys", set()),
-        ("get", "/time/info", set(ROLE_ALL)),
-        ("post", "/time/options", {"admin", "manager"}),
-        ("post", "/addons/self/sys_options", set()),
-        ("post", "/addons/abc123/sys_options", set()),
-    ],
+    ("request_method", "request_path", "success_roles"), ROLE_PATHS
 )
 @pytest.mark.usefixtures("plugin_tokens")
 async def test_token_validation(
@@ -382,3 +389,332 @@ async def test_api_security_system_stopping(api_system: TestClient, coresys: Cor
     result = await resp.json()
     assert resp.status == 400
     assert result["result"] == "error"
+
+
+RECORDED: web.AppKey[list[CoreSysAttributes | None]] = web.AppKey("recorded")
+
+type CallAPI = Callable[..., Awaitable[tuple[int, CoreSysAttributes | None]]]
+
+
+async def _recording_handler(request: web.Request) -> web.Response:
+    """Record who the middleware identified the request as."""
+    request.app[RECORDED].append(request[REQUEST_FROM])
+    return web.Response(text="OK")
+
+
+@pytest.fixture(name="principals")
+def fixture_principals(
+    coresys: CoreSys, install_app_example: App
+) -> dict[str, CoreSysAttributes]:
+    """Return one principal of each kind, each with a token."""
+    coresys.homeassistant.supervisor_token = "h_123456"
+    # pylint: disable=protected-access
+    coresys.plugins.cli._data["access_token"] = "c_123456"
+    coresys.plugins.observer._data["access_token"] = "o_123456"
+    # pylint: enable=protected-access
+    install_app_example.persist["access_token"] = "a_123456"
+    install_app_example.data["hassio_api"] = True
+    return {
+        "core": coresys.homeassistant,
+        "host": coresys.host,
+        "observer": coresys.plugins.observer,
+        "app": install_app_example,
+    }
+
+
+TOKENS = {
+    "core": "h_123456",
+    "host": "c_123456",
+    "observer": "o_123456",
+    "app": "a_123456",
+}
+
+
+@pytest.fixture(name="call_api")
+async def fixture_call_api(
+    coresys: CoreSys,
+    tmp_run_dir: Path,
+    principals: dict[str, CoreSysAttributes],
+) -> AsyncGenerator[CallAPI]:
+    """Call the token validation middleware over TCP with a token or over a socket.
+
+    Returns the status and who the middleware identified the caller as.
+    """
+    api = RestAPI(coresys)
+    app = web.Application(middlewares=[api.security.token_validation])
+    app[RECORDED] = []
+    app.router.add_route("*", "/{all:.*}", _recording_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, "127.0.0.1", 0).start()
+    host, port = runner.addresses[0]
+
+    async def call_with_token(
+        kind: str, method: str, path: str, headers: dict[str, str] | None
+    ) -> int:
+        async with (
+            ClientSession() as session,
+            session.request(
+                method,
+                f"http://{host}:{port}{path}",
+                headers=headers or {"Authorization": f"Bearer {TOKENS[kind]}"},
+            ) as resp,
+        ):
+            return resp.status
+
+    async def call_on_socket(
+        kind: str, method: str, path: str, headers: dict[str, str] | None
+    ) -> int:
+        socket_path = tmp_run_dir / f"{kind}.sock"
+        await api.sockets.register(principals[kind], socket_path, runner=runner)
+        try:
+            async with (
+                ClientSession(
+                    connector=UnixConnector(path=str(socket_path))
+                ) as session,
+                session.request(
+                    method, f"http://localhost{path}", headers=headers
+                ) as resp,
+            ):
+                return resp.status
+        finally:
+            await api.sockets.unregister(socket_path)
+
+    transports = {"token": call_with_token, "socket": call_on_socket}
+
+    async def call(
+        transport: str,
+        kind: str,
+        method: str,
+        path: str,
+        headers: dict[str, str] | None = None,
+    ) -> tuple[int, CoreSysAttributes | None]:
+        app[RECORDED].clear()
+        status = await transports[transport](kind, method, path, headers)
+        return status, next(iter(app[RECORDED]), None)
+
+    yield call
+    await api.sockets.stop_all()
+    await runner.cleanup()
+
+
+@pytest.mark.parametrize("transport", ["token", "socket"])
+@pytest.mark.parametrize(
+    ("kind", "method", "path", "status", "request_from"),
+    [
+        pytest.param("core", "get", "/supervisor/info", 200, "core", id="core-info"),
+        pytest.param(
+            "core",
+            "post",
+            "/addons/local_test/sys_options",
+            200,
+            "core",
+            id="core-core-only",
+        ),
+        pytest.param(
+            "core", "post", "/os/ssh/authorized_keys", 200, "core", id="core-ssh"
+        ),
+        pytest.param(
+            "host", "post", "/supervisor/options", 200, "host", id="host-options"
+        ),
+        pytest.param(
+            "host",
+            "post",
+            "/addons/local_test/sys_options",
+            403,
+            None,
+            id="host-core-only",
+        ),
+        pytest.param(
+            "observer", "get", "/supervisor/info", 200, "observer", id="observer-info"
+        ),
+        pytest.param(
+            "observer", "post", "/supervisor/options", 403, None, id="observer-options"
+        ),
+        pytest.param(
+            "observer",
+            "post",
+            "/addons/local_test/sys_options",
+            403,
+            None,
+            id="observer-core-only",
+        ),
+        pytest.param("app", "get", "/addons/self/info", 200, "app", id="app-bypass"),
+        pytest.param("app", "post", "/supervisor/options", 403, None, id="app-no-role"),
+        pytest.param(
+            "app",
+            "post",
+            "/addons/local_test/sys_options",
+            403,
+            None,
+            id="app-core-only",
+        ),
+    ],
+)
+async def test_principal_access(
+    call_api: CallAPI,
+    principals: dict[str, CoreSysAttributes],
+    transport: str,
+    kind: str,
+    method: str,
+    path: str,
+    status: int,
+    request_from: str | None,
+):
+    """Test each principal gets the same access over a socket as with its token."""
+    assert await call_api(transport, kind, method, path) == (
+        status,
+        principals.get(request_from),
+    )
+
+
+@pytest.mark.parametrize(
+    "prefix", [pytest.param("", id="v1"), pytest.param("/v2", id="v2")]
+)
+@pytest.mark.parametrize(
+    ("request_method", "request_path", "success_roles"), ROLE_PATHS
+)
+async def test_app_role_access_over_socket(
+    call_api: CallAPI,
+    principals: dict[str, CoreSysAttributes],
+    prefix: str,
+    request_method: str,
+    request_path: str,
+    success_roles: set[str],
+):
+    """Test an app on its socket gets exactly the access its role grants a token."""
+    request_path = _versioned_path(prefix, request_path)
+    app = principals["app"]
+    for role in success_roles:
+        app.data["hassio_role"] = role
+        status, _ = await call_api("socket", "app", request_method, request_path)
+        assert status == 200, role
+
+    for role in set(ROLE_ALL) - success_roles:
+        app.data["hassio_role"] = role
+        status, _ = await call_api("socket", "app", request_method, request_path)
+        assert status == 403, role
+
+
+@pytest.mark.parametrize(
+    ("kind", "path", "headers", "status", "request_from"),
+    [
+        pytest.param(
+            "core",
+            "/addons/local_test/sys_options",
+            {"Authorization": "Bearer a_123456"},
+            200,
+            "core",
+            id="app-token-on-core-socket",
+        ),
+        pytest.param(
+            "core",
+            "/addons/local_test/sys_options",
+            {"Authorization": "Bearer garbage"},
+            200,
+            "core",
+            id="garbage-token-on-core-socket",
+        ),
+        pytest.param(
+            "app",
+            "/addons/local_test/sys_options",
+            {"Authorization": "Bearer h_123456"},
+            403,
+            None,
+            id="core-token-on-app-socket",
+        ),
+        pytest.param(
+            "app",
+            "/addons/local_test/sys_options",
+            {"X-Supervisor-Token": "h_123456"},
+            403,
+            None,
+            id="core-token-header-on-app-socket",
+        ),
+    ],
+)
+async def test_socket_ignores_token(
+    call_api: CallAPI,
+    principals: dict[str, CoreSysAttributes],
+    kind: str,
+    path: str,
+    headers: dict[str, str],
+    status: int,
+    request_from: str | None,
+):
+    """Test a token on a socket never changes who the caller is."""
+    assert await call_api("socket", kind, "post", path, headers) == (
+        status,
+        principals.get(request_from),
+    )
+
+
+@pytest.mark.parametrize(
+    ("transport", "request_from"),
+    [pytest.param("token", None, id="tcp"), pytest.param("socket", "core", id="unix")],
+)
+async def test_passthrough_principal(
+    call_api: CallAPI,
+    principals: dict[str, CoreSysAttributes],
+    transport: str,
+    request_from: str | None,
+):
+    """Test paths without security check still know the caller on a socket."""
+    assert await call_api(transport, "core", "get", "/supervisor/ping", {}) == (
+        200,
+        principals.get(request_from),
+    )
+
+
+@pytest.mark.parametrize("path", ["/core/api/hassio_auth", "/v2/core/api/hassio/app"])
+async def test_blacklist_on_socket(call_api: CallAPI, path: str):
+    """Test the blacklist applies to the socket principal too."""
+    assert await call_api("socket", "core", "get", path) == (403, None)
+
+
+async def test_unregistered_socket_rejected(
+    coresys: CoreSys, tmp_run_dir: Path, principals: dict[str, CoreSysAttributes]
+):
+    """Test a connection outliving its socket registration is rejected."""
+    api = RestAPI(coresys)
+    app = web.Application(middlewares=[api.security.token_validation])
+    app[RECORDED] = []
+    app.router.add_route("*", "/{all:.*}", _recording_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    socket_path = tmp_run_dir / "core.sock"
+    await api.sockets.register(principals["core"], socket_path, runner=runner)
+
+    try:
+        async with ClientSession(
+            connector=UnixConnector(path=str(socket_path))
+        ) as session:
+            async with session.get("http://localhost/supervisor/info") as resp:
+                assert resp.status == 200
+
+            # The kept-alive connection stays open after the listener stops
+            await api.sockets.unregister(socket_path)
+            async with session.get("http://localhost/supervisor/info") as resp:
+                assert resp.status == 403
+    finally:
+        await runner.cleanup()
+
+
+async def test_dropped_connection_rejected(
+    coresys: CoreSys, principals: dict[str, CoreSysAttributes]
+):
+    """Test a request whose connection is gone never falls back to its token."""
+    api = RestAPI(coresys)
+    request = make_mocked_request(
+        "GET",
+        "/supervisor/info",
+        headers={"Authorization": "Bearer h_123456"},
+        protocol=MagicMock(),
+        transport=None,
+    )
+    handler = AsyncMock()
+
+    with pytest.raises(web.HTTPForbidden):
+        await api.security.token_validation(request, handler)
+
+    handler.assert_not_called()

@@ -3,6 +3,8 @@
 import asyncio
 from datetime import datetime, timedelta
 from http import HTTPStatus
+from pathlib import Path
+from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
 import aiodocker
@@ -31,6 +33,7 @@ from supervisor.exceptions import (
     HomeAssistantError,
     HomeAssistantJobError,
     HomeAssistantNotRunningError,
+    HomeAssistantSocketDirsError,
     HomeAssistantStatsTimeoutError,
     HomeAssistantUnknownError,
     SupervisorUpdateError,
@@ -722,6 +725,68 @@ async def test_start_existing_container(coresys: CoreSys, container: DockerConta
     container.stop.assert_not_called()
     container.delete.assert_not_called()
     coresys.docker.containers.create.assert_not_called()
+
+
+@pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize("action", ["start", "restart"])
+async def test_existing_container_gets_run_dirs(
+    coresys: CoreSys, container: DockerContainer, tmp_run_dir: Path, action: str
+):
+    """Test Core's socket folders exist before an existing container starts."""
+    coresys.docker.images.inspect.return_value = {"Id": "123"}
+    container.show.return_value["Image"] = "123"
+    container.show.return_value["State"]["Status"] = "exited"
+    container.show.return_value["State"]["Running"] = False
+    run_dirs_at_start: list[bool] = []
+
+    def run_dirs_state() -> list[bool]:
+        return [
+            (tmp_run_dir / "core").is_dir(),
+            (tmp_run_dir / "supervisor" / "core").is_dir(),
+        ]
+
+    async def check_run_dirs(*args: Any, **kwargs: Any) -> None:
+        loop = asyncio.get_running_loop()
+        run_dirs_at_start.extend(await loop.run_in_executor(None, run_dirs_state))
+
+    getattr(container, action).side_effect = check_run_dirs
+    with (
+        patch.object(
+            HomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2026.4.0")),
+        ),
+        patch.object(HomeAssistantCore, "_block_till_run"),
+    ):
+        await getattr(coresys.homeassistant.core, action)()
+
+    getattr(container, action).assert_called_once()
+    assert run_dirs_at_start == [True, True]
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_run_dir")
+@pytest.mark.parametrize("action", ["start", "restart"])
+async def test_socket_dirs_error_stops_start(
+    coresys: CoreSys, container: DockerContainer, action: str
+):
+    """Test Core is not started when its socket folders cannot be created."""
+    coresys.docker.images.inspect.return_value = {"Id": "123"}
+    container.show.return_value["Image"] = "123"
+    container.show.return_value["State"]["Status"] = "exited"
+    container.show.return_value["State"]["Running"] = False
+
+    with (
+        patch.object(
+            HomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2026.4.0")),
+        ),
+        patch.object(HomeAssistant, "ensure_run_dirs", side_effect=OSError("full")),
+        pytest.raises(HomeAssistantSocketDirsError),
+    ):
+        await getattr(coresys.homeassistant.core, action)()
+
+    getattr(container, action).assert_not_called()
 
 
 @pytest.mark.parametrize("exists", [True, False])

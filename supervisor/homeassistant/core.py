@@ -38,6 +38,7 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantJobError,
     HomeAssistantNotRunningError,
+    HomeAssistantSocketDirsError,
     HomeAssistantStartupTimeout,
     HomeAssistantStatsTimeoutError,
     HomeAssistantUnknownError,
@@ -532,6 +533,8 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.warning("Home Assistant is already running!")
             return
 
+        await self._prepare_run_dirs()
+
         async with self.port_released():
             # Instance/Container exists, simple start
             if await self.instance.is_initialize():
@@ -556,6 +559,19 @@ class HomeAssistantCore(JobGroup):
                     raise HomeAssistantError from err
 
         await self._block_till_run()
+
+    async def _prepare_run_dirs(self) -> None:
+        """Create the folders Core's socket mounts need."""
+        # Bind mount sources must exist before every container start, and the
+        # run folder is a tmpfs that does not survive a host reboot
+        if not self.sys_homeassistant.api.supports_unix_socket:
+            return
+
+        try:
+            await self.sys_run_in_executor(self.sys_homeassistant.ensure_run_dirs)
+        except OSError as err:
+            _LOGGER.error("Can't create socket folders for Home Assistant: %s", err)
+            raise HomeAssistantSocketDirsError from err
 
     @Job(
         name="home_assistant_core_stop",
@@ -583,6 +599,7 @@ class HomeAssistantCore(JobGroup):
                 (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
             )
 
+        await self._prepare_run_dirs()
         async with self.port_released():
             try:
                 await self.instance.restart()

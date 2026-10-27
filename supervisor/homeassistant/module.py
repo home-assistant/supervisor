@@ -79,6 +79,10 @@ HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE = [
 ]
 
 
+# Supervisor listens for Core in this subfolder of its own run folder
+RUN_SUPERVISOR_CORE = PurePath("core")
+
+
 class HomeAssistant(FileConfiguration, CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
@@ -293,6 +297,24 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def path_extern_pulse(self) -> PurePath:
         """Return path to asound config for Docker."""
         return PurePath(self.sys_config.path_extern_tmp, "homeassistant_pulse")
+
+    @property
+    def path_run_supervisor(self) -> Path:
+        """Return folder of the socket Supervisor listens on for Core."""
+        return self.sys_config.path_run_supervisor / RUN_SUPERVISOR_CORE
+
+    @property
+    def path_extern_run_supervisor(self) -> PurePath:
+        """Return folder of the socket Supervisor listens on for Core for Docker."""
+        return PurePath(self.sys_config.path_extern_run_supervisor, RUN_SUPERVISOR_CORE)
+
+    def ensure_run_dirs(self) -> None:
+        """Create the run folders Core's socket mounts need.
+
+        Must be run in executor.
+        """
+        self.sys_config.path_run_core.mkdir(parents=True, exist_ok=True)
+        self.path_run_supervisor.mkdir(parents=True, exist_ok=True)
 
     @property
     def audio_output(self) -> str | None:

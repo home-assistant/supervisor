@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
@@ -734,6 +735,23 @@ async def tmp_supervisor_data(
         coresys.config.path_core_backup.mkdir(parents=True)
         coresys.config.path_cid_files.mkdir()
         yield tmp_path
+
+
+@pytest.fixture
+def tmp_run_dir() -> Generator[Path]:
+    """Patch the shared run folder for sockets to a temporary folder.
+
+    Short enough for sun_path (pytest's tmp_path is too long on macOS).
+    """
+    with (
+        tempfile.TemporaryDirectory(dir="/tmp") as tmp_dir,  # noqa: S108
+        patch.object(
+            su_config.CoreConfig,
+            "path_run",
+            new=PropertyMock(return_value=Path(tmp_dir)),
+        ),
+    ):
+        yield Path(tmp_dir)
 
 
 @pytest.fixture
