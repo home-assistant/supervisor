@@ -27,6 +27,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DOCKER_ENABLEIPV6 = "EnableIPv6"
 DOCKER_OPTIONS = "Options"
+DOCKER_NETWORK_GW_PRIORITY = 1
 DOCKER_ENABLE_IPV6_DEFAULT = True
 DOCKER_NETWORK_PARAMS = {
     "Name": DOCKER_NETWORK,
@@ -299,8 +300,8 @@ class DockerNetwork:
         if name and name in (val.get("Name") for val in self.containers.values()):
             await self.stale_cleanup(name)
 
-        # Attach Network
-        endpoint_config: dict[str, Any] = {}
+        # Attach Network, and ensure network has higher routing priority than the default docker network
+        endpoint_config: dict[str, Any] = {"GwPriority": DOCKER_NETWORK_GW_PRIORITY}
         if alias:
             endpoint_config["Aliases"] = alias
         if ipv4:
