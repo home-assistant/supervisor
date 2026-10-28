@@ -69,8 +69,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
             return entry, []
         return entry[ATTR_PASSWORD], list(entry[ATTR_GROUP_IDS])
 
-    def _check_cache(self, username: str, password: str) -> bool | None:
-        """Check password in cache."""
+    def _check_cache(self, username: str, password: str) -> LoginResult | None:
+        """Return the cached login if the password matches the cache."""
         username_h = self._rehash(username)
         password_h = self._rehash(password, username)
 
@@ -80,13 +80,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
 
         if entry[0] == password_h:
             _LOGGER.debug("Username '%s' is in cache", username)
-            return True
-        return False
-
-    def _cached_login(self, username: str) -> LoginResult:
-        """Return the cached login result of a user."""
-        entry = self._cache_entry(self._rehash(username))
-        return LoginResult(group_ids=entry[1] if entry else [])
+            return LoginResult(group_ids=entry[1])
+        return None
 
     async def _update_cache(
         self, username: str, password: str, group_ids: list[str]
@@ -124,16 +119,16 @@ class Auth(FileConfiguration, CoreSysAttributes):
 
         _LOGGER.info("Auth request from '%s' for '%s'", app.slug, username)
 
-        # Get from cache
-        cache_hit = self._check_cache(username, password)
+        # Read the entry once so the groups belong to the password just checked
+        cached_login = self._check_cache(username, password)
 
         # Check API state
         if not await self.sys_homeassistant.api.check_api_state():
             _LOGGER.info("Home Assistant not running, checking cache")
-            return self._cached_login(username) if cache_hit else None
+            return cached_login
 
         # A mismatch may be a changed password, so only trust positive hits
-        if cache_hit is not True:
+        if cached_login is None:
             return await self._backend_login(app, username, password)
 
         # Home Assistant Core take over 1-2sec to validate it
@@ -146,7 +141,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
             task.add_done_callback(lambda _: self._running.pop(username, None))
             self._running[username] = task
 
-        return self._cached_login(username)
+        return cached_login
 
     async def _refresh_cached_login(
         self, app: App, username: str, password: str

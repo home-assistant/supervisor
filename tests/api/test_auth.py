@@ -330,7 +330,7 @@ async def test_auth_supervisor_rejected_by_core(
             await asyncio.wait_for(task, 1)
         assert websession.request.call_count == 2
         # pylint: disable-next=protected-access
-        assert coresys.auth._check_cache("test", "pass") is True
+        assert coresys.auth._check_cache("test", "pass") is not None
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)

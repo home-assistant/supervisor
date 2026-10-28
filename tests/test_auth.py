@@ -218,4 +218,6 @@ async def test_auth_backend_login_group_ids(
             app, "username", "password"
         ) == LoginResult(group_ids=expected)
 
-    assert coresys.auth._cached_login("username") == LoginResult(group_ids=expected)
+    assert coresys.auth._check_cache("username", "password") == LoginResult(
+        group_ids=expected
+    )
