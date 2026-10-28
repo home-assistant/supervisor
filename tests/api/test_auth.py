@@ -9,6 +9,7 @@ from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.apps.app import App
+from supervisor.auth import LoginResult
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantAPIError, HomeAssistantWSError
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -238,9 +239,11 @@ async def test_auth_json_success(
     field: str,
 ):
     """Test successful JSON auth."""
-    mock_check_login.return_value = True
+    mock_check_login.return_value = LoginResult(group_ids=["system-users"])
     resp = await api_client.post("/auth", json={field: "test", "password": "pass"})
     assert resp.status == 200
+    body = await resp.json()
+    assert body["data"] == {"group_ids": ["system-users"]}
 
 
 @pytest.mark.parametrize(
@@ -259,7 +262,7 @@ async def test_auth_json_failure_none(
     password: str | None,
 ):
     """Test failed JSON auth with none user or password."""
-    mock_check_login.return_value = True
+    mock_check_login.return_value = LoginResult(group_ids=["system-users"])
     resp = await api_client.post("/auth", json={"username": user, "password": password})
     assert resp.status == 401
     assert (
@@ -276,7 +279,7 @@ async def test_auth_json_invalid_credentials(
     api_client: TestClient, mock_check_login: AsyncMock, install_app_ssh: App
 ):
     """Test failed JSON auth due to invalid credentials."""
-    mock_check_login.return_value = False
+    mock_check_login.return_value = None
     resp = await api_client.post(
         "/auth", json={"username": "test", "password": "wrong"}
     )
@@ -316,7 +319,7 @@ async def test_auth_supervisor_rejected_by_core(
         assert body["error_key"] == "home_assistant_auth_error"
 
         # pylint: disable-next=protected-access
-        await coresys.auth._update_cache("test", "pass")
+        await coresys.auth._update_cache("test", "pass", ["system-users"])
         resp = await api_client.post(
             "/auth", json={"username": "test", "password": "pass"}
         )
@@ -353,7 +356,7 @@ async def test_auth_urlencoded_success(
     api_client: TestClient, mock_check_login: AsyncMock, install_app_ssh: App
 ):
     """Test successful URL-encoded auth."""
-    mock_check_login.return_value = True
+    mock_check_login.return_value = LoginResult(group_ids=["system-users"])
     resp = await api_client.post(
         "/auth",
         data="username=test&password=pass",
@@ -367,7 +370,7 @@ async def test_auth_urlencoded_failure(
     api_client: TestClient, mock_check_login: AsyncMock, install_app_ssh: App
 ):
     """Test URL-encoded auth with invalid credentials."""
-    mock_check_login.return_value = False
+    mock_check_login.return_value = None
     resp = await api_client.post(
         "/auth",
         data="username=test&password=fail",
@@ -394,7 +397,7 @@ async def test_auth_basic_auth(
     api_client: TestClient, mock_check_login: AsyncMock, install_app_ssh: App
 ):
     """Test auth with BasicAuth header."""
-    mock_check_login.return_value = True
+    mock_check_login.return_value = LoginResult(group_ids=["system-users"])
     resp = await api_client.post(
         "/auth", headers={"Authorization": "Basic dGVzdDpwYXNz"}
     )
@@ -406,7 +409,7 @@ async def test_auth_basic_auth_failure(
     api_client: TestClient, mock_check_login: AsyncMock, install_app_ssh: App
 ):
     """Test auth with BasicAuth header and failure."""
-    mock_check_login.return_value = False
+    mock_check_login.return_value = None
     resp = await api_client.post(
         "/auth", headers={"Authorization": "Basic dGVzdDpwYXNz"}
     )
@@ -465,7 +468,7 @@ async def test_auth_body_credentials(
     data: str,
 ):
     """Test credentials in the body with content type parameters or a Bearer token."""
-    mock_check_login.return_value = True
+    mock_check_login.return_value = LoginResult(group_ids=["system-users"])
     resp = await api_client.post("/auth", data=data, headers=headers)
     assert resp.status == 200
     mock_check_login.assert_awaited_once_with(install_app_ssh, "test", "pass")
