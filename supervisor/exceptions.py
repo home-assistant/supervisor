@@ -1032,6 +1032,27 @@ class AppFileReadError(AppsError, APIError):
         super().__init__(None, logger)
 
 
+class AppRepositoryFileUnsafeError(AppsError, APIError):
+    """Raise when an app repository file is refused by repository confinement."""
+
+    error_key = "app_repository_file_unsafe_error"
+    message_template = (
+        "Refusing to read repository file of app {app} from {repository}: {error}"
+    )
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        app: str,
+        repository: str,
+        error: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"app": app, "repository": repository, "error": error}
+        super().__init__(None, logger)
+
+
 class AppsJobError(AppsError, JobException):
     """Raise on job errors."""
 
@@ -1889,6 +1910,10 @@ class StoreJobError(StoreError, JobException):
 
 class StoreInvalidAppRepo(StoreError):
     """Raise on invalid app repo."""
+
+
+class StoreRepositoryFileUnsafeError(StoreError):
+    """Raise when a store repository file resolves to a path that must not be read."""
 
 
 class StoreRepositoryUnknownError(StoreError, APIUnknownSupervisorError):

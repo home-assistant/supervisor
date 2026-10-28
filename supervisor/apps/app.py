@@ -68,6 +68,7 @@ from ..exceptions import (
     AppBackupMetadataInvalidError,
     AppBuildFailedUnknownError,
     AppConfigurationInvalidError,
+    AppFileReadError,
     AppNotRunningError,
     AppNotSupportedArchitectureError,
     AppNotSupportedError,
@@ -945,15 +946,15 @@ class App(AppModel):
 
         await self.sys_run_in_executor(setup_data)
 
-        # Setup/Fix AppArmor profile
-        await self.install_apparmor()
-
-        # Install image
         try:
+            # Setup/Fix AppArmor profile
+            await self.install_apparmor()
+
+            # Install image
             await self.instance.install(
                 self.latest_version, self.app_store.image, arch=self.arch
             )
-        except AppsError:
+        except AppsError, HostAppArmorError:
             await self.sys_apps.data.uninstall(self)
             raise
         except DockerBuildError as err:
@@ -1195,16 +1196,20 @@ class App(AppModel):
 
     async def install_apparmor(self) -> None:
         """Install or Update AppArmor profile for App."""
-        exists_local = self.sys_host.apparmor.exists(self.slug)
-        exists_app = await self.sys_run_in_executor(self.path_apparmor.exists)
+        # A refused profile must fail rather than drop the app's confinement
+        try:
+            profile_data = await self.sys_run_in_executor(
+                self.read_repository_file, self.path_apparmor
+            )
+        except OSError as err:
+            self.sys_resolution.check_oserror(err)
+            raise AppFileReadError(
+                _LOGGER.error, app=self.slug, error=str(err)
+            ) from err
 
-        # Nothing to do
-        if not exists_local and not exists_app:
-            return
-
-        # Need removed
-        if exists_local and not exists_app:
-            await self.sys_host.apparmor.remove_profile(self.slug)
+        if profile_data is None:
+            if self.sys_host.apparmor.exists(self.slug):
+                await self.sys_host.apparmor.remove_profile(self.slug)
             return
 
         # Need install/update
@@ -1213,8 +1218,10 @@ class App(AppModel):
         def install_update_profile() -> Path:
             nonlocal tmp_folder
             tmp_folder = TemporaryDirectory(dir=self.sys_config.path_tmp)
+            profile_source = Path(tmp_folder.name, "source.txt")
+            profile_source.write_bytes(profile_data)
             profile_file = Path(tmp_folder.name, "apparmor.txt")
-            adjust_profile(self.slug, self.path_apparmor, profile_file)
+            adjust_profile(self.slug, profile_source, profile_file)
             return profile_file
 
         try:

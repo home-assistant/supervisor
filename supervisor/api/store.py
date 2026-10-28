@@ -1,7 +1,6 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 
 import asyncio
-from pathlib import Path
 from typing import Any, cast
 
 from aiohttp import web
@@ -78,24 +77,6 @@ SCHEMA_INSTALL = vol.Schema(
         vol.Optional(ATTR_BACKGROUND, default=False): bool,
     }
 )
-
-
-def _read_static_text_file(path: Path) -> Any:
-    """Read in a static text file asset for API output.
-
-    Must be run in executor.
-    """
-    with path.open("r", errors="replace") as asset:
-        return asset.read()
-
-
-def _read_static_binary_file(path: Path) -> Any:
-    """Read in a static binary file asset for API output.
-
-    Must be run in executor.
-    """
-    with path.open("rb") as asset:
-        return asset.read()
 
 
 class APIStore(CoreSysAttributes):
@@ -292,19 +273,31 @@ class APIStore(CoreSysAttributes):
     async def apps_app_icon(self, request: web.Request) -> bytes:
         """Return icon from app."""
         app = self._extract_app(request)
-        if not app.with_icon:
+        data = (
+            await self.sys_run_in_executor(
+                app.read_optional_repository_file, app.path_icon
+            )
+            if app.with_icon
+            else None
+        )
+        if data is None:
             raise APIError(f"No icon found for app {app.slug}!")
-
-        return await self.sys_run_in_executor(_read_static_binary_file, app.path_icon)
+        return data
 
     @api_process_raw(CONTENT_TYPE_PNG)
     async def apps_app_logo(self, request: web.Request) -> bytes:
         """Return logo from app."""
         app = self._extract_app(request)
-        if not app.with_logo:
+        data = (
+            await self.sys_run_in_executor(
+                app.read_optional_repository_file, app.path_logo
+            )
+            if app.with_logo
+            else None
+        )
+        if data is None:
             raise APIError(f"No logo found for app {app.slug}!")
-
-        return await self.sys_run_in_executor(_read_static_binary_file, app.path_logo)
+        return data
 
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def apps_app_changelog(self, request: web.Request) -> str:
@@ -315,12 +308,16 @@ class APIStore(CoreSysAttributes):
         except APIError as err:
             return str(err)
 
-        if not app.with_changelog:
-            return f"No changelog found for app {app.slug}!"
-
-        return await self.sys_run_in_executor(
-            _read_static_text_file, app.path_changelog
+        data = (
+            await self.sys_run_in_executor(
+                app.read_optional_repository_text, app.path_changelog
+            )
+            if app.with_changelog
+            else None
         )
+        if data is None:
+            return f"No changelog found for app {app.slug}!"
+        return data
 
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def apps_app_documentation(self, request: web.Request) -> str:
@@ -331,12 +328,16 @@ class APIStore(CoreSysAttributes):
         except APIError as err:
             return str(err)
 
-        if not app.with_documentation:
-            return f"No documentation found for app {app.slug}!"
-
-        return await self.sys_run_in_executor(
-            _read_static_text_file, app.path_documentation
+        data = (
+            await self.sys_run_in_executor(
+                app.read_optional_repository_text, app.path_documentation
+            )
+            if app.with_documentation
+            else None
         )
+        if data is None:
+            return f"No documentation found for app {app.slug}!"
+        return data
 
     @api_process
     async def apps_app_availability(self, request: web.Request) -> None:

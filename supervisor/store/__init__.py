@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Awaitable
 import logging
+from pathlib import Path
 
 from ..const import (
     ATTR_REPOSITORIES,
@@ -43,6 +44,14 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         self.coresys: CoreSys = coresys
         self.data = StoreData(coresys)
         self._repositories: dict[str, Repository] = {}
+        self._reported_unsafe_files: set[tuple[str, Path]] = set()
+
+    def first_unsafe_file_report(self, slug: str, path: Path) -> bool:
+        """Return True if an app's refused file is not yet reported since the last reload."""
+        if (slug, path) in self._reported_unsafe_files:
+            return False
+        self._reported_unsafe_files.add((slug, path))
+        return True
 
     @property
     def all(self) -> list[Repository]:
@@ -91,6 +100,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     )
     async def reload(self, repository: Repository | None = None) -> None:
         """Update apps from repository and reload list."""
+        self._reported_unsafe_files.clear()
         # Make a copy to prevent race with other tasks
         repositories = [repository] if repository else self.all.copy()
         results: list[bool | BaseException] = await asyncio.gather(
