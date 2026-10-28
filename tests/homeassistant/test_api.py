@@ -8,6 +8,7 @@ import aiohttp
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import SERVER_SOFTWARE
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
@@ -174,6 +175,8 @@ async def test_unix_session_uses_core_socket_path(coresys: CoreSys):
     try:
         assert isinstance(session.connector, aiohttp.UnixConnector)
         assert session.connector.path == "/run/os/core/core.sock"
+        assert isinstance(session.cookie_jar, aiohttp.DummyCookieJar)
+        assert session.headers[aiohttp.hdrs.USER_AGENT] == SERVER_SOFTWARE
     finally:
         await coresys.homeassistant.api.close()
 

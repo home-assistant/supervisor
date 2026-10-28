@@ -15,7 +15,7 @@ from awesomeversion import AwesomeVersion
 from multidict import MultiMapping
 from yarl import URL
 
-from ..const import SOCKET_NAME_CORE
+from ..const import SERVER_SOFTWARE, SOCKET_NAME_CORE
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import ENV_CORE_API_SOCKET, ContainerState
 from ..docker.monitor import DockerContainerStateEvent
@@ -146,8 +146,12 @@ class HomeAssistantAPI(CoreSysAttributes):
             return self.sys_websession
 
         if self._unix_session is None or self._unix_session.closed:
+            # Unlike Core's IP over TCP, "localhost" lets a real jar store cookies
+            # from any Core view and replay them on every later request
             self._unix_session = aiohttp.ClientSession(
-                connector=aiohttp.UnixConnector(path=str(self.core_socket_path))
+                connector=aiohttp.UnixConnector(path=str(self.core_socket_path)),
+                cookie_jar=aiohttp.DummyCookieJar(),
+                headers={hdrs.USER_AGENT: SERVER_SOFTWARE},
             )
         return self._unix_session
 
