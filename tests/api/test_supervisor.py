@@ -12,6 +12,7 @@ from awesomeversion import AwesomeVersion
 from blockbuster import BlockingError
 import pytest
 
+from supervisor.config import NEW_INSTALLATION_FEATURE_FLAGS
 from supervisor.const import CoreState, FeatureFlag
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
@@ -661,7 +662,7 @@ async def test_supervisor_api_stats_failure(
 async def test_api_supervisor_info_feature_flags(
     api_client: TestClient, coresys: CoreSys
 ):
-    """Test that supervisor info returns all feature flags with default False."""
+    """Test that supervisor info returns all feature flags with their defaults."""
     resp = await api_client.get("/supervisor/info")
     assert resp.status == 200
     result = await resp.json()
@@ -669,10 +670,12 @@ async def test_api_supervisor_info_feature_flags(
     assert "feature_flags" in result["data"]
     feature_flags = result["data"]["feature_flags"]
 
-    # All known feature flags should be present and default to False
+    # Test fixture has no config file, so new installation defaults apply
     for feature in FeatureFlag:
         assert feature.value in feature_flags
-        assert feature_flags[feature.value] is False
+        assert feature_flags[feature.value] is (
+            feature in NEW_INSTALLATION_FEATURE_FLAGS
+        )
 
 
 async def test_api_supervisor_options_feature_flags_enable(

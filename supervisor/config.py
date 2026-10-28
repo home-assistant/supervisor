@@ -70,6 +70,12 @@ DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
 # to UTC if the user skimmed through the onboarding.
 _UTC = "UTC"
 
+# Enabled on new installations only, existing installations keep their behavior
+NEW_INSTALLATION_FEATURE_FLAGS = (
+    FeatureFlag.APP_DROP_NET_RAW,
+    FeatureFlag.APP_REDUCED_CAPABILITIES,
+)
+
 
 class CoreConfig(FileConfiguration):
     """Hold all core config data."""
@@ -488,7 +494,14 @@ class CoreConfig(FileConfiguration):
     async def read_data(self) -> None:
         """Read configuration file."""
         timezone = self.timezone
+        new_installation = self._file is not None and not (
+            await asyncio.get_running_loop().run_in_executor(None, self._file.is_file)
+        )
         await super().read_data()
+
+        if new_installation:
+            for feature in NEW_INSTALLATION_FEATURE_FLAGS:
+                self.set_feature_flag(feature, True)
 
         if not self.timezone:
             self._timezone_tzinfo = None
