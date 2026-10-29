@@ -4,7 +4,7 @@ import asyncio
 import errno
 from ipaddress import IPv4Address
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
 import pytest
@@ -171,6 +171,33 @@ async def test_reset_hosts_unlink_oserror(
     assert (
         UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
     ) is unhealthy
+
+
+async def test_write_hosts_serialized(coresys: CoreSys):
+    """Test concurrent writes of the hosts file are serialized."""
+    active = 0
+    max_active = 0
+
+    async def _run_in_executor(_funct, *_args, **_kwargs) -> None:
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0)
+        active -= 1
+
+    with (
+        patch.object(
+            PluginDns, "hosts_template", new=PropertyMock(return_value=Mock())
+        ),
+        patch.object(PluginDns, "sys_run_in_executor", _run_in_executor),
+    ):
+        await asyncio.gather(
+            coresys.plugins.dns.write_hosts(),
+            coresys.plugins.dns.write_hosts(),
+            coresys.plugins.dns.write_hosts(),
+        )
+
+    assert max_active == 1
 
 
 async def test_loop_detection_on_failure(coresys: CoreSys, container: DockerContainer):
