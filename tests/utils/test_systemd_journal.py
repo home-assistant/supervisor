@@ -10,6 +10,7 @@ import pytest
 from supervisor.exceptions import MalformedBinaryEntryError
 from supervisor.host.const import LogFormatter
 from supervisor.utils.systemd_journal import (
+    JournalExportParser,
     journal_boots_reader,
     journal_logs_reader,
     journal_plain_formatter,
@@ -305,18 +306,54 @@ async def test_parsing_newlines_in_multiple_fields():
     assert await anext(reader) == (ANY, "Hello,\nworld!")
 
 
-@pytest.mark.parametrize("read_size", [1, 7, 64 * 1024])
+SPLIT_EXPORT = (
+    b"__CURSOR=cursor1\n"
+    b"MESSAGE\n\x0e\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n\n"
+    b"AFTER=after\n\n"
+    b"__CURSOR=cursor2\n"
+    b"MESSAGE=Hello again, world!\n\n"
+    b"MESSAGE=No cursor\n"
+)
+
+
+@pytest.mark.parametrize("chunk_size", [1, 7, len(SPLIT_EXPORT)])
+def test_parser_split_feeds(chunk_size: int) -> None:
+    """Test entries and binary fields split across feeds are parsed."""
+    parser = JournalExportParser(["__CURSOR", "MESSAGE"])
+    entries = []
+    for i in range(0, len(SPLIT_EXPORT), chunk_size):
+        entries += parser.feed(SPLIT_EXPORT[i : i + chunk_size])
+    entries += parser.close()
+
+    assert entries == [
+        {"__CURSOR": "cursor1", "MESSAGE": "Hello,\nworld!\n"},
+        {"__CURSOR": "cursor2", "MESSAGE": "Hello again, world!"},
+        {"MESSAGE": "No cursor"},
+    ]
+
+
+def test_parser_skips_unwanted_fields() -> None:
+    """Test only the requested fields are returned, including from binary fields."""
+    parser = JournalExportParser(["MESSAGE"])
+    assert parser.feed(
+        b"ID=1\nOTHER\n\x02\x00\x00\x00\x00\x00\x00\x00\n\n\nMESSAGE=Hi\n\n"
+    ) == [{"MESSAGE": "Hi"}]
+    assert not parser.close()
+
+
+def test_parser_truncated_binary_field() -> None:
+    """Test that a stream ending inside a binary field raises MalformedBinaryEntryError."""
+    parser = JournalExportParser(["MESSAGE"])
+    assert not parser.feed(b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello")
+    with pytest.raises(MalformedBinaryEntryError):
+        parser.close()
+
+
+@pytest.mark.parametrize("read_size", [1, 64 * 1024])
 async def test_parsing_split_reads(read_size: int) -> None:
-    """Test entries and binary fields split across stream reads are parsed."""
+    """Test the reader yields one batch per stream read with the first cursor."""
     journal_logs, stream = _journal_logs_mock()
-    stream.feed_data(
-        b"__CURSOR=cursor1\n"
-        b"MESSAGE\n\x0e\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n\n"
-        b"AFTER=after\n\n"
-        b"__CURSOR=cursor2\n"
-        b"MESSAGE=Hello again, world!\n\n"
-        b"MESSAGE=No cursor\n"
-    )
+    stream.feed_data(SPLIT_EXPORT)
     stream.feed_eof()
 
     with patch("supervisor.utils.systemd_journal.JOURNAL_READ_SIZE", read_size):
@@ -327,16 +364,6 @@ async def test_parsing_split_reads(read_size: int) -> None:
             ("cursor2", "Hello again, world!"),
             (None, "No cursor"),
         ]
-
-
-async def test_parsing_truncated_binary_message():
-    """Test that a stream ending inside a binary field raises MalformedBinaryEntryError."""
-    journal_logs, stream = _journal_logs_mock()
-    stream.feed_data(b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello")
-    stream.feed_eof()
-
-    with pytest.raises(MalformedBinaryEntryError):
-        await anext(journal_logs_reader(journal_logs))
 
 
 async def test_parsing_two_messages():

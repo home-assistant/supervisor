@@ -1,7 +1,7 @@
 """Utilities for working with systemd journal export format."""
 
 from asyncio import IncompleteReadError
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterable
 from datetime import UTC, datetime, tzinfo
 from functools import wraps
 import json
@@ -161,6 +161,45 @@ def _parse_entry(
             )
 
 
+class JournalExportParser:
+    """Incremental parser for the systemd journal export format.
+
+    Feed it the raw stream in any chunking and it returns the completed
+    entries as dicts holding only the requested fields.
+    """
+
+    def __init__(self, fields: Iterable[str]) -> None:
+        """Initialize the parser for the given field names."""
+        self._fields = [(name, f"\n{name}=".encode()) for name in fields]
+        # A newline always precedes the parse position so a "NAME=" search also
+        # matches the first field of an entry
+        self._buf = b"\n"
+        self._pos = 1
+
+    def feed(self, data: bytes) -> list[dict[str, str]]:
+        """Parse data and return the entries completed by it."""
+        self._buf = self._buf[self._pos - 1 :] + data
+        self._pos = 1
+
+        entries: list[dict[str, str]] = []
+        while self._pos < len(self._buf) and (
+            parsed := _parse_entry(self._buf, self._pos, self._fields)
+        ):
+            entry, self._pos = parsed
+            if entry:
+                entries.append(entry)
+        return entries
+
+    def close(self) -> list[dict[str, str]]:
+        """Return a trailing entry that was cut off at the end of the stream."""
+        if self._pos >= len(self._buf):
+            return []
+        entries = self.feed(b"\n\n")
+        if self._pos < len(self._buf):
+            raise MalformedBinaryEntryError("Stream ended inside a binary field")
+        return entries
+
+
 async def journal_logs_reader(
     journal_logs: ClientResponse,
     log_formatter: LogFormatter = LogFormatter.PLAIN,
@@ -186,38 +225,20 @@ async def journal_logs_reader(
         case _:
             raise ValueError(f"Unknown log format: {log_formatter}")
 
-    fields = [(name, f"\n{name}=".encode()) for name in formatter_.required_fields]
+    parser = JournalExportParser(formatter_.required_fields)
+
+    def format_batch(entries: list[dict[str, str]]) -> list[tuple[str | None, str]]:
+        return [
+            (entry.get("__CURSOR"), formatter_(entry, no_colors=no_colors, tz=tz))
+            for entry in entries
+        ]
 
     async with journal_logs as resp:
-        buf = b"\n"
-        pos = 1
-        eof = False
-        while not eof:
-            chunk = await resp.content.read(JOURNAL_READ_SIZE)
-            # Keep the newline before pos, _parse_entry relies on it
-            buf = buf[pos - 1 :] + chunk
-            pos = 1
-            if not chunk:
-                eof = True
-                if len(buf) > 1:
-                    # Terminate a trailing entry that was cut off at EOF
-                    buf += b"\n\n"
-
-            batch: list[tuple[str | None, str]] = []
-            while pos < len(buf) and (parsed := _parse_entry(buf, pos, fields)):
-                entries, pos = parsed
-                if entries:
-                    batch.append(
-                        (
-                            entries.get("__CURSOR"),
-                            formatter_(entries, no_colors=no_colors, tz=tz),
-                        )
-                    )
-            if batch:
+        while chunk := await resp.content.read(JOURNAL_READ_SIZE):
+            if batch := format_batch(parser.feed(chunk)):
                 yield batch
-
-        if pos < len(buf):
-            raise MalformedBinaryEntryError("Stream ended inside a binary field")
+        if batch := format_batch(parser.close()):
+            yield batch
 
 
 def _parse_boot_json(boot_json_bytes: bytes) -> tuple[int, str]:
