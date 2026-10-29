@@ -92,18 +92,89 @@ def journal_verbose_formatter(
     return f"{ts} {entries.get('_HOSTNAME', '')} {identifier}: {message}"
 
 
+JOURNAL_READ_SIZE = 64 * 1024
+
+# An entry made only of "NAME=value" lines; binary fields have no "=" on
+# their name line.
+_RE_SIMPLE_ENTRY = re.compile(rb"(?:[^\n=]+=[^\n]*\n)+")
+
+
+def _parse_entry(
+    buf: bytes, pos: int, fields: list[tuple[str, bytes]]
+) -> tuple[dict[str, str], int] | None:
+    """Parse the entry starting at pos, returning its wanted fields and the next position.
+
+    Returns None when the buffer ends before the entry does. buf[pos - 1] must be
+    a newline so a "NAME=" search also matches the first field of the entry.
+    """
+    end = buf.find(b"\n\n", pos - 1)
+    if end == -1:
+        return None
+    if end == pos - 1:
+        # Empty line, e.g. at EOF or between entries
+        return {}, pos + 1
+
+    entries: dict[str, str] = {}
+    if _RE_SIMPLE_ENTRY.fullmatch(buf, pos, end + 1):
+        for name, key in fields:
+            start = buf.find(key, pos - 1, end + 1)
+            if start != -1:
+                start += len(key)
+                entries[name] = buf[start : buf.index(b"\n", start)].decode(
+                    "utf-8", errors="replace"
+                )
+        return entries, end + 2
+
+    # The entry has binary fields whose data may contain anything, including
+    # "\n\n", so walk it field by field.
+    wanted = {key[1:-1]: name for name, key in fields}
+    while True:
+        line_end = buf.find(b"\n", pos)
+        if line_end == -1:
+            return None
+        if line_end == pos:
+            return entries, pos + 1
+
+        sep = buf.find(b"=", pos, line_end)
+        if sep != -1:
+            field = buf[pos:sep]
+            data_start, data_end = sep + 1, line_end
+        else:
+            # Binary field: name, newline, little endian 64-bit size, data, newline
+            field = buf[pos:line_end]
+            data_start = line_end + 9
+            if len(buf) < data_start:
+                return None
+            data_end = data_start + int.from_bytes(
+                buf[line_end + 1 : data_start], byteorder="little"
+            )
+            if len(buf) <= data_end:
+                return None
+            if buf[data_end] != 0x0A:
+                raise MalformedBinaryEntryError(
+                    f"Failed parsing binary entry {buf[data_start : data_end + 1].decode('utf-8', errors='replace')}"
+                )
+        pos = data_end + 1
+        if field in wanted:
+            entries[wanted[field]] = buf[data_start:data_end].decode(
+                "utf-8", errors="replace"
+            )
+
+
 async def journal_logs_reader(
     journal_logs: ClientResponse,
     log_formatter: LogFormatter = LogFormatter.PLAIN,
     no_colors: bool = False,
     tz: tzinfo = UTC,
-) -> AsyncGenerator[tuple[str | None, str]]:
-    """Read logs from systemd journal line by line, formatted using the given formatter.
+) -> AsyncGenerator[list[tuple[str | None, str]]]:
+    """Read logs from systemd journal, formatted using the given formatter.
 
     Optionally strip ANSI color codes from the entries' messages. Timestamps are
     converted to the given timezone.
 
-    Returns a generator of (cursor, formatted_entry) tuples.
+    Returns a generator of (cursor, formatted_entry) tuple lists. Each list holds
+    the entries completed by one read from the stream, so a consumer that writes
+    a list at a time does not add latency when following logs.
     """
     match log_formatter:
         case LogFormatter.PLAIN:
@@ -115,51 +186,38 @@ async def journal_logs_reader(
         case _:
             raise ValueError(f"Unknown log format: {log_formatter}")
 
+    fields = [(name, f"\n{name}=".encode()) for name in formatter_.required_fields]
+
     async with journal_logs as resp:
-        entries: dict[str, str] = {}
-        while not resp.content.at_eof():
-            line = await resp.content.readuntil(b"\n")
-            # newline means end of message, also empty line is sometimes returned
-            # at EOF (likely race between at_eof and EOF check in readuntil)
-            if line == b"\n" or not line:
+        buf = b"\n"
+        pos = 1
+        eof = False
+        while not eof:
+            chunk = await resp.content.read(JOURNAL_READ_SIZE)
+            # Keep the newline before pos, _parse_entry relies on it
+            buf = buf[pos - 1 :] + chunk
+            pos = 1
+            if not chunk:
+                eof = True
+                if len(buf) > 1:
+                    # Terminate a trailing entry that was cut off at EOF
+                    buf += b"\n\n"
+
+            batch: list[tuple[str | None, str]] = []
+            while pos < len(buf) and (parsed := _parse_entry(buf, pos, fields)):
+                entries, pos = parsed
                 if entries:
-                    yield (
-                        entries.get("__CURSOR"),
-                        formatter_(entries, no_colors=no_colors, tz=tz),
+                    batch.append(
+                        (
+                            entries.get("__CURSOR"),
+                            formatter_(entries, no_colors=no_colors, tz=tz),
+                        )
                     )
-                entries = {}
-                continue
+            if batch:
+                yield batch
 
-            # Journal fields consisting only of valid non-control UTF-8 codepoints
-            # are serialized as they are (i.e. the field name, followed by '=',
-            # followed by field data), followed by a newline as separator to the next
-            # field. Note that fields containing newlines cannot be formatted like
-            # this. Non-control UTF-8 codepoints are the codepoints with value at or
-            # above 32 (' '), or equal to 9 (TAB).
-            name, sep, data = line.partition(b"=")
-            if not sep:
-                # Other journal fields are serialized in a special binary safe way:
-                # field name, followed by newline
-                name = name[:-1]  # strip \n
-                # followed by a binary 64-bit little endian size value,
-                length_raw = await resp.content.readexactly(8)
-                length = int.from_bytes(length_raw, byteorder="little")
-                # followed by the binary field data,
-                data = await resp.content.readexactly(length + 1)
-                # followed by a newline as separator to the next field.
-                if not data.endswith(b"\n"):
-                    raise MalformedBinaryEntryError(
-                        f"Failed parsing binary entry {data.decode('utf-8', errors='replace')}"
-                    )
-
-            field_name = name.decode("utf-8")
-            if field_name not in formatter_.required_fields:
-                # we must read to the end of the entry in the stream, so we can
-                # only continue the loop here
-                continue
-
-            # strip \n for simple fields before decoding
-            entries[field_name] = data[:-1].decode("utf-8", errors="replace")
+        if pos < len(buf):
+            raise MalformedBinaryEntryError("Stream ended inside a binary field")
 
 
 def _parse_boot_json(boot_json_bytes: bytes) -> tuple[int, str]:
