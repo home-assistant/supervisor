@@ -395,16 +395,18 @@ class APIHost(CoreSysAttributes):
             ) as resp,
         ):
             try:
-                async for cursor, line in journal_logs_reader(
+                async for batch in journal_logs_reader(
                     resp, log_formatter, no_colors, tz=self.sys_timezone_tzinfo
                 ):
                     if not headers_returned:
-                        if cursor:
+                        if cursor := batch[0][0]:
                             response.headers["X-First-Cursor"] = cursor
                         response.headers["X-Accel-Buffering"] = "no"
                         await response.prepare(request)
                         headers_returned = True
-                    await response.write(line.encode("utf-8") + b"\n")
+                    await response.write(
+                        "".join(f"{line}\n" for _, line in batch).encode("utf-8")
+                    )
             except ClientConnectionResetError as err:
                 # When client closes the connection while reading busy logs, we
                 # sometimes get this exception. It should be safe to ignore it.

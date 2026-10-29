@@ -51,7 +51,7 @@ async def test_logs(journald_gateway: MagicMock, coresys: CoreSys):
     journald_gateway.content.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
-        cursor, line = await anext(
+        [(cursor, line)] = await anext(
             journal_logs_reader(resp, log_formatter=LogFormatter.VERBOSE)
         )
         assert (
@@ -79,7 +79,7 @@ async def test_logs_coloured(journald_gateway: MagicMock, coresys: CoreSys):
     journald_gateway.content.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
-        cursor, line = await anext(journal_logs_reader(resp))
+        [(cursor, line)] = await anext(journal_logs_reader(resp))
         assert (
             cursor
             == "s=83fee99ca0c3466db5fc120d52ca7dd8;i=2049389;b=f5a5c442fa6548cf97474d2d57c920b3;m=4263828e8c;t=612dda478b01b;x=9ae12394c9326930"
@@ -98,7 +98,7 @@ async def test_logs_no_colors(journald_gateway: MagicMock, coresys: CoreSys):
     journald_gateway.content.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
-        cursor, line = await anext(journal_logs_reader(resp, no_colors=True))
+        [(cursor, line)] = await anext(journal_logs_reader(resp, no_colors=True))
         assert (
             cursor
             == "s=83fee99ca0c3466db5fc120d52ca7dd8;i=2049389;b=f5a5c442fa6548cf97474d2d57c920b3;m=4263828e8c;t=612dda478b01b;x=9ae12394c9326930"
@@ -117,7 +117,7 @@ async def test_logs_verbose_no_colors(journald_gateway: MagicMock, coresys: Core
     journald_gateway.content.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
-        cursor, line = await anext(
+        [(cursor, line)] = await anext(
             journal_logs_reader(
                 resp, log_formatter=LogFormatter.VERBOSE, no_colors=True
             )
