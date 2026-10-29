@@ -723,10 +723,10 @@ async def test_dropped_connection_rejected(
 
 
 @pytest.mark.parametrize(
-    ("socket_kinds", "tcp_kind", "issues"),
+    ("socket_calls", "tcp_kind", "issues"),
     [
         pytest.param(
-            ["core"],
+            [("core", "/addons/self/info")],
             "core",
             [
                 Issue(
@@ -738,20 +738,25 @@ async def test_dropped_connection_rejected(
             id="script",
         ),
         pytest.param([], "core", [], id="core-before-socket"),
-        pytest.param(["app"], "core", [], id="core-after-app-socket"),
-        pytest.param(["core"], "app", [], id="app"),
+        pytest.param(
+            [("core", "/supervisor/ping")], "core", [], id="core-after-watchdog-ping"
+        ),
+        pytest.param(
+            [("app", "/addons/self/info")], "core", [], id="core-after-app-socket"
+        ),
+        pytest.param([("core", "/addons/self/info")], "app", [], id="app"),
     ],
 )
 async def test_tcp_api_request_repair(
     call_api: CallAPI,
     coresys: CoreSys,
-    socket_kinds: list[str],
+    socket_calls: list[tuple[str, str]],
     tcp_kind: str,
     issues: list[Issue],
 ):
     """Test Core's token over TCP raises a repair once Core has used its socket."""
-    for kind in socket_kinds:
-        await call_api("socket", kind, "get", "/addons/self/info")
+    for kind, path in socket_calls:
+        await call_api("socket", kind, "get", path)
 
     status, _ = await call_api("token", tcp_kind, "get", "/supervisor/info")
 

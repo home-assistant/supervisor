@@ -348,8 +348,9 @@ class SecurityMiddleware(CoreSysAttributes):
                 raise HTTPForbidden
             if not patterns.no_security_check.match(request.path):
                 self.check_principal_access(principal, request)
-            if principal is self.sys_homeassistant:
-                self.sys_homeassistant.api.core_used_supervisor_socket = True
+                # Not on passthrough paths, Supervisor's watchdog pings this socket
+                if principal is self.sys_homeassistant:
+                    self.sys_homeassistant.api.core_used_supervisor_socket = True
             request[REQUEST_FROM] = principal
             return await handler(request)
 
