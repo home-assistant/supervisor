@@ -99,68 +99,6 @@ JOURNAL_READ_SIZE = 64 * 1024
 _RE_SIMPLE_ENTRY = re.compile(rb"(?:[^\n=]+=[^\n]*\n)+")
 
 
-def _parse_entry(
-    buf: bytes, pos: int, fields: list[tuple[str, bytes]]
-) -> tuple[dict[str, str], int] | None:
-    """Parse the entry starting at pos, returning its wanted fields and the next position.
-
-    Returns None when the buffer ends before the entry does. buf[pos - 1] must be
-    a newline so a "NAME=" search also matches the first field of the entry.
-    """
-    end = buf.find(b"\n\n", pos - 1)
-    if end == -1:
-        return None
-    if end == pos - 1:
-        # Empty line, e.g. at EOF or between entries
-        return {}, pos + 1
-
-    entries: dict[str, str] = {}
-    if _RE_SIMPLE_ENTRY.fullmatch(buf, pos, end + 1):
-        for name, key in fields:
-            start = buf.find(key, pos - 1, end + 1)
-            if start != -1:
-                start += len(key)
-                entries[name] = buf[start : buf.index(b"\n", start)].decode(
-                    "utf-8", errors="replace"
-                )
-        return entries, end + 2
-
-    # The entry has binary fields whose data may contain anything, including
-    # "\n\n", so walk it field by field.
-    wanted = {key[1:-1]: name for name, key in fields}
-    while True:
-        line_end = buf.find(b"\n", pos)
-        if line_end == -1:
-            return None
-        if line_end == pos:
-            return entries, pos + 1
-
-        sep = buf.find(b"=", pos, line_end)
-        if sep != -1:
-            field = buf[pos:sep]
-            data_start, data_end = sep + 1, line_end
-        else:
-            # Binary field: name, newline, little endian 64-bit size, data, newline
-            field = buf[pos:line_end]
-            data_start = line_end + 9
-            if len(buf) < data_start:
-                return None
-            data_end = data_start + int.from_bytes(
-                buf[line_end + 1 : data_start], byteorder="little"
-            )
-            if len(buf) <= data_end:
-                return None
-            if buf[data_end] != 0x0A:
-                raise MalformedBinaryEntryError(
-                    f"Failed parsing binary entry {buf[data_start : data_end + 1].decode('utf-8', errors='replace')}"
-                )
-        pos = data_end + 1
-        if field in wanted:
-            entries[wanted[field]] = buf[data_start:data_end].decode(
-                "utf-8", errors="replace"
-            )
-
-
 class JournalExportParser:
     """Incremental parser for the systemd journal export format.
 
@@ -170,34 +108,118 @@ class JournalExportParser:
 
     def __init__(self, fields: Iterable[str]) -> None:
         """Initialize the parser for the given field names."""
-        self._fields = [(name, f"\n{name}=".encode()) for name in fields]
+        self._keys = [(name, f"\n{name}=".encode()) for name in fields]
+        self._names = {key[1:-1]: name for name, key in self._keys}
         # A newline always precedes the parse position so a "NAME=" search also
         # matches the first field of an entry
-        self._buf = b"\n"
+        self._buf = bytearray(b"\n")
         self._pos = 1
+        # Where the search for the end of the current entry can resume, and the
+        # buffer length a binary field needs before the entry can be parsed
+        self._scan = 0
+        self._need = 0
 
     def feed(self, data: bytes) -> list[dict[str, str]]:
         """Parse data and return the entries completed by it."""
-        self._buf = self._buf[self._pos - 1 :] + data
-        self._pos = 1
+        self._buf += data
+        if len(self._buf) < self._need:
+            return []
 
         entries: list[dict[str, str]] = []
-        while self._pos < len(self._buf) and (
-            parsed := _parse_entry(self._buf, self._pos, self._fields)
-        ):
-            entry, self._pos = parsed
+        while self._pos < len(self._buf) and (entry := self._parse_entry()) is not None:
             if entry:
                 entries.append(entry)
+
+        # Drop consumed data once it outweighs the pending entry, which keeps
+        # the copying linear for entries spanning many reads
+        if self._pos - 1 > len(self._buf) // 2:
+            del self._buf[: self._pos - 1]
+            self._scan = max(0, self._scan - (self._pos - 1))
+            self._pos = 1
         return entries
 
     def close(self) -> list[dict[str, str]]:
         """Return a trailing entry that was cut off at the end of the stream."""
         if self._pos >= len(self._buf):
             return []
-        entries = self.feed(b"\n\n")
-        if self._pos < len(self._buf):
+        # Check the binary framing against the real bytes before terminating
+        # the entry, as the terminator could stand in for a missing separator
+        self._parse_fields(self._pos)
+        if len(self._buf) < self._need:
             raise MalformedBinaryEntryError("Stream ended inside a binary field")
-        return entries
+        return self.feed(b"\n\n")
+
+    def _parse_entry(self) -> dict[str, str] | None:
+        """Parse the entry at the current position, or return None if incomplete."""
+        buf, pos = self._buf, self._pos
+        end = buf.find(b"\n\n", max(pos - 1, self._scan))
+        if end == -1:
+            self._scan = len(buf) - 1
+            return None
+        self._scan = 0
+        self._need = 0
+        if end == pos - 1:
+            # Empty line, e.g. at EOF or between entries
+            self._pos = pos + 1
+            return {}
+
+        entry: dict[str, str] = {}
+        if _RE_SIMPLE_ENTRY.fullmatch(buf, pos, end + 1):
+            for name, key in self._keys:
+                # Last occurrence wins for repeated fields
+                start = buf.rfind(key, pos - 1, end + 1)
+                if start != -1:
+                    start += len(key)
+                    entry[name] = buf[start : buf.index(b"\n", start)].decode(
+                        "utf-8", errors="replace"
+                    )
+            self._pos = end + 2
+            return entry
+
+        # The entry has binary fields whose data may contain anything, including
+        # "\n\n", so walk it field by field
+        if (parsed := self._parse_fields(pos)) is None:
+            return None
+        entry, self._pos = parsed
+        return entry
+
+    def _parse_fields(self, pos: int) -> tuple[dict[str, str], int] | None:
+        """Parse the fields of the entry at pos, or return None if incomplete."""
+        buf = self._buf
+        entry: dict[str, str] = {}
+        while True:
+            line_end = buf.find(b"\n", pos)
+            if line_end == -1:
+                return None
+            if line_end == pos:
+                return entry, pos + 1
+
+            sep = buf.find(b"=", pos, line_end)
+            if sep != -1:
+                field = bytes(buf[pos:sep])
+                data_start, data_end = sep + 1, line_end
+            else:
+                # Binary field: name, newline, little endian 64-bit size, data, newline
+                field = bytes(buf[pos:line_end])
+                data_start = line_end + 9
+                if len(buf) < data_start:
+                    self._need = data_start
+                    return None
+                data_end = data_start + int.from_bytes(
+                    buf[line_end + 1 : data_start], byteorder="little"
+                )
+                if len(buf) <= data_end:
+                    self._need = data_end + 1
+                    return None
+                if buf[data_end] != 0x0A:
+                    raise MalformedBinaryEntryError(
+                        f"Failed parsing binary entry {buf[data_start : data_end + 1].decode('utf-8', errors='replace')}"
+                    )
+            pos = data_end + 1
+            if field in self._names:
+                entry[self._names[field]] = buf[data_start:data_end].decode(
+                    "utf-8", errors="replace"
+                )
 
 
 async def journal_logs_reader(

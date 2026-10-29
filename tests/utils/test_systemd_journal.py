@@ -341,12 +341,52 @@ def test_parser_skips_unwanted_fields() -> None:
     assert not parser.close()
 
 
-def test_parser_truncated_binary_field() -> None:
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(b"MESSAGE\n\x0d\x00\x00\x00", id="in-size"),
+        pytest.param(b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello", id="in-data"),
+        pytest.param(
+            b"MESSAGE\n\x05\x00\x00\x00\x00\x00\x00\x00Hello", id="missing-separator"
+        ),
+    ],
+)
+def test_parser_truncated_binary_field(data: bytes) -> None:
     """Test that a stream ending inside a binary field raises MalformedBinaryEntryError."""
     parser = JournalExportParser(["MESSAGE"])
-    assert not parser.feed(b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello")
+    assert not parser.feed(data)
     with pytest.raises(MalformedBinaryEntryError):
         parser.close()
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(b"MESSAGE=first\nMESSAGE=last\n\n", id="simple"),
+        pytest.param(
+            b"MESSAGE=first\nBIN\n\x01\x00\x00\x00\x00\x00\x00\x00\n\nMESSAGE=last\n\n",
+            id="binary",
+        ),
+    ],
+)
+def test_parser_repeated_field_last_wins(data: bytes) -> None:
+    """Test the last occurrence of a repeated field is used in both parsing paths."""
+    parser = JournalExportParser(["MESSAGE"])
+    assert parser.feed(data) == [{"MESSAGE": "last"}]
+
+
+def test_parser_large_binary_field_in_small_feeds() -> None:
+    """Test a binary field spanning many feeds is parsed."""
+    parser = JournalExportParser(["MESSAGE"])
+    payload = b"x" * (8 * 1024 * 1024)
+    data = (
+        b"MESSAGE\n" + len(payload).to_bytes(8, "little") + payload + b"\n\nAFTER=1\n\n"
+    )
+    entries = []
+    for i in range(0, len(data), 4096):
+        entries += parser.feed(data[i : i + 4096])
+    assert entries == [{"MESSAGE": payload.decode()}]
+    assert parser.feed(b"MESSAGE=next\n\n") == [{"MESSAGE": "next"}]
 
 
 @pytest.mark.parametrize("read_size", [1, 64 * 1024])
