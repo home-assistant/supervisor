@@ -25,6 +25,7 @@ from .const import (
     ATTR_ENABLE_IPV6,
     ATTR_FEATURE_FLAGS,
     ATTR_FORCE_SECURITY,
+    ATTR_GROUP_IDS,
     ATTR_HASSOS,
     ATTR_HASSOS_UNRESTRICTED,
     ATTR_HASSOS_UPGRADE,
@@ -254,7 +255,20 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
 )
 
 
-SCHEMA_AUTH_CONFIG = vol.Schema({sha256: sha256})
+# Entries written before group IDs were cached are a bare password hash
+SCHEMA_AUTH_CONFIG = vol.Schema(
+    {
+        sha256: vol.Any(
+            sha256,
+            vol.Schema(
+                {
+                    vol.Required(ATTR_PASSWORD): sha256,
+                    vol.Required(ATTR_GROUP_IDS): [str],
+                }
+            ),
+        )
+    }
+)
 
 SCHEMA_SESSION_DATA = vol.Schema(
     {
