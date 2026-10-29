@@ -3,14 +3,16 @@
 import logging
 from unittest.mock import Mock, PropertyMock, patch
 
+from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.dbus.const import ConnectionState
+from supervisor.dbus.const import ConnectionState, DeviceType
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting import NetworkSetting
 from supervisor.exceptions import (
+    DBusError,
     DBusFatalError,
     DBusInterfaceMethodError,
     DBusObjectError,
@@ -20,9 +22,13 @@ from supervisor.exceptions import (
 )
 from supervisor.utils.dbus import DBus
 
+from tests.common import mock_dbus_services
 from tests.const import TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.network_connection_settings import SETTINGS_1_FIXTURE
+from tests.dbus_service_mocks.network_connection_settings import (
+    SETTINGS_1_FIXTURE,
+    ConnectionSettings as ConnectionSettingsService,
+)
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
 )
@@ -190,6 +196,188 @@ async def test_find_connection_settings_vanished_profile(
 
     with patch.object(NetworkSetting, "connect", side_effect=error):
         assert await network_manager.find_connection_settings(inet) is None
+
+
+async def test_import_marked_connections_only_device_of_type(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test an inactive marked profile becomes the only wifi device's own."""
+    await network_manager.import_marked_connections()
+
+    settings = imported_wifi_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "Supervisor wlan0")
+    assert settings["match"]["path"] == Variant("as", ["platform.fe300000.mmcnr"])
+    assert "user" not in settings
+
+    wlan = await network_manager.find_connection_settings(
+        network_manager.get(TEST_INTERFACE_WLAN_NAME)
+    )
+    assert wlan is not None
+    assert wlan.object_path == imported_wifi_settings_service.object_path
+    wlan.shutdown()
+
+
+async def test_import_marked_connections_active_profile(
+    network_manager: NetworkManager,
+    connection_settings_service: ConnectionSettingsService,
+):
+    """Test an active marked profile becomes the own of the device it is active on."""
+    del connection_settings_service.settings["connection"]["interface-name"]
+    connection_settings_service.settings["user"] = {
+        "data": Variant("a{ss}", {"io.home-assistant.import": "supervisor"})
+    }
+    eth = network_manager.get(TEST_INTERFACE_ETH_NAME)
+    await eth.settings.reload()
+
+    await network_manager.import_marked_connections()
+
+    assert eth.settings.connection.id == "Supervisor eth0"
+    assert eth.settings.match.path == ["platform-ff3f0000.ethernet"]
+    assert eth.settings.user_data is None
+
+
+async def test_import_marked_connections_keeps_other_user_data(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test importing a profile only drops the marker from its user data."""
+    imported_wifi_settings_service.settings["user"]["data"].value["other"] = "kept"
+
+    await network_manager.import_marked_connections()
+
+    assert imported_wifi_settings_service.settings["user"] == {
+        "data": Variant("a{ss}", {"other": "kept"})
+    }
+
+
+async def test_import_marked_connections_device_unclear(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test a marked profile stays as it is while its device is unclear."""
+    other_wlan = Mock(type=DeviceType.WIRELESS, settings=None)
+    with patch.object(
+        NetworkManager,
+        "interfaces",
+        new_callable=PropertyMock,
+        return_value=network_manager.interfaces | {other_wlan},
+    ):
+        await network_manager.import_marked_connections()
+
+    settings = imported_wifi_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "my-network")
+    assert "match" not in settings
+    assert settings["user"] == {
+        "data": Variant("a{ss}", {"io.home-assistant.import": "supervisor"})
+    }
+
+
+async def test_import_marked_connections_device_in_use(
+    network_manager: NetworkManager,
+    connection_settings_service: ConnectionSettingsService,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test an inactive marked profile stays as it is while its device is connected."""
+    # eth0 is the only ethernet device, connected on a profile that names no device
+    del connection_settings_service.settings["connection"]["interface-name"]
+    imported_wifi_settings_service.settings["connection"]["type"] = Variant(
+        "s", "802-3-ethernet"
+    )
+
+    await network_manager.import_marked_connections()
+
+    settings = imported_wifi_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "my-network")
+    assert "match" not in settings
+    assert "user" in settings
+
+
+async def test_import_marked_connections_device_has_own_profile(
+    network_manager: NetworkManager,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    connection_settings_service: ConnectionSettingsService,
+    dbus_session_bus: MessageBus,
+):
+    """Test an active marked profile stays as it is next to the device's own."""
+    del connection_settings_service.settings["connection"]["interface-name"]
+    connection_settings_service.settings["user"] = {
+        "data": Variant("a{ss}", {"io.home-assistant.import": "supervisor"})
+    }
+    # Stored profile bound to eth0 by its path
+    own = await mock_dbus_services(
+        {"network_connection_settings": "/org/freedesktop/NetworkManager/Settings/2"},
+        dbus_session_bus,
+    )
+    network_manager_services["network_settings"].connections.append(
+        own["network_connection_settings"].object_path
+    )
+    eth = network_manager.get(TEST_INTERFACE_ETH_NAME)
+    await eth.settings.reload()
+
+    await network_manager.import_marked_connections()
+
+    settings = connection_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "Wired connection 1")
+    assert "match" not in settings
+    assert "user" in settings
+
+
+async def test_import_marked_connections_device_without_path(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test a profile is bound by interface name to a device without udev path."""
+    with patch.object(
+        NetworkInterface, "path", new_callable=PropertyMock, return_value=""
+    ):
+        await network_manager.import_marked_connections()
+
+    settings = imported_wifi_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "Supervisor wlan0")
+    assert settings["connection"]["interface-name"] == Variant("s", "wlan0")
+    assert "match" not in settings
+    assert "user" not in settings
+
+
+@pytest.mark.parametrize(
+    "binding",
+    [
+        {"connection": {"interface-name": Variant("s", "wlan1")}},
+        {"match": {"path": Variant("as", ["platform-other"])}},
+    ],
+)
+async def test_import_marked_connections_names_device(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+    caplog: pytest.LogCaptureFixture,
+    binding: dict[str, dict[str, Variant]],
+):
+    """Test a marked profile that names a device is ignored."""
+    for section, values in binding.items():
+        imported_wifi_settings_service.settings.setdefault(section, {}).update(values)
+
+    await network_manager.import_marked_connections()
+
+    settings = imported_wifi_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "my-network")
+    assert "user" in settings
+    assert "a profile marked for import can't name a device" in caplog.text
+
+
+@pytest.mark.parametrize("error", [DBusError("Failed"), DBusObjectError()])
+async def test_import_marked_connections_update_fails(
+    network_manager: NetworkManager,
+    imported_wifi_settings_service: ConnectionSettingsService,
+    caplog: pytest.LogCaptureFixture,
+    error: Exception,
+):
+    """Test a profile that can't be updated stays marked without failing the import."""
+    with patch.object(NetworkSetting, "update", side_effect=error):
+        await network_manager.import_marked_connections()
+
+    assert "Can't import network profile" in caplog.text
+    assert "user" in imported_wifi_settings_service.settings
 
 
 async def test_removed_devices_disconnect(

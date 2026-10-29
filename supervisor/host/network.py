@@ -204,6 +204,12 @@ class NetworkManager(CoreSysAttributes):
     )
     async def load(self):
         """Load network information and reapply defaults over dbus."""
+        # Import marked profiles first, so the update below covers them too
+        try:
+            await self.sys_dbus.network.import_marked_connections()
+        except (DBusError, DBusNotConnectedError) as err:
+            _LOGGER.warning("Can't import network profiles: %s", err)
+
         # Apply current settings on each interface so OS can update any out of date defaults
         interfaces = [
             Interface.from_dbus_interface(interface)

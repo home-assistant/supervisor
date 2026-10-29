@@ -30,6 +30,7 @@ CONF_ATTR_802_WIRELESS_SECURITY = "802-11-wireless-security"
 CONF_ATTR_VLAN = "vlan"
 CONF_ATTR_IPV4 = "ipv4"
 CONF_ATTR_IPV6 = "ipv6"
+CONF_ATTR_USER = "user"
 
 CONF_ATTR_CONNECTION_ID = "id"
 CONF_ATTR_CONNECTION_UUID = "uuid"
@@ -40,6 +41,13 @@ CONF_ATTR_CONNECTION_AUTOCONNECT = "autoconnect"
 CONF_ATTR_CONNECTION_INTERFACE_NAME = "interface-name"
 
 CONF_ATTR_MATCH_PATH = "path"
+
+CONF_ATTR_USER_DATA = "data"
+
+# Set by a tool that writes a profile for the Supervisor to take over, such as
+# the Home Assistant installer through a CONFIG folder
+IMPORT_MARKER_KEY = "io.home-assistant.import"
+IMPORT_MARKER_VALUE = "supervisor"
 
 CONF_ATTR_VLAN_FLAGS = "flags"
 CONF_ATTR_VLAN_ID = "id"
@@ -130,6 +138,7 @@ class NetworkSetting(DBusInterface):
         self._ipv4: Ip4Properties | None = None
         self._ipv6: Ip6Properties | None = None
         self._match: MatchProperties | None = None
+        self._user_data: dict[str, str] | None = None
         super().__init__()
 
     @property
@@ -177,6 +186,11 @@ class NetworkSetting(DBusInterface):
         """Return match properties if any."""
         return self._match
 
+    @property
+    def user_data(self) -> dict[str, str] | None:
+        """Return user data if any."""
+        return self._user_data
+
     @dbus_connected
     async def get_settings(self) -> dict[str, Any]:
         """Return connection settings."""
@@ -222,6 +236,7 @@ class NetworkSetting(DBusInterface):
             ignore_current_value=_IP_IGNORE_FIELDS,
         )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_MATCH)
+        _merge_settings_attribute(new_settings, settings, CONF_ATTR_USER)
 
         await self.connected_dbus.Settings.Connection.call("update", new_settings)
 
@@ -261,6 +276,7 @@ class NetworkSetting(DBusInterface):
         self._ipv4 = None
         self._ipv6 = None
         self._match = None
+        self._user_data = None
 
         # Get configuration settings we care about
         # See: https://networkmanager.dev/docs/api/latest/nm-settings-dbus.html
@@ -359,6 +375,41 @@ class NetworkSetting(DBusInterface):
             self._match = MatchProperties(
                 data[CONF_ATTR_MATCH].get(CONF_ATTR_MATCH_PATH)
             )
+
+        if CONF_ATTR_USER in data:
+            self._user_data = data[CONF_ATTR_USER].get(CONF_ATTR_USER_DATA)
+
+
+def connection_is_marked_for_import(setting: NetworkSetting) -> bool:
+    """Return true if setting is marked for the Supervisor to take over."""
+    return (setting.user_data or {}).get(IMPORT_MARKER_KEY) == IMPORT_MARKER_VALUE
+
+
+def get_import_settings(
+    setting: NetworkSetting, *, interface_name: str, path: str
+) -> dict[str, dict[str, Variant]]:
+    """Return the update that turns a marked profile into the device's own.
+
+    It binds the profile to the device and names it like
+    `get_connection_from_interface()` does, without the marker.
+    """
+    connection = {CONF_ATTR_CONNECTION_ID: Variant("s", f"Supervisor {interface_name}")}
+    settings: dict[str, dict[str, Variant]] = {CONF_ATTR_CONNECTION: connection}
+    if path:
+        settings[CONF_ATTR_MATCH] = {CONF_ATTR_MATCH_PATH: Variant("as", [path])}
+    else:
+        connection[CONF_ATTR_CONNECTION_INTERFACE_NAME] = Variant("s", interface_name)
+
+    # An empty section removes it (see `_merge_settings_attribute()`)
+    user_data = {
+        key: value
+        for key, value in (setting.user_data or {}).items()
+        if key != IMPORT_MARKER_KEY
+    }
+    settings[CONF_ATTR_USER] = (
+        {CONF_ATTR_USER_DATA: Variant("a{ss}", user_data)} if user_data else {}
+    )
+    return settings
 
 
 def connection_matches_device(

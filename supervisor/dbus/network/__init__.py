@@ -26,6 +26,7 @@ from ..const import (
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     DBUS_OBJECT_NM,
+    ConnectionType,
     ConnectivityState,
     DeviceType,
 )
@@ -34,12 +35,22 @@ from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .dns import NetworkManagerDNS
 from .interface import NetworkInterface
-from .setting import NetworkSetting, connection_matches_device
+from .setting import (
+    NetworkSetting,
+    connection_is_marked_for_import,
+    connection_matches_device,
+    get_import_settings,
+)
 from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MINIMAL_VERSION = AwesomeVersion("1.14.6")
+
+_CONNECTION_DEVICE_TYPES: dict[str, DeviceType] = {
+    ConnectionType.ETHERNET: DeviceType.ETHERNET,
+    ConnectionType.WIRELESS: DeviceType.WIRELESS,
+}
 
 
 class NetworkManager(DBusInterfaceProxy):
@@ -157,23 +168,7 @@ class NetworkManager(DBusInterfaceProxy):
         of this shared lookup to avoid spreading it across layers.
         """
         for object_path in await self.settings.list_connections():
-            setting = NetworkSetting(object_path)
-            try:
-                await setting.connect(self.connected_dbus.bus)
-            except DBusError, DBusInterfaceError, DBusObjectError:
-                # A profile can vanish between `list_connections()` and this
-                # `connect()` call (e.g. another client deleting it, or a v1
-                # destructive disable) - it then comes back as
-                # UnknownObject/UnknownMethod, which `DBus.from_dbus_error()`
-                # maps to `DBusObjectError`/`DBusInterfaceMethodError`
-                # (a `DBusInterfaceError` subclass). Neither derives from
-                # `DBusError`, so they need to be listed explicitly here to
-                # be treated the same as any other unreadable profile: skip
-                # it rather than letting it fail the whole lookup.
-                _LOGGER.debug(
-                    "Could not connect to connection settings %s, skipping",
-                    object_path,
-                )
+            if not (setting := await self._get_stored_setting(object_path)):
                 continue
 
             if connection_matches_device(
@@ -184,6 +179,103 @@ class NetworkManager(DBusInterfaceProxy):
             setting.shutdown()
 
         return None
+
+    @dbus_connected
+    async def import_marked_connections(self) -> None:
+        """Take over the stored profiles marked for import.
+
+        Such a profile, like the Wi-Fi network the installer writes into a
+        CONFIG folder, names no device. It is bound to the device it is active
+        on, else to the only device of its type while that isn't connected,
+        named like the profiles the Supervisor creates and unmarked, so from
+        then on it is that device's profile like any other. A device that has
+        a profile of its own keeps it, and without a device the profile stays
+        marked for the next start. A marked profile that names a device is
+        ignored.
+        """
+        for object_path in await self.settings.list_connections():
+            if not (setting := await self._get_stored_setting(object_path)):
+                continue
+
+            try:
+                if not connection_is_marked_for_import(setting):
+                    continue
+                if (setting.connection and setting.connection.interface_name) or (
+                    setting.match and setting.match.path
+                ):
+                    _LOGGER.error(
+                        "Ignoring network profile %s: a profile marked for import "
+                        "can't name a device",
+                        object_path,
+                    )
+                elif inet := await self._get_import_device(setting):
+                    _LOGGER.info(
+                        "Importing network profile %s for %s",
+                        object_path,
+                        inet.interface_name,
+                    )
+                    await setting.update(
+                        get_import_settings(
+                            setting, interface_name=inet.interface_name, path=inet.path
+                        )
+                    )
+                    # Callers apply the active profile next, so it must be current
+                    if inet.settings and inet.settings.object_path == object_path:
+                        await inet.settings.reload()
+            except (DBusError, DBusInterfaceError, DBusObjectError) as err:
+                # A profile can vanish meanwhile, see `_get_stored_setting()`
+                _LOGGER.warning("Can't import network profile %s: %s", object_path, err)
+            finally:
+                setting.shutdown()
+
+    async def _get_import_device(
+        self, setting: NetworkSetting
+    ) -> NetworkInterface | None:
+        """Return the device a profile marked for import belongs to, if any."""
+        if not setting.connection or not setting.connection.type:
+            return None
+        device_type = _CONNECTION_DEVICE_TYPES.get(setting.connection.type)
+        devices = [inet for inet in self.interfaces if inet.type == device_type]
+        inet = next(
+            (
+                inet
+                for inet in devices
+                if inet.settings and inet.settings.object_path == setting.object_path
+            ),
+            None,
+        )
+        if not inet:
+            if len(devices) != 1 or devices[0].settings:
+                return None
+            inet = devices[0]
+
+        # Two profiles bound to one device would leave its own one unclear
+        if own_setting := await self.find_connection_settings(inet):
+            own_setting.shutdown()
+            return None
+        return inet
+
+    async def _get_stored_setting(self, object_path: str) -> NetworkSetting | None:
+        """Return the stored profile at object_path, None if it can't be read."""
+        setting = NetworkSetting(object_path)
+        try:
+            await setting.connect(self.connected_dbus.bus)
+        except DBusError, DBusInterfaceError, DBusObjectError:
+            # A profile can vanish between `list_connections()` and this
+            # `connect()` call (e.g. another client deleting it, or a v1
+            # destructive disable) - it then comes back as
+            # UnknownObject/UnknownMethod, which `DBus.from_dbus_error()`
+            # maps to `DBusObjectError`/`DBusInterfaceMethodError`
+            # (a `DBusInterfaceError` subclass). Neither derives from
+            # `DBusError`, so they need to be listed explicitly here to
+            # be treated the same as any other unreadable profile: skip
+            # it rather than letting it fail the whole lookup.
+            _LOGGER.debug(
+                "Could not connect to connection settings %s, skipping",
+                object_path,
+            )
+            return None
+        return setting
 
     @dbus_connected
     async def check_connectivity(self, *, force: bool = False) -> ConnectivityState:
