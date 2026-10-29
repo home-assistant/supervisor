@@ -67,7 +67,13 @@ from supervisor.utils.dt import utcnow
 
 from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
 
-from tests.common import fire_bus_event, force_app_state, get_fixture_path, is_in_list
+from tests.common import (
+    MockResponse,
+    fire_bus_event,
+    force_app_state,
+    get_fixture_path,
+    is_in_list,
+)
 from tests.const import TEST_ADDON_SLUG
 
 
@@ -246,17 +252,18 @@ async def test_app_not_started_pushes_next_discovery_send(
     missed the message in the meantime.
     """
     coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
     force_app_state(install_app_ssh, AppState.STARTED)
     force_app_state(install_app_example, AppState.STARTED)
     message = await coresys.discovery.send(install_app_ssh, "test", {})
     await coresys.discovery.send(install_app_example, "test", {})
-    await asyncio.sleep(0)
+    await coresys.block_till_done()
     websession.request.reset_mock()
 
     force_app_state(install_app_ssh, not_started_state)
     force_app_state(install_app_ssh, AppState.STARTED)
     await coresys.discovery.send(install_app_ssh, "test", {})
-    await asyncio.sleep(0)
+    await coresys.block_till_done()
 
     websession.request.assert_called_once()
     assert websession.request.call_args.args[0] == "post"
@@ -274,37 +281,78 @@ async def test_app_not_started_pushes_next_discovery_send(
     websession.request.reset_mock()
     await coresys.discovery.send(install_app_ssh, "test", {})
     await coresys.discovery.send(install_app_example, "test", {})
-    await asyncio.sleep(0)
+    await coresys.block_till_done()
     websession.request.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "state_at_push_end",
+    [
+        pytest.param(AppState.STOPPED, id="stopped"),
+        pytest.param(AppState.STARTED, id="restarted"),
+    ],
+)
 async def test_app_stopped_during_discovery_push_pushes_next_send(
     coresys: CoreSys,
     install_app_ssh: App,
     websession: MagicMock,
+    state_at_push_end: AppState,
 ) -> None:
     """Test the next send is pushed if the app stopped while its push was running.
 
     The push reached Home Assistant, but the app's next start needs it again.
     """
     coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
     force_app_state(install_app_ssh, AppState.STARTED)
 
     async def stop_app_during_push() -> APIState:
         force_app_state(install_app_ssh, AppState.STOPPED)
+        force_app_state(install_app_ssh, state_at_push_end)
         return APIState("RUNNING", False)
 
     coresys.homeassistant.api.get_api_state.side_effect = stop_app_during_push
     await coresys.discovery.send(install_app_ssh, "test", {})
-    await asyncio.sleep(0)
+    await coresys.block_till_done()
     websession.request.assert_called_once()
 
-    # The app starts again and sends the unchanged message
+    # Started again, the app sends the unchanged message
     coresys.homeassistant.api.get_api_state.side_effect = None
     websession.request.reset_mock()
     force_app_state(install_app_ssh, AppState.STARTED)
     await coresys.discovery.send(install_app_ssh, "test", {})
-    await asyncio.sleep(0)
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+
+async def test_app_discovery_send_in_startup_pushes_next_send(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+) -> None:
+    """Test the next send is pushed if the app sent before it was started.
+
+    An app with a healthcheck can send before it is ready for Home Assistant.
+    """
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
+
+    # The app restarts and sends before its healthcheck passed
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    websession.request.reset_mock()
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+    # Started now, the app sends the unchanged message
+    force_app_state(install_app_ssh, AppState.STARTED)
+    websession.request.reset_mock()
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
     websession.request.assert_called_once()
 
 

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import asdict, dataclass, field
+from functools import partial
 import logging
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -13,6 +15,7 @@ from ..const import (
     ATTR_CONFIG,
     ATTR_DISCOVERY,
     FILE_HASSIO_DISCOVERY,
+    AppState,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
@@ -47,7 +50,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         self.coresys: CoreSys = coresys
         self.message_obj: dict[str, Message] = {}
         # Home Assistant may have missed these, so their next send is pushed
-        self._unannounced: set[str] = set()
+        self._unannounced: dict[str, object] = {}
 
     async def load(self) -> None:
         """Load exists discovery message into storage."""
@@ -59,7 +62,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         _LOGGER.info("Loaded %d messages", len(messages))
         self.message_obj = messages
         # Supervisor does not know which of these Home Assistant has seen
-        self._unannounced = set(messages)
+        self._unannounced = {uuid: object() for uuid in messages}
 
     async def save(self) -> None:
         """Write discovery message into data file."""
@@ -103,23 +106,23 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             "Sending discovery to Home Assistant %s from %s", service, app.slug
         )
         self.message_obj[message.uuid] = message
-        # A failed push marks it as unannounced
-        self._unannounced.discard(message.uuid)
         await self.save()
 
-        self.sys_create_task(self._announce(message))
+        mark = self._unannounced.get(message.uuid)
+        push = self.sys_create_task(self._push_discovery(message, CMD_NEW))
+        push.add_done_callback(partial(self._mark_announced, app, message, mark))
         return message
 
     def mark_unannounced(self, app: App) -> None:
         """Push the messages of an app on their next send, even if unchanged."""
-        self._unannounced.update(
-            message.uuid for message in self.list_messages if message.app == app.slug
-        )
+        for message in self.list_messages:
+            if message.app == app.slug:
+                self._unannounced[message.uuid] = object()
 
     async def remove(self, message: Message) -> None:
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
-        self._unannounced.discard(message.uuid)
+        self._unannounced.pop(message.uuid, None)
         await self.save()
 
         _LOGGER.info(
@@ -129,12 +132,22 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         )
         self.sys_create_task(self._push_discovery(message, CMD_DEL))
 
-    async def _announce(self, message: Message) -> None:
-        """Push a message and mark it unannounced if Home Assistant did not get it."""
-        pushed = await self._push_discovery(message, CMD_NEW)
-        # Skip messages removed during the push
-        if not pushed and message.uuid in self.message_obj:
-            self._unannounced.add(message.uuid)
+    def _mark_announced(
+        self,
+        app: App,
+        message: Message,
+        mark: object | None,
+        push: asyncio.Task[bool],
+    ) -> None:
+        """Clear the unannounced mark once Home Assistant got the message."""
+        # Keep the mark that a restart during the push set for the next start
+        if (
+            not push.cancelled()
+            and push.result()
+            and app.state == AppState.STARTED
+            and self._unannounced.get(message.uuid) is mark
+        ):
+            self._unannounced.pop(message.uuid, None)
 
     async def _push_discovery(self, message: Message, command: str) -> bool:
         """Send a discovery request and return whether Home Assistant got it."""
@@ -153,9 +166,13 @@ class Discovery(CoreSysAttributes, FileConfiguration):
                 f"api/hassio_push/discovery/{message.uuid}",
                 json=data,
                 timeout=10,
-            ):
-                _LOGGER.info("Discovery %s message send", message.uuid)
-                return True
+            ) as resp:
+                if resp.status in (200, 201):
+                    _LOGGER.info("Discovery %s message send", message.uuid)
+                    return True
+                _LOGGER.warning(
+                    "Discovery %s message failed with %i", message.uuid, resp.status
+                )
         except HomeAssistantAPIError as err:
             _LOGGER.error("Discovery %s message failed: %s", message.uuid, err)
         return False

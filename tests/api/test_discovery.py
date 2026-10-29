@@ -12,7 +12,7 @@ from supervisor.coresys import CoreSys
 from supervisor.discovery import Message
 from supervisor.homeassistant.api import APIState
 
-from tests.common import force_app_state, load_json_fixture
+from tests.common import MockResponse, force_app_state, load_json_fixture
 
 
 async def test_api_discovery_forbidden(
@@ -151,6 +151,8 @@ async def test_api_send_discovery_after_load(
     api_client, prefix = app_api_client_with_prefix
     install_app_ssh.data["discovery"] = ["adguard"]
     coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
+    force_app_state(install_app_ssh, AppState.STARTED)
     with (
         patch(
             "supervisor.utils.common.read_json_or_yaml_file",
@@ -178,10 +180,13 @@ async def test_api_send_discovery_after_load(
 
 
 @pytest.mark.parametrize(
-    ("api_state", "request_error"),
+    ("api_state", "request_error", "status"),
     [
-        pytest.param(APIState("STARTING", False), None, id="core-starting"),
-        pytest.param(APIState("RUNNING", False), TimeoutError, id="request-timeout"),
+        pytest.param(APIState("STARTING", False), None, 200, id="core-starting"),
+        pytest.param(
+            APIState("RUNNING", False), TimeoutError, 200, id="request-timeout"
+        ),
+        pytest.param(APIState("RUNNING", False), None, 503, id="error-response"),
     ],
 )
 async def test_api_send_discovery_after_failed_push(
@@ -191,26 +196,36 @@ async def test_api_send_discovery_after_failed_push(
     websession: MagicMock,
     api_state: APIState,
     request_error: type[Exception] | None,
+    status: int,
 ):
-    """Test a message that did not reach Home Assistant is pushed on the next send.
+    """Test the message of a restarted app is pushed until Home Assistant got it.
 
-    Home Assistant can still be starting or restarting when an app sends.
+    Home Assistant can still be starting or restarting when an app sends, or
+    fail to read the message back from Supervisor.
     """
     api_client, prefix = app_api_client_with_prefix
     install_app_ssh.data["discovery"] = ["test"]
     coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
     message = {"service": "test", "config": {}}
-
-    # The first push does not reach Home Assistant
-    coresys.homeassistant.api.get_api_state.return_value = api_state
-    websession.request.side_effect = request_error
+    force_app_state(install_app_ssh, AppState.STARTED)
     resp = await api_client.post(f"{prefix}/discovery", json=message)
     assert resp.status == 200
     uuid = (await resp.json())["data"]["uuid"]
 
+    # After a restart of the app, its first push does not reach Home Assistant
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    force_app_state(install_app_ssh, AppState.STARTED)
+    coresys.homeassistant.api.get_api_state.return_value = api_state
+    websession.request.side_effect = request_error
+    websession.request.return_value = MockResponse(status=status)
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+
     # Home Assistant is running now, so the unchanged message is pushed
     coresys.homeassistant.api.get_api_state.return_value = APIState("RUNNING", False)
     websession.request.side_effect = None
+    websession.request.return_value = MockResponse()
     websession.request.reset_mock()
     resp = await api_client.post(f"{prefix}/discovery", json=message)
     assert resp.status == 200
