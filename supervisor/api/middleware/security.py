@@ -22,6 +22,7 @@ from ...const import (
     VALID_API_STATES,
 )
 from ...coresys import CoreSys, CoreSysAttributes
+from ...resolution.const import ContextType, IssueType
 from ..sockets import is_unix_socket_request
 from ..utils import api_return_error, extract_supervisor_token
 
@@ -287,6 +288,7 @@ class SecurityMiddleware(CoreSysAttributes):
         """Initialize security middleware."""
         self.coresys: CoreSys = coresys
         self._api: RestAPI = api
+        self._tcp_api_request_paths: set[str] = set()
 
     @middleware
     async def block_bad_requests(
@@ -346,6 +348,8 @@ class SecurityMiddleware(CoreSysAttributes):
                 raise HTTPForbidden
             if not patterns.no_security_check.match(request.path):
                 self.check_principal_access(principal, request)
+            if principal is self.sys_homeassistant:
+                self.sys_homeassistant.api.core_used_supervisor_socket = True
             request[REQUEST_FROM] = principal
             return await handler(request)
 
@@ -371,8 +375,32 @@ class SecurityMiddleware(CoreSysAttributes):
             raise HTTPForbidden
 
         self.check_principal_access(principal, request)
+        if principal is self.sys_homeassistant:
+            self._report_tcp_api_request(request)
         request[REQUEST_FROM] = principal
         return await handler(request)
+
+    def _report_tcp_api_request(self, request: Request) -> None:
+        """Report a request using Core's token over TCP, once per path and boot."""
+        if (
+            not self.sys_homeassistant.api.core_used_supervisor_socket
+            or request.path in self._tcp_api_request_paths
+        ):
+            return
+
+        _LOGGER.warning(
+            "Request to %s used Home Assistant's Supervisor token over TCP. Home "
+            "Assistant's built-in integrations no longer do this, so it likely "
+            "comes from your configuration (such as a shell_command or command_line "
+            "entity) or a custom integration. Support for this will be removed in "
+            "a future release",
+            request.path,
+        )
+        if not self._tcp_api_request_paths:
+            self.sys_resolution.create_issue(
+                IssueType.DEPRECATED_TCP_API_REQUEST, ContextType.CORE, request.path
+            )
+        self._tcp_api_request_paths.add(request.path)
 
     def _principal_for_token(self, supervisor_token: str) -> CoreSysAttributes | None:
         """Return the principal a Supervisor token was issued to."""
