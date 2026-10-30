@@ -1,5 +1,7 @@
 """Utils for D-Bus."""
 
+from inspect import iscoroutinefunction
+
 from ..exceptions import DBusNotConnectedError
 
 
@@ -9,12 +11,14 @@ async def noop():
 
 def dbus_connected(method):
     """Wrap check if D-Bus is connected."""
+    is_coroutine = iscoroutinefunction(method)
 
     def wrap_dbus(api, *args, **kwargs):
         """Check if D-Bus is connected before call a method."""
-        if api.is_shutdown:
+        # Only a coroutine can be replaced by a noop, a sync caller needs its value
+        if api.is_shutdown and is_coroutine:
             return noop()
-        if api.dbus is None:
+        if api.is_shutdown or api.dbus is None:
             raise DBusNotConnectedError
         return method(api, *args, **kwargs)
 

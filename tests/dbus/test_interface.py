@@ -9,6 +9,7 @@ import pytest
 
 from supervisor.dbus.const import DBUS_OBJECT_BASE
 from supervisor.dbus.interface import DBusInterface, DBusInterfaceProxy
+from supervisor.dbus.utils import dbus_connected
 from supervisor.exceptions import DBusInterfaceError, DBusNotConnectedError
 from supervisor.utils.dbus import DBus
 
@@ -44,6 +45,11 @@ class ServiceTest(DBusInterfaceProxy):
     bus_name = "service.test.TestInterface"
     object_path = "/service/test/TestInterface"
     properties_interface = "service.test.TestInterface"
+
+    @dbus_connected
+    def sync_lookup(self) -> str:
+        """Sync method guarded by dbus_connected."""
+        return "value"
 
 
 @pytest.fixture(name="test_service")
@@ -138,6 +144,24 @@ async def test_dbus_connected_no_raise_after_shutdown(
     proxy.shutdown()
     assert proxy.is_shutdown
     assert await proxy.update() is None
+
+
+async def test_dbus_connected_sync_raises_after_shutdown(
+    test_service: TestInterface, dbus_session_bus: MessageBus
+):
+    """Test sync dbus connected methods raise after shutdown instead of returning a coroutine."""
+    proxy = ServiceTest()
+    proxy.sync_properties = False
+
+    with pytest.raises(DBusNotConnectedError):
+        proxy.sync_lookup()
+
+    await proxy.connect(dbus_session_bus)
+    assert proxy.sync_lookup() == "value"
+
+    proxy.shutdown()
+    with pytest.raises(DBusNotConnectedError):
+        proxy.sync_lookup()
 
 
 async def test_proxy_missing_properties_interface(dbus_session_bus: MessageBus):
