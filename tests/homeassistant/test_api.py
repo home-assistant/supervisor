@@ -314,6 +314,29 @@ async def test_container_state_changed_ignores_other_containers(
     assert "Connected to Core" not in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("name", "state", "expected"),
+    [
+        pytest.param("homeassistant", ContainerState.STOPPED, False, id="stopped"),
+        pytest.param("homeassistant", ContainerState.FAILED, False, id="failed"),
+        pytest.param("homeassistant", ContainerState.HEALTHY, True, id="healthy"),
+        pytest.param("app_local_ssh", ContainerState.STOPPED, True, id="other"),
+    ],
+)
+async def test_core_used_supervisor_socket_reset(
+    coresys: CoreSys, name: str, state: ContainerState, expected: bool
+):
+    """Test Core's socket use is forgotten once its container stops."""
+    api = coresys.homeassistant.api
+    api.core_used_supervisor_socket = True
+
+    await api.container_state_changed(
+        DockerContainerStateEvent(name=name, state=state, id="abc123", time=1)
+    )
+
+    assert api.core_used_supervisor_socket is expected
+
+
 # --- get_api_state / check_api_state ---
 
 

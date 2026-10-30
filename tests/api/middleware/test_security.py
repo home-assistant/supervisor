@@ -17,6 +17,8 @@ from supervisor.api.middleware.security import FILTERS
 from supervisor.apps.app import App
 from supervisor.const import REQUEST_FROM, ROLE_ALL, CoreState
 from supervisor.coresys import CoreSys, CoreSysAttributes
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 # pylint: disable=redefined-outer-name
 
@@ -718,3 +720,61 @@ async def test_dropped_connection_rejected(
         await api.security.token_validation(request, handler)
 
     handler.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("socket_calls", "tcp_kind", "issues"),
+    [
+        pytest.param(
+            [("core", "/addons/self/info")],
+            "core",
+            [
+                Issue(
+                    IssueType.DEPRECATED_TCP_API_REQUEST,
+                    ContextType.CORE,
+                    "/supervisor/info",
+                )
+            ],
+            id="script",
+        ),
+        pytest.param([], "core", [], id="core-before-socket"),
+        pytest.param(
+            [("core", "/supervisor/ping")], "core", [], id="core-after-watchdog-ping"
+        ),
+        pytest.param(
+            [("app", "/addons/self/info")], "core", [], id="core-after-app-socket"
+        ),
+        pytest.param([("core", "/addons/self/info")], "app", [], id="app"),
+    ],
+)
+async def test_tcp_api_request_repair(
+    call_api: CallAPI,
+    coresys: CoreSys,
+    socket_calls: list[tuple[str, str]],
+    tcp_kind: str,
+    issues: list[Issue],
+):
+    """Test Core's token over TCP raises a repair once Core has used its socket."""
+    for kind, path in socket_calls:
+        await call_api("socket", kind, "get", path)
+
+    status, _ = await call_api("token", tcp_kind, "get", "/supervisor/info")
+
+    assert status == 200
+    assert coresys.resolution.issues == issues
+
+
+async def test_tcp_api_request_repair_once(call_api: CallAPI, coresys: CoreSys):
+    """Test the repair is raised once while each new path is logged once."""
+    await call_api("socket", "core", "get", "/supervisor/info")
+    with patch("supervisor.api.middleware.security._LOGGER") as logger:
+        await call_api("token", "core", "get", "/supervisor/info")
+        coresys.resolution.dismiss_issue(coresys.resolution.issues[0])
+        await call_api("token", "core", "get", "/supervisor/info")
+        await call_api("token", "core", "get", "/core/info")
+
+    assert coresys.resolution.issues == []
+    assert [call.args[1] for call in logger.warning.call_args_list] == [
+        "/supervisor/info",
+        "/core/info",
+    ]
