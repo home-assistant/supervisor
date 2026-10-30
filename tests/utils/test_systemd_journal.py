@@ -1,7 +1,8 @@
 """Test systemd journal utilities."""
 
 import asyncio
-from unittest.mock import ANY, MagicMock
+from collections.abc import AsyncGenerator
+from unittest.mock import ANY, MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from supervisor.exceptions import MalformedBinaryEntryError
 from supervisor.host.const import LogFormatter
 from supervisor.utils.systemd_journal import (
+    JournalExportParser,
     journal_boots_reader,
     journal_logs_reader,
     journal_plain_formatter,
@@ -17,6 +19,13 @@ from supervisor.utils.systemd_journal import (
 )
 
 from tests.common import load_fixture
+
+
+async def _read_entries(reader: AsyncGenerator[list[tuple[str | None, str]]]):
+    """Flatten the batches yielded by journal_logs_reader into single entries."""
+    async for batch in reader:
+        for entry in batch:
+            yield entry
 
 
 def _journal_logs_mock():
@@ -115,8 +124,10 @@ async def test_parsing_timestamp(no_colors: bool, expected_message: str) -> None
 
     assert [
         entry
-        async for entry in journal_logs_reader(
-            journal_logs, log_formatter=LogFormatter.TIMESTAMP, no_colors=no_colors
+        async for entry in _read_entries(
+            journal_logs_reader(
+                journal_logs, log_formatter=LogFormatter.TIMESTAMP, no_colors=no_colors
+            )
         )
     ] == [("cursor1", f"2013-09-17 07:32:51.000+00:00 {expected_message}")]
 
@@ -216,7 +227,7 @@ async def test_parsing_simple():
     """Test plain formatter."""
     journal_logs, stream = _journal_logs_mock()
     stream.feed_data(b"MESSAGE=Hello, world!\n\n")
-    _, line = await anext(journal_logs_reader(journal_logs))
+    _, line = await anext(_read_entries(journal_logs_reader(journal_logs)))
     assert line == "Hello, world!"
 
 
@@ -231,7 +242,9 @@ async def test_parsing_verbose():
         b"MESSAGE=Hello, world!\n\n"
     )
     _, line = await anext(
-        journal_logs_reader(journal_logs, log_formatter=LogFormatter.VERBOSE)
+        _read_entries(
+            journal_logs_reader(journal_logs, log_formatter=LogFormatter.VERBOSE)
+        )
     )
     assert (
         line == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: Hello, world!"
@@ -249,10 +262,12 @@ async def test_parsing_verbose_timezone():
         b"MESSAGE=Hello, world!\n\n"
     )
     _, line = await anext(
-        journal_logs_reader(
-            journal_logs,
-            log_formatter=LogFormatter.VERBOSE,
-            tz=ZoneInfo("Europe/Prague"),
+        _read_entries(
+            journal_logs_reader(
+                journal_logs,
+                log_formatter=LogFormatter.VERBOSE,
+                tz=ZoneInfo("Europe/Prague"),
+            )
         )
     )
     assert (
@@ -269,7 +284,7 @@ async def test_parsing_newlines_in_message():
         b"AFTER=after\n\n"
     )
 
-    _, line = await anext(journal_logs_reader(journal_logs))
+    _, line = await anext(_read_entries(journal_logs_reader(journal_logs)))
     assert line == "Hello,\nworld!"
 
 
@@ -286,8 +301,109 @@ async def test_parsing_newlines_in_multiple_fields():
         b"AFTER=after\n\n"
     )
 
-    assert await anext(journal_logs_reader(journal_logs)) == (ANY, "Hello,\nworld!\n")
-    assert await anext(journal_logs_reader(journal_logs)) == (ANY, "Hello,\nworld!")
+    reader = _read_entries(journal_logs_reader(journal_logs))
+    assert await anext(reader) == (ANY, "Hello,\nworld!\n")
+    assert await anext(reader) == (ANY, "Hello,\nworld!")
+
+
+SPLIT_EXPORT = (
+    b"__CURSOR=cursor1\n"
+    b"MESSAGE\n\x0e\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n\n"
+    b"AFTER=after\n\n"
+    b"__CURSOR=cursor2\n"
+    b"MESSAGE=Hello again, world!\n\n"
+    b"MESSAGE=No cursor\n"
+)
+
+
+@pytest.mark.parametrize("chunk_size", [1, 7, len(SPLIT_EXPORT)])
+def test_parser_split_feeds(chunk_size: int) -> None:
+    """Test entries and binary fields split across feeds are parsed."""
+    parser = JournalExportParser(["__CURSOR", "MESSAGE"])
+    entries = []
+    for i in range(0, len(SPLIT_EXPORT), chunk_size):
+        entries += parser.feed(SPLIT_EXPORT[i : i + chunk_size])
+    entries += parser.close()
+
+    assert entries == [
+        {"__CURSOR": "cursor1", "MESSAGE": "Hello,\nworld!\n"},
+        {"__CURSOR": "cursor2", "MESSAGE": "Hello again, world!"},
+        {"MESSAGE": "No cursor"},
+    ]
+
+
+def test_parser_skips_unwanted_fields() -> None:
+    """Test only the requested fields are returned, including from binary fields."""
+    parser = JournalExportParser(["MESSAGE"])
+    assert parser.feed(
+        b"ID=1\nOTHER\n\x02\x00\x00\x00\x00\x00\x00\x00\n\n\nMESSAGE=Hi\n\n"
+    ) == [{"MESSAGE": "Hi"}]
+    assert not parser.close()
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(b"MESSAGE\n\x0d\x00\x00\x00", id="in-size"),
+        pytest.param(b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello", id="in-data"),
+        pytest.param(
+            b"MESSAGE\n\x05\x00\x00\x00\x00\x00\x00\x00Hello", id="missing-separator"
+        ),
+    ],
+)
+def test_parser_truncated_binary_field(data: bytes) -> None:
+    """Test that a stream ending inside a binary field raises MalformedBinaryEntryError."""
+    parser = JournalExportParser(["MESSAGE"])
+    assert not parser.feed(data)
+    with pytest.raises(MalformedBinaryEntryError):
+        parser.close()
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(b"MESSAGE=first\nMESSAGE=last\n\n", id="simple"),
+        pytest.param(
+            b"MESSAGE=first\nBIN\n\x01\x00\x00\x00\x00\x00\x00\x00\n\nMESSAGE=last\n\n",
+            id="binary",
+        ),
+    ],
+)
+def test_parser_repeated_field_last_wins(data: bytes) -> None:
+    """Test the last occurrence of a repeated field is used in both parsing paths."""
+    parser = JournalExportParser(["MESSAGE"])
+    assert parser.feed(data) == [{"MESSAGE": "last"}]
+
+
+def test_parser_large_binary_field_in_small_feeds() -> None:
+    """Test a binary field spanning many feeds is parsed."""
+    parser = JournalExportParser(["MESSAGE"])
+    payload = b"x" * (8 * 1024 * 1024)
+    data = (
+        b"MESSAGE\n" + len(payload).to_bytes(8, "little") + payload + b"\n\nAFTER=1\n\n"
+    )
+    entries = []
+    for i in range(0, len(data), 4096):
+        entries += parser.feed(data[i : i + 4096])
+    assert entries == [{"MESSAGE": payload.decode()}]
+    assert parser.feed(b"MESSAGE=next\n\n") == [{"MESSAGE": "next"}]
+
+
+@pytest.mark.parametrize("read_size", [1, 64 * 1024])
+async def test_parsing_split_reads(read_size: int) -> None:
+    """Test the reader yields one batch per stream read with the first cursor."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(SPLIT_EXPORT)
+    stream.feed_eof()
+
+    with patch("supervisor.utils.systemd_journal.JOURNAL_READ_SIZE", read_size):
+        assert [
+            entry async for entry in _read_entries(journal_logs_reader(journal_logs))
+        ] == [
+            ("cursor1", "Hello,\nworld!\n"),
+            ("cursor2", "Hello again, world!"),
+            (None, "No cursor"),
+        ]
 
 
 async def test_parsing_two_messages():
@@ -298,7 +414,7 @@ async def test_parsing_two_messages():
     )
     stream.feed_eof()
 
-    reader = journal_logs_reader(journal_logs)
+    reader = _read_entries(journal_logs_reader(journal_logs))
     assert await anext(reader) == (ANY, "Hello, world!")
     assert await anext(reader) == (ANY, "Hello again, world!")
     with pytest.raises(StopAsyncIteration):
@@ -320,7 +436,7 @@ async def test_cursor_parsing():
     )
     stream.feed_eof()
 
-    reader = journal_logs_reader(journal_logs)
+    reader = _read_entries(journal_logs_reader(journal_logs))
     assert await anext(reader) == ("cursor1", "Hello, world!")
     assert await anext(reader) == ("cursor2", "Hello again, world!")
     assert await anext(reader) == (None, "No cursor")
@@ -336,14 +452,14 @@ async def test_parsing_malformed_binary_message():
     )
 
     with pytest.raises(MalformedBinaryEntryError):
-        await anext(journal_logs_reader(journal_logs))
+        await anext(_read_entries(journal_logs_reader(journal_logs)))
 
 
 async def test_parsing_journal_host_logs():
     """Test parsing of real host logs."""
     journal_logs, stream = _journal_logs_mock()
     stream.feed_data(load_fixture("logs_export_host.txt").encode("utf-8"))
-    _, line = await anext(journal_logs_reader(journal_logs))
+    _, line = await anext(_read_entries(journal_logs_reader(journal_logs)))
     assert line == "Started Hostname Service."
 
 
@@ -351,7 +467,7 @@ async def test_parsing_colored_supervisor_logs():
     """Test parsing of real logs with ANSI escape sequences."""
     journal_logs, stream = _journal_logs_mock()
     stream.feed_data(load_fixture("logs_export_supervisor.txt").encode("utf-8"))
-    _, line = await anext(journal_logs_reader(journal_logs))
+    _, line = await anext(_read_entries(journal_logs_reader(journal_logs)))
     assert (
         line
         == "\x1b[32m24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor\x1b[0m"
@@ -432,7 +548,7 @@ async def test_parsing_non_utf8_message():
     journal_logs, stream = _journal_logs_mock()
     # Include invalid UTF-8 sequence (0xff is not valid UTF-8)
     stream.feed_data(b"MESSAGE=Hello, \xff world!\n\n")
-    _, line = await anext(journal_logs_reader(journal_logs))
+    _, line = await anext(_read_entries(journal_logs_reader(journal_logs)))
     assert line == "Hello, \ufffd world!"
 
 
@@ -445,7 +561,7 @@ async def test_parsing_non_utf8_in_binary_message():
         b"MESSAGE\n\x0f\x00\x00\x00\x00\x00\x00\x00Hello, \xff world!\n"
         b"AFTER=after\n\n"
     )
-    _, line = await anext(journal_logs_reader(journal_logs))
+    _, line = await anext(_read_entries(journal_logs_reader(journal_logs)))
     assert line == "Hello, \ufffd world!"
 
 
@@ -482,8 +598,10 @@ async def test_parsing_colored_logs_verbose_no_colors():
         b"AFTER=after\n\n"
     )
     _, line = await anext(
-        journal_logs_reader(
-            journal_logs, log_formatter=LogFormatter.VERBOSE, no_colors=True
+        _read_entries(
+            journal_logs_reader(
+                journal_logs, log_formatter=LogFormatter.VERBOSE, no_colors=True
+            )
         )
     )
     assert line == "2013-09-17 07:32:51.000+00:00 homeassistant python[666]: ERROR"
@@ -496,5 +614,7 @@ async def test_parsing_multiple_color_codes():
         b"MESSAGE\n\x29\x00\x00\x00\x00\x00\x00\x00\x1b[31mRed\x1b[0m \x1b[32mGreen\x1b[0m \x1b[34mBlue\x1b[0m\n"
         b"AFTER=after\n\n"
     )
-    _, line = await anext(journal_logs_reader(journal_logs, no_colors=True))
+    _, line = await anext(
+        _read_entries(journal_logs_reader(journal_logs, no_colors=True))
+    )
     assert line == "Red Green Blue"
