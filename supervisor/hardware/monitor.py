@@ -94,10 +94,12 @@ class HwMonitor(CoreSysAttributes):
             for _ in range(3):
                 await asyncio.sleep(2)
                 try:
-                    udev = pyudev.Devices.from_sys_path(self.context, kernel.sys_path)
+                    udev = await self.sys_run_in_executor(
+                        pyudev.Devices.from_sys_path, self.context, kernel.sys_path
+                    )
                 except pyudev.DeviceNotFoundAtPathError:
                     continue
-                if udev.is_initialized:
+                if udev is not None and udev.is_initialized:
                     break
 
             # Is not ready
