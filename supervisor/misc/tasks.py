@@ -167,9 +167,6 @@ class Tasks(CoreSysAttributes):
         if not self.sys_homeassistant.watchdog:
             # Watchdog is not enabled for Home Assistant
             return
-        if self.sys_homeassistant.error_state:
-            # Home Assistant is in an error state, this is handled by the rollback feature
-            return
         if self.sys_homeassistant.version == LANDINGPAGE:
             # Skip watchdog for landingpage
             return
@@ -179,10 +176,15 @@ class Tasks(CoreSysAttributes):
         if self.sys_homeassistant.core.in_progress:
             # Home Assistant has a task in progress
             return
+        generation = self.sys_homeassistant.core.generation
         if await self.sys_homeassistant.api.check_api_state():
             # Home Assistant is running properly
+            self.sys_homeassistant.core.clear_error_state(generation)
             self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = 0
             self._cache[HASS_WATCHDOG_API_FAILURES] = 0
+            return
+        if self.sys_homeassistant.error_state:
+            # Core failed to start and has not recovered yet, don't reanimate
             return
 
         # Init cache data

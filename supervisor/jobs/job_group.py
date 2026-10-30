@@ -26,11 +26,17 @@ class JobGroup(CoreSysAttributes):
         self._lock_owner: SupervisorJob | None = None
         self._parent_jobs: list[SupervisorJob] = []
         self._job_reference: str | None = job_reference
+        self._generation: int = 0
 
     @property
     def active_job(self) -> SupervisorJob | None:
         """Get active job ID."""
         return self._lock_owner
+
+    @property
+    def generation(self) -> int:
+        """Return a counter that increases each time a job acquires the lock."""
+        return self._generation
 
     @property
     def group_name(self) -> str:
@@ -79,6 +85,7 @@ class JobGroup(CoreSysAttributes):
 
         # Set ownership
         self._lock_owner = job
+        self._generation += 1
 
     def release(self, job: SupervisorJob) -> None:
         """Release the lock for the group or return it to parent."""
