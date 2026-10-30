@@ -27,7 +27,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, AudioInvalidSource
-from ..host.sound import StreamType
+from ..host.const import StreamType
 from ..validate import version_tag
 from .utils import api_process, api_return_stats, api_validate, require_running_system
 
@@ -65,9 +65,7 @@ def _get_stream_type(request: web.Request) -> StreamType:
     try:
         return SCHEMA_STREAM_TYPE(source)
     except vol.Invalid as err:
-        raise AudioInvalidSource(
-            source=source, stream_types=", ".join(StreamType)
-        ) from err
+        raise AudioInvalidSource(source=source) from err
 
 
 class APIAudio(CoreSysAttributes):

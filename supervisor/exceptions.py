@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from .const import OBSERVER_PORT
+from .host.const import StreamType
 
 
 class HassioError(Exception):
@@ -711,10 +712,9 @@ class AudioInvalidSource(AudioError, APIError):
         logger: Callable[..., None] | None = None,
         *,
         source: str,
-        stream_types: str,
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"source": source, "stream_types": stream_types}
+        self.extra_fields = {"source": source, "stream_types": ", ".join(StreamType)}
         super().__init__(None, logger)
 
 
