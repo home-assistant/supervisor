@@ -2529,24 +2529,14 @@ async def test_partial_reload_unavailable_location(
 async def test_remove_missing_file_unavailable_location(
     coresys: CoreSys, backup_mount_backups: Backup, caplog: pytest.LogCaptureFixture
 ):
-    """Test removing a missing file from an unavailable location reloads cleanly."""
+    """Test removing a missing file from an unavailable location logs the reload error."""
     backup_mount_backups.all_locations["backup_test"].path = (
         tar_file_mock := MagicMock()
     )
     tar_file_mock.unlink.side_effect = FileNotFoundError()
 
-    tasks: list[asyncio.Task] = []
-    create_task = coresys.create_task
-
-    def _create_task(*args: Any, **kwargs: Any) -> asyncio.Task:
-        tasks.append(task := create_task(*args, **kwargs))
-        return task
-
-    with (
-        patch.object(
-            Mount, "state", new=PropertyMock(return_value=UnitActiveState.FAILED)
-        ),
-        patch.object(coresys, "create_task", new=_create_task),
+    with patch.object(
+        Mount, "state", new=PropertyMock(return_value=UnitActiveState.FAILED)
     ):
         with pytest.raises(BackupFileNotFoundError):
             await coresys.backups.remove(
@@ -2554,9 +2544,11 @@ async def test_remove_missing_file_unavailable_location(
             )
         await coresys.block_till_done()
 
-    assert len(tasks) == 1
-    assert tasks[0].exception() is None
-    assert "Backup mount 'backup_test' is down" in caplog.text
+    assert (
+        "Background job backup_manager_reload failed: "
+        "Backup mount 'backup_test' is down" in caplog.text
+    )
+    assert "Task exception was never retrieved" not in caplog.text
     assert backup_mount_backups.all_locations.keys() == {None, "backup_test"}
 
 

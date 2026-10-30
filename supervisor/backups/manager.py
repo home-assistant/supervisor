@@ -27,6 +27,7 @@ from ..exceptions import (
     BackupSupervisorVersionError,
     UpdaterError,
 )
+from ..jobs import JobSchedulerOptions
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -254,6 +255,7 @@ class BackupManager(FileConfiguration, JobGroup):
         """Load exists backups data."""
         await self.reload()
 
+    @Job(name="backup_manager_reload")
     async def reload(self, location: str | None | type[DEFAULT] = DEFAULT) -> bool:
         """Load exists backups."""
 
@@ -295,7 +297,7 @@ class BackupManager(FileConfiguration, JobGroup):
         elif location_name in self.backup_locations:
             locations = {location_name: self.backup_locations[location_name]}
         else:
-            raise BackupMountDownError(_LOGGER.warning, mount=cast(str, location_name))
+            raise BackupMountDownError(mount=cast(str, location_name))
         # List the backup files of all locations in parallel; a slow or
         # network-backed location should not hold up the others.
         location_items = list(locations.items())
@@ -338,13 +340,6 @@ class BackupManager(FileConfiguration, JobGroup):
 
         return True
 
-    async def reload_location(
-        self, location: str | None | type[DEFAULT] = DEFAULT
-    ) -> None:
-        """Reload a location found out of date, unless it became unavailable."""
-        with suppress(BackupMountDownError):
-            await self.reload(location)
-
     async def remove(
         self,
         backup: Backup,
@@ -367,7 +362,9 @@ class BackupManager(FileConfiguration, JobGroup):
                 await self.sys_run_in_executor(backup_tarfile.unlink)
                 del backup.all_locations[location]
             except FileNotFoundError as err:
-                self.sys_create_task(self.reload_location(location))
+                await self.sys_jobs.schedule_job(
+                    self.reload, JobSchedulerOptions(), location
+                )
                 raise BackupFileNotFoundError(
                     f"Cannot delete backup at {backup_tarfile.as_posix()}, file does not exist!",
                     _LOGGER.error,
