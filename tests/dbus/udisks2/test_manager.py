@@ -259,6 +259,39 @@ async def test_get_drive(
         udisks2.get_drive("non_existent")
 
 
+@pytest.mark.parametrize(
+    ("method", "arg"),
+    [
+        pytest.param(
+            "get_drive",
+            "/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291",
+            id="get_drive",
+        ),
+        pytest.param(
+            "get_block_device",
+            "/org/freedesktop/UDisks2/block_devices/sda1",
+            id="get_block_device",
+        ),
+        pytest.param(
+            "get_block_device_by_path",
+            Path("/dev/sda1"),
+            id="get_block_device_by_path",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("udisks2_manager_service")
+async def test_getters_after_shutdown(
+    dbus_session_bus: MessageBus, method: str, arg: str | Path
+):
+    """Test sync getters raise instead of returning a coroutine after shutdown."""
+    udisks2 = UDisks2Manager()
+    await udisks2.connect(dbus_session_bus)
+    udisks2.shutdown()
+
+    with pytest.raises(DBusNotConnectedError):
+        getattr(udisks2, method)(arg)
+
+
 async def test_resolve_device(
     udisks2_manager_service: UDisks2ManagerService, dbus_session_bus: MessageBus
 ):
