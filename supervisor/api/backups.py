@@ -257,6 +257,14 @@ class APIBackups(CoreSysAttributes):
 
     def _backup_info_data(self, backup: Backup) -> dict[str, Any]:
         """Return backup info dict using v2 field names (top-level "apps")."""
+        location_attributes = self._make_location_attributes(backup)
+        if cloud_location := backup.all_locations.get(LOCATION_CLOUD_BACKUP):
+            # Core may restore the imported cloud copy even when a local copy
+            # hides that location from normal backup listings.
+            location_attributes[LOCATION_CLOUD_BACKUP] = {
+                ATTR_PROTECTED: cloud_location.protected,
+                ATTR_SIZE_BYTES: cloud_location.size_bytes,
+            }
         data_apps = [
             {
                 ATTR_SLUG: app_data[ATTR_SLUG],
@@ -275,7 +283,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_SIZE_BYTES: backup.size_bytes,
             ATTR_COMPRESSED: backup.compressed,
             ATTR_PROTECTED: backup.protected,
-            ATTR_LOCATION_ATTRIBUTES: self._make_location_attributes(backup),
+            ATTR_LOCATION_ATTRIBUTES: location_attributes,
             ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
             ATTR_LOCATION: backup.location,
