@@ -7,6 +7,7 @@ from collections.abc import Awaitable
 from contextlib import suppress
 import errno
 import logging
+import os
 from pathlib import Path
 from shutil import copy
 from typing import cast
@@ -54,6 +55,29 @@ JOB_FULL_RESTORE = "backup_manager_full_restore"
 JOB_PARTIAL_RESTORE = "backup_manager_partial_restore"
 
 
+def _move_no_replace(src: Path, dst: Path) -> None:
+    """Move a file, raising FileExistsError instead of replacing dst."""
+    try:
+        os.link(src, dst)
+    except FileExistsError:
+        raise
+    except OSError as err:
+        # Network and FUSE filesystems report missing hard link support with
+        # various errors, fall back to check and rename for all of them
+        if dst.exists():
+            raise FileExistsError(
+                errno.EEXIST, os.strerror(errno.EEXIST), str(dst)
+            ) from err
+        src.rename(dst)
+        return
+
+    # dst is complete at this point, a leftover src must not fail the move
+    try:
+        src.unlink()
+    except OSError as err:
+        _LOGGER.warning("Can't remove %s after moving it: %s", src, err)
+
+
 class BackupManager(FileConfiguration, JobGroup):
     """Manage backups."""
 
@@ -64,6 +88,7 @@ class BackupManager(FileConfiguration, JobGroup):
         self._backups: dict[str, Backup] = {}
         self._thaw_task: Awaitable[None] | None = None
         self._thaw_event: asyncio.Event = asyncio.Event()
+        self._move_lock: asyncio.Lock = asyncio.Lock()
 
     @property
     def list_backups(self) -> list[Backup]:
@@ -376,7 +401,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     @Job(name="backup_copy_to_location", cleanup=False)
     async def _copy_to_location(
-        self, backup: Backup, location: LOCATION_TYPE
+        self, source: Path, location: LOCATION_TYPE
     ) -> tuple[str | None, Path]:
         """Copy a backup file to the default location."""
         location_name = location.name if isinstance(location, Mount) else location
@@ -392,7 +417,7 @@ class BackupManager(FileConfiguration, JobGroup):
             else:
                 destination = self.sys_config.path_backup
 
-            path = await self.sys_run_in_executor(copy, backup.tarfile, destination)
+            path = await self.sys_run_in_executor(copy, source, destination)
             return (location_name, Path(path))
         except OSError as err:
             msg = f"Could not copy backup to {location_name} due to: {err!s}"
@@ -407,12 +432,17 @@ class BackupManager(FileConfiguration, JobGroup):
         self,
         backup: Backup,
         locations: list[LOCATION_TYPE],
+        source: BackupLocation | None = None,
     ):
         """Copy a backup file to additional locations."""
+        if not source:
+            source = backup.all_locations[backup.location]
         all_new_locations: dict[str | None, Path] = {}
         for location in locations:
             try:
-                location_name, path = await self._copy_to_location(backup, location)
+                location_name, path = await self._copy_to_location(
+                    source.path, location
+                )
                 all_new_locations[location_name] = path
             except BackupDataDiskBadMessageError as err:
                 self.sys_resolution.add_unhealthy_reason(
@@ -426,12 +456,18 @@ class BackupManager(FileConfiguration, JobGroup):
             {
                 loc: BackupLocation(
                     path=path,
-                    protected=backup.protected,
-                    size_bytes=backup.size_bytes,
+                    protected=source.protected,
+                    size_bytes=source.size_bytes,
                 )
                 for loc, path in all_new_locations.items()
             }
         )
+
+    async def _move_no_replace(self, src: Path, dst: Path) -> None:
+        """Move a backup file into place without replacing an existing file."""
+        # The fallback without hard link support checks and renames separately
+        async with self._move_lock:
+            await self.sys_run_in_executor(_move_no_replace, src, dst)
 
     @Job(name="backup_manager_import_backup")
     async def import_backup(
@@ -456,8 +492,26 @@ class BackupManager(FileConfiguration, JobGroup):
         else:
             tar_file = Path(self._get_base_path(location), f"{backup.slug}.tar")
 
+        location_name = self._get_location_name(location)
         try:
-            await self.sys_run_in_executor(backup.tarfile.rename, tar_file)
+            await self._move_no_replace(backup.tarfile, tar_file)
+        except FileExistsError:
+            existing = self._backups.get(backup.slug)
+            if (
+                not existing
+                or not (existing_location := existing.all_locations.get(location_name))
+                or existing_location.path != tar_file
+            ):
+                raise BackupFileExistError(
+                    f"Cannot import backup to {tar_file.as_posix()}, file already exists!",
+                    _LOGGER.error,
+                ) from None
+            _LOGGER.info("Backup %s already exists at %s", backup.slug, tar_file)
+            if additional_locations:
+                await self._copy_to_additional_locations(
+                    existing, additional_locations, existing_location
+                )
+            return existing
         except OSError as err:
             if location in {LOCATION_CLOUD_BACKUP, None}:
                 self.sys_resolution.check_oserror(err)
@@ -469,7 +523,7 @@ class BackupManager(FileConfiguration, JobGroup):
             self.coresys,
             tar_file,
             backup.slug,
-            self._get_location_name(location),
+            location_name,
             backup.data,
         )
         if not await backup.load():
