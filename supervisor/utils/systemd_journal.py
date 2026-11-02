@@ -148,7 +148,12 @@ class JournalExportParser:
         self._parse_fields(self._pos)
         if len(self._buf) < self._need:
             raise MalformedBinaryEntryError("Stream ended inside a binary field")
-        return self.feed(b"\n\n")
+        entries = self.feed(b"\n\n")
+        # Simple fields always end at the terminator, so leftover data is a
+        # binary field header that was cut off
+        if self._pos < len(self._buf):
+            raise MalformedBinaryEntryError("Stream ended inside a binary field")
+        return entries
 
     def _parse_entry(self) -> dict[str, str] | None:
         """Parse the entry at the current position, or return None if incomplete."""
