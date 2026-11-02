@@ -1,7 +1,7 @@
 """Test systemd journal utilities."""
 
 import asyncio
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -286,8 +286,44 @@ async def test_parsing_newlines_in_multiple_fields():
         b"AFTER=after\n\n"
     )
 
-    assert await anext(journal_logs_reader(journal_logs)) == (ANY, "Hello,\nworld!\n")
-    assert await anext(journal_logs_reader(journal_logs)) == (ANY, "Hello,\nworld!")
+    reader = journal_logs_reader(journal_logs)
+    assert await anext(reader) == (ANY, "Hello,\nworld!\n")
+    assert await anext(reader) == (ANY, "Hello,\nworld!")
+
+
+SPLIT_EXPORT = (
+    b"__CURSOR=cursor1\n"
+    b"MESSAGE\n\x0e\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n\n"
+    b"AFTER=after\n\n"
+    b"__CURSOR=cursor2\n"
+    b"MESSAGE=Hello again, world!\n\n"
+    b"MESSAGE=No cursor\n"
+)
+
+
+async def test_parsing_truncated_binary_field() -> None:
+    """Test a stream ending inside a binary field raises the Supervisor error."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(b"MESSAGE\n\x05\x00\x00\x00\x00\x00\x00\x00Hello")
+    stream.feed_eof()
+
+    with pytest.raises(MalformedBinaryEntryError):
+        await anext(journal_logs_reader(journal_logs))
+
+
+@pytest.mark.parametrize("read_size", [1, 64 * 1024])
+async def test_parsing_split_reads(read_size: int) -> None:
+    """Test entries are yielded one by one regardless of the read size."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(SPLIT_EXPORT)
+    stream.feed_eof()
+
+    with patch("supervisor.utils.systemd_journal.JOURNAL_READ_SIZE", read_size):
+        assert [entry async for entry in journal_logs_reader(journal_logs)] == [
+            ("cursor1", "Hello,\nworld!\n"),
+            ("cursor2", "Hello again, world!"),
+            (None, "No cursor"),
+        ]
 
 
 async def test_parsing_two_messages():
