@@ -375,6 +375,26 @@ def test_parser_binary_field_split_after_completed_entry() -> None:
     assert not parser.close()
 
 
+@pytest.mark.parametrize("chunk_size", [1, 5, 64])
+def test_parser_fields_after_binary_split_across_feeds(chunk_size: int) -> None:
+    """Test fields following a binary field containing the terminator are parsed."""
+    parser = JournalExportParser(["MESSAGE", "AFTER"])
+    message = b"line1\n\nline2"
+    data = (
+        b"MESSAGE\n" + len(message).to_bytes(8, "little") + message + b"\n"
+        b"OTHER=1\nAFTER=2\n\n"
+        b"MESSAGE=next\n\n"
+    )
+    entries = []
+    for i in range(0, len(data), chunk_size):
+        entries += parser.feed(data[i : i + chunk_size])
+    assert entries == [
+        {"MESSAGE": "line1\n\nline2", "AFTER": "2"},
+        {"MESSAGE": "next"},
+    ]
+    assert not parser.close()
+
+
 def test_parser_large_binary_field_in_small_feeds() -> None:
     """Test a binary field spanning many feeds is parsed."""
     parser = JournalExportParser(["MESSAGE"])

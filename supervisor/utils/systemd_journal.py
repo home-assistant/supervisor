@@ -118,6 +118,10 @@ class JournalExportParser:
         # buffer length a binary field needs before the entry can be parsed
         self._scan = 0
         self._need = 0
+        # Fields collected so far and the next field to parse of an entry that
+        # is walked field by field across feeds
+        self._entry: dict[str, str] = {}
+        self._field_pos = 0
 
     def feed(self, data: bytes) -> list[dict[str, str]]:
         """Parse data and return the entries completed by it."""
@@ -132,10 +136,11 @@ class JournalExportParser:
 
         # Drop consumed data once it outweighs the pending entry, which keeps
         # the copying linear for entries spanning many reads
-        if self._pos - 1 > len(self._buf) // 2:
-            del self._buf[: self._pos - 1]
-            self._scan = max(0, self._scan - (self._pos - 1))
-            self._need = max(0, self._need - (self._pos - 1))
+        if (removed := self._pos - 1) > len(self._buf) // 2:
+            del self._buf[:removed]
+            self._scan = max(0, self._scan - removed)
+            self._need = max(0, self._need - removed)
+            self._field_pos = max(0, self._field_pos - removed)
             self._pos = 1
         return entries
 
@@ -145,7 +150,9 @@ class JournalExportParser:
             return []
         # Check the binary framing against the real bytes before terminating
         # the entry, as the terminator could stand in for a missing separator
-        self._parse_fields(self._pos)
+        if not self._field_pos:
+            self._field_pos = self._pos
+        self._parse_fields()
         if len(self._buf) < self._need:
             raise MalformedBinaryEntryError("Stream ended inside a binary field")
         entries = self.feed(b"\n\n")
@@ -157,20 +164,22 @@ class JournalExportParser:
 
     def _parse_entry(self) -> dict[str, str] | None:
         """Parse the entry at the current position, or return None if incomplete."""
+        if self._field_pos:
+            return self._parse_fields()
+
         buf, pos = self._buf, self._pos
         end = buf.find(b"\n\n", max(pos - 1, self._scan))
         if end == -1:
             self._scan = len(buf) - 1
             return None
         self._scan = 0
-        self._need = 0
         if end == pos - 1:
             # Empty line, e.g. at EOF or between entries
             self._pos = pos + 1
             return {}
 
-        entry: dict[str, str] = {}
         if _RE_SIMPLE_ENTRY.fullmatch(buf, pos, end + 1):
+            entry: dict[str, str] = {}
             for name, key in self._keys:
                 # Last occurrence wins for repeated fields
                 start = buf.rfind(key, pos - 1, end + 1)
@@ -184,21 +193,27 @@ class JournalExportParser:
 
         # The entry has binary fields whose data may contain anything, including
         # "\n\n", so walk it field by field
-        if (parsed := self._parse_fields(pos)) is None:
-            return None
-        entry, self._pos = parsed
-        return entry
+        self._field_pos = pos
+        return self._parse_fields()
 
-    def _parse_fields(self, pos: int) -> tuple[dict[str, str], int] | None:
-        """Parse the fields of the entry at pos, or return None if incomplete."""
-        buf = self._buf
-        entry: dict[str, str] = {}
+    def _parse_fields(self) -> dict[str, str] | None:
+        """Continue walking the current entry's fields, or return None if incomplete.
+
+        The walk resumes where it stopped on the next call, so an entry spanning
+        many feeds is parsed once.
+        """
+        buf, pos, entry = self._buf, self._field_pos, self._entry
+        self._need = 0
         while True:
             line_end = buf.find(b"\n", pos)
             if line_end == -1:
+                self._field_pos = pos
                 return None
             if line_end == pos:
-                return entry, pos + 1
+                self._pos = pos + 1
+                self._field_pos = 0
+                self._entry = {}
+                return entry
 
             sep = buf.find(b"=", pos, line_end)
             if sep != -1:
@@ -210,12 +225,14 @@ class JournalExportParser:
                 data_start = line_end + 9
                 if len(buf) < data_start:
                     self._need = data_start
+                    self._field_pos = pos
                     return None
                 data_end = data_start + int.from_bytes(
                     buf[line_end + 1 : data_start], byteorder="little"
                 )
                 if len(buf) <= data_end:
                     self._need = data_end + 1
+                    self._field_pos = pos
                     return None
                 if buf[data_end] != 0x0A:
                     raise MalformedBinaryEntryError(
