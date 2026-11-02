@@ -135,6 +135,7 @@ class JournalExportParser:
         if self._pos - 1 > len(self._buf) // 2:
             del self._buf[: self._pos - 1]
             self._scan = max(0, self._scan - (self._pos - 1))
+            self._need = max(0, self._need - (self._pos - 1))
             self._pos = 1
         return entries
 
