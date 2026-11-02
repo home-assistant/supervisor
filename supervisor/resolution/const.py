@@ -93,6 +93,7 @@ class IssueType(StrEnum):
     CORRUPT_FILESYSTEM = "corrupt_filesystem"
     DEPRECATED_APP = "deprecated_app"
     DEPRECATED_ARCH_APP = "deprecated_arch_app"
+    DEPRECATED_TCP_API_REQUEST = "deprecated_tcp_api_request"
     DETACHED_APP_MISSING = "detached_app_missing"
     DETACHED_APP_REMOVED = "detached_app_removed"
     DEVICE_ACCESS_MISSING = "device_access_missing"
