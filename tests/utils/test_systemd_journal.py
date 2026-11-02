@@ -297,6 +297,8 @@ SPLIT_EXPORT = (
     b"AFTER=after\n\n"
     b"__CURSOR=cursor2\n"
     b"MESSAGE=Hello again, world!\n\n"
+    b"__CURSOR=cursor3\n"
+    b"MESSAGE\n\x0b\x00\x00\x00\x00\x00\x00\x00Hello,\n\nyou\n\n"
     b"MESSAGE=No cursor\n"
 )
 
@@ -311,9 +313,13 @@ async def test_parsing_truncated_binary_field() -> None:
         await anext(journal_logs_reader(journal_logs))
 
 
-@pytest.mark.parametrize("read_size", [1, 64 * 1024])
+@pytest.mark.parametrize("read_size", [1, 7, 64 * 1024])
 async def test_parsing_split_reads(read_size: int) -> None:
-    """Test entries are yielded one by one regardless of the read size."""
+    """Test entries are yielded one by one regardless of the read size.
+
+    The last binary field follows completed entries and holds the entry
+    terminator, so it exercises the parser's buffer compaction.
+    """
     journal_logs, stream = _journal_logs_mock()
     stream.feed_data(SPLIT_EXPORT)
     stream.feed_eof()
@@ -322,6 +328,7 @@ async def test_parsing_split_reads(read_size: int) -> None:
         assert [entry async for entry in journal_logs_reader(journal_logs)] == [
             ("cursor1", "Hello,\nworld!\n"),
             ("cursor2", "Hello again, world!"),
+            ("cursor3", "Hello,\n\nyou"),
             (None, "No cursor"),
         ]
 
