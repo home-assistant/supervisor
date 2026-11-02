@@ -233,15 +233,13 @@ async def journal_logs_reader(
     log_formatter: LogFormatter = LogFormatter.PLAIN,
     no_colors: bool = False,
     tz: tzinfo = UTC,
-) -> AsyncGenerator[list[tuple[str | None, str]]]:
+) -> AsyncGenerator[tuple[str | None, str]]:
     """Read logs from systemd journal, formatted using the given formatter.
 
     Optionally strip ANSI color codes from the entries' messages. Timestamps are
     converted to the given timezone.
 
-    Returns a generator of (cursor, formatted_entry) tuple lists. Each list holds
-    the entries completed by one read from the stream, so a consumer that writes
-    a list at a time does not add latency when following logs.
+    Returns a generator of (cursor, formatted_entry) tuples.
     """
     match log_formatter:
         case LogFormatter.PLAIN:
@@ -255,18 +253,15 @@ async def journal_logs_reader(
 
     parser = JournalExportParser(formatter_.required_fields)
 
-    def format_batch(entries: list[dict[str, str]]) -> list[tuple[str | None, str]]:
-        return [
-            (entry.get("__CURSOR"), formatter_(entry, no_colors=no_colors, tz=tz))
-            for entry in entries
-        ]
+    def format_entry(entry: dict[str, str]) -> tuple[str | None, str]:
+        return entry.get("__CURSOR"), formatter_(entry, no_colors=no_colors, tz=tz)
 
     async with journal_logs as resp:
         while chunk := await resp.content.read(JOURNAL_READ_SIZE):
-            if batch := format_batch(parser.feed(chunk)):
-                yield batch
-        if batch := format_batch(parser.close()):
-            yield batch
+            for entry in parser.feed(chunk):
+                yield format_entry(entry)
+        for entry in parser.close():
+            yield format_entry(entry)
 
 
 def _parse_boot_json(boot_json_bytes: bytes) -> tuple[int, str]:
