@@ -598,6 +598,38 @@ async def test_app_role_access_over_socket(
         assert status == 403, role
 
 
+@pytest.mark.parametrize("transport", ["token", "socket"])
+@pytest.mark.parametrize("role", ROLE_ALL)
+@pytest.mark.parametrize(
+    ("method", "path", "status", "request_from"),
+    [
+        pytest.param("get", "/addons/self/info", 200, "app", id="bypass"),
+        pytest.param("get", "/info", 200, "app", id="bypass-info"),
+        pytest.param(
+            "post", "/addons/local_test/sys_options", 403, None, id="core-only"
+        ),
+        pytest.param("post", "/os/ssh/authorized_keys", 403, None, id="core-only-ssh"),
+    ],
+)
+async def test_app_role_bypass_and_core_only(
+    call_api: CallAPI,
+    principals: dict[str, CoreSysAttributes],
+    transport: str,
+    role: str,
+    method: str,
+    path: str,
+    status: int,
+    request_from: str | None,
+):
+    """Test every role gets the bypass paths but never Core-only ones."""
+    principals["app"].data["hassio_role"] = role
+
+    assert await call_api(transport, "app", method, path) == (
+        status,
+        principals.get(request_from),
+    )
+
+
 @pytest.mark.parametrize(
     ("kind", "path", "headers", "status", "request_from"),
     [

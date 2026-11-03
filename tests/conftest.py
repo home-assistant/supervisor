@@ -608,6 +608,10 @@ async def coresys(
     coresys_obj._store.save_data = AsyncMock()
     coresys_obj._mounts.save_data = AsyncMock()
 
+    # The API runner is never set up, tests listening on sockets build their own
+    coresys_obj.api.sockets.register = AsyncMock()
+    coresys_obj.api.sockets.unregister = AsyncMock()
+
     # Mock test client
     coresys_obj._supervisor.instance._meta = {
         "Config": {"Labels": {"io.hass.arch": "amd64"}},
@@ -737,7 +741,7 @@ async def tmp_supervisor_data(
         yield tmp_path
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def tmp_run_dir() -> Generator[Path]:
     """Patch the shared run folder for sockets to a temporary folder.
 

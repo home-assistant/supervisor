@@ -64,6 +64,7 @@ from ..const import (
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
+    ATTR_SOCKETS,
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
@@ -118,6 +119,7 @@ from .const import (
     ATTR_PATH,
     ATTR_READ_ONLY,
     AppBackupMode,
+    AppSocket,
     MappingType,
 )
 from .options import AppOptions, UiOptions
@@ -474,6 +476,20 @@ class AppModel(JobGroup, ABC):
     def hassio_role(self) -> str:
         """Return Supervisor role for API."""
         return self.data[ATTR_HASSIO_ROLE]
+
+    @property
+    def sockets(self) -> set[AppSocket]:
+        """Return sockets the app declares it has moved to, ignoring unknown ones."""
+        return {
+            AppSocket(socket)
+            for socket in self.data[ATTR_SOCKETS]
+            if socket in AppSocket
+        }
+
+    @property
+    def uses_supervisor_socket(self) -> bool:
+        """Return True if the app calls Supervisor on its socket without a token."""
+        return AppSocket.SUPERVISOR in self.sockets
 
     @property
     def backup_exclude(self) -> list[str]:

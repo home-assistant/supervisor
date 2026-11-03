@@ -712,3 +712,28 @@ def test_slug_too_long_installed():
     config["repository"] = "local"
 
     assert vd.SCHEMA_APP_SYSTEM(config)["slug"] == "a" * 61
+
+
+def test_sockets_default():
+    """Test apps declare no sockets by default."""
+    config = load_json_fixture("basic-app-config.json")
+
+    assert vd.SCHEMA_APP_CONFIG(config)["sockets"] == []
+
+
+@pytest.mark.parametrize(
+    ("sockets", "warning"),
+    [
+        pytest.param(["supervisor"], False, id="known"),
+        pytest.param(["supervisor", "ingress"], True, id="unknown"),
+    ],
+)
+def test_sockets_unknown_values_kept(
+    caplog: pytest.LogCaptureFixture, sockets: list[str], warning: bool
+):
+    """Test unknown sockets values pass validation with a warning."""
+    config = load_json_fixture("basic-app-config.json")
+    config["sockets"] = sockets
+
+    assert vd.SCHEMA_APP_CONFIG(config)["sockets"] == sockets
+    assert ("declares unknown 'sockets' values" in caplog.text) is warning

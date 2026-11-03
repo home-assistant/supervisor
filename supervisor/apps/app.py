@@ -52,6 +52,7 @@ from ..const import (
     ATTR_VERSION_TIMESTAMP,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
+    SOCKET_NAME_SUPERVISOR,
     AppBoot,
     AppBootConfig,
     AppStartup,
@@ -77,6 +78,7 @@ from ..exceptions import (
     AppPrePostBackupCommandReturnedError,
     AppsError,
     AppsJobError,
+    AppSocketDirsError,
     AppStatsTimeoutError,
     AppUnknownError,
     BackupInvalidError,
@@ -133,6 +135,9 @@ RE_WATCHDOG = re.compile(
 
 WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 STARTUP_TIMEOUT = 120
+
+# Supervisor listens for each app in its own subfolder of this run subfolder
+RUN_SUPERVISOR_APPS = PurePath("apps")
 
 _OPTIONS_MERGER: Final = Merger(
     type_strategies=[(dict, ["merge"])],
@@ -793,6 +798,40 @@ class App(AppModel):
         return Path(self.path_data, "options.json")
 
     @property
+    def path_run_supervisor(self) -> Path:
+        """Return folder of the socket Supervisor listens on for this app."""
+        return self.sys_config.path_run_supervisor / RUN_SUPERVISOR_APPS / self.slug
+
+    @property
+    def path_extern_run_supervisor(self) -> PurePath:
+        """Return folder of the socket Supervisor listens on for this app for Docker."""
+        return PurePath(
+            self.sys_config.path_extern_run_supervisor, RUN_SUPERVISOR_APPS, self.slug
+        )
+
+    def ensure_run_dirs(self) -> None:
+        """Create the run folders the app's socket mounts need.
+
+        Must be run in executor.
+        """
+        self.path_run_supervisor.mkdir(parents=True, exist_ok=True)
+
+    async def prepare_sockets(self) -> None:
+        """Create the app's socket folders and listen on its Supervisor socket."""
+        # Bind mount sources must exist before every container start, and the
+        # run folder is a tmpfs that does not survive a host reboot
+        try:
+            await self.sys_run_in_executor(self.ensure_run_dirs)
+        except OSError as err:
+            _LOGGER.error("Can't create socket folders for app %s: %s", self.slug, err)
+            raise AppSocketDirsError(app=self.slug) from err
+
+        # The socket outlives container restarts, registering it again is an error
+        path = self.path_run_supervisor / SOCKET_NAME_SUPERVISOR
+        if path.as_posix() not in self.sys_api.sockets.paths:
+            await self.sys_api.sockets.register(self, path)
+
+    @property
     def path_pulse(self) -> Path:
         """Return path to asound config."""
         return Path(self.sys_config.path_tmp, f"{self.slug}_pulse")
@@ -988,6 +1027,10 @@ class App(AppModel):
         self, *, remove_config: bool, remove_image: bool = True
     ) -> None:
         """Uninstall and cleanup this app."""
+        # Kept-alive connections of the old container must not reach a reinstall
+        await self.sys_api.sockets.unregister(
+            self.path_run_supervisor / SOCKET_NAME_SUPERVISOR
+        )
         try:
             await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
@@ -1042,6 +1085,9 @@ class App(AppModel):
         # Remove from app manager
         self.sys_apps.local.pop(self.slug)
         await self.sys_apps.data.uninstall(self)
+        await self.sys_run_in_executor(
+            partial(shutil.rmtree, self.path_run_supervisor, ignore_errors=True)
+        )
 
         # Cleanup Ingress tokens
         if need_ingress_token_cleanup:
@@ -1326,8 +1372,12 @@ class App(AppModel):
                 )
             return self._wait_for_startup_task
 
-        # Access Token
-        self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+        # Access Token, the socket identifies an app that moved to it so a
+        # token issued before must stop working
+        if self.uses_supervisor_socket:
+            self.persist.pop(ATTR_ACCESS_TOKEN, None)
+        else:
+            self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         await self.save_persist()
 
         # Options
@@ -1348,6 +1398,8 @@ class App(AppModel):
 
         if self.app_config_used:
             await self.sys_run_in_executor(_check_app_config_dir)
+
+        await self.prepare_sockets()
 
         # Start App
         self._startup_event.clear()

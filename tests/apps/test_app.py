@@ -18,8 +18,9 @@ from awesomeversion import AwesomeVersion
 import pytest
 from securetar import SecureTarArchive, SecureTarFile
 
+from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode
+from supervisor.apps.const import AppBackupMode, AppSocket
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
 from supervisor.const import (
     ATTR_ADVANCED,
@@ -44,6 +45,7 @@ from supervisor.exceptions import (
     AppRepositoryFileUnsafeError,
     AppsError,
     AppsJobError,
+    AppSocketDirsError,
     AppStatsTimeoutError,
     AppUnknownError,
     AudioUpdateError,
@@ -685,6 +687,171 @@ async def test_start_timeout(
         await start_task
 
     assert "Timeout while waiting for app Terminal & SSH to start" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("sockets", "expected", "uses_supervisor_socket"),
+    [
+        pytest.param([], set(), False, id="none"),
+        pytest.param(["supervisor"], {AppSocket.SUPERVISOR}, True, id="supervisor"),
+        pytest.param(
+            ["supervisor", "ingress"], {AppSocket.SUPERVISOR}, True, id="unknown"
+        ),
+        pytest.param(["ingress"], set(), False, id="only-unknown"),
+    ],
+)
+def test_sockets_ignores_unknown_values(
+    install_app_ssh: App,
+    sockets: list[str],
+    expected: set[AppSocket],
+    uses_supervisor_socket: bool,
+) -> None:
+    """Test the app only reports sockets this Supervisor understands."""
+    install_app_ssh.data["sockets"] = sockets
+
+    assert install_app_ssh.sockets == expected
+    assert install_app_ssh.uses_supervisor_socket is uses_supervisor_socket
+
+
+async def _start(coresys: CoreSys, app: App) -> asyncio.Task | None:
+    """Start the app."""
+    return await app.start()
+
+
+async def _restart(coresys: CoreSys, app: App) -> asyncio.Task | None:
+    """Restart the app."""
+    return await app.restart()
+
+
+async def _restore(coresys: CoreSys, app: App) -> asyncio.Task | None:
+    """Restore the app from a backup of it running."""
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_running.tar.gz"))
+    with patch.object(DockerApp, "is_running", return_value=False):
+        return await coresys.apps.restore(app.slug, tarfile)
+
+
+@pytest.mark.parametrize(
+    "start",
+    [
+        pytest.param(_start, id="start"),
+        pytest.param(_restart, id="restart"),
+        pytest.param(_restore, id="restore"),
+    ],
+)
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
+async def test_start_prepares_supervisor_socket(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    start: Callable[[CoreSys, App], Any],
+) -> None:
+    """Test the socket folder exists and the socket listens before the container runs."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    socket_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
+    state_at_run: list[tuple[bool, list[Any]]] = []
+
+    async def _run(*args, **kwargs) -> MagicMock:
+        state_at_run.append(
+            (
+                await coresys.run_in_executor(
+                    install_app_ssh.path_run_supervisor.is_dir
+                ),
+                coresys.api.sockets.register.await_args_list.copy(),
+            )
+        )
+        return MagicMock()
+
+    with patch.object(DockerAPI, "run", side_effect=_run):
+        await start(coresys, install_app_ssh)
+
+    assert state_at_run == [(True, [call(install_app_ssh, socket_path)])]
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_socket_already_registered(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test a start does not register the socket again."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    socket_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
+
+    with patch.object(
+        SocketRegistry,
+        "paths",
+        new=PropertyMock(return_value=[socket_path.as_posix()]),
+    ):
+        await install_app_ssh.start()
+
+    coresys.api.sockets.register.assert_not_awaited()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_socket_dirs_error(install_app_ssh: App) -> None:
+    """Test the start fails when the socket folder can't be created."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+
+    with (
+        patch.object(App, "ensure_run_dirs", side_effect=OSError("full")),
+        patch.object(DockerAPI, "run") as run,
+        pytest.raises(AppSocketDirsError),
+    ):
+        await install_app_ssh.start()
+
+    run.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("sockets", "has_token"),
+    [
+        pytest.param([], True, id="token"),
+        pytest.param(["supervisor"], False, id="socket"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_access_token(
+    install_app_ssh: App, sockets: list[str], has_token: bool
+) -> None:
+    """Test the token is rotated, or dropped for an app that uses its socket."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    install_app_ssh.data["sockets"] = sockets
+    install_app_ssh.persist["access_token"] = "old_token"
+
+    await install_app_ssh.start()
+
+    assert ("access_token" in install_app_ssh.persist) is has_token
+    assert install_app_ssh.supervisor_token != "old_token"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_uninstall_removes_supervisor_socket(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test uninstall stops listening before removing the container, then the folder."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    await coresys.run_in_executor(install_app_ssh.ensure_run_dirs)
+    socket_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
+    unregistered_at_remove: list[list[Any]] = []
+
+    async def _remove(*args, **kwargs) -> None:
+        unregistered_at_remove.append(
+            coresys.api.sockets.unregister.await_args_list.copy()
+        )
+
+    with (
+        patch.object(DockerApp, "remove", side_effect=_remove),
+        patch.object(Ingress, "update_hass_panel"),
+    ):
+        await coresys.apps.uninstall(TEST_ADDON_SLUG)
+
+    assert unregistered_at_remove == [[call(socket_path)]]
+    assert not install_app_ssh.path_run_supervisor.exists()
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")

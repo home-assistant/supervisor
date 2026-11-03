@@ -100,6 +100,59 @@ def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Da
     )
 
 
+@pytest.mark.parametrize(
+    "sockets", [pytest.param([], id="token"), pytest.param(["supervisor"], id="socket")]
+)
+@pytest.mark.usefixtures("path_extern")
+def test_supervisor_socket_mount(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], sockets: list[str]
+):
+    """Test every app gets its Supervisor socket folder read-only."""
+    config = load_json_fixture("basic-app-config.json") | {"sockets": sockets}
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    assert (
+        DockerMount(
+            type=MountType.BIND,
+            source="/run/supervisor/supervisor/apps/test_addon",
+            target="/run/supervisor/api",
+            read_only=True,
+        )
+        in docker_app.mounts
+    )
+
+
+@pytest.mark.parametrize(
+    ("sockets", "tokens"),
+    [
+        pytest.param(
+            [], {"SUPERVISOR_TOKEN": "abc123", "HASSIO_TOKEN": "abc123"}, id="token"
+        ),
+        pytest.param(["supervisor"], {}, id="socket"),
+    ],
+)
+def test_supervisor_socket_environment(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    addonsdata_user: PropertyMock,
+    sockets: list[str],
+    tokens: dict[str, str],
+):
+    """Test the token is only passed to apps that do not use their socket."""
+    config = load_json_fixture("basic-app-config.json") | {"sockets": sockets}
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+    addonsdata_user.return_value = {"test_addon": {"access_token": "abc123"}}
+
+    environment = docker_app.environment
+
+    assert environment["SUPERVISOR_SOCKET"] == "/run/supervisor/api/supervisor.sock"
+    assert {
+        key: environment[key]
+        for key in ("SUPERVISOR_TOKEN", "HASSIO_TOKEN")
+        if key in environment
+    } == tokens
+
+
 def test_legacy_app_environment_does_not_modify_app_data(
     coresys: CoreSys,
     addonsdata_system: dict[str, Data],

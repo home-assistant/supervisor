@@ -75,6 +75,7 @@ from ..const import (
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
+    ATTR_SOCKETS,
     ATTR_SQUASH,
     ATTR_STAGE,
     ATTR_STARTUP,
@@ -130,6 +131,7 @@ from .const import (
     RE_SLUG,
     SLUG_MAX_LENGTH,
     AppBackupMode,
+    AppSocket,
     MappingType,
 )
 from .options import RE_SCHEMA_ELEMENT
@@ -259,6 +261,16 @@ def _warn_app_config(log: Callable[..., None]):
             log(
                 "App '%s' uses the deprecated 'codenotary' config field, which is no longer used and ignored.",
                 name,
+            )
+
+        # Kept, apps can declare values ahead of the Supervisor that understands them
+        if isinstance(sockets := config.get(ATTR_SOCKETS), list) and (
+            unknown_sockets := [socket for socket in sockets if socket not in AppSocket]
+        ):
+            log(
+                "App '%s' declares unknown 'sockets' values, which are ignored: %s",
+                name,
+                unknown_sockets,
             )
 
         # Deprecated map types, deprecated as of 2026.07
@@ -523,6 +535,7 @@ _SCHEMA_APP_CONFIG = vol.Schema(
         vol.Optional(ATTR_HASSIO_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_HASSIO_ROLE, default=ROLE_DEFAULT): vol.In(ROLE_ALL),
         vol.Optional(ATTR_HOMEASSISTANT_API, default=False): vol.Boolean(),
+        vol.Optional(ATTR_SOCKETS, default=list): [str],
         vol.Optional(ATTR_STDIN, default=False): vol.Boolean(),
         vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
         vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),

@@ -33,6 +33,12 @@ class MappingType(StrEnum):
     ADDON_CONFIG = "addon_config"
 
 
+class AppSocket(StrEnum):
+    """Socket an app declares it has moved to."""
+
+    SUPERVISOR = "supervisor"
+
+
 ATTR_BACKUP = "backup"
 ATTR_BREAKING_VERSIONS = "breaking_versions"
 ATTR_CODENOTARY = "codenotary"
