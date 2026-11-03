@@ -1,6 +1,7 @@
 """Test Store API."""
 
 import asyncio
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import AsyncMock, PropertyMock, patch
 
@@ -13,7 +14,7 @@ from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.backups.manager import BackupManager
 from supervisor.config import CoreConfig
-from supervisor.const import AppState, CoreState
+from supervisor.const import ATTR_LOCATION, AppState, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
@@ -560,15 +561,34 @@ async def test_repository_not_found(api_client: TestClient, method: str, url: st
     assert body["message"] == "Repository bad does not exist in the store"
 
 
+def _point_app_at_repo(coresys: CoreSys, store_app: AppStore, tmp_path: Path) -> Path:
+    """Lay out an app inside a repository checkout under tmp_path.
+
+    Returns the repository root. The app directory is a sub-folder of it, as in
+    a real store checkout, so repository-confined symlinks can be exercised.
+    """
+    repo_root = tmp_path / "repo"
+    app_dir = repo_root / "test_store_addon"
+    app_dir.mkdir(parents=True)
+    coresys.store.data.apps[store_app.slug][ATTR_LOCATION] = str(app_dir)
+    coresys.store.repositories[store_app.repository]._local_path = repo_root  # pylint: disable=protected-access
+    return repo_root
+
+
 @pytest.mark.parametrize("resource", ["store/addons", "addons"])
 async def test_api_store_apps_documentation_corrupted(
-    api_client: TestClient, coresys: CoreSys, store_app: AppStore, resource: str
+    api_client: TestClient,
+    coresys: CoreSys,
+    store_app: AppStore,
+    tmp_path: Path,
+    resource: str,
 ):
     """Test /store/apps/{app}/documentation REST API.
 
     Test app with documentation file with byte sequences which cannot be decoded
     using UTF-8.
     """
+    _point_app_at_repo(coresys, store_app, tmp_path)
     store_app.path_documentation.write_bytes(b"Text with an invalid UTF-8 char: \xff")
     await store_app.refresh_path_cache()
     assert store_app.with_documentation is True
@@ -581,13 +601,18 @@ async def test_api_store_apps_documentation_corrupted(
 
 @pytest.mark.parametrize("resource", ["store/addons", "addons"])
 async def test_api_store_apps_changelog_corrupted(
-    api_client: TestClient, coresys: CoreSys, store_app: AppStore, resource: str
+    api_client: TestClient,
+    coresys: CoreSys,
+    store_app: AppStore,
+    tmp_path: Path,
+    resource: str,
 ):
     """Test /store/apps/{app}/changelog REST API.
 
     Test app with changelog file with byte sequences which cannot be decoded
     using UTF-8.
     """
+    _point_app_at_repo(coresys, store_app, tmp_path)
     store_app.path_changelog.write_bytes(b"Text with an invalid UTF-8 char: \xff")
     await store_app.refresh_path_cache()
     assert store_app.with_changelog is True
@@ -596,6 +621,146 @@ async def test_api_store_apps_changelog_corrupted(
     assert resp.status == 200
     result = await resp.text()
     assert result == "Text with an invalid UTF-8 char: �"
+
+
+@pytest.mark.parametrize("asset", ["logo", "icon", "changelog", "documentation"])
+@pytest.mark.parametrize("resource", ["store/addons", "addons"])
+async def test_api_store_apps_asset_symlink_rejected(
+    api_client: TestClient,
+    coresys: CoreSys,
+    store_app: AppStore,
+    tmp_path: Path,
+    resource: str,
+    asset: str,
+):
+    """Test a store asset symlinked outside the repository is not served.
+
+    A store repository is third-party content. Shipping icon.png/logo.png (or a
+    text asset) as a symlink to e.g. /data/homeassistant.json must not let an
+    unauthenticated caller read Supervisor-private files through it.
+    """
+    repo_root = _point_app_at_repo(coresys, store_app, tmp_path)
+    secret = tmp_path / "outside_secret.bin"
+    secret.write_bytes(b"SUPERVISOR_SECRET_MARKER")
+    assert not secret.is_relative_to(repo_root)
+    asset_path: Path = getattr(store_app, f"path_{asset}")
+    asset_path.symlink_to(secret)
+
+    await store_app.refresh_path_cache()
+    assert getattr(store_app, f"with_{asset}") is False
+
+    resp = await api_client.get(f"/{resource}/{store_app.slug}/{asset}")
+    body = await resp.read()
+    assert b"SUPERVISOR_SECRET_MARKER" not in body
+
+
+@pytest.mark.parametrize(
+    "link_target",
+    [
+        pytest.param(lambda asset_path, outside: outside, id="escape"),
+        pytest.param(lambda asset_path, outside: asset_path, id="loop"),
+        pytest.param(lambda asset_path, outside: Path("a" * 300), id="too-long"),
+        pytest.param(
+            lambda asset_path, outside: asset_path.parent.parent / ".git" / "config",
+            id="git-directory",
+        ),
+    ],
+)
+async def test_store_apps_asset_symlink_refused_reported(
+    coresys: CoreSys,
+    store_app: AppStore,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    link_target: Callable[[Path, Path], Path],
+):
+    """Test a refused asset symlink is warned about and reported once."""
+    repo_root = _point_app_at_repo(coresys, store_app, tmp_path)
+    (repo_root / ".git").mkdir()
+    (repo_root / ".git" / "config").write_text("url = https://user:token@example.com")
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"x")
+    store_app.path_logo.symlink_to(link_target(store_app.path_logo, outside))
+
+    with patch("supervisor.apps.model.capture_exception") as capture:
+        await store_app.refresh_path_cache()
+        await store_app.refresh_path_cache()
+
+    assert store_app.with_logo is False
+    assert str(store_app.path_logo) in caplog.text
+    capture.assert_called_once()
+
+
+async def test_store_apps_asset_symlink_report_names_repository(
+    coresys: CoreSys, store_app: AppStore, tmp_path: Path
+):
+    """Test the refusal report names the repository URL without credentials."""
+    _point_app_at_repo(coresys, store_app, tmp_path)
+    coresys.store.repositories[
+        store_app.repository
+    ].source = "https://user:secret-token@example.com/owner/repo"
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"x")
+    store_app.path_logo.symlink_to(outside)
+
+    with patch("supervisor.apps.model.capture_exception") as capture:
+        await store_app.refresh_path_cache()
+
+    message = str(capture.call_args.args[0])
+    assert "from https://example.com/owner/repo:" in message
+    assert "secret-token" not in message
+
+
+async def test_store_apps_asset_symlink_reported_once_per_reload(
+    coresys: CoreSys, store_app: AppStore, tmp_path: Path
+):
+    """Test a refused asset is reported to Sentry again after a store reload."""
+    _point_app_at_repo(coresys, store_app, tmp_path)
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"x")
+    store_app.path_logo.symlink_to(outside)
+
+    with (
+        patch("supervisor.apps.model.capture_exception") as capture,
+        patch.object(Repository, "update", return_value=False),
+    ):
+        await store_app.refresh_path_cache()
+        await coresys.store.reload()
+        await store_app.refresh_path_cache()
+
+    assert capture.call_count == 2
+
+
+@pytest.mark.parametrize("asset", ["logo", "icon", "changelog", "documentation"])
+@pytest.mark.parametrize("resource", ["store/addons", "addons"])
+async def test_api_store_apps_asset_symlink_in_repo_served(
+    api_client: TestClient,
+    coresys: CoreSys,
+    store_app: AppStore,
+    tmp_path: Path,
+    resource: str,
+    asset: str,
+):
+    """Test a store asset symlinked to another repo folder is served.
+
+    Repositories legitimately ship an asset as a symlink to a shared file in a
+    sibling folder of the same checkout (e.g. immich_cuda/logo.png pointing to
+    ../immich/logo.png), so a symlink that stays inside the repository must be
+    followed and served, unlike one escaping it.
+    """
+    repo_root = _point_app_at_repo(coresys, store_app, tmp_path)
+    shared = repo_root / "shared"
+    shared.mkdir()
+    target = shared / "asset"
+    target.write_bytes(b"INREPO_MARKER")
+    asset_path: Path = getattr(store_app, f"path_{asset}")
+    asset_path.symlink_to(target)
+
+    await store_app.refresh_path_cache()
+    assert getattr(store_app, f"with_{asset}") is True
+
+    resp = await api_client.get(f"/{resource}/{store_app.slug}/{asset}")
+    assert resp.status == 200
+    assert b"INREPO_MARKER" in await resp.read()
 
 
 @pytest.mark.usefixtures("test_repository", "tmp_supervisor_data")

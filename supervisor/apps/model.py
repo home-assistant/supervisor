@@ -5,8 +5,11 @@ from collections import defaultdict
 from collections.abc import Callable
 from contextlib import suppress
 from datetime import datetime
+import errno
 import logging
+import os
 from pathlib import Path
+import stat
 from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -96,13 +99,17 @@ from ..exceptions import (
     AppNotSupportedError,
     AppNotSupportedHomeAssistantVersionError,
     AppNotSupportedMachineTypeError,
+    AppRepositoryFileUnsafeError,
     HassioArchNotFound,
+    StoreRepositoryFileUnsafeError,
 )
 from ..host.const import LogFormatter
 from ..jobs.const import JOB_GROUP_APP
 from ..jobs.job_group import JobGroup
+from ..misc.filter import sanitize_url_credentials
 from ..utils import version_is_new_enough
 from ..utils.dt import utc_from_timestamp
+from ..utils.sentry import capture_exception
 from .configuration import FolderMapping
 from .const import (
     ATTR_BACKUP,
@@ -119,6 +126,60 @@ from .validate import RE_SERVICE
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 Data = dict[str, Any]
+
+
+def resolve_in_repository(path: Path, repository: Path) -> Path:
+    """Resolve path within a third-party store repository, following symlinks.
+
+    Raises FileNotFoundError or NotADirectoryError if path is not an existing
+    regular file, and StoreRepositoryFileUnsafeError if it resolves outside the
+    repository (e.g. the Core API token), into .git (which may hold
+    credentials) or through a crafted symlink.
+    """
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as err:
+        # Symlink loops and overlong targets can only come from repository content
+        if err.errno in (errno.ELOOP, errno.ENAMETOOLONG):
+            raise StoreRepositoryFileUnsafeError(
+                f"{path} cannot be resolved: {err.strerror}"
+            ) from err
+        raise
+    _check_in_repository(path, resolved, repository)
+    if not resolved.is_file():
+        raise FileNotFoundError(errno.ENOENT, "Not a regular file", str(path))
+    return resolved
+
+
+def read_in_repository(path: Path, repository: Path) -> bytes:
+    """Read a file confined to a store repository.
+
+    The opened file is checked again, so a symlink swapped in after resolving
+    (e.g. by a git pull) cannot escape. Raises like resolve_in_repository.
+    """
+    resolved = resolve_in_repository(path, repository)
+    # O_NONBLOCK keeps a FIFO swapped in after resolving from blocking the open
+    fd = os.open(resolved, os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC)
+    with os.fdopen(fd, "rb") as file:
+        opened = Path(f"/proc/self/fd/{fd}").readlink()
+        _check_in_repository(path, opened, repository)
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise FileNotFoundError(errno.ENOENT, "Not a regular file", str(path))
+        return file.read()
+
+
+def _check_in_repository(path: Path, resolved: Path, repository: Path) -> None:
+    """Raise StoreRepositoryFileUnsafeError if resolved must not be read."""
+    try:
+        relative = resolved.relative_to(repository)
+    except ValueError:
+        raise StoreRepositoryFileUnsafeError(
+            f"{path} resolves outside repository {repository}"
+        ) from None
+    if ".git" in relative.parts:
+        raise StoreRepositoryFileUnsafeError(
+            f"{path} resolves into .git of repository {repository}"
+        )
 
 
 class AppModel(JobGroup, ABC):
@@ -649,6 +710,95 @@ class AppModel(JobGroup, ABC):
         """Return path to custom AppArmor profile."""
         return Path(self.path_location, "apparmor.txt")
 
+    def repository_root(self) -> Path:
+        """Return the root that repository file symlinks are confined to.
+
+        Falls back to the app's own location only when the repository is
+        unknown. Must be run in the executor.
+        """
+        if repository := self.sys_store.repositories.get(self.repository):
+            return repository.local_path.resolve()
+        return self.path_location.resolve()
+
+    def _confined[T](
+        self, func: Callable[[Path, Path], T], path: Path, root: Path | None
+    ) -> T | None:
+        """Run a repository confined file function for this app."""
+        try:
+            return func(path, root or self.repository_root())
+        except FileNotFoundError, NotADirectoryError:
+            return None
+        except StoreRepositoryFileUnsafeError as err:
+            repository = self.sys_store.repositories.get(self.repository)
+            raise AppRepositoryFileUnsafeError(
+                _LOGGER.warning,
+                app=self.slug,
+                # Private repository URLs can embed credentials
+                repository=sanitize_url_credentials(repository.source)
+                if repository
+                else self.repository,
+                error=str(err),
+            ) from err
+
+    def _optional[T](
+        self, func: Callable[[Path, Path], T], path: Path, root: Path | None
+    ) -> T | None:
+        """Run a repository confined file function, treating a bad file as absent.
+
+        A single bad file must not break the store reload.
+        """
+        try:
+            return self._confined(func, path, root)
+        except AppRepositoryFileUnsafeError as err:
+            # Report so repositories shipping escaping symlinks can be looked up
+            if self.sys_store.first_unsafe_file_report(self.slug, path):
+                capture_exception(err)
+        except OSError as err:
+            self.sys_resolution.check_oserror(err)
+            _LOGGER.error("Can't read %s of app %s: %s", path.name, self.slug, err)
+        return None
+
+    def resolve_repository_file(self, path: Path) -> Path | None:
+        """Resolve a file that belongs to this app's store repository.
+
+        Returns None if it does not exist and raises AppRepositoryFileUnsafeError
+        if it must not be read. Must be run in the executor.
+        """
+        return self._confined(resolve_in_repository, path, None)
+
+    def optional_repository_file(
+        self, path: Path, root: Path | None = None
+    ) -> Path | None:
+        """Resolve an optional repository file, treating a bad one as absent.
+
+        Pass root to reuse a computed repository_root(). Must be run in the
+        executor.
+        """
+        return self._optional(resolve_in_repository, path, root)
+
+    def read_repository_file(self, path: Path) -> bytes | None:
+        """Read a file of this app's store repository, like resolve_repository_file.
+
+        Must be run in the executor.
+        """
+        return self._confined(read_in_repository, path, None)
+
+    def read_optional_repository_file(self, path: Path) -> bytes | None:
+        """Read an optional repository file, treating a bad one as absent.
+
+        Must be run in the executor.
+        """
+        return self._optional(read_in_repository, path, None)
+
+    def read_optional_repository_text(self, path: Path) -> str | None:
+        """Read an optional repository text file, treating a bad one as absent.
+
+        Must be run in the executor.
+        """
+        if (data := self.read_optional_repository_file(path)) is None:
+            return None
+        return data.decode("utf-8", errors="replace")
+
     @property
     def schema(self) -> AppOptions:
         """Return App options validation object."""
@@ -698,32 +848,23 @@ class AppModel(JobGroup, ABC):
         if self.is_detached:
             return None
 
-        def read_readme() -> str | None:
-            readme = Path(self.path_location, "README.md")
-
-            # If readme not exists
-            if not readme.exists():
-                return None
-
-            # Return data
-            return readme.read_text(encoding="utf-8", errors="replace")
-
-        try:
-            return await self.sys_run_in_executor(read_readme)
-        except OSError as err:
-            self.sys_resolution.check_oserror(err)
-            raise AppFileReadError(
-                _LOGGER.error, app=self.slug, error=str(err)
-            ) from err
+        return await self.sys_run_in_executor(
+            self.read_optional_repository_text, Path(self.path_location, "README.md")
+        )
 
     async def refresh_path_cache(self) -> None:
         """Refresh cache of existing paths."""
 
         def check_paths():
-            self._path_icon_exists = self.path_icon.exists()
-            self._path_logo_exists = self.path_logo.exists()
-            self._path_changelog_exists = self.path_changelog.exists()
-            self._path_documentation_exists = self.path_documentation.exists()
+            root = self.repository_root()
+
+            def exists(path: Path) -> bool:
+                return self.optional_repository_file(path, root) is not None
+
+            self._path_icon_exists = exists(self.path_icon)
+            self._path_logo_exists = exists(self.path_logo)
+            self._path_changelog_exists = exists(self.path_changelog)
+            self._path_documentation_exists = exists(self.path_documentation)
 
         try:
             await self.sys_run_in_executor(check_paths)

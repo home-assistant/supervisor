@@ -309,7 +309,9 @@ jobs:
       # Wait for Core to come up so subsequent steps (backup, addon install) succeed.
       # On first startup, Supervisor installs Core via the "home_assistant_core_install"
       # job (which pulls the image and then starts Core). Jobs with cleanup=True are
-      # removed from the jobs list once done, so we poll until it's gone.
+      # removed from the jobs list once done, so we poll until it's gone. The job is
+      # only created once Supervisor finishes setup, after the ping API is already up,
+      # so also wait for the version to move off landingpage (set before Core starts).
       - name: Wait for Core to be started
         run: |
           echo "Waiting for Home Assistant Core to be installed and started..."
@@ -317,8 +319,9 @@ jobs:
           elapsed=0
 
           while [ $elapsed -lt $timeout ]; do
+            version=$(docker exec hassio_cli ha core info --no-progress --raw-json | jq -r '.data.version // empty' 2>/dev/null)
             jobs=$(docker exec hassio_cli ha jobs info --no-progress --raw-json | jq -r '.data.jobs[] | select(.name == "home_assistant_core_install" and .done == false) | .name' 2>/dev/null)
-            if [ -z "$jobs" ]; then
+            if [ -n "$version" ] && [ "$version" != "landingpage" ] && [ -z "$jobs" ]; then
               echo "Home Assistant Core install/start complete (took ${elapsed}s)"
               exit 0
             fi

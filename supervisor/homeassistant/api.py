@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
@@ -15,12 +15,11 @@ from awesomeversion import AwesomeVersion
 from multidict import MultiMapping
 from yarl import URL
 
-from ..const import SOCKET_NAME_CORE
+from ..const import SERVER_SOFTWARE, SOCKET_NAME_CORE
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import ENV_CORE_API_SOCKET, ContainerState
 from ..docker.monitor import DockerContainerStateEvent
 from ..exceptions import (
-    DockerError,
     HomeAssistantAPIError,
     HomeAssistantAuthError,
     HomeAssistantWSConnectionError,
@@ -72,6 +71,8 @@ class HomeAssistantAPI(CoreSysAttributes):
         self._token_lock: asyncio.Lock = asyncio.Lock()
         self._unix_session: aiohttp.ClientSession | None = None
         self._core_connected: bool = False
+        self._core_used_supervisor_socket: bool = False
+        self._core_container_running: bool | None = None
 
     @property
     def supports_unix_socket(self) -> bool:
@@ -125,6 +126,19 @@ class HomeAssistantAPI(CoreSysAttributes):
         return None
 
     @property
+    def core_used_supervisor_socket(self) -> bool:
+        """Return True if the running Core container has called Supervisor's socket.
+
+        Such a Core makes all of its own Supervisor requests over the socket.
+        """
+        return self._core_used_supervisor_socket
+
+    @core_used_supervisor_socket.setter
+    def core_used_supervisor_socket(self, value: bool) -> None:
+        """Set if the running Core container has called Supervisor's socket."""
+        self._core_used_supervisor_socket = value
+
+    @property
     def use_unix_socket(self) -> bool:
         """Return True if the running Core container is configured for Unix socket.
 
@@ -146,8 +160,12 @@ class HomeAssistantAPI(CoreSysAttributes):
             return self.sys_websession
 
         if self._unix_session is None or self._unix_session.closed:
+            # Unlike Core's IP over TCP, "localhost" lets a real jar store cookies
+            # from any Core view and replay them on every later request
             self._unix_session = aiohttp.ClientSession(
-                connector=aiohttp.UnixConnector(path=str(self.core_socket_path))
+                connector=aiohttp.UnixConnector(path=str(self.core_socket_path)),
+                cookie_jar=aiohttp.DummyCookieJar(),
+                headers={hdrs.USER_AGENT: SERVER_SOFTWARE},
             )
         return self._unix_session
 
@@ -169,10 +187,19 @@ class HomeAssistantAPI(CoreSysAttributes):
         """Process Core container state changes."""
         if event.name != self.sys_homeassistant.core.instance.name:
             return
+
+        # A pending or failed healthcheck still means the process is up
+        self._core_container_running = event.state in (
+            ContainerState.RUNNING,
+            ContainerState.STARTING,
+            ContainerState.HEALTHY,
+            ContainerState.UNHEALTHY,
+        )
         if event.state not in (ContainerState.STOPPED, ContainerState.FAILED):
             return
 
         self._core_connected = False
+        self._core_used_supervisor_socket = False
         if self._unix_session and not self._unix_session.closed:
             await self._unix_session.close()
             self._unix_session = None
@@ -231,14 +258,14 @@ class HomeAssistantAPI(CoreSysAttributes):
                     seconds=tokens["expires_in"]
                 )
 
-    async def _request_error[ErrorT: HomeAssistantAPIError](
+    def _request_error[ErrorT: HomeAssistantAPIError](
         self, url: URL | str, err: Exception, error_type: type[ErrorT]
     ) -> ErrorT:
         """Describe a failed request, naming a stopped Core container as the cause."""
-        with suppress(DockerError):
-            if not await self.sys_homeassistant.core.instance.is_running():
-                _LOGGER.debug("Error on call %s: Core container is not running", url)
-                return error_type("Core container is not running")
+        # Container state comes from Docker events, None until the first one
+        if self._core_container_running is False:
+            _LOGGER.debug("Error on call %s: Core container is not running", url)
+            return error_type("Core container is not running")
         message = str(err) or type(err).__name__
         _LOGGER.debug("Error on call %s: %s", url, message)
         return error_type(message)
@@ -274,7 +301,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             TimeoutError,
             aiohttp.ClientError,
         ) as err:
-            raise await self._request_error(
+            raise self._request_error(
                 self.ws_url, err, HomeAssistantWSConnectionError
             ) from err
 
@@ -368,9 +395,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                     yield resp
                     return
             except (TimeoutError, aiohttp.ClientError) as err:
-                raise await self._request_error(
-                    url, err, HomeAssistantAPIError
-                ) from err
+                raise self._request_error(url, err, HomeAssistantAPIError) from err
 
         # Core still answered 401 with a freshly refreshed token.
         _LOGGER.error(

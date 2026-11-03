@@ -1,10 +1,12 @@
 """Test Home Assistant Apps."""
 
 import asyncio
+from collections.abc import Callable
 from datetime import timedelta
 import errno
 from http import HTTPStatus
 import logging
+import os
 from pathlib import Path, PurePath
 from tarfile import TarFile
 from typing import Any
@@ -18,7 +20,7 @@ from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
-from supervisor.apps.model import AppModel
+from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
 from supervisor.const import (
     ATTR_ADVANCED,
     ATTR_LOCATION,
@@ -39,6 +41,7 @@ from supervisor.exceptions import (
     AppNotSupportedArchitectureError,
     AppPortConflict,
     AppPrePostBackupCommandReturnedError,
+    AppRepositoryFileUnsafeError,
     AppsError,
     AppsJobError,
     AppStatsTimeoutError,
@@ -51,6 +54,8 @@ from supervisor.exceptions import (
     DockerRegistryAuthError,
     DockerStatsTimeoutError,
     HassioError,
+    HostAppArmorError,
+    StoreRepositoryFileUnsafeError,
 )
 from supervisor.hardware.helper import HwHelper
 from supervisor.homeassistant.const import WSType
@@ -62,6 +67,7 @@ from supervisor.resolution.const import (
     UnhealthyReason,
 )
 from supervisor.resolution.data import Issue
+from supervisor.store.app import AppStore
 from supervisor.utils.dt import utcnow
 
 from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
@@ -1245,50 +1251,38 @@ async def test_app_pulse_error(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_long_description_bad_message(coresys: CoreSys, install_app_example: App):
-    """Test long_description raises AppFileReadError and marks unhealthy on EBADMSG."""
-    err = OSError()
-    err.errno = errno.EBADMSG
-    with (
-        patch("supervisor.apps.model.Path.exists", side_effect=err),
-        pytest.raises(AppFileReadError),
-    ):
-        await install_app_example.long_description()
-
-    assert coresys.core.healthy is False
-    assert UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
-
-
-@pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_long_description_other_oserror(
-    coresys: CoreSys, install_app_example: App
+@pytest.mark.parametrize(
+    ("error", "healthy"),
+    [
+        pytest.param(errno.EBADMSG, False, id="bad-message"),
+        pytest.param(errno.EIO, True, id="other-oserror"),
+    ],
+)
+async def test_long_description_oserror(
+    coresys: CoreSys, install_app_example: App, error: int, healthy: bool
 ):
-    """Test long_description raises AppFileReadError without unhealthy on other OSError."""
-    err = OSError()
-    err.errno = errno.EIO
-    with (
-        patch("supervisor.apps.model.Path.exists", side_effect=err),
-        pytest.raises(AppFileReadError),
+    """Test an unreadable README is treated as absent and checked for unhealthy."""
+    with patch(
+        "supervisor.apps.model.resolve_in_repository",
+        side_effect=OSError(error, os.strerror(error)),
     ):
-        await install_app_example.long_description()
+        assert await install_app_example.long_description() is None
 
-    assert coresys.core.healthy is True
+    assert coresys.core.healthy is healthy
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
 async def test_refresh_path_cache_bad_message(
     coresys: CoreSys, install_app_example: App
 ):
-    """Test refresh_path_cache raises AppFileReadError and marks unhealthy on EBADMSG."""
-    err = OSError()
-    err.errno = errno.EBADMSG
-    with (
-        patch("supervisor.apps.model.Path.exists", side_effect=err),
-        pytest.raises(AppFileReadError),
+    """Test an unreadable asset is treated as absent and marks unhealthy on EBADMSG."""
+    with patch(
+        "supervisor.apps.model.resolve_in_repository",
+        side_effect=OSError(errno.EBADMSG, os.strerror(errno.EBADMSG)),
     ):
         await install_app_example.refresh_path_cache()
 
-    assert coresys.core.healthy is False
+    assert not install_app_example.with_icon
     assert UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
 
 
@@ -1335,7 +1329,10 @@ async def test_paths_cache(coresys: CoreSys, install_app_ssh: App):
     assert not install_app_ssh.with_documentation
 
     with (
-        patch("supervisor.apps.app.Path.exists", return_value=True),
+        patch(
+            "supervisor.apps.model.AppModel.optional_repository_file",
+            return_value=Path("icon.png"),
+        ),
         patch("supervisor.store.repository.RepositoryLocal.update", return_value=True),
     ):
         await coresys.store.reload(coresys.store.get("local"))
@@ -1344,6 +1341,188 @@ async def test_paths_cache(coresys: CoreSys, install_app_ssh: App):
         assert install_app_ssh.with_icon
         assert install_app_ssh.with_changelog
         assert install_app_ssh.with_documentation
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        pytest.param("app/icon.png", "app/icon.png", id="plain-file"),
+        pytest.param("app/logo.png", "shared/icon.png", id="in-repo-symlink"),
+        pytest.param("app/banner.png", ".github/icon.png", id="dot-github-symlink"),
+    ],
+)
+def test_resolve_in_repository(tmp_path: Path, path: str, expected: str):
+    """Test repository confinement resolves in-repo files and symlinks."""
+    repo = tmp_path / "repo"
+    (repo / "app").mkdir(parents=True)
+    (repo / "shared").mkdir()
+    (repo / "shared" / "icon.png").write_bytes(b"x")
+    (repo / "app" / "icon.png").write_bytes(b"x")
+    (repo / "app" / "logo.png").symlink_to(Path("..", "shared", "icon.png"))
+    (repo / ".github").mkdir()
+    (repo / ".github" / "icon.png").write_bytes(b"x")
+    (repo / "app" / "banner.png").symlink_to(Path("..", ".github", "icon.png"))
+
+    assert resolve_in_repository(repo / path, repo) == repo / expected
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param("missing.png", id="missing"),
+        pytest.param("directory.png", id="directory"),
+    ],
+)
+def test_resolve_in_repository_missing(tmp_path: Path, name: str):
+    """Test a missing file or a non-regular file raises FileNotFoundError."""
+    (tmp_path / "shared").mkdir()
+    (tmp_path / "directory.png").symlink_to("shared")
+
+    with pytest.raises(FileNotFoundError):
+        resolve_in_repository(tmp_path / name, tmp_path)
+
+
+def test_read_in_repository(tmp_path: Path):
+    """Test reading a repository file follows in-repo symlinks."""
+    (tmp_path / "icon.png").write_bytes(b"icon")
+    (tmp_path / "logo.png").symlink_to("icon.png")
+
+    assert read_in_repository(tmp_path / "logo.png", tmp_path) == b"icon"
+
+
+def test_read_in_repository_swapped_after_resolve(tmp_path: Path):
+    """Test the opened file is checked again if it changed after resolving."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "icon.png").write_bytes(b"icon")
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"secret")
+
+    # Resolving sees the in-repo file, the open then hits the swapped-in one
+    with (
+        patch("supervisor.apps.model.resolve_in_repository", return_value=outside),
+        pytest.raises(StoreRepositoryFileUnsafeError, match="outside repository"),
+    ):
+        read_in_repository(repo / "icon.png", repo)
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_repository_file_outside_registered_repository(store_app: AppStore):
+    """Test files of an app located outside its registered repository are refused."""
+    store_app.path_icon.write_bytes(b"icon")
+
+    with pytest.raises(AppRepositoryFileUnsafeError):
+        store_app.resolve_repository_file(store_app.path_icon)
+
+
+@pytest.mark.parametrize(
+    ("link_target", "match"),
+    [
+        pytest.param(
+            lambda repo, link: repo.parent / "outside.png",
+            "resolves outside repository",
+            id="escape",
+        ),
+        pytest.param(
+            lambda repo, link: repo / ".git" / "config",
+            "resolves into .git",
+            id="git-directory",
+        ),
+        pytest.param(lambda repo, link: link, "cannot be resolved", id="loop"),
+        pytest.param(
+            lambda repo, link: Path("a" * 300), "cannot be resolved", id="too-long"
+        ),
+    ],
+)
+def test_resolve_in_repository_refused(
+    tmp_path: Path, link_target: Callable[[Path, Path], Path], match: str
+):
+    """Test repository confinement refuses symlinks that must not be read."""
+    repo = tmp_path / "repo"
+    (repo / "app").mkdir(parents=True)
+    (repo / ".git").mkdir()
+    (repo / ".git" / "config").write_text("url = https://user:token@example.com")
+    (tmp_path / "outside.png").write_bytes(b"x")
+    link = repo / "app" / "icon.png"
+    link.symlink_to(link_target(repo, link))
+
+    with pytest.raises(StoreRepositoryFileUnsafeError, match=match):
+        resolve_in_repository(link, repo)
+
+
+async def test_install_apparmor_missing_profile_removed(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test the local profile is removed when the app no longer ships one."""
+    with (
+        patch.object(App, "read_repository_file", return_value=None),
+        patch.object(type(coresys.host.apparmor), "exists", return_value=True),
+        patch.object(
+            type(coresys.host.apparmor), "remove_profile", new=AsyncMock()
+        ) as remove_profile,
+    ):
+        await install_app_ssh.install_apparmor()
+
+    remove_profile.assert_called_once_with(install_app_ssh.slug)
+
+
+async def test_install_apparmor_refused_profile_kept(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test a profile refused by repository confinement fails instead of being removed."""
+    with (
+        patch(
+            "supervisor.apps.model.resolve_in_repository",
+            side_effect=StoreRepositoryFileUnsafeError("escapes"),
+        ),
+        patch.object(type(coresys.host.apparmor), "exists", return_value=True),
+        patch.object(
+            type(coresys.host.apparmor), "remove_profile", new=AsyncMock()
+        ) as remove_profile,
+        pytest.raises(AppRepositoryFileUnsafeError),
+    ):
+        await install_app_ssh.install_apparmor()
+
+    remove_profile.assert_not_called()
+
+
+async def test_install_apparmor_bad_message(coresys: CoreSys, install_app_ssh: App):
+    """Test install_apparmor raises AppFileReadError and marks unhealthy on EBADMSG."""
+    with (
+        patch.object(
+            App,
+            "read_repository_file",
+            side_effect=OSError(errno.EBADMSG, os.strerror(errno.EBADMSG)),
+        ),
+        pytest.raises(AppFileReadError),
+    ):
+        await install_app_ssh.install_apparmor()
+
+    assert UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
+
+
+@pytest.mark.usefixtures("test_repository", "tmp_supervisor_data")
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(
+            AppFileReadError(app="local_example", error="EIO"), id="read-error"
+        ),
+        pytest.param(HostAppArmorError(), id="apparmor-error"),
+    ],
+)
+async def test_app_install_apparmor_failure(coresys: CoreSys, error: Exception):
+    """Test app data is cleaned up when the AppArmor profile cannot be installed."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with (
+        patch.object(App, "install_apparmor", side_effect=error),
+        pytest.raises(type(error)),
+    ):
+        await coresys.apps.install("local_example")
+
+    assert "local_example" not in coresys.apps.data.user
+    assert "local_example" not in coresys.apps.local
 
 
 @pytest.mark.usefixtures("mock_amd64_arch_supported")

@@ -136,9 +136,9 @@ class HardwareManager(CoreSysAttributes):
         )
         return udev_device.find_parent(subsystem) is not None
 
-    def _import_devices(self) -> None:
+    def _import_devices(self) -> dict[str, Device]:
         """Import fresh from udev database."""
-        self._devices.clear()
+        devices: dict[str, Device] = {}
 
         # Extract all devices
         for device in self.udev.list_devices():
@@ -151,16 +151,18 @@ class HardwareManager(CoreSysAttributes):
                 # problem with pyudev, see https://github.com/pyudev/pyudev/pull/230
                 _LOGGER.warning("Ignoring udev device due to error: %s", err)
                 continue
-            self._devices[device.sys_name] = Device.import_udev(device)
+            devices[device.sys_name] = Device.import_udev(device)
 
         # Add static nodes if not found through udev (e.g. module not yet loaded)
         for device in _STATIC_NODES:
-            if device.name not in self._devices:
-                self._devices[device.name] = device
+            if device.name not in devices:
+                devices[device.name] = device
+
+        return devices
 
     async def load(self) -> None:
         """Load hardware backend."""
-        self._import_devices()
+        self._devices = await self.sys_run_in_executor(self._import_devices)
         await self.helper.load()
         await self.monitor.load()
 

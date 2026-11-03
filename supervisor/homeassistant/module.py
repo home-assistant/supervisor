@@ -366,6 +366,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
+        # Core attaches during load and fires its initial container state
+        self.sys_bus.register_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            self._api.container_state_changed,
+        )
         await asyncio.wait(
             [
                 self.sys_create_task(self.websocket.load()),
@@ -375,10 +380,6 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         )
 
         # Register for events
-        self.sys_bus.register_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            self._api.container_state_changed,
-        )
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
         self.sys_bus.register_event(
             BusEvent.HARDWARE_REMOVE_DEVICE, self._hardware_events

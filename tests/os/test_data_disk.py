@@ -107,6 +107,20 @@ async def test_datadisk_list(coresys: CoreSys):
     ]
 
 
+async def test_datadisk_list_drive_size_zero(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> None:
+    """Test a drive reporting size 0 is listed with its block device size."""
+    sda_drive_service: DriveService = all_dbus_services["udisks2_drive"][
+        "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56"
+    ]
+    sda_drive_service.emit_properties_changed({"Size": 0})
+    await sda_drive_service.ping()
+
+    assert [disk.size for disk in coresys.os.datadisk.available_disks] == [250059350016]
+
+
 @pytest.mark.parametrize(
     "new_disk",
     ["SSK-SSK-Storage-DF56419883D56", "/dev/sda"],
@@ -243,10 +257,14 @@ async def test_datadisk_migrate_multiple_external_data_disks(
 
 
 @pytest.mark.parametrize(
-    "drive_size",
+    ("drive_size", "block_size"),
     [
-        pytest.param(500107862016, id="comfortably-larger"),
-        pytest.param(250058113024 + GPT_PARTITION_MIN_OVERHEAD, id="exact-fit"),
+        pytest.param(500107862016, 8054112256, id="comfortably-larger"),
+        pytest.param(
+            250058113024 + GPT_PARTITION_MIN_OVERHEAD, 8054112256, id="exact-fit"
+        ),
+        # Some NVMe drives report no total capacity, so UDisks2 reports 0
+        pytest.param(0, 500107862016, id="zero-drive-size"),
     ],
 )
 async def test_datadisk_migrate_between_external_renames(
@@ -254,6 +272,7 @@ async def test_datadisk_migrate_between_external_renames(
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
     os_available: None,
     drive_size: int,
+    block_size: int,
 ) -> None:
     """Test migration from one external data disk to another renames the original."""
     sdb1_partition_service: PartitionService = all_dbus_services["udisks2_partition"][
@@ -271,6 +290,10 @@ async def test_datadisk_migrate_between_external_renames(
         "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6"
     ]
     sdb_drive_service.fixture = replace(sdb_drive_service.fixture, Size=drive_size)
+    sdb_block_service: BlockService = all_dbus_services["udisks2_block"][
+        "/org/freedesktop/UDisks2/block_devices/sdb"
+    ]
+    sdb_block_service.fixture = replace(sdb_block_service.fixture, Size=block_size)
 
     datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
     datadisk_service.MarkDataMove.calls.clear()

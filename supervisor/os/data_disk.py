@@ -65,7 +65,9 @@ class Disk:
             model=drive.model,
             serial=drive.serial,
             id=drive.id or drive_block_device.device,
-            size=drive.size,
+            # UDisks2 reports a drive size of 0 for NVMe controllers which
+            # don't report their total capacity (tnvmcap)
+            size=drive.size or drive_block_device.size,
             device_path=drive_block_device.device,
             object_path=drive.object_path,
             device_object_path=drive_block_device.object_path,

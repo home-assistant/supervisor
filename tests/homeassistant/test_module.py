@@ -17,9 +17,11 @@ from supervisor.backups.const import (
     SECURETAR_V3_CREATE_VERSION,
     BackupType,
 )
-from supervisor.const import ATTR_PORT, CoreState
+from supervisor.const import ATTR_PORT, BusEvent, CoreState
 from supervisor.coresys import CoreSys
+from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     BackupInvalidError,
     HomeAssistantBackupError,
@@ -65,6 +67,32 @@ async def test_load(
     await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
     assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "ha_ws_client")
+async def test_load_receives_initial_core_container_state(coresys: CoreSys):
+    """Test the Core API sees the container state fired while attaching."""
+
+    def attach(*_args, **_kwargs) -> None:
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name="homeassistant",
+                state=ContainerState.RUNNING,
+                id="abc123",
+                time=1234567890,
+            ),
+        )
+
+    with (
+        patch.object(DockerInterface, "attach", side_effect=attach),
+        patch.object(DockerInterface, "check_image"),
+    ):
+        await coresys.homeassistant.load()
+    await asyncio.sleep(0)
+
+    # pylint: disable-next=protected-access
+    assert coresys.homeassistant.api._core_container_running is True
 
 
 async def test_api_port_default(coresys: CoreSys):
