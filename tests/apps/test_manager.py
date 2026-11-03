@@ -14,6 +14,7 @@ from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
 from supervisor.const import (
+    ATTR_ACCESS_TOKEN,
     ATTR_INGRESS,
     AppBoot,
     AppStartup,
@@ -777,3 +778,15 @@ async def test_repair_continues_past_unsupported_arch(
     install.assert_called_once_with(
         install_app_example.version, install_app_example.image, arch=CpuArch.AMD64
     )
+
+
+@pytest.mark.parametrize(
+    "token", [pytest.param(None, id="none"), pytest.param("", id="empty")]
+)
+async def test_from_token_missing(
+    coresys: CoreSys, install_app_ssh: App, token: str | None
+):
+    """Test a missing or empty token matches no app."""
+    install_app_ssh.persist.pop(ATTR_ACCESS_TOKEN, None)
+
+    assert coresys.apps.from_token(token) is None
