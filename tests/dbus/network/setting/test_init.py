@@ -270,9 +270,9 @@ async def test_non_utf8_wireless_ssid(
 ):
     """Test a wireless profile whose SSID is not valid UTF-8 is kept as bytes."""
     connection_settings_service.settings["802-11-wireless"] = {
-        "ssid": Variant("ay", b"Caf\xe9")
+        "ssid": Variant("ay", b"Caf\xe9")  # codespell:ignore caf
     }
     settings = NetworkSetting("/org/freedesktop/NetworkManager/Settings/1")
     await settings.connect(dbus_session_bus)
 
-    assert settings.wireless.ssid == b"Caf\xe9"
+    assert settings.wireless.ssid == b"Caf\xe9"  # codespell:ignore caf
