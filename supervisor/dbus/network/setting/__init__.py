@@ -7,7 +7,7 @@ from typing import Any
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
-from ...const import DBUS_NAME_NM, MulticastDnsValue
+from ...const import DBUS_NAME_NM, ConnectionFlags, MulticastDnsValue
 from ...interface import DBusInterface
 from ...utils import dbus_connected
 from ..configuration import (
@@ -130,6 +130,7 @@ class NetworkSetting(DBusInterface):
         self._ipv4: Ip4Properties | None = None
         self._ipv6: Ip6Properties | None = None
         self._match: MatchProperties | None = None
+        self._flags: ConnectionFlags = ConnectionFlags.NONE
         super().__init__()
 
     @property
@@ -176,6 +177,23 @@ class NetworkSetting(DBusInterface):
     def match(self) -> MatchProperties | None:
         """Return match properties if any."""
         return self._match
+
+    @property
+    def flags(self) -> ConnectionFlags:
+        """Return connection profile flags."""
+        return self._flags
+
+    @property
+    def is_generated(self) -> bool:
+        """Return true if NetworkManager generated this profile itself.
+
+        Such a profile (e.g. the in-memory "Wired connection 1" auto-default
+        on a device without a stored profile) is a fallback, not a stored
+        configuration, so it is nobody's profile for ownership purposes.
+        """
+        return bool(
+            self._flags & (ConnectionFlags.NM_GENERATED | ConnectionFlags.VOLATILE)
+        )
 
     @dbus_connected
     async def get_settings(self) -> dict[str, Any]:
@@ -251,6 +269,9 @@ class NetworkSetting(DBusInterface):
     async def reload(self):
         """Get current settings for connection."""
         data = await self.get_settings()
+        self._flags = ConnectionFlags(
+            await self.connected_dbus.Settings.Connection.get("flags")
+        )
 
         # Sections NetworkManager no longer reports must not keep stale values
         self._connection = None
