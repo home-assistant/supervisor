@@ -9,6 +9,7 @@ from typing import Any
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from ..apps.const import SLUG_MAX_LENGTH
 from ..apps.validate import (
     SCHEMA_APP_CONFIG,
     SCHEMA_APP_CONFIG_QUIET,
@@ -238,6 +239,25 @@ class StoreData(CoreSysAttributes):
 
                 # Generate slug
                 app_slug = f"{repository}_{app[ATTR_SLUG]}"
+                # Its socket path must fit in sun_path, apps.json stays uncapped
+                if len(app_slug) > SLUG_MAX_LENGTH:
+                    # sys_apps.installed is still empty on the first store load at startup
+                    if app_slug in self.sys_apps.data.system:
+                        _LOGGER.warning(
+                            "Installed app %s can't get updates, its slug is longer "
+                            "than %d characters. Please report this to the app developer.",
+                            app_slug,
+                            SLUG_MAX_LENGTH,
+                        )
+                    else:
+                        log = _LOGGER.warning if always_verbose else _LOGGER.debug
+                        log(
+                            "Can't read %s: app slug %s is longer than %d characters",
+                            app_config,
+                            app_slug,
+                            SLUG_MAX_LENGTH,
+                        )
+                    continue
 
                 # store
                 app[ATTR_REPOSITORY] = repository
