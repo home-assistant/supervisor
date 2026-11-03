@@ -1,6 +1,6 @@
 """Constants for DBUS."""
 
-from enum import IntEnum, StrEnum
+from enum import IntEnum, IntFlag, StrEnum
 from socket import AF_INET, AF_INET6
 
 from .enum import DBusIntEnum, DBusStrEnum
@@ -297,6 +297,19 @@ class ConnectionStateFlags(IntEnum):
     MASTER_HAS_SLAVES = 0x20
     LIFETIME_BOUND_TO_PROFILE_VISIBILITY = 0x40
     EXTERNAL = 0x80
+
+
+class ConnectionFlags(IntFlag):
+    """Connection profile flags.
+
+    https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMSettingsConnectionFlags
+    """
+
+    NONE = 0
+    UNSAVED = 0x1
+    NM_GENERATED = 0x2
+    VOLATILE = 0x4
+    EXTERNAL = 0x8
 
 
 class VlanFlags(IntEnum):
