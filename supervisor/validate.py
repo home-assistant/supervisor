@@ -237,16 +237,18 @@ SCHEMA_SUPERVISOR_CONFIG = vol.All(
 )
 
 
+SCHEMA_DOCKER_REGISTRY = vol.Schema(
+    {
+        vol.All(str, vol.Match(RE_REGISTRY)): {
+            vol.Required(ATTR_USERNAME): str,
+            vol.Required(ATTR_PASSWORD): str,
+        }
+    }
+)
+
 SCHEMA_DOCKER_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_REGISTRIES, default=dict): vol.Schema(
-            {
-                vol.All(str, vol.Match(RE_REGISTRY)): {
-                    vol.Required(ATTR_USERNAME): str,
-                    vol.Required(ATTR_PASSWORD): str,
-                }
-            }
-        ),
+        vol.Optional(ATTR_REGISTRIES, default=dict): SCHEMA_DOCKER_REGISTRY,
         vol.Optional(ATTR_ENABLE_IPV6, default=None): vol.Maybe(vol.Boolean()),
         vol.Optional(ATTR_MTU, default=None): vol.Maybe(
             vol.All(int, vol.Range(min=68, max=65535))
