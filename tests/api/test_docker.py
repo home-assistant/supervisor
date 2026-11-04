@@ -1,15 +1,176 @@
 """Test Docker API."""
 
+# pylint: disable=protected-access
+
+from copy import deepcopy
+import logging
+from pathlib import Path
+from typing import Any
+
 from aiohttp.test_utils import TestClient
 from dbus_fast import DBusError, ErrorType
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.docker.manager import DockerConfig
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
 from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
+
+
+@pytest.fixture(name="registry_config")
+async def fixture_registry_config(
+    coresys: CoreSys, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> DockerConfig:
+    """Use real configuration validation and persistence in a temporary file."""
+    config = coresys.docker.config
+    monkeypatch.setattr(config, "_file", tmp_path / "docker.json")
+    await config.read_data()
+    config.registries["registry.example.com"] = {
+        "username": "existing-user",
+        "password": "TEST_ONLY_7457_EXISTING_SECRET",
+    }
+    config.enable_ipv6 = True
+    config.mtu = 1450
+    await config.save_data()
+    return config
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(
+            {
+                "ghcr.io.": {
+                    "username": "test-user",
+                    "password": "TEST_ONLY_7457_SECRET",
+                }
+            },
+            id="trailing-dot",
+        ),
+        pytest.param(
+            {
+                "ghcr.io": {
+                    "username": "test-user",
+                    "password": "TEST_ONLY_7457_SECRET",
+                },
+                "ghcr.io.": {
+                    "username": "test-user",
+                    "password": "TEST_ONLY_7457_OTHER_SECRET",
+                },
+            },
+            id="valid-then-invalid",
+        ),
+        pytest.param(
+            {
+                "ghcr.io.": {
+                    "username": "test-user",
+                    "password": "TEST_ONLY_7457_SECRET",
+                },
+                "ghcr.io": {
+                    "username": "test-user",
+                    "password": "TEST_ONLY_7457_OTHER_SECRET",
+                },
+            },
+            id="invalid-then-valid",
+        ),
+        pytest.param(
+            {"ghcr.io": {"password": "TEST_ONLY_7457_SECRET"}},
+            id="missing-username",
+        ),
+        pytest.param(
+            {
+                "ghcr.io": {
+                    "username": "test-user",
+                    "password": ["TEST_ONLY_7457_SECRET"],
+                }
+            },
+            id="password-not-string",
+        ),
+        pytest.param(
+            {
+                "ghcr.io": {
+                    "username": "test-user",
+                    "password": "TEST_ONLY_7457_SECRET",
+                    "unexpected": "TEST_ONLY_7457_OTHER_SECRET",
+                }
+            },
+            id="extra-field",
+        ),
+        pytest.param(
+            {"ghcr.io": "TEST_ONLY_7457_SECRET"},
+            id="credentials-not-object",
+        ),
+        pytest.param(["TEST_ONLY_7457_SECRET"], id="body-not-object"),
+    ],
+)
+async def test_registry_invalid_keeps_config_and_secrets(
+    api_client_with_prefix: tuple[TestClient, str],
+    registry_config: DockerConfig,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    payload: Any,
+) -> None:
+    """Reject invalid requests atomically without exposing credentials."""
+    api_client, prefix = api_client_with_prefix
+    original = deepcopy(registry_config._data)
+    config_path = tmp_path / "docker.json"
+    original_bytes = config_path.read_bytes()
+    caplog.set_level(logging.DEBUG)
+
+    resp = await api_client.post(f"{prefix}/docker/registries", json=payload)
+    response_text = await resp.text()
+
+    for secret in (
+        "TEST_ONLY_7457_SECRET",
+        "TEST_ONLY_7457_OTHER_SECRET",
+        "TEST_ONLY_7457_EXISTING_SECRET",
+    ):
+        assert secret not in response_text
+        assert secret not in caplog.text
+    assert resp.status == 400
+    assert (await resp.json())["result"] == "error"
+    assert registry_config._data == original
+    assert config_path.read_bytes() == original_bytes
+    await registry_config.read_data()
+    assert registry_config._data == original
+
+
+@pytest.mark.parametrize("hostname", ["ghcr.io", "registry.example.com"])
+async def test_registry_create_and_update(
+    api_client_with_prefix: tuple[TestClient, str],
+    registry_config: DockerConfig,
+    caplog: pytest.LogCaptureFixture,
+    hostname: str,
+) -> None:
+    """Persist valid credentials while keeping them out of responses and logs."""
+    api_client, prefix = api_client_with_prefix
+    credentials = {"username": "test-user", "password": "TEST_ONLY_7457_SECRET"}
+    expected = deepcopy(registry_config._data)
+    expected["registries"][hostname] = credentials
+    caplog.set_level(logging.DEBUG)
+
+    resp = await api_client.post(
+        f"{prefix}/docker/registries", json={hostname: credentials}
+    )
+    assert resp.status == 200
+    assert (await resp.json())["result"] == "ok"
+    assert "TEST_ONLY_7457_SECRET" not in await resp.text()
+    assert registry_config._data == expected
+
+    await registry_config.read_data()
+    assert registry_config._data == expected
+    for endpoint in ("registries", "info"):
+        resp = await api_client.get(f"{prefix}/docker/{endpoint}")
+        assert resp.status == 200
+        body = await resp.json()
+        assert body["data"]["registries"][hostname] == {"username": "test-user"}
+        assert "TEST_ONLY_7457_SECRET" not in await resp.text()
+        assert "TEST_ONLY_7457_EXISTING_SECRET" not in await resp.text()
+    assert "TEST_ONLY_7457_SECRET" not in caplog.text
+    assert "TEST_ONLY_7457_EXISTING_SECRET" not in caplog.text
 
 
 async def test_api_docker_info(api_client_with_prefix: tuple[TestClient, str]):
