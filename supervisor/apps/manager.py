@@ -87,8 +87,10 @@ class AppManager(CoreSysAttributes):
         """Return an installed app from slug."""
         return self.local.get(app_slug)
 
-    def from_token(self, token: str) -> App | None:
+    def from_token(self, token: str | None) -> App | None:
         """Return an app from Supervisor token."""
+        if not token:
+            return None
         for app in self.installed:
             if token == app.supervisor_token:
                 return app
