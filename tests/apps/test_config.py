@@ -692,3 +692,12 @@ def test_invalid_log_format(log_format: str | None):
     config["log_format"] = log_format
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_APP_CONFIG(config)
+
+
+def test_slug_too_long_installed():
+    """Test installed apps with a long slug are kept in apps.json."""
+    config = load_json_fixture("basic-app-config.json")
+    config["slug"] = "a" * 61
+    config["repository"] = "local"
+
+    assert vd.SCHEMA_APP_SYSTEM(config)["slug"] == "a" * 61

@@ -53,3 +53,5 @@ APP_UPDATE_CONDITIONS = [
 ]
 
 RE_SLUG = r"[-_.A-Za-z0-9]+"
+# Keeps the app's socket path within sun_path (107 characters)
+SLUG_MAX_LENGTH = 60
