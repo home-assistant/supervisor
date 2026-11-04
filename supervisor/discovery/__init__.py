@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import asdict, dataclass, field
-from functools import partial
 import logging
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -20,6 +18,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
 from ..utils.common import FileConfiguration
+from ..utils.sentry import async_capture_exception
 from .validate import SCHEMA_DISCOVERY_CONFIG
 
 if TYPE_CHECKING:
@@ -108,9 +107,9 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         self.message_obj[message.uuid] = message
         await self.save()
 
-        mark = self._unannounced.get(message.uuid)
-        push = self.sys_create_task(self._push_discovery(message, CMD_NEW))
-        push.add_done_callback(partial(self._mark_announced, app, message, mark))
+        # Each send sets its own mark, which only its own push can clear
+        mark = self._unannounced[message.uuid] = object()
+        self.sys_create_task(self._push_new_discovery(app, message, mark))
         return message
 
     def mark_unannounced(self, app: App) -> None:
@@ -132,22 +131,24 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         )
         self.sys_create_task(self._push_discovery(message, CMD_DEL))
 
-    def _mark_announced(
-        self,
-        app: App,
-        message: Message,
-        mark: object | None,
-        push: asyncio.Task[bool],
+    async def _push_new_discovery(
+        self, app: App, message: Message, mark: object
     ) -> None:
-        """Clear the unannounced mark once Home Assistant got the message."""
-        # Keep the mark that a restart during the push set for the next start
+        """Push a discovery message and clear its mark once Home Assistant got it."""
+        try:
+            pushed = await self._push_discovery(message, CMD_NEW)
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            _LOGGER.error("Discovery %s message failed: %s", message.uuid, err)
+            await async_capture_exception(err)
+            return
+
+        # Keep a newer mark that a restart or a later send set during the push
         if (
-            not push.cancelled()
-            and push.result()
+            pushed
             and app.state == AppState.STARTED
             and self._unannounced.get(message.uuid) is mark
         ):
-            self._unannounced.pop(message.uuid, None)
+            del self._unannounced[message.uuid]
 
     async def _push_discovery(self, message: Message, command: str) -> bool:
         """Send a discovery request and return whether Home Assistant got it."""

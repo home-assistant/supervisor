@@ -1,7 +1,7 @@
 """Test discovery API."""
 
 import logging
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -240,6 +240,87 @@ async def test_api_send_discovery_after_failed_push(
     resp = await api_client.post(f"{prefix}/discovery", json=message)
     assert resp.status == 200
     websession.request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("request_error", "status"),
+    [
+        pytest.param(TimeoutError, 200, id="request-timeout"),
+        pytest.param(None, 503, id="error-response"),
+    ],
+)
+async def test_api_send_new_discovery_after_failed_push(
+    app_api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+    request_error: type[Exception] | None,
+    status: int,
+) -> None:
+    """Test a new message whose first push failed is pushed on its next send."""
+    api_client, prefix = app_api_client_with_prefix
+    install_app_ssh.data["discovery"] = ["test"]
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    coresys.homeassistant.api.get_api_state.return_value = APIState("RUNNING", False)
+    force_app_state(install_app_ssh, AppState.STARTED)
+    message = {"service": "test", "config": {}}
+
+    # First push of a brand new message does not reach Home Assistant
+    websession.request.side_effect = request_error
+    websession.request.return_value = MockResponse(status=status)
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    uuid = (await resp.json())["data"]["uuid"]
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+    # Home Assistant is reachable again, so the unchanged message is pushed
+    websession.request.side_effect = None
+    websession.request.return_value = MockResponse()
+    websession.request.reset_mock()
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+    assert (
+        str(websession.request.call_args.args[1])
+        == f"http://172.30.32.1/api/hassio_push/discovery/{uuid}"
+    )
+
+
+async def test_api_send_discovery_unexpected_push_error(
+    app_api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+    capture_exception: Mock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test an unexpected error in a push is reported and the next send pushes."""
+    api_client, prefix = app_api_client_with_prefix
+    install_app_ssh.data["discovery"] = ["test"]
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    force_app_state(install_app_ssh, AppState.STARTED)
+    message = {"service": "test", "config": {}}
+
+    # Asking whether Home Assistant runs fails with an error nobody expects
+    err = RuntimeError("Unexpected")
+    coresys.homeassistant.api.get_api_state.side_effect = err
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    await coresys.block_till_done()
+    assert "message failed: Unexpected" in caplog.text
+    capture_exception.assert_called_once_with(err)
+    websession.request.assert_not_called()
+
+    # The message stays unannounced, so its next send is pushed
+    coresys.homeassistant.api.get_api_state.side_effect = None
+    coresys.homeassistant.api.get_api_state.return_value = APIState("RUNNING", False)
+    websession.request.return_value = MockResponse()
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
 
 
 async def test_api_invalid_discovery(
