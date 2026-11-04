@@ -110,7 +110,7 @@ class APIDocker(CoreSysAttributes):
         body = await api_validate(
             SCHEMA_DOCKER_REGISTRY,
             request,
-            error_message="Invalid Docker registry configuration",
+            error_message="Invalid Container registry configuration",
         )
 
         for hostname, registry in body.items():
