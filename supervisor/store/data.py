@@ -206,7 +206,9 @@ class StoreData(CoreSysAttributes):
             repository == REPOSITORY_LOCAL
             or self.sys_updater.channel == UpdateChannel.DEV
         )
-        installed_slugs = {app.slug for app in self.sys_apps.installed}
+        # The store loads before the installed apps at startup, so read the
+        # file-backed data rather than sys_apps.installed
+        installed_slugs = set(self.sys_apps.data.system)
 
         def _process_apps_config() -> dict[str, dict[str, Any]]:
             apps: dict[str, dict[str, Any]] = {}
@@ -241,8 +243,7 @@ class StoreData(CoreSysAttributes):
                 app_slug = f"{repository}_{app[ATTR_SLUG]}"
                 # Its socket path must fit in sun_path, apps.json stays uncapped
                 if len(app_slug) > SLUG_MAX_LENGTH:
-                    # sys_apps.installed is still empty on the first store load at startup
-                    if app_slug in self.sys_apps.data.system:
+                    if app_slug in installed_slugs:
                         _LOGGER.warning(
                             "Installed app %s can't get updates, its slug is longer "
                             "than %d characters. Please report this to the app developer.",

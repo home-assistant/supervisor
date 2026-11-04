@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -96,8 +96,9 @@ async def test_deprecation_advisory_log_level(
 
     coresys.updater.channel = channel
 
-    app_slug = f"{repository}_{config['slug']}"
-    installed_apps = [SimpleNamespace(slug=app_slug)] if installed else []
+    # The store is read before sys_apps.load() at startup, so only apps.json
+    # data decides whether an app counts as installed
+    system = {f"{repository}_{config['slug']}": {}} if installed else {}
 
     with (
         patch.object(
@@ -105,12 +106,7 @@ async def test_deprecation_advisory_log_level(
             "_find_app_configs",
             AsyncMock(return_value=[config_file]),
         ),
-        patch.object(
-            type(coresys.apps),
-            "installed",
-            new_callable=PropertyMock,
-            return_value=installed_apps,
-        ),
+        patch.dict(coresys.apps.data.system, system),
         patch.dict(
             coresys.store.repositories,
             {repository: SimpleNamespace(is_builtin=builtin)},
