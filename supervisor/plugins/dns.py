@@ -82,6 +82,7 @@ class PluginDns(PluginBase):
         self._hosts_template: jinja2.Template | None = None
 
         self._hosts: list[HostEntry] = []
+        self._hosts_lock: asyncio.Lock = asyncio.Lock()
         self._loop: bool = False
         self._cached_locals: list[str] | None = None
 
@@ -447,16 +448,19 @@ class PluginDns(PluginBase):
 
     async def write_hosts(self) -> None:
         """Write hosts from memory to file."""
-        # Generate config file
-        data = self.hosts_template.render(entries=self._hosts)
+        # Apps start and stop in parallel and each update rewrites this file,
+        # serialize the writes so an older snapshot can't overwrite a newer one
+        async with self._hosts_lock:
+            # Generate config file
+            data = self.hosts_template.render(entries=self._hosts)
 
-        try:
-            await self.sys_run_in_executor(
-                self.hosts.write_text, data, encoding="utf-8"
-            )
-        except OSError as err:
-            self.sys_resolution.check_oserror(err)
-            raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
+            try:
+                await self.sys_run_in_executor(
+                    self.hosts.write_text, data, encoding="utf-8"
+                )
+            except OSError as err:
+                self.sys_resolution.check_oserror(err)
+                raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
     async def add_host(
         self, ipv4: IPv4Address, names: list[str], write: bool = True

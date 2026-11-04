@@ -131,12 +131,19 @@ class PluginManager(CoreSysAttributes):
 
     async def shutdown(self) -> None:
         """Shutdown Supervisor plugin."""
-        # Sequential to avoid issue on slow IO
-        for plugin in (
-            plugin for plugin in self.all_plugins if plugin.slug != "observer"
-        ):
-            try:
-                await plugin.stop()
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't stop plugin %s: %s", plugin.slug, err)
-                await async_capture_exception(err)
+        # Plugins run in independent containers, stop them in parallel
+        await asyncio.gather(
+            *(
+                self._shutdown_plugin(plugin)
+                for plugin in self.all_plugins
+                if plugin.slug != "observer"
+            )
+        )
+
+    async def _shutdown_plugin(self, plugin: PluginBase) -> None:
+        """Stop a plugin during shutdown, capturing errors to stop the others."""
+        try:
+            await plugin.stop()
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning("Can't stop plugin %s: %s", plugin.slug, err)
+            await async_capture_exception(err)
