@@ -129,7 +129,6 @@ from .const import (
     ATTR_PATH,
     ATTR_READ_ONLY,
     RE_SLUG,
-    SLUG_MAX_LENGTH,
     AppBackupMode,
     AppSocket,
     MappingType,
@@ -576,25 +575,9 @@ _SCHEMA_APP_CONFIG = vol.Schema(
 )
 
 
-# Only new store configs are capped, installed apps are not dropped from apps.json
-_SCHEMA_APP_CONFIG_STORE = _SCHEMA_APP_CONFIG.extend(
-    {
-        vol.Required(ATTR_SLUG): vol.All(
-            vol.Match(RE_SLUG_FIELD),
-            vol.Length(
-                max=SLUG_MAX_LENGTH,
-                msg=f"App slug must be at most {SLUG_MAX_LENGTH} characters",
-            ),
-        ),
-    }
-)
-
-
 def _build_app_config_schema(log: Callable[..., None]):
     """Build the store app config schema, routing advisories through log."""
-    return vol.All(
-        _migrate_app_config(log), _warn_app_config(log), _SCHEMA_APP_CONFIG_STORE
-    )
+    return vol.All(_migrate_app_config(log), _warn_app_config(log), _SCHEMA_APP_CONFIG)
 
 
 # Store app configs are validated on every store reload for every app in every

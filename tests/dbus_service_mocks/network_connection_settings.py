@@ -187,6 +187,7 @@ class ConnectionSettings(DBusServiceMock):
         super().__init__()
         self.object_path = object_path
         self.settings = deepcopy(SETTINGS_FIXTURES[object_path])
+        self.flags = 0
 
     @dbus_property(access=PropertyAccess.READ)
     def Unsaved(self) -> "b":
@@ -196,7 +197,7 @@ class ConnectionSettings(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def Flags(self) -> "u":
         """Get Flags."""
-        return 0
+        return self.flags
 
     @dbus_property(access=PropertyAccess.READ)
     def Filename(self) -> "s":

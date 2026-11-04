@@ -150,6 +150,11 @@ class NetworkManager(DBusInterfaceProxy):
         connection (e.g. cable unplugged, wrong wifi password). Best-effort: if
         multiple stored profiles match, the first one found wins.
 
+        Profiles NetworkManager generated itself (see `NetworkSetting.is_generated`)
+        are skipped: the auto-default it creates in memory for a device without
+        a stored profile names that device, but it is a fallback, not the
+        device's own configuration.
+
         Matching is device-type agnostic (see `connection_matches_device()`).
         Callers that don't support VLAN devices yet (currently the v2 API) are
         responsible for filtering those out themselves - this is a temporary
@@ -176,7 +181,7 @@ class NetworkManager(DBusInterfaceProxy):
                 )
                 continue
 
-            if connection_matches_device(
+            if not setting.is_generated and connection_matches_device(
                 setting, interface_name=inet.interface_name, path=inet.path
             ):
                 return setting

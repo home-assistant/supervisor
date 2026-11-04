@@ -694,17 +694,6 @@ def test_invalid_log_format(log_format: str | None):
         vd.SCHEMA_APP_CONFIG(config)
 
 
-def test_slug_too_long():
-    """Test store configs reject slugs too long for their socket path."""
-    config = load_json_fixture("basic-app-config.json")
-    config["slug"] = "a" * 60
-    assert vd.SCHEMA_APP_CONFIG(config)
-
-    config["slug"] = "a" * 61
-    with pytest.raises(vol.Invalid, match="App slug must be at most 60 characters"):
-        vd.SCHEMA_APP_CONFIG(config)
-
-
 def test_slug_too_long_installed():
     """Test installed apps with a long slug are kept in apps.json."""
     config = load_json_fixture("basic-app-config.json")
