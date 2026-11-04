@@ -175,6 +175,55 @@ async def test_app_boot_host_network_gateway_protected(
         start.assert_called_once()
 
 
+async def test_app_boot_starts_apps_in_parallel(
+    coresys: CoreSys, install_app_ssh: App, install_app_example_image: App
+):
+    """Test apps are started in parallel."""
+    install_app_ssh.boot = AppBoot.AUTO
+    install_app_example_image.boot = AppBoot.AUTO
+    started: list[str] = []
+    both_starting = asyncio.Barrier(2)
+
+    async def _start(app: App) -> None:
+        async with asyncio.timeout(1):
+            await both_starting.wait()
+        started.append(app.slug)
+
+    with patch.object(App, "start", _start):
+        await coresys.apps.boot(AppStartup.APPLICATION)
+
+    assert sorted(started) == sorted(
+        [install_app_ssh.slug, install_app_example_image.slug]
+    )
+
+
+async def test_app_boot_continues_after_error(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    install_app_example_image: App,
+    capture_exception: Mock,
+):
+    """Test a failing app does not keep the other apps from starting."""
+    install_app_ssh.boot = AppBoot.AUTO
+    install_app_example_image.boot = AppBoot.AUTO
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    force_app_state(install_app_example_image, AppState.STOPPED)
+    started: list[str] = []
+
+    async def _start(app: App) -> None:
+        if app is install_app_ssh:
+            raise AppsError
+        started.append(app.slug)
+
+    with patch.object(App, "start", _start):
+        await coresys.apps.boot(AppStartup.APPLICATION)
+
+    capture_exception.assert_not_called()
+    assert started == [install_app_example_image.slug]
+    assert coresys.resolution.issues == [BOOT_FAIL_ISSUE]
+    assert coresys.resolution.suggestions == BOOT_FAIL_SUGGESTIONS
+
+
 @pytest.mark.parametrize("err", [DockerAPIError, DockerNotFound])
 async def test_app_boot_system_error(
     coresys: CoreSys, install_app_ssh: App, capture_exception: Mock, err
