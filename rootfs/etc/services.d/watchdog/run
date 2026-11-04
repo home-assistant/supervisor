@@ -22,12 +22,12 @@ do
             failed_count=0
         else
             bashio::log.warning "Maybe found an issue on API healthy"
-            ((failed_count++))
+            failed_count=$((failed_count + 1))
         fi
 
     elif [[  "close stopping" = *"${supervisor_state}"* ]]; then
         bashio::log.warning "Maybe found an issue on shutdown"
-        ((failed_count++))
+        failed_count=$((failed_count + 1))
     else
         failed_count=0
     fi
