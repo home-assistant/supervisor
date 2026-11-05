@@ -1,13 +1,19 @@
 """Test plugin manager."""
 
-from unittest.mock import AsyncMock, PropertyMock, patch
+import asyncio
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
+from supervisor.exceptions import PluginError
+from supervisor.plugins.audio import PluginAudio
 from supervisor.plugins.base import PluginBase
+from supervisor.plugins.cli import PluginCli
+from supervisor.plugins.dns import PluginDns
+from supervisor.plugins.multicast import PluginMulticast
 from supervisor.supervisor import Supervisor
 
 from tests.common import MockResponse
@@ -97,3 +103,47 @@ async def test_load_skip_update_auto_update_disabled(
 
         assert attach.call_count == 5
         update.assert_not_called()
+
+
+async def test_shutdown_stops_plugins_in_parallel(coresys: CoreSys):
+    """Test plugins are stopped in parallel."""
+    stopped: list[str] = []
+    all_stopping = asyncio.Barrier(4)
+
+    async def _stop(plugin: PluginBase) -> None:
+        async with asyncio.timeout(1):
+            await all_stopping.wait()
+        stopped.append(plugin.slug)
+
+    with (
+        patch.object(PluginCli, "stop", _stop),
+        patch.object(PluginDns, "stop", _stop),
+        patch.object(PluginAudio, "stop", _stop),
+        patch.object(PluginMulticast, "stop", _stop),
+    ):
+        await coresys.plugins.shutdown()
+
+    assert sorted(stopped) == ["audio", "cli", "dns", "multicast"]
+
+
+async def test_shutdown_continues_after_error(
+    coresys: CoreSys, capture_exception: Mock
+):
+    """Test a failing plugin does not keep the other plugins from stopping."""
+    stopped: list[str] = []
+
+    async def _stop(plugin: PluginBase) -> None:
+        if plugin.slug == "dns":
+            raise PluginError
+        stopped.append(plugin.slug)
+
+    with (
+        patch.object(PluginCli, "stop", _stop),
+        patch.object(PluginDns, "stop", _stop),
+        patch.object(PluginAudio, "stop", _stop),
+        patch.object(PluginMulticast, "stop", _stop),
+    ):
+        await coresys.plugins.shutdown()
+
+    assert sorted(stopped) == ["audio", "cli", "multicast"]
+    capture_exception.assert_called_once()

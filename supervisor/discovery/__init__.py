@@ -13,10 +13,12 @@ from ..const import (
     ATTR_CONFIG,
     ATTR_DISCOVERY,
     FILE_HASSIO_DISCOVERY,
+    AppState,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
 from ..utils.common import FileConfiguration
+from ..utils.sentry import async_capture_exception
 from .validate import SCHEMA_DISCOVERY_CONFIG
 
 if TYPE_CHECKING:
@@ -46,6 +48,8 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         super().__init__(FILE_HASSIO_DISCOVERY, SCHEMA_DISCOVERY_CONFIG)
         self.coresys: CoreSys = coresys
         self.message_obj: dict[str, Message] = {}
+        # Home Assistant may have missed these, so their next send is pushed
+        self._unannounced: dict[str, object] = {}
 
     async def load(self) -> None:
         """Load exists discovery message into storage."""
@@ -56,6 +60,8 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
         _LOGGER.info("Loaded %d messages", len(messages))
         self.message_obj = messages
+        # Supervisor does not know which of these Home Assistant has seen
+        self._unannounced = {uuid: object() for uuid in messages}
 
     async def save(self) -> None:
         """Write discovery message into data file."""
@@ -88,6 +94,8 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             if exists_msg.config != config:
                 message = exists_msg
                 message.config = config
+            elif exists_msg.uuid in self._unannounced:
+                message = exists_msg
             else:
                 _LOGGER.debug("Duplicate discovery message from %s", app.slug)
                 return exists_msg
@@ -97,14 +105,23 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             "Sending discovery to Home Assistant %s from %s", service, app.slug
         )
         self.message_obj[message.uuid] = message
+        # Set before saving, so a restart during the save replaces this send's mark
+        mark = self._unannounced[message.uuid] = object()
         await self.save()
 
-        self.sys_create_task(self._push_discovery(message, CMD_NEW))
+        self.sys_create_task(self._push_new_discovery(app, message, mark))
         return message
+
+    def mark_unannounced(self, app: App) -> None:
+        """Push the messages of an app on their next send, even if unchanged."""
+        for message in self.list_messages:
+            if message.app == app.slug:
+                self._unannounced[message.uuid] = object()
 
     async def remove(self, message: Message) -> None:
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
+        self._unannounced.pop(message.uuid, None)
         await self.save()
 
         _LOGGER.info(
@@ -114,11 +131,30 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         )
         self.sys_create_task(self._push_discovery(message, CMD_DEL))
 
-    async def _push_discovery(self, message: Message, command: str) -> None:
-        """Send a discovery request."""
+    async def _push_new_discovery(
+        self, app: App, message: Message, mark: object
+    ) -> None:
+        """Push a discovery message and clear its mark once Home Assistant got it."""
+        try:
+            pushed = await self._push_discovery(message, CMD_NEW)
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            _LOGGER.error("Discovery %s message failed: %s", message.uuid, err)
+            await async_capture_exception(err)
+            return
+
+        # Keep a newer mark that a restart or a later send set while saving or pushing
+        if (
+            pushed
+            and app.state == AppState.STARTED
+            and self._unannounced.get(message.uuid) is mark
+        ):
+            del self._unannounced[message.uuid]
+
+    async def _push_discovery(self, message: Message, command: str) -> bool:
+        """Send a discovery request and return whether Home Assistant got it."""
         if not await self.sys_homeassistant.api.check_api_state():
             _LOGGER.info("Discovery %s message ignore", message.uuid)
-            return
+            return False
 
         data = asdict(message)
         data.pop(ATTR_CONFIG)
@@ -131,8 +167,13 @@ class Discovery(CoreSysAttributes, FileConfiguration):
                 f"api/hassio_push/discovery/{message.uuid}",
                 json=data,
                 timeout=10,
-            ):
-                _LOGGER.info("Discovery %s message send", message.uuid)
-                return
+            ) as resp:
+                if resp.status in (200, 201):
+                    _LOGGER.info("Discovery %s message send", message.uuid)
+                    return True
+                _LOGGER.warning(
+                    "Discovery %s message failed with %i", message.uuid, resp.status
+                )
         except HomeAssistantAPIError as err:
             _LOGGER.error("Discovery %s message failed: %s", message.uuid, err)
+        return False

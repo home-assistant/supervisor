@@ -8,6 +8,8 @@ import json
 import re
 
 from aiohttp import ClientResponse
+import pyjournalexport
+from pyjournalexport import JournalExportParser
 
 from ..exceptions import MalformedBinaryEntryError
 from ..host.const import LogFormatter
@@ -92,13 +94,16 @@ def journal_verbose_formatter(
     return f"{ts} {entries.get('_HOSTNAME', '')} {identifier}: {message}"
 
 
+JOURNAL_READ_SIZE = 64 * 1024
+
+
 async def journal_logs_reader(
     journal_logs: ClientResponse,
     log_formatter: LogFormatter = LogFormatter.PLAIN,
     no_colors: bool = False,
     tz: tzinfo = UTC,
 ) -> AsyncGenerator[tuple[str | None, str]]:
-    """Read logs from systemd journal line by line, formatted using the given formatter.
+    """Read logs from systemd journal, formatted using the given formatter.
 
     Optionally strip ANSI color codes from the entries' messages. Timestamps are
     converted to the given timezone.
@@ -115,51 +120,20 @@ async def journal_logs_reader(
         case _:
             raise ValueError(f"Unknown log format: {log_formatter}")
 
+    parser = JournalExportParser(formatter_.required_fields)
+
+    def format_entry(entry: dict[str, str]) -> tuple[str | None, str]:
+        return entry.get("__CURSOR"), formatter_(entry, no_colors=no_colors, tz=tz)
+
     async with journal_logs as resp:
-        entries: dict[str, str] = {}
-        while not resp.content.at_eof():
-            line = await resp.content.readuntil(b"\n")
-            # newline means end of message, also empty line is sometimes returned
-            # at EOF (likely race between at_eof and EOF check in readuntil)
-            if line == b"\n" or not line:
-                if entries:
-                    yield (
-                        entries.get("__CURSOR"),
-                        formatter_(entries, no_colors=no_colors, tz=tz),
-                    )
-                entries = {}
-                continue
-
-            # Journal fields consisting only of valid non-control UTF-8 codepoints
-            # are serialized as they are (i.e. the field name, followed by '=',
-            # followed by field data), followed by a newline as separator to the next
-            # field. Note that fields containing newlines cannot be formatted like
-            # this. Non-control UTF-8 codepoints are the codepoints with value at or
-            # above 32 (' '), or equal to 9 (TAB).
-            name, sep, data = line.partition(b"=")
-            if not sep:
-                # Other journal fields are serialized in a special binary safe way:
-                # field name, followed by newline
-                name = name[:-1]  # strip \n
-                # followed by a binary 64-bit little endian size value,
-                length_raw = await resp.content.readexactly(8)
-                length = int.from_bytes(length_raw, byteorder="little")
-                # followed by the binary field data,
-                data = await resp.content.readexactly(length + 1)
-                # followed by a newline as separator to the next field.
-                if not data.endswith(b"\n"):
-                    raise MalformedBinaryEntryError(
-                        f"Failed parsing binary entry {data.decode('utf-8', errors='replace')}"
-                    )
-
-            field_name = name.decode("utf-8")
-            if field_name not in formatter_.required_fields:
-                # we must read to the end of the entry in the stream, so we can
-                # only continue the loop here
-                continue
-
-            # strip \n for simple fields before decoding
-            entries[field_name] = data[:-1].decode("utf-8", errors="replace")
+        try:
+            while chunk := await resp.content.read(JOURNAL_READ_SIZE):
+                for entry in parser.feed(chunk):
+                    yield format_entry(entry)
+            for entry in parser.close():
+                yield format_entry(entry)
+        except pyjournalexport.MalformedBinaryEntryError as err:
+            raise MalformedBinaryEntryError(str(err)) from err
 
 
 def _parse_boot_json(boot_json_bytes: bytes) -> tuple[int, str]:

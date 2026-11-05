@@ -4,7 +4,7 @@ import asyncio
 import errno
 from ipaddress import IPv4Address
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
 import pytest
@@ -171,6 +171,74 @@ async def test_reset_hosts_unlink_oserror(
     assert (
         UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
     ) is unhealthy
+
+
+async def test_write_hosts_serialized(coresys: CoreSys):
+    """Test concurrent writes of the hosts file are serialized."""
+    active = 0
+    max_active = 0
+
+    async def _run_in_executor(_funct, *_args, **_kwargs) -> None:
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0)
+        active -= 1
+
+    with (
+        patch.object(
+            PluginDns, "hosts_template", new=PropertyMock(return_value=Mock())
+        ),
+        patch.object(PluginDns, "sys_run_in_executor", _run_in_executor),
+    ):
+        await asyncio.gather(
+            coresys.plugins.dns.write_hosts(),
+            coresys.plugins.dns.write_hosts(),
+            coresys.plugins.dns.write_hosts(),
+        )
+
+    assert max_active == 1
+
+
+async def test_write_hosts_keeps_newest_snapshot(coresys: CoreSys):
+    """Test a slow write can't replace the hosts file with a stale snapshot."""
+    dns = coresys.plugins.dns
+    file_content = ""
+    calls = 0
+    first_write_started = asyncio.Event()
+    release_first_write = asyncio.Event()
+
+    # Patched on the class, so the instance is bound as the first argument
+    async def _run_in_executor(_obj, _funct, data: str, **_kwargs) -> None:
+        nonlocal file_content, calls
+        calls += 1
+        if calls == 1:
+            first_write_started.set()
+            await release_first_write.wait()
+        file_content = data
+
+    template = Mock()
+    template.render.side_effect = lambda entries: "\n".join(
+        entry.names[0] for entry in entries
+    )
+
+    with (
+        patch.object(
+            PluginDns, "hosts_template", new=PropertyMock(return_value=template)
+        ),
+        patch.object(PluginDns, "sys_run_in_executor", _run_in_executor),
+    ):
+        await dns.add_host(IPv4Address("127.0.0.1"), ["first"], write=False)
+        first = asyncio.create_task(dns.write_hosts())
+        await first_write_started.wait()
+
+        await dns.add_host(IPv4Address("127.0.0.1"), ["second"], write=False)
+        second = asyncio.create_task(dns.write_hosts())
+
+        release_first_write.set()
+        await asyncio.gather(first, second)
+
+    assert file_content == "first\nsecond"
 
 
 async def test_loop_detection_on_failure(coresys: CoreSys, container: DockerContainer):
