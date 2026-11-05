@@ -325,6 +325,37 @@ async def test_app_stopped_during_discovery_push_pushes_next_send(
     websession.request.assert_called_once()
 
 
+async def test_app_restarted_during_discovery_save_pushes_next_send(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+) -> None:
+    """Test the next send is pushed if the app restarted during a send's save.
+
+    The push of that earlier send does not count for the new start.
+    """
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
+    force_app_state(install_app_ssh, AppState.STARTED)
+
+    async def restart_app_during_save() -> None:
+        force_app_state(install_app_ssh, AppState.STOPPED)
+        force_app_state(install_app_ssh, AppState.STARTED)
+
+    with patch.object(
+        coresys.discovery, "save_data", side_effect=restart_app_during_save
+    ):
+        await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+    # The restarted app sends the unchanged message
+    websession.request.reset_mock()
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+
 async def test_app_discovery_send_in_startup_pushes_next_send(
     coresys: CoreSys,
     install_app_ssh: App,

@@ -105,10 +105,10 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             "Sending discovery to Home Assistant %s from %s", service, app.slug
         )
         self.message_obj[message.uuid] = message
+        # Set before saving, so a restart during the save replaces this send's mark
+        mark = self._unannounced[message.uuid] = object()
         await self.save()
 
-        # Each send sets its own mark, which only its own push can clear
-        mark = self._unannounced[message.uuid] = object()
         self.sys_create_task(self._push_new_discovery(app, message, mark))
         return message
 
@@ -142,7 +142,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             await async_capture_exception(err)
             return
 
-        # Keep a newer mark that a restart or a later send set during the push
+        # Keep a newer mark that a restart or a later send set while saving or pushing
         if (
             pushed
             and app.state == AppState.STARTED
