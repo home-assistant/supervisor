@@ -200,14 +200,17 @@ class AppManager(CoreSysAttributes):
         if not tasks:
             return
 
-        # Stop Apps sequential
-        # avoid issue on slow IO
-        for app in tasks:
-            try:
-                await app.stop()
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't stop app %s: %s", app.slug, err)
-                await async_capture_exception(err)
+        # Stop apps in parallel, the stage is then bounded by the slowest app
+        # instead of the sum of all shutdown grace periods
+        await asyncio.gather(*(self._shutdown_app(app) for app in tasks))
+
+    async def _shutdown_app(self, app: App) -> None:
+        """Stop an app during shutdown, capturing errors to stop the others."""
+        try:
+            await app.stop()
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning("Can't stop app %s: %s", app.slug, err)
+            await async_capture_exception(err)
 
     @Job(
         name="app_manager_install",

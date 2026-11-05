@@ -258,6 +258,51 @@ async def test_app_shutdown_stops_running_apps(
     assert stop.called is stopped
 
 
+async def test_app_shutdown_stops_apps_in_parallel(
+    coresys: CoreSys, install_app_ssh: App, install_app_example_image: App
+):
+    """Test apps are stopped in parallel."""
+    force_app_state(install_app_ssh, AppState.STARTED)
+    force_app_state(install_app_example_image, AppState.STARTED)
+    stopped: list[str] = []
+    both_stopping = asyncio.Barrier(2)
+
+    async def _stop(app: App) -> None:
+        async with asyncio.timeout(1):
+            await both_stopping.wait()
+        stopped.append(app.slug)
+
+    with patch.object(App, "stop", _stop):
+        await coresys.apps.shutdown(AppStartup.APPLICATION)
+
+    assert sorted(stopped) == sorted(
+        [install_app_ssh.slug, install_app_example_image.slug]
+    )
+
+
+async def test_app_shutdown_continues_after_error(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    install_app_example_image: App,
+    capture_exception: Mock,
+):
+    """Test a failing app does not keep the other apps from stopping."""
+    force_app_state(install_app_ssh, AppState.STARTED)
+    force_app_state(install_app_example_image, AppState.STARTED)
+    stopped: list[str] = []
+
+    async def _stop(app: App) -> None:
+        if app is install_app_ssh:
+            raise AppsError
+        stopped.append(app.slug)
+
+    with patch.object(App, "stop", _stop):
+        await coresys.apps.shutdown(AppStartup.APPLICATION)
+
+    assert stopped == [install_app_example_image.slug]
+    capture_exception.assert_called_once()
+
+
 @pytest.mark.usefixtures("websession")
 async def test_app_uninstall_removes_discovery(coresys: CoreSys, install_app_ssh: App):
     """Test discovery messages removed when app uninstalled."""
