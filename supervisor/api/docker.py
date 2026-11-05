@@ -12,7 +12,6 @@ from ..const import (
     ATTR_HOSTNAME,
     ATTR_LOGGING,
     ATTR_MTU,
-    ATTR_PASSWORD,
     ATTR_REGISTRIES,
     ATTR_STORAGE,
     ATTR_STORAGE_DRIVER,
@@ -22,20 +21,12 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, DBusError
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..validate import SCHEMA_DOCKER_REGISTRY
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 HAOS_DOCKER_STORAGE_RESET_MIN_VERSION = AwesomeVersion("18.3.dev20260826")
-
-SCHEMA_DOCKER_REGISTRY = vol.Schema(
-    {
-        str: {
-            vol.Required(ATTR_USERNAME): str,
-            vol.Required(ATTR_PASSWORD): str,
-        }
-    }
-)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
@@ -116,7 +107,11 @@ class APIDocker(CoreSysAttributes):
     @api_process
     async def create_registry(self, request: web.Request) -> None:
         """Create a new docker registry."""
-        body = await api_validate(SCHEMA_DOCKER_REGISTRY, request)
+        body = await api_validate(
+            SCHEMA_DOCKER_REGISTRY,
+            request,
+            redact_values=True,
+        )
 
         for hostname, registry in body.items():
             self.sys_docker.config.registries[hostname] = registry
