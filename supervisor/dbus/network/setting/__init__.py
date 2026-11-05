@@ -9,7 +9,7 @@ from dbus_fast.aio.message_bus import MessageBus
 
 from ...const import DBUS_NAME_NM, MulticastDnsValue
 from ...interface import DBusInterface
-from ...utils import dbus_connected
+from ...utils import dbus_connected, dbus_signal_callback
 from ..configuration import (
     ConnectionProperties,
     EthernetProperties,
@@ -245,13 +245,16 @@ class NetworkSetting(DBusInterface):
         await super().connect(bus)
         await self.reload()
 
-        self.connected_dbus.Settings.Connection.on("updated", self.reload)
+        self.connected_dbus.Settings.Connection.on("updated", self._on_updated)
 
+    @dbus_signal_callback
+    async def _on_updated(self) -> None:
+        """Reload settings on the updated signal."""
+        await self.reload()
+
+    @dbus_connected
     async def reload(self):
         """Get current settings for connection."""
-        # Also an "updated" signal callback, may still be queued after shutdown
-        if self.is_shutdown:
-            return
         data = await self.get_settings()
 
         # Sections NetworkManager no longer reports must not keep stale values

@@ -9,7 +9,7 @@ from dbus_fast.aio.message_bus import MessageBus
 
 from ..exceptions import DBusInterfaceError, DBusNotConnectedError
 from ..utils.dbus import DBus
-from .utils import dbus_connected
+from .utils import dbus_connected, dbus_signal_callback
 
 
 def dbus_property(func):
@@ -136,12 +136,11 @@ class DBusInterfaceProxy(DBusInterface, ABC):
         self.dbus.stop_sync_property_changes(self._sync_properties_callback)
         self.sync_properties = False
 
+    @dbus_signal_callback
     async def _on_properties_changed(
         self, changed: dict[str, Any] | None = None
     ) -> None:
-        """Apply a property change signal that may be queued past shutdown."""
-        if self.is_shutdown:
-            return
+        """Apply a property change signal."""
         await self.update(changed)
 
     @dbus_connected

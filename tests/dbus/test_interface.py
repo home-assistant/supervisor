@@ -1,6 +1,7 @@
 """Test dbus interface."""
 
 import asyncio
+from typing import Any
 from unittest.mock import patch
 
 from dbus_fast.aio.message_bus import MessageBus
@@ -155,7 +156,43 @@ async def test_property_change_callback_noop_after_shutdown(
     await proxy.connect(dbus_session_bus)
     proxy.shutdown()
 
-    assert await proxy._on_properties_changed({"Test": "changed"}) is None
+    with patch.object(proxy, "update") as update:
+        assert await proxy._on_properties_changed({"Test": "changed"}) is None
+
+    update.assert_not_called()
+
+
+async def test_property_change_callback_shutdown_in_flight(
+    test_service: TestInterface, dbus_session_bus: MessageBus
+):
+    """Test a property change callback overtaken by shutdown swallows the error."""
+    proxy = ServiceTest()
+    await proxy.connect(dbus_session_bus)
+
+    async def shutdown_then_raise(changed: dict[str, Any] | None = None) -> None:
+        proxy.shutdown()
+        raise DBusNotConnectedError
+
+    with patch.object(proxy, "update", shutdown_then_raise):
+        assert await proxy._on_properties_changed({"Test": "changed"}) is None
+
+
+async def test_property_change_callback_raises_when_disconnected(
+    test_service: TestInterface, dbus_session_bus: MessageBus
+):
+    """Test a property change callback still raises for a disconnected proxy."""
+    proxy = ServiceTest()
+    await proxy.connect(dbus_session_bus)
+
+    async def disconnect_then_raise(changed: dict[str, Any] | None = None) -> None:
+        proxy.disconnect()
+        raise DBusNotConnectedError
+
+    with (
+        patch.object(proxy, "update", disconnect_then_raise),
+        pytest.raises(DBusNotConnectedError),
+    ):
+        await proxy._on_properties_changed({"Test": "changed"})
 
 
 async def test_dbus_connected_sync_raises_after_shutdown(

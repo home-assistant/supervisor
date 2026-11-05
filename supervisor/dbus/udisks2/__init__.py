@@ -26,7 +26,7 @@ from ..const import (
     DBUS_OBJECT_UDISKS2_MANAGER,
 )
 from ..interface import DBusInterface, DBusInterfaceProxy, dbus_property
-from ..utils import dbus_connected
+from ..utils import dbus_connected, dbus_signal_callback
 from .block import UDisks2Block
 from .const import UDISKS2_DEFAULT_OPTIONS
 from .data import DeviceSpecification
@@ -204,13 +204,11 @@ class UDisks2Manager(DBusInterfaceProxy):
             ]
         )
 
+    @dbus_signal_callback
     async def _interfaces_added(
         self, object_path: str, properties: dict[str, dict[str, Any]]
     ) -> None:
         """Interfaces added to a UDisks2 object."""
-        # Signal callback, may still be queued when the manager is shut down
-        if self.is_shutdown:
-            return
         if object_path in self._block_devices:
             await self._block_devices[object_path].update()
             return
