@@ -204,11 +204,13 @@ class UDisks2Manager(DBusInterfaceProxy):
             ]
         )
 
-    @dbus_connected
     async def _interfaces_added(
         self, object_path: str, properties: dict[str, dict[str, Any]]
     ) -> None:
         """Interfaces added to a UDisks2 object."""
+        # Signal callback, may still be queued when the manager is shut down
+        if self.is_shutdown:
+            return
         if object_path in self._block_devices:
             await self._block_devices[object_path].update()
             return

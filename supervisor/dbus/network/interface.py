@@ -146,7 +146,7 @@ class NetworkInterface(DBusInterfaceProxy):
         self.sync_properties = self.managed
         if self.sync_properties and self.is_connected:
             self.connected_dbus.sync_property_changes(
-                self.properties_interface, self.update
+                self.properties_interface, self._on_properties_changed
             )
 
     @dbus_connected

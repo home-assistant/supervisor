@@ -128,10 +128,10 @@ async def test_signal_listener_disconnect(
     assert value == "hello"
 
 
-async def test_dbus_connected_no_raise_after_shutdown(
+async def test_dbus_connected_raises_after_shutdown(
     test_service: TestInterface, dbus_session_bus: MessageBus
 ):
-    """Test dbus connected methods do not raise DBusNotConnectedError after shutdown."""
+    """Test dbus connected methods raise DBusNotConnectedError after shutdown."""
     proxy = ServiceTest()
     proxy.sync_properties = False
 
@@ -143,7 +143,19 @@ async def test_dbus_connected_no_raise_after_shutdown(
 
     proxy.shutdown()
     assert proxy.is_shutdown
-    assert await proxy.update() is None
+    with pytest.raises(DBusNotConnectedError):
+        await proxy.update()
+
+
+async def test_property_change_callback_noop_after_shutdown(
+    test_service: TestInterface, dbus_session_bus: MessageBus
+):
+    """Test a queued property change callback does nothing after shutdown."""
+    proxy = ServiceTest()
+    await proxy.connect(dbus_session_bus)
+    proxy.shutdown()
+
+    assert await proxy._on_properties_changed({"Test": "changed"}) is None
 
 
 async def test_dbus_connected_sync_raises_after_shutdown(

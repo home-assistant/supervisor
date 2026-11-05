@@ -125,7 +125,7 @@ class DBusInterfaceProxy(DBusInterface, ABC):
         await self.update()
         if self.sync_properties and self.is_connected:
             self._sync_properties_callback = self.connected_dbus.sync_property_changes(
-                self.properties_interface, self.update
+                self.properties_interface, self._on_properties_changed
             )
 
     def stop_sync_property_changes(self) -> None:
@@ -135,6 +135,14 @@ class DBusInterfaceProxy(DBusInterface, ABC):
 
         self.dbus.stop_sync_property_changes(self._sync_properties_callback)
         self.sync_properties = False
+
+    async def _on_properties_changed(
+        self, changed: dict[str, Any] | None = None
+    ) -> None:
+        """Apply a property change signal that may be queued past shutdown."""
+        if self.is_shutdown:
+            return
+        await self.update(changed)
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:

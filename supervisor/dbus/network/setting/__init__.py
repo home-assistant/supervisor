@@ -247,9 +247,11 @@ class NetworkSetting(DBusInterface):
 
         self.connected_dbus.Settings.Connection.on("updated", self.reload)
 
-    @dbus_connected
     async def reload(self):
         """Get current settings for connection."""
+        # Also an "updated" signal callback, may still be queued after shutdown
+        if self.is_shutdown:
+            return
         data = await self.get_settings()
 
         # Sections NetworkManager no longer reports must not keep stale values
