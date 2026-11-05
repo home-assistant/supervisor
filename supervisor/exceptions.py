@@ -1024,6 +1024,18 @@ class AppSocketDirsError(AppsError, APIUnknownSupervisorError):
         super().__init__(logger)
 
 
+class AppSocketListenError(AppsError, APIUnknownSupervisorError):
+    """Raise when Supervisor cannot listen on an app's socket."""
+
+    error_key = "app_socket_listen_error"
+    message_template = "Can't listen on the Supervisor socket for app {app}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"app": app}
+        super().__init__(logger)
+
+
 class AppFileReadError(AppsError, APIError):
     """Raise when an app metadata file cannot be read due to a filesystem error."""
 

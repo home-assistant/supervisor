@@ -37,6 +37,7 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
+    APISocketListenError,
     AppFileReadError,
     AppNotRunningError,
     AppNotSupportedArchitectureError,
@@ -46,6 +47,7 @@ from supervisor.exceptions import (
     AppsError,
     AppsJobError,
     AppSocketDirsError,
+    AppSocketListenError,
     AppStatsTimeoutError,
     AppUnknownError,
     AudioUpdateError,
@@ -541,6 +543,39 @@ async def test_watchdog_port_conflict_does_not_retry(
         assert f"Watchdog cannot restart app {install_app_ssh.name}" in caplog.text
 
 
+async def test_watchdog_retries_socket_error(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test the watchdog retries a start that failed to listen on the socket."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    with (
+        patch.object(
+            App,
+            "start",
+            side_effect=[AppSocketListenError(app=TEST_ADDON_SLUG), done_task],
+        ) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.WATCHDOG_RETRY_SECONDS", 0),
+        patch("supervisor.apps.app.async_capture_exception"),
+    ):
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert start.await_count == 2
+
+
 async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
     """Test app watchdog restarts app on stop if not manual."""
     with patch.object(DockerApp, "attach"):
@@ -966,6 +1001,54 @@ async def test_start_socket_dirs_error(install_app_ssh: App) -> None:
         await install_app_ssh.start()
 
     run.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_socket_listen_error(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test the start fails as an app error when Supervisor can't listen."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    coresys.api.sockets.register.side_effect = APISocketListenError(path="test")
+
+    with (
+        patch.object(DockerAPI, "run") as run,
+        pytest.raises(AppSocketListenError),
+    ):
+        await install_app_ssh.start()
+
+    run.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_prepare_sockets_concurrent(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test concurrent preparations register the socket once."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    registered: list[str] = []
+
+    async def register(_principal: App, path: Path) -> None:
+        await asyncio.sleep(0)
+        registered.append(path.as_posix())
+
+    coresys.api.sockets.register.side_effect = register
+    # Both preparations reach the registry check without yielding to a thread
+    with (
+        patch.object(coresys, "run_in_executor", AsyncMock()),
+        patch.object(
+            SocketRegistry,
+            "paths",
+            new=PropertyMock(side_effect=lambda: list(registered)),
+        ),
+    ):
+        await asyncio.gather(
+            install_app_ssh.prepare_sockets(), install_app_ssh.prepare_sockets()
+        )
+
+    coresys.api.sockets.register.assert_awaited_once()
 
 
 @pytest.mark.parametrize(

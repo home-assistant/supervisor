@@ -66,6 +66,7 @@ from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    APISocketError,
     AppBackupMetadataInvalidError,
     AppBuildFailedUnknownError,
     AppConfigurationInvalidError,
@@ -79,6 +80,7 @@ from ..exceptions import (
     AppsError,
     AppsJobError,
     AppSocketDirsError,
+    AppSocketListenError,
     AppStatsTimeoutError,
     AppUnknownError,
     BackupInvalidError,
@@ -170,6 +172,7 @@ class App(AppModel):
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._wait_for_startup_task: asyncio.Task | None = None
+        self._sockets_lock = asyncio.Lock()
         self._boot_failed_issue = Issue(
             IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
         )
@@ -830,10 +833,17 @@ class App(AppModel):
             _LOGGER.error("Can't create socket folders for app %s: %s", self.slug, err)
             raise AppSocketDirsError(app=self.slug) from err
 
-        # The socket outlives container restarts, registering it again is an error
+        # The socket outlives container restarts, registering it again is an error.
+        # A watchdog start can race the manager preparing sockets at load. A per-app
+        # lock, as a QUEUE job's lock would be shared by every app.
         path = self.path_run_supervisor / SOCKET_NAME_SUPERVISOR
-        if path.as_posix() not in self.sys_api.sockets.paths:
-            await self.sys_api.sockets.register(self, path)
+        async with self._sockets_lock:
+            if path.as_posix() in self.sys_api.sockets.paths:
+                return
+            try:
+                await self.sys_api.sockets.register(self, path)
+            except APISocketError as err:
+                raise AppSocketListenError(app=self.slug) from err
 
     @property
     def path_pulse(self) -> Path:

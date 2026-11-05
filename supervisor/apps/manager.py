@@ -11,7 +11,6 @@ from securetar import SecureTarFile
 from ..const import FILE_HASSIO_ADDONS, FILE_HASSIO_APPS, AppBoot, AppStartup, AppState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
-    APISocketError,
     AppAlreadyInstalledError,
     AppNotFoundError,
     AppNotInstalledError,
@@ -22,6 +21,7 @@ from ..exceptions import (
     AppsError,
     AppsJobError,
     AppSocketDirsError,
+    AppSocketListenError,
     CoreDNSError,
     DockerError,
     HassioArchNotFound,
@@ -125,7 +125,7 @@ class AppManager(CoreSysAttributes):
         for app in self.installed:
             try:
                 await app.prepare_sockets()
-            except AppSocketDirsError, APISocketError:
+            except AppSocketDirsError, AppSocketListenError:
                 # Every start prepares the sockets again
                 if app.state in (AppState.STARTED, AppState.STARTUP):
                     _LOGGER.warning(
