@@ -348,14 +348,14 @@ async def api_validate(
     schema: vol.Schema | vol.All,
     request: web.Request,
     *,
-    error_message: str | None = None,
+    redact_values: bool = False,
 ) -> dict[str, Any]:
-    """Validate data, optionally overriding error details for sensitive requests."""
+    """Validate request data with schema."""
     data: dict[str, Any] = await request.json(loads=json_loads)
     try:
         data_validated = schema(data)
     except vol.Invalid as ex:
-        raise APIError(error_message or humanize_error(data, ex)) from None
+        raise APIError(str(ex) if redact_values else humanize_error(data, ex)) from None
 
     return data_validated
 
