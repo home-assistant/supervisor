@@ -748,6 +748,52 @@ async def test_api_proxy_delete_request(
         assert response.content_type == "application/json"
 
 
+@pytest.mark.parametrize(
+    "auth",
+    [
+        pytest.param({}, id="no-token"),
+        pytest.param({"access_token": None}, id="null-token"),
+        pytest.param({"access_token": ""}, id="empty-token"),
+        pytest.param({"api_password": ""}, id="empty-password"),
+    ],
+)
+@pytest.mark.usefixtures("ha_ws_server")
+async def test_proxy_websocket_missing_token_denied(
+    api_client: TestClient, install_app_ssh: App, auth: dict[str, str | None]
+):
+    """Test the proxy rejects a missing or empty token."""
+    install_app_ssh.persist.pop(ATTR_ACCESS_TOKEN, None)
+    install_app_ssh.data["homeassistant_api"] = True
+
+    websocket = await api_client.ws_connect("/core/websocket")
+    assert (await websocket.receive_json())["type"] == "auth_required"
+    await websocket.send_json({"type": "auth"} | auth)
+
+    assert (await websocket.receive_json())["type"] == "auth_invalid"
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        pytest.param({}, id="no-token"),
+        pytest.param({"Authorization": "Bearer "}, id="empty-bearer"),
+        pytest.param({"X-HA-Access": ""}, id="empty-ha-access"),
+    ],
+)
+async def test_api_proxy_missing_token_denied(
+    api_client: TestClient, install_app_ssh: App, headers: dict[str, str]
+):
+    """Test the proxy rejects a missing or empty token."""
+    install_app_ssh.persist.pop(ATTR_ACCESS_TOKEN, None)
+    install_app_ssh.data["homeassistant_api"] = True
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        response = await api_client.get("/core/api/states", headers=headers)
+
+    assert response.status == 401
+    make_request.assert_not_called()
+
+
 async def test_api_proxy_multipart_content_type_preserved(
     api_client: TestClient,
     install_app_example: App,
