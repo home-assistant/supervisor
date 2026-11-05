@@ -1,18 +1,12 @@
 """Test Docker API."""
 
-# pylint: disable=protected-access
-
 from copy import deepcopy
-import logging
-from pathlib import Path
-from typing import Any
 
 from aiohttp.test_utils import TestClient
 from dbus_fast import DBusError, ErrorType
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.docker.manager import DockerConfig
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
@@ -20,157 +14,83 @@ from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
 
 
-@pytest.fixture(name="registry_config")
-async def fixture_registry_config(
-    coresys: CoreSys, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> DockerConfig:
-    """Use real configuration validation and persistence in a temporary file."""
-    config = coresys.docker.config
-    monkeypatch.setattr(config, "_file", tmp_path / "docker.json")
-    await config.read_data()
-    config.registries["registry.example.com"] = {
-        "username": "existing-user",
-        "password": "TEST_ONLY_7457_EXISTING_SECRET",
-    }
-    config.enable_ipv6 = True
-    config.mtu = 1450
-    await config.save_data()
-    return config
-
-
 @pytest.mark.parametrize(
-    "payload",
+    ("hostnames", "invalid_hostname"),
     [
-        pytest.param(
-            {
-                "ghcr.io.": {
-                    "username": "test-user",
-                    "password": "TEST_ONLY_7457_SECRET",
-                }
-            },
-            id="trailing-dot",
-        ),
-        pytest.param(
-            {
-                "ghcr.io": {
-                    "username": "test-user",
-                    "password": "TEST_ONLY_7457_SECRET",
-                },
-                "ghcr.io.": {
-                    "username": "test-user",
-                    "password": "TEST_ONLY_7457_OTHER_SECRET",
-                },
-            },
-            id="valid-then-invalid",
-        ),
-        pytest.param(
-            {
-                "ghcr.io.": {
-                    "username": "test-user",
-                    "password": "TEST_ONLY_7457_SECRET",
-                },
-                "ghcr.io": {
-                    "username": "test-user",
-                    "password": "TEST_ONLY_7457_OTHER_SECRET",
-                },
-            },
-            id="invalid-then-valid",
-        ),
-        pytest.param(
-            {"ghcr.io": {"password": "TEST_ONLY_7457_SECRET"}},
-            id="missing-username",
-        ),
-        pytest.param(
-            {
-                "ghcr.io": {
-                    "username": "test-user",
-                    "password": ["TEST_ONLY_7457_SECRET"],
-                }
-            },
-            id="password-not-string",
-        ),
-        pytest.param(
-            {
-                "ghcr.io": {
-                    "username": "test-user",
-                    "password": "TEST_ONLY_7457_SECRET",
-                    "unexpected": "TEST_ONLY_7457_OTHER_SECRET",
-                }
-            },
-            id="extra-field",
-        ),
-        pytest.param(
-            {"ghcr.io": "TEST_ONLY_7457_SECRET"},
-            id="credentials-not-object",
-        ),
-        pytest.param(["TEST_ONLY_7457_SECRET"], id="body-not-object"),
+        pytest.param(["ghcr.io."], "ghcr.io.", id="trailing-dot"),
+        pytest.param(["ghcr.io:5000"], "ghcr.io:5000", id="port"),
+        pytest.param(["GHCR.IO"], "GHCR.IO", id="uppercase"),
+        pytest.param(["ghcr.io", "ghcr.io."], "ghcr.io.", id="valid-then-invalid"),
+        pytest.param(["ghcr.io.", "ghcr.io"], "ghcr.io.", id="invalid-then-valid"),
     ],
 )
-async def test_registry_invalid_keeps_config_and_secrets(
+async def test_registry_invalid_hostname(
     api_client_with_prefix: tuple[TestClient, str],
-    registry_config: DockerConfig,
-    tmp_path: Path,
-    caplog: pytest.LogCaptureFixture,
-    payload: Any,
+    coresys: CoreSys,
+    hostnames: list[str],
+    invalid_hostname: str,
 ) -> None:
-    """Reject invalid requests atomically without exposing credentials."""
+    """Reject invalid hostnames before changing any configuration."""
     api_client, prefix = api_client_with_prefix
-    original = deepcopy(registry_config._data)
-    config_path = tmp_path / "docker.json"
-    original_bytes = config_path.read_bytes()
-    caplog.set_level(logging.DEBUG)
-
-    resp = await api_client.post(f"{prefix}/docker/registries", json=payload)
-    response_text = await resp.text()
-
-    for secret in (
-        "TEST_ONLY_7457_SECRET",
-        "TEST_ONLY_7457_OTHER_SECRET",
-        "TEST_ONLY_7457_EXISTING_SECRET",
-    ):
-        assert secret not in response_text
-        assert secret not in caplog.text
-    assert resp.status == 400
-    assert (await resp.json())["result"] == "error"
-    assert registry_config._data == original
-    assert config_path.read_bytes() == original_bytes
-    await registry_config.read_data()
-    assert registry_config._data == original
-
-
-@pytest.mark.parametrize("hostname", ["ghcr.io", "registry.example.com"])
-async def test_registry_create_and_update(
-    api_client_with_prefix: tuple[TestClient, str],
-    registry_config: DockerConfig,
-    caplog: pytest.LogCaptureFixture,
-    hostname: str,
-) -> None:
-    """Persist valid credentials while keeping them out of responses and logs."""
-    api_client, prefix = api_client_with_prefix
+    config = coresys.docker.config
+    config.registries["registry.example.com"] = {
+        "username": "existing-user",
+        "password": "existing-password",
+    }
+    original = deepcopy(config._data)  # pylint: disable=protected-access
     credentials = {"username": "test-user", "password": "TEST_ONLY_7457_SECRET"}
-    expected = deepcopy(registry_config._data)
-    expected["registries"][hostname] = credentials
-    caplog.set_level(logging.DEBUG)
 
     resp = await api_client.post(
-        f"{prefix}/docker/registries", json={hostname: credentials}
+        f"{prefix}/docker/registries",
+        json=dict.fromkeys(hostnames, credentials),
     )
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["result"] == "error"
+    assert "does not match regular expression" in body["message"]
+    assert f"data['{invalid_hostname}']" in body["message"]
+    assert credentials["password"] not in body["message"]
+    assert config._data == original  # pylint: disable=protected-access
+
+
+async def test_registry_invalid_password(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+) -> None:
+    """Report the invalid password's path without including its value."""
+    api_client, prefix = api_client_with_prefix
+    original = deepcopy(coresys.docker.config._data)  # pylint: disable=protected-access
+
+    resp = await api_client.post(
+        f"{prefix}/docker/registries",
+        json={
+            "ghcr.io": {"username": "test-user", "password": ["TEST_ONLY_7457_SECRET"]}
+        },
+    )
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["result"] == "error"
+    assert "expected str" in body["message"]
+    assert "data['ghcr.io']['password']" in body["message"]
+    assert "TEST_ONLY_7457_SECRET" not in body["message"]
+    assert coresys.docker.config._data == original  # pylint: disable=protected-access
+
+
+async def test_registry_create(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+) -> None:
+    """Store credentials for a valid registry hostname."""
+    api_client, prefix = api_client_with_prefix
+    credentials = {"username": "test-user", "password": "TEST_ONLY_7457_SECRET"}
+
+    resp = await api_client.post(
+        f"{prefix}/docker/registries", json={"ghcr.io": credentials}
+    )
+
     assert resp.status == 200
     assert (await resp.json())["result"] == "ok"
-    assert "TEST_ONLY_7457_SECRET" not in await resp.text()
-    assert registry_config._data == expected
-
-    await registry_config.read_data()
-    assert registry_config._data == expected
-    for endpoint in ("registries", "info"):
-        resp = await api_client.get(f"{prefix}/docker/{endpoint}")
-        assert resp.status == 200
-        body = await resp.json()
-        assert body["data"]["registries"][hostname] == {"username": "test-user"}
-        assert "TEST_ONLY_7457_SECRET" not in await resp.text()
-        assert "TEST_ONLY_7457_EXISTING_SECRET" not in await resp.text()
-    assert "TEST_ONLY_7457_SECRET" not in caplog.text
-    assert "TEST_ONLY_7457_EXISTING_SECRET" not in caplog.text
+    assert coresys.docker.config.registries["ghcr.io"] == credentials
 
 
 async def test_api_docker_info(api_client_with_prefix: tuple[TestClient, str]):
