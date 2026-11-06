@@ -258,9 +258,16 @@ class App(AppModel):
                 ):
                     self.sys_resolution.dismiss_issue(issue)
 
-        # Home Assistant lists discovery messages only of started apps
-        if new_state != AppState.STARTED:
+        # Home Assistant lists discovery messages only of started apps, and an
+        # unhealthy app is not ready for them
+        if (
+            new_state != AppState.STARTED
+            or self._container_state == ContainerState.UNHEALTHY
+        ):
             self.sys_discovery.mark_unannounced(self)
+        elif old_state == AppState.STARTUP:
+            # Pushes during startup were dropped or came before the app was ready
+            self.sys_discovery.push_messages(self)
 
         # Dismiss device access missing issue if present and we stopped
         if new_state == AppState.STOPPED and (
