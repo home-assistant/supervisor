@@ -146,27 +146,13 @@ class AppManager(CoreSysAttributes):
         if not tasks:
             return
 
-        # Start Apps sequential
-        # avoid issue on slow IO
         # Config.wait_boot is deprecated. Until apps update with healthchecks,
         # add a sleep task for it to keep the same minimum amount of wait time
         wait_boot: list[Awaitable[None]] = [asyncio.sleep(self.sys_config.wait_boot)]
-        for app in tasks:
-            try:
-                if start_task := await app.start():
-                    wait_boot.append(start_task)
-            except HassioError:
-                self.sys_resolution.add_issue(
-                    app.boot_failed_issue,
-                    suggestions=[
-                        SuggestionType.EXECUTE_START,
-                        SuggestionType.DISABLE_BOOT,
-                    ],
-                )
-            else:
-                continue
 
-            _LOGGER.warning("Can't start app %s", app.slug)
+        # Start apps in parallel; each app's job group serializes its own
+        # start and stop
+        await asyncio.gather(*(self._boot_app(app, wait_boot) for app in tasks))
 
         # Ignore exceptions from waiting for app startup, app errors handled elsewhere
         await asyncio.gather(*wait_boot, return_exceptions=True)
@@ -183,6 +169,21 @@ class AppManager(CoreSysAttributes):
                         SuggestionType.DISABLE_BOOT,
                     ],
                 )
+
+    async def _boot_app(self, app: App, wait_boot: list[Awaitable[None]]) -> None:
+        """Start an app during boot and collect its startup task."""
+        try:
+            if start_task := await app.start():
+                wait_boot.append(start_task)
+        except HassioError:
+            _LOGGER.warning("Can't start app %s", app.slug)
+            self.sys_resolution.add_issue(
+                app.boot_failed_issue,
+                suggestions=[
+                    SuggestionType.EXECUTE_START,
+                    SuggestionType.DISABLE_BOOT,
+                ],
+            )
 
     async def shutdown(self, stage: AppStartup) -> None:
         """Shutdown apps."""
