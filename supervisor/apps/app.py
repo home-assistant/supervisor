@@ -1386,12 +1386,12 @@ class App(AppModel):
                 )
             return self._wait_for_startup_task
 
-        # Access Token, the socket identifies an app that moved to it so a
-        # token issued before must stop working
-        if self.uses_supervisor_socket:
-            self.persist.pop(ATTR_ACCESS_TOKEN, None)
-        else:
+        # Access Token, the socket identifies an app off TCP so a token issued
+        # before must stop working
+        if self.supervisor_api_tcp:
             self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+        else:
+            self.persist.pop(ATTR_ACCESS_TOKEN, None)
         await self.save_persist()
 
         # Options

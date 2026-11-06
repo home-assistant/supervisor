@@ -703,26 +703,17 @@ def test_slug_too_long_installed():
     assert vd.SCHEMA_APP_SYSTEM(config)["slug"] == "a" * 61
 
 
-def test_sockets_default():
-    """Test apps declare no sockets by default."""
+def test_supervisor_api_tcp_not_stored_by_default():
+    """Test an unset supervisor_api_tcp is not stored, so its default can change."""
     config = load_json_fixture("basic-app-config.json")
 
-    assert vd.SCHEMA_APP_CONFIG(config)["sockets"] == []
+    assert "supervisor_api_tcp" not in vd.SCHEMA_APP_CONFIG(config)
 
 
-@pytest.mark.parametrize(
-    ("sockets", "warning"),
-    [
-        pytest.param(["supervisor"], False, id="known"),
-        pytest.param(["supervisor", "ingress"], True, id="unknown"),
-    ],
-)
-def test_sockets_unknown_values_kept(
-    caplog: pytest.LogCaptureFixture, sockets: list[str], warning: bool
-):
-    """Test unknown sockets values pass validation with a warning."""
+@pytest.mark.parametrize("value", [True, False])
+def test_supervisor_api_tcp_kept(value: bool):
+    """Test a declared supervisor_api_tcp is kept."""
     config = load_json_fixture("basic-app-config.json")
-    config["sockets"] = sockets
+    config["supervisor_api_tcp"] = value
 
-    assert vd.SCHEMA_APP_CONFIG(config)["sockets"] == sockets
-    assert ("declares unknown 'sockets' values" in caplog.text) is warning
+    assert vd.SCHEMA_APP_CONFIG(config)["supervisor_api_tcp"] is value

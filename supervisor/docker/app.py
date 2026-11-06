@@ -240,7 +240,7 @@ class DockerApp(DockerInterface):
             ENV_TIME: self.sys_timezone,
             ENV_SUPERVISOR_SOCKET: (PATH_RUN_API / SOCKET_NAME_SUPERVISOR).as_posix(),
         }
-        if not self.app.uses_supervisor_socket:
+        if self.app.supervisor_api_tcp:
             environment[ENV_TOKEN] = self.app.supervisor_token
             environment[ENV_TOKEN_OLD] = self.app.supervisor_token
         return environment

@@ -101,14 +101,18 @@ def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Da
 
 
 @pytest.mark.parametrize(
-    "sockets", [pytest.param([], id="token"), pytest.param(["supervisor"], id="socket")]
+    "app_config",
+    [
+        pytest.param({}, id="default"),
+        pytest.param({"supervisor_api_tcp": False}, id="socket"),
+    ],
 )
 @pytest.mark.usefixtures("path_extern")
 def test_supervisor_socket_mount(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], sockets: list[str]
+    coresys: CoreSys, addonsdata_system: dict[str, Data], app_config: dict[str, bool]
 ):
     """Test every app gets its Supervisor socket folder read-only."""
-    config = load_json_fixture("basic-app-config.json") | {"sockets": sockets}
+    config = load_json_fixture("basic-app-config.json") | app_config
     docker_app = get_docker_app(coresys, addonsdata_system, config)
 
     assert (
@@ -123,23 +127,28 @@ def test_supervisor_socket_mount(
 
 
 @pytest.mark.parametrize(
-    ("sockets", "tokens"),
+    ("app_config", "tokens"),
     [
         pytest.param(
-            [], {"SUPERVISOR_TOKEN": "abc123", "HASSIO_TOKEN": "abc123"}, id="token"
+            {}, {"SUPERVISOR_TOKEN": "abc123", "HASSIO_TOKEN": "abc123"}, id="default"
         ),
-        pytest.param(["supervisor"], {}, id="socket"),
+        pytest.param(
+            {"supervisor_api_tcp": True},
+            {"SUPERVISOR_TOKEN": "abc123", "HASSIO_TOKEN": "abc123"},
+            id="tcp",
+        ),
+        pytest.param({"supervisor_api_tcp": False}, {}, id="socket"),
     ],
 )
 def test_supervisor_socket_environment(
     coresys: CoreSys,
     addonsdata_system: dict[str, Data],
     addonsdata_user: PropertyMock,
-    sockets: list[str],
+    app_config: dict[str, bool],
     tokens: dict[str, str],
 ):
-    """Test the token is only passed to apps that do not use their socket."""
-    config = load_json_fixture("basic-app-config.json") | {"sockets": sockets}
+    """Test the token is only passed to apps on the TCP API."""
+    config = load_json_fixture("basic-app-config.json") | app_config
     docker_app = get_docker_app(coresys, addonsdata_system, config)
     addonsdata_user.return_value = {"test_addon": {"access_token": "abc123"}}
 

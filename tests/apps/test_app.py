@@ -20,7 +20,7 @@ from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode, AppSocket
+from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
 from supervisor.const import (
     ATTR_ADVANCED,
@@ -888,27 +888,20 @@ async def test_start_timeout(
 
 
 @pytest.mark.parametrize(
-    ("sockets", "expected", "uses_supervisor_socket"),
+    ("config", "expected"),
     [
-        pytest.param([], set(), False, id="none"),
-        pytest.param(["supervisor"], {AppSocket.SUPERVISOR}, True, id="supervisor"),
-        pytest.param(
-            ["supervisor", "ingress"], {AppSocket.SUPERVISOR}, True, id="unknown"
-        ),
-        pytest.param(["ingress"], set(), False, id="only-unknown"),
+        pytest.param({}, True, id="default"),
+        pytest.param({"supervisor_api_tcp": True}, True, id="tcp"),
+        pytest.param({"supervisor_api_tcp": False}, False, id="socket"),
     ],
 )
-def test_sockets_ignores_unknown_values(
-    install_app_ssh: App,
-    sockets: list[str],
-    expected: set[AppSocket],
-    uses_supervisor_socket: bool,
+def test_supervisor_api_tcp(
+    install_app_ssh: App, config: dict[str, bool], expected: bool
 ) -> None:
-    """Test the app only reports sockets this Supervisor understands."""
-    install_app_ssh.data["sockets"] = sockets
+    """Test apps call the Supervisor API over TCP unless they opt out."""
+    install_app_ssh.data.update(config)
 
-    assert install_app_ssh.sockets == expected
-    assert install_app_ssh.uses_supervisor_socket is uses_supervisor_socket
+    assert install_app_ssh.supervisor_api_tcp is expected
 
 
 async def _start(coresys: CoreSys, app: App) -> asyncio.Task | None:
@@ -1052,20 +1045,21 @@ async def test_prepare_sockets_concurrent(
 
 
 @pytest.mark.parametrize(
-    ("sockets", "has_token"),
+    ("config", "has_token"),
     [
-        pytest.param([], True, id="token"),
-        pytest.param(["supervisor"], False, id="socket"),
+        pytest.param({}, True, id="default"),
+        pytest.param({"supervisor_api_tcp": True}, True, id="tcp"),
+        pytest.param({"supervisor_api_tcp": False}, False, id="socket"),
     ],
 )
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_start_access_token(
-    install_app_ssh: App, sockets: list[str], has_token: bool
+    install_app_ssh: App, config: dict[str, bool], has_token: bool
 ) -> None:
-    """Test the token is rotated, or dropped for an app that uses its socket."""
+    """Test the token is rotated, or dropped for an app off the TCP API."""
     install_app_ssh.path_data.mkdir()
     await install_app_ssh.load()
-    install_app_ssh.data["sockets"] = sockets
+    install_app_ssh.data.update(config)
     install_app_ssh.persist["access_token"] = "old_token"
 
     await install_app_ssh.start()

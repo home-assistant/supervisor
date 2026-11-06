@@ -33,12 +33,6 @@ class MappingType(StrEnum):
     ADDON_CONFIG = "addon_config"
 
 
-class AppSocket(StrEnum):
-    """Socket an app declares it has moved to."""
-
-    SUPERVISOR = "supervisor"
-
-
 ATTR_BACKUP = "backup"
 ATTR_BREAKING_VERSIONS = "breaking_versions"
 ATTR_CODENOTARY = "codenotary"
@@ -46,6 +40,9 @@ ATTR_LOG_FORMAT = "log_format"
 ATTR_READ_ONLY = "read_only"
 ATTR_PATH = "path"
 WATCHDOG_RETRY_SECONDS = 10
+
+# Flipped to False late in the deprecation cycle, before the TCP API is removed
+SUPERVISOR_API_TCP_DEFAULT = True
 WATCHDOG_MAX_ATTEMPTS = 5
 WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)
 WATCHDOG_THROTTLE_MAX_CALLS = 10
