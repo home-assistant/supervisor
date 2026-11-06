@@ -1,5 +1,6 @@
 """Test apps schema to UI schema conversion."""
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -463,7 +464,7 @@ def test_simple_schema_password(coresys):
         {"name": "Pascal", "password": "1234", "fires": True, "alias": "test"}
     )
 
-    assert validate.pwned == {"7110eda4d09e062aa5e4a390b0a572ac0d2c0220"}
+    assert validate.pwned == {"password": "7110eda4d09e062aa5e4a390b0a572ac0d2c0220"}
 
     validate.pwned.clear()
     assert validate({"name": "Pascal", "password": "", "fires": True, "alias": "test"})
@@ -513,7 +514,55 @@ def test_schema_secret_references(
         )
         == expected
     )
-    assert validate.pwned == {"f3bbbd66a63d4bf1747940578ec3d0103530e21d"}
+    assert validate.pwned == {"password": "f3bbbd66a63d4bf1747940578ec3d0103530e21d"}
+
+
+def test_pwned_nested_option_paths(coresys: CoreSys):
+    """Test password values in nested options are tracked by their path."""
+    validate = AppOptions(
+        coresys,
+        {
+            "logins": [{"username": "str", "password": "password"}],
+            "mqtt": {"password": "password?"},
+        },
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )
+
+    assert validate(
+        {
+            "logins": [
+                {"username": "alice", "password": "1234"},
+                {"username": "bob", "password": "hunter2"},
+            ],
+            "mqtt": {"password": "1234"},
+        }
+    )
+
+    assert validate.pwned == {
+        "logins[0].password": "7110eda4d09e062aa5e4a390b0a572ac0d2c0220",
+        "logins[1].password": "f3bbbd66a63d4bf1747940578ec3d0103530e21d",
+        "mqtt.password": "7110eda4d09e062aa5e4a390b0a572ac0d2c0220",
+    }
+
+
+def test_pwned_option_path_collision(coresys: CoreSys):
+    """Test literal keys with separators cannot overwrite nested option paths."""
+    validate = AppOptions(
+        coresys,
+        {"mqtt.password": "password", "mqtt": {"password": "password?"}},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )
+
+    assert validate(
+        {"mqtt.password": "flat-secret", "mqtt": {"password": "nested-secret"}}
+    )
+
+    assert validate.pwned == {
+        "mqtt\\.password": hashlib.sha1(b"flat-secret").hexdigest(),
+        "mqtt.password": hashlib.sha1(b"nested-secret").hexdigest(),
+    }
 
 
 @pytest.mark.parametrize("resolve_secrets", [True, False])
