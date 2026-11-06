@@ -1,11 +1,24 @@
 """Validate resolution configuration schema."""
 
+import logging
 from pathlib import Path
+from typing import Any
 
 import voluptuous as vol
 
-from ..const import ATTR_CHECKS, ATTR_ENABLED
-from .const import LEGACY_CHECK_SLUG_MAP
+from ..const import (
+    ATTR_CHECKS,
+    ATTR_CONTEXT,
+    ATTR_ENABLED,
+    ATTR_ISSUES,
+    ATTR_REFERENCE,
+    ATTR_REFERENCE_EXTRA,
+    ATTR_SUGGESTIONS,
+    ATTR_TYPE,
+)
+from .const import LEGACY_CHECK_SLUG_MAP, ContextType, IssueType, SuggestionType
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # Maps check module filename stem -> public API slug for checks whose slug
 # differs from their module name (i.e., slug overrides for backward compat).
@@ -54,11 +67,41 @@ SCHEMA_CHECKS_CONFIG = vol.Schema(
     extra=vol.REMOVE_EXTRA,
 )
 
+SCHEMA_ISSUE_CONFIG = vol.Schema(
+    {
+        vol.Required(ATTR_TYPE): vol.Coerce(IssueType),
+        vol.Required(ATTR_CONTEXT): vol.Coerce(ContextType),
+        vol.Optional(ATTR_REFERENCE, default=None): vol.Maybe(str),
+        vol.Optional(ATTR_REFERENCE_EXTRA, default=None): vol.Maybe(dict),
+        vol.Optional(ATTR_SUGGESTIONS, default=list): [vol.Coerce(SuggestionType)],
+    },
+    extra=vol.REMOVE_EXTRA,
+)
+
+
+def _validate_issues_config(data: Any) -> list[dict[str, Any]]:
+    """Validate stored issues, dropping invalid ones.
+
+    An issue type unknown to this version must not reset the whole file.
+    """
+    if not isinstance(data, list):
+        raise vol.Invalid("Expected a list of issues")
+
+    issues: list[dict[str, Any]] = []
+    for issue in data:
+        try:
+            issues.append(SCHEMA_ISSUE_CONFIG(issue))
+        except vol.Invalid as err:
+            _LOGGER.warning("Dropping invalid stored issue %s: %s", issue, err)
+    return issues
+
+
 SCHEMA_RESOLUTION_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_CHECKS, default=SCHEMA_CHECKS_CONFIG({})): vol.All(
             _migrate_checks_config, SCHEMA_CHECKS_CONFIG
         ),
+        vol.Required(ATTR_ISSUES, default=list): _validate_issues_config,
     },
     extra=vol.REMOVE_EXTRA,
 )

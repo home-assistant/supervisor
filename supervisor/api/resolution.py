@@ -195,9 +195,11 @@ class APIResolution(CoreSysAttributes):
         """Execute a backend check."""
         check = self._extract_check(request)
         await check()
+        await self.sys_resolution.save_data()
 
     @api_process
     async def run_check_v1(self, request: web.Request) -> None:
         """Execute a backend check (v1: accepts legacy check slug in URL)."""
         check = self._extract_check_v1(request)
         await check()
+        await self.sys_resolution.save_data()
