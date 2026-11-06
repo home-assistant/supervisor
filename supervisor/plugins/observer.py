@@ -85,6 +85,17 @@ class PluginObserver(PluginBase):
                 "HA observer update failed", _LOGGER.error
             ) from err
 
+    async def restart(self) -> None:
+        """Restart observer."""
+        async with self._lifecycle_lock:
+            _LOGGER.info("Restarting observer plugin")
+            try:
+                await self.instance.restart()
+            except DockerError as err:
+                raise ObserverError(
+                    "Can't restart observer plugin", _LOGGER.error
+                ) from err
+
     async def start(self) -> None:
         """Run observer."""
         # Create new API token

@@ -349,6 +349,27 @@ async def test_update_fails_if_out_of_date(
 
 
 @pytest.mark.parametrize(
+    ("plugin", "error"),
+    [
+        (PluginAudio, AudioError),
+        (PluginCli, CliError),
+        (PluginDns, CoreDNSError),
+        (PluginMulticast, MulticastError),
+        (PluginObserver, ObserverError),
+    ],
+    indirect=["plugin"],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_restart_failed(plugin: PluginBase, error: type[PluginError]) -> None:
+    """Test a failed restart raises the plugin specific error."""
+    with (
+        patch.object(DockerInterface, "restart", side_effect=DockerError),
+        pytest.raises(error),
+    ):
+        await plugin.restart()
+
+
+@pytest.mark.parametrize(
     "plugin",
     [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
     indirect=True,

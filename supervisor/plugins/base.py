@@ -15,6 +15,7 @@ from ..coresys import CoreSysAttributes
 from ..docker.const import ContainerState
 from ..docker.interface import DockerInterface
 from ..docker.monitor import DockerContainerStateEvent
+from ..docker.stats import DockerStats
 from ..exceptions import DockerError, PluginDisabledError, PluginError
 from ..utils.common import FileConfiguration
 from ..utils.sentry import async_capture_exception
@@ -322,6 +323,14 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
             # Start plugin
             await self.start()
+
+    @abstractmethod
+    async def restart(self) -> None:
+        """Restart system plugin."""
+
+    @abstractmethod
+    async def stats(self, *, one_shot: bool = False) -> DockerStats:
+        """Return stats of system plugin."""
 
     @abstractmethod
     async def repair(self) -> None:

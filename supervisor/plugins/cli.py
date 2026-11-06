@@ -81,6 +81,15 @@ class PluginCli(PluginBase):
         except (DockerError, PluginError) as err:
             raise CliUpdateError("CLI update failed", _LOGGER.error) from err
 
+    async def restart(self) -> None:
+        """Restart cli."""
+        async with self._lifecycle_lock:
+            _LOGGER.info("Restarting cli plugin")
+            try:
+                await self.instance.restart()
+            except DockerError as err:
+                raise CliError("Can't restart cli plugin", _LOGGER.error) from err
+
     async def start(self) -> None:
         """Run cli."""
         # Create new API token
