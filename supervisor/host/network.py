@@ -212,6 +212,12 @@ class NetworkManager(CoreSysAttributes):
             "properties_changed", self._check_dns_changed
         )
 
+        # Import marked profiles first, so the update below covers them too
+        try:
+            await self.sys_dbus.network.import_marked_connections()
+        except (DBusError, DBusNotConnectedError) as err:
+            _LOGGER.warning("Can't import network profiles: %s", err)
+
         # Apply current settings on each interface so OS can update any out of date defaults
         interfaces = [
             Interface.from_dbus_interface(interface)

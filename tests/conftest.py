@@ -22,7 +22,7 @@ from aiohttp import ClientSession, web, web_app as aiohttp_web_app
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from blockbuster import BlockBuster, BlockBusterFunction
-from dbus_fast import BusType
+from dbus_fast import BusType, Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 from securetar import SecureTarArchive
@@ -432,6 +432,29 @@ async def fixture_connection_settings_service(
     return network_manager_services["network_connection_settings"][
         DEFAULT_CONNECTION_SETTINGS_OBJECT_PATH
     ]
+
+
+@pytest.fixture(name="imported_wifi_settings_service")
+async def fixture_imported_wifi_settings_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    dbus_session_bus: MessageBus,
+) -> ConnectionSettingsService:
+    """Store an inactive wifi profile like one the installer writes into CONFIG."""
+    service = (
+        await mock_dbus_services(
+            {
+                "network_connection_settings": "/org/freedesktop/NetworkManager/Settings/3"
+            },
+            dbus_session_bus,
+        )
+    )["network_connection_settings"]
+    service.settings["connection"]["id"] = Variant("s", "my-network")
+    service.settings["connection"]["type"] = Variant("s", "802-11-wireless")
+    service.settings["user"] = {
+        "data": Variant("a{ss}", {"io.home-assistant.import": "supervisor"})
+    }
+    network_manager_services["network_settings"].connections.append(service.object_path)
+    return service
 
 
 @pytest.fixture(name="udisks2_services")
