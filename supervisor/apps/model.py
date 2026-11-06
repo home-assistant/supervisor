@@ -67,6 +67,7 @@ from ..const import (
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
+    ATTR_SUPERVISOR_API_TCP,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
@@ -117,6 +118,7 @@ from .const import (
     ATTR_LOG_FORMAT,
     ATTR_PATH,
     ATTR_READ_ONLY,
+    SUPERVISOR_API_TCP_DEFAULT,
     AppBackupMode,
     MappingType,
 )
@@ -474,6 +476,11 @@ class AppModel(JobGroup, ABC):
     def hassio_role(self) -> str:
         """Return Supervisor role for API."""
         return self.data[ATTR_HASSIO_ROLE]
+
+    @property
+    def supervisor_api_tcp(self) -> bool:
+        """Return True if the app gets a token to call the Supervisor API over TCP."""
+        return self.data.get(ATTR_SUPERVISOR_API_TCP, SUPERVISOR_API_TCP_DEFAULT)
 
     @property
     def backup_exclude(self) -> list[str]:

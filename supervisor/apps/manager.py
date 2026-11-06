@@ -20,6 +20,8 @@ from ..exceptions import (
     AppRebuildVersionChangedError,
     AppsError,
     AppsJobError,
+    AppSocketDirsError,
+    AppSocketListenError,
     CoreDNSError,
     DockerError,
     HassioArchNotFound,
@@ -118,6 +120,22 @@ class AppManager(CoreSysAttributes):
         _LOGGER.info("Found %d installed apps", len(self.data.system))
         if tasks:
             await asyncio.gather(*tasks)
+
+        # Running apps keep their containers across a Supervisor restart
+        for app in self.installed:
+            try:
+                await app.prepare_sockets()
+            except AppSocketDirsError, AppSocketListenError:
+                # Every start prepares the sockets again
+                if app.state in (AppState.STARTED, AppState.STARTUP):
+                    _LOGGER.warning(
+                        "App %s can't reach Supervisor on its socket until it is restarted",
+                        app.slug,
+                    )
+                else:
+                    _LOGGER.info(
+                        "Retrying the socket for app %s when it starts", app.slug
+                    )
 
         # Sync DNS
         await self.sync_dns()

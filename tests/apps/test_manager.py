@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import AsyncGenerator, Generator
 from copy import deepcopy
+import logging
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, PropertyMock, call, patch
 
@@ -29,6 +30,7 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
+    APISocketListenError,
     AppConfigurationError,
     AppsError,
     DockerAPIError,
@@ -354,6 +356,68 @@ async def test_load(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
         write_hosts.assert_called_once()
 
     assert "Found 1 installed apps" in caplog.text
+
+
+@pytest.mark.usefixtures("install_app_ssh", "install_app_example")
+async def test_load_listens_for_installed_apps(coresys: CoreSys):
+    """Test app manager load listens on the socket of every installed app."""
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(PluginDns, "write_hosts"),
+    ):
+        await coresys.apps.load()
+
+    local_ssh = coresys.apps.get_local_only(TEST_ADDON_SLUG)
+    local_example = coresys.apps.get_local_only("local_example")
+    assert coresys.api.sockets.register.await_args_list == [
+        call(app, app.path_run_supervisor / "supervisor.sock")
+        for app in (local_ssh, local_example)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("state", "message"),
+    [
+        pytest.param(
+            AppState.STARTED,
+            "App local_ssh can't reach Supervisor on its socket until it is restarted",
+            id="started",
+        ),
+        pytest.param(
+            AppState.STARTUP,
+            "App local_ssh can't reach Supervisor on its socket until it is restarted",
+            id="startup",
+        ),
+        pytest.param(
+            AppState.STOPPED,
+            "Retrying the socket for app local_ssh when it starts",
+            id="stopped",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("install_app_ssh", "install_app_example")
+async def test_load_socket_error(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    state: AppState,
+    message: str,
+):
+    """Test a socket failing for one app does not stop the others."""
+    coresys.api.sockets.register.side_effect = [
+        APISocketListenError(path="/run/os/supervisor/apps/local_ssh"),
+        None,
+    ]
+
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(PluginDns, "write_hosts"),
+        patch.object(App, "state", new=PropertyMock(return_value=state)),
+        caplog.at_level(logging.INFO),
+    ):
+        await coresys.apps.load()
+
+    assert coresys.api.sockets.register.await_count == 2
+    assert message in caplog.text
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
