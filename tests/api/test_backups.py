@@ -1417,7 +1417,9 @@ async def test_restore_homeassistant_adds_env(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_backup_mixed_encryption(api_client: TestClient, coresys: CoreSys):
+async def test_backup_mixed_encryption(
+    api_client: TestClient, api_client_v2: TestClient, coresys: CoreSys
+):
     """Test a backup with mixed encryption status across locations."""
     enc_tar = copy(get_fixture_path("test_consolidate.tar"), coresys.config.path_backup)
     unc_tar = copy(
@@ -1448,6 +1450,18 @@ async def test_backup_mixed_encryption(api_client: TestClient, coresys: CoreSys)
             "size_bytes": 10240,
         }
     }
+
+    # Details must let the Core restore reader address the imported cloud copy
+    # even though the cloud location remains hidden in the public listing.
+    for client, prefix in ((api_client, ""), (api_client_v2, "/v2")):
+        resp = await client.get(f"{prefix}/backups/d9c48f8b/info")
+        assert resp.status == 200
+        details = (await resp.json())["data"]
+        assert details["locations"] == [None]
+        assert details["location_attributes"] == {
+            ".local": {"protected": True, "size_bytes": 10240},
+            ".cloud_backup": {"protected": False, "size_bytes": 10240},
+        }
 
 
 @pytest.mark.parametrize(
