@@ -14,13 +14,15 @@ from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
 from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPForbidden, HTTPUnauthorized
 
-from ..const import STOPPING_STATES
+from ..apps.app import App
+from ..const import REQUEST_FROM, STOPPING_STATES
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
 from ..utils.logging import AppLoggerAdapter
 from .const import WEBSOCKETS
 from .middleware.security import recursive_unquote
+from .sockets import is_unix_socket_request
 from .utils import stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -108,8 +110,27 @@ class APIProxy(CoreSysAttributes):
 
         return response
 
+    def _socket_app(self, request: web.Request) -> App:
+        """Return the app a socket request is from if it may use the API."""
+        # Forbidden, not Unauthorized: the socket already proved who the caller
+        # is, and no credentials it could send would change the answer
+        principal = request.get(REQUEST_FROM)
+        if not isinstance(principal, App):
+            _LOGGER.warning("Home Assistant API access from %s denied", principal)
+            raise HTTPForbidden
+        if not principal.access_homeassistant_api:
+            _LOGGER.warning("Not permitted API access: %s", principal.slug)
+            raise HTTPForbidden
+        _LOGGER.debug("%s access from %s", request.path, principal.slug)
+        return principal
+
     def _check_access(self, request: web.Request):
-        """Check the Supervisor token."""
+        """Check the caller may use the Home Assistant API."""
+        # The socket identifies the caller, a token is never read on one
+        if is_unix_socket_request(request):
+            self._socket_app(request)
+            return
+
         if AUTHORIZATION in request.headers:
             bearer = request.headers[AUTHORIZATION]
             supervisor_token = bearer.split(" ")[-1]
@@ -323,6 +344,9 @@ class APIProxy(CoreSysAttributes):
 
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
+        socket_app = (
+            self._socket_app(request) if is_unix_socket_request(request) else None
+        )
         if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway
         _LOGGER.info("Home Assistant WebSocket API request initialize")
@@ -351,10 +375,15 @@ class APIProxy(CoreSysAttributes):
 
             # Check API access, wait up to 10s just like _async_handle_auth_phase in Core
             response = await server.receive_json(timeout=10)
-            supervisor_token = response.get("api_password") or response.get(
-                "access_token"
-            )
-            app = self.sys_apps.from_token(supervisor_token)
+            app: App | None
+            # Kept for protocol compatibility, the socket already identified the app
+            if socket_app:
+                app = socket_app
+            else:
+                supervisor_token = response.get("api_password") or response.get(
+                    "access_token"
+                )
+                app = self.sys_apps.from_token(supervisor_token)
 
             if not app or not app.access_homeassistant_api:
                 _LOGGER.warning("Unauthorized WebSocket access!")

@@ -289,6 +289,7 @@ class SecurityMiddleware(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._api: RestAPI = api
         self._tcp_api_request_paths: set[str] = set()
+        self._tcp_api_request_apps: set[tuple[str, str]] = set()
 
     @middleware
     async def block_bad_requests(
@@ -378,6 +379,8 @@ class SecurityMiddleware(CoreSysAttributes):
         self.check_principal_access(principal, request)
         if principal is self.sys_homeassistant:
             self._report_tcp_api_request(request)
+        elif isinstance(principal, App):
+            self._report_app_tcp_api_request(principal)
         request[REQUEST_FROM] = principal
         return await handler(request)
 
@@ -402,6 +405,30 @@ class SecurityMiddleware(CoreSysAttributes):
                 IssueType.DEPRECATED_TCP_API_REQUEST, ContextType.CORE, request.path
             )
         self._tcp_api_request_paths.add(request.path)
+
+    def _report_app_tcp_api_request(self, app: App) -> None:
+        """Report an app calling the Supervisor API over TCP, once per version and boot."""
+        # Keyed by version so an update that still uses TCP is reported again
+        version = str(app.version)
+        if (app.slug, version) in self._tcp_api_request_apps:
+            return
+        self._tcp_api_request_apps.add((app.slug, version))
+
+        # Only the app's developer can act on it
+        developer = app.user_is_developer
+        log = _LOGGER.warning if developer else _LOGGER.debug
+        log(
+            "App %s called the Supervisor API over TCP. Support for this will be "
+            "removed in a future release. Please report this to the app developer.",
+            app.slug,
+        )
+        if developer:
+            self.sys_resolution.create_issue(
+                IssueType.DEPRECATED_TCP_API_REQUEST,
+                ContextType.ADDON,
+                reference=app.slug,
+                reference_extra={"version": version},
+            )
 
     def _principal_for_token(self, supervisor_token: str) -> CoreSysAttributes | None:
         """Return the principal a Supervisor token was issued to."""
