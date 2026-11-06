@@ -1130,8 +1130,8 @@ async def test_dropped_capabilities_feature_flags(
     """Test capabilities are dropped per feature flag unless the app requests them."""
     docker_app = DockerApp(coresys, install_app_ssh)
     install_app_ssh.data["privileged"] = privileged
-    for flag in flags:
-        coresys.config.set_feature_flag(flag, True)
+    for flag in (FeatureFlag.APP_DROP_NET_RAW, FeatureFlag.APP_REDUCED_CAPABILITIES):
+        coresys.config.set_feature_flag(flag, flag in flags)
 
     assert docker_app.dropped_capabilities == expected_drop
 
@@ -1142,6 +1142,7 @@ async def test_app_run_drops_net_raw_with_feature_flag(
 ):
     """Test the container is created with NET_RAW dropped when the flag is set."""
     coresys.config.set_feature_flag(FeatureFlag.APP_DROP_NET_RAW, True)
+    coresys.config.set_feature_flag(FeatureFlag.APP_REDUCED_CAPABILITIES, False)
     docker_app = DockerApp(coresys, install_app_ssh)
 
     with (
