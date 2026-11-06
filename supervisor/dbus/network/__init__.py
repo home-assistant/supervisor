@@ -191,7 +191,8 @@ class NetworkManager(DBusInterfaceProxy):
 
         Such a profile, like the Wi-Fi network the installer writes into a
         CONFIG folder, names no device. It is bound to the device it is active
-        on, else to the only device of its type while that isn't connected,
+        on, else to the only device of its type while that isn't connected or
+        runs on a profile NetworkManager generated (which it then replaces),
         named like the profiles the Supervisor creates and unmarked, so from
         then on it is that device's profile like any other. A device that has
         a profile of its own keeps it, and without a device the profile stays
@@ -227,6 +228,11 @@ class NetworkManager(DBusInterfaceProxy):
                     # Callers apply the active profile next, so it must be current
                     if inet.settings and inet.settings.object_path == object_path:
                         await inet.settings.reload()
+                    elif inet.settings:
+                        # Take the device over from NetworkManager's fallback
+                        inet.connection = await self.activate_connection(
+                            object_path, inet.object_path
+                        )
             except (DBusError, DBusInterfaceError, DBusObjectError) as err:
                 # A profile can vanish meanwhile, see `_get_stored_setting()`
                 _LOGGER.warning("Can't import network profile %s: %s", object_path, err)
@@ -250,7 +256,9 @@ class NetworkManager(DBusInterfaceProxy):
             None,
         )
         if not inet:
-            if len(devices) != 1 or devices[0].settings:
+            if len(devices) != 1 or (
+                devices[0].settings and not devices[0].settings.is_generated
+            ):
                 return None
             inet = devices[0]
 

@@ -311,6 +311,35 @@ async def test_import_marked_connections_device_in_use(
     assert "user" in settings
 
 
+async def test_import_marked_connections_replaces_generated_profile(
+    network_manager: NetworkManager,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+    imported_wifi_settings_service: ConnectionSettingsService,
+):
+    """Test a marked profile takes its device over from NetworkManager's fallback."""
+    # eth0 is the only ethernet device, connected on the in-memory auto-default
+    connection_settings_service.flags = (
+        ConnectionFlags.UNSAVED | ConnectionFlags.NM_GENERATED
+    )
+    imported_wifi_settings_service.settings["connection"]["type"] = Variant(
+        "s", "802-3-ethernet"
+    )
+    eth = network_manager.get(TEST_INTERFACE_ETH_NAME)
+    await eth.settings.reload()
+    network_manager_service.ActivateConnection.calls.clear()
+
+    await network_manager.import_marked_connections()
+
+    settings = imported_wifi_settings_service.settings
+    assert settings["connection"]["id"] == Variant("s", "Supervisor eth0")
+    assert settings["match"]["path"] == Variant("as", ["platform-ff3f0000.ethernet"])
+    assert "user" not in settings
+    assert network_manager_service.ActivateConnection.calls == [
+        (imported_wifi_settings_service.object_path, eth.object_path, "/")
+    ]
+
+
 async def test_import_marked_connections_device_has_own_profile(
     network_manager: NetworkManager,
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
