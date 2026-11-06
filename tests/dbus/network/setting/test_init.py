@@ -7,6 +7,7 @@ from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
+from supervisor.dbus.const import ConnectionFlags
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting import NetworkSetting, _merge_settings_attribute
@@ -270,9 +271,36 @@ async def test_non_utf8_wireless_ssid(
 ):
     """Test a wireless profile whose SSID is not valid UTF-8 is kept as bytes."""
     connection_settings_service.settings["802-11-wireless"] = {
-        "ssid": Variant("ay", b"Caf\xe9")
+        "ssid": Variant("ay", b"Z\xfcrich")
     }
     settings = NetworkSetting("/org/freedesktop/NetworkManager/Settings/1")
     await settings.connect(dbus_session_bus)
 
-    assert settings.wireless.ssid == b"Caf\xe9"
+    assert settings.wireless.ssid == b"Z\xfcrich"
+
+
+@pytest.mark.parametrize(
+    ("flags", "is_generated"),
+    [
+        pytest.param(0, False, id="stored"),
+        pytest.param(ConnectionFlags.UNSAVED, False, id="unsaved"),
+        pytest.param(
+            ConnectionFlags.UNSAVED | ConnectionFlags.NM_GENERATED,
+            True,
+            id="auto_default",
+        ),
+        pytest.param(ConnectionFlags.VOLATILE, True, id="volatile"),
+    ],
+)
+async def test_flags(
+    dbus_interface: NetworkInterface,
+    connection_settings_service: ConnectionSettingsService,
+    flags: int,
+    is_generated: bool,
+):
+    """Test connection profile flags are read from NetworkManager."""
+    connection_settings_service.flags = flags
+    await dbus_interface.settings.reload()
+
+    assert dbus_interface.settings.flags == ConnectionFlags(flags)
+    assert dbus_interface.settings.is_generated is is_generated

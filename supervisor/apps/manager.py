@@ -87,8 +87,10 @@ class AppManager(CoreSysAttributes):
         """Return an installed app from slug."""
         return self.local.get(app_slug)
 
-    def from_token(self, token: str) -> App | None:
+    def from_token(self, token: str | None) -> App | None:
         """Return an app from Supervisor token."""
+        if not token:
+            return None
         for app in self.installed:
             if token == app.supervisor_token:
                 return app
@@ -198,14 +200,17 @@ class AppManager(CoreSysAttributes):
         if not tasks:
             return
 
-        # Stop Apps sequential
-        # avoid issue on slow IO
-        for app in tasks:
-            try:
-                await app.stop()
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't stop app %s: %s", app.slug, err)
-                await async_capture_exception(err)
+        # Stop apps in parallel, the stage is then bounded by the slowest app
+        # instead of the sum of all shutdown grace periods
+        await asyncio.gather(*(self._shutdown_app(app) for app in tasks))
+
+    async def _shutdown_app(self, app: App) -> None:
+        """Stop an app during shutdown, capturing errors to stop the others."""
+        try:
+            await app.stop()
+        except Exception as err:  # pylint: disable=broad-except
+            _LOGGER.warning("Can't stop app %s: %s", app.slug, err)
+            await async_capture_exception(err)
 
     @Job(
         name="app_manager_install",

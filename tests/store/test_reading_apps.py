@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 
-from supervisor.const import REPOSITORY_LOCAL, UpdateChannel
+from supervisor.const import REPOSITORY_CORE, REPOSITORY_LOCAL, UpdateChannel
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
@@ -131,3 +131,100 @@ async def test_deprecation_advisory_log_level(
         any(record.levelno >= logging.WARNING for record in advisories)
         is expect_warning
     )
+
+
+@pytest.mark.parametrize("repository", [REPOSITORY_LOCAL, REPOSITORY_CORE, "094b3f00"])
+@pytest.mark.parametrize(
+    ("app_slug_length", "kept"),
+    [pytest.param(60, True, id="at-limit"), pytest.param(61, False, id="too-long")],
+)
+async def test_app_slug_too_long(
+    coresys: CoreSys,
+    tmp_path: Path,
+    repository: str,
+    app_slug_length: int,
+    kept: bool,
+):
+    """Test store apps whose slug with the repository prefix is too long are skipped."""
+    config = load_json_fixture("basic-app-config.json")
+    config["slug"] = "a" * (app_slug_length - len(repository) - 1)
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+
+    with patch.object(
+        coresys.store.data, "_find_app_configs", AsyncMock(return_value=[config_file])
+    ):
+        apps = await coresys.store.data._read_apps_folder(tmp_path, repository)
+
+    assert (f"{repository}_{config['slug']}" in apps) is kept
+
+
+@pytest.mark.parametrize(
+    ("repository", "channel", "system", "level", "message"),
+    [
+        pytest.param(
+            "094b3f00",
+            UpdateChannel.STABLE,
+            {},
+            logging.DEBUG,
+            "Can't read",
+            id="not-installed",
+        ),
+        pytest.param(
+            REPOSITORY_LOCAL,
+            UpdateChannel.STABLE,
+            {},
+            logging.WARNING,
+            "Can't read",
+            id="local",
+        ),
+        pytest.param(
+            "094b3f00",
+            UpdateChannel.DEV,
+            {},
+            logging.WARNING,
+            "Can't read",
+            id="dev-channel",
+        ),
+        pytest.param(
+            "094b3f00",
+            UpdateChannel.STABLE,
+            {f"094b3f00_{'a' * 61}": {}},
+            logging.WARNING,
+            "can't get updates, its slug is longer than 60 characters. "
+            "Please report this to the app developer.",
+            id="installed",
+        ),
+    ],
+)
+async def test_app_slug_too_long_log_level(
+    coresys: CoreSys,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    repository: str,
+    channel: UpdateChannel,
+    system: dict[str, dict],
+    level: int,
+    message: str,
+):
+    """Test a too long slug only warns users who are affected or can fix it."""
+    config = load_json_fixture("basic-app-config.json")
+    config["slug"] = "a" * 61
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+    coresys.updater.channel = channel
+
+    with (
+        patch.object(
+            coresys.store.data,
+            "_find_app_configs",
+            AsyncMock(return_value=[config_file]),
+        ),
+        patch.dict(coresys.apps.data.system, system),
+        caplog.at_level(logging.DEBUG, logger="supervisor.store.data"),
+    ):
+        await coresys.store.data._read_apps_folder(tmp_path, repository)
+
+    assert [
+        record.levelno for record in caplog.records if message in record.getMessage()
+    ] == [level]

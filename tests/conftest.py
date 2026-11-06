@@ -1060,6 +1060,10 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
         ),
         patch.object(LogsControl, "journald_logs", new=MagicMock()) as logs,
     ):
+        # The reader enters the response a second time; its reads must end
+        # like an empty stream, a MagicMock chunk keeps it looping forever
+        response = logs.return_value.__aenter__.return_value
+        response.__aenter__.return_value.content.read.return_value = b""
         await coresys.host.logs.load()
         yield logs
 

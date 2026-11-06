@@ -7,7 +7,7 @@ from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.dbus.const import ConnectionState, DeviceType
+from supervisor.dbus.const import ConnectionFlags, ConnectionState, DeviceType
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting import NetworkSetting
@@ -161,6 +161,24 @@ async def test_find_connection_settings(
     assert settings is not None
     assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     settings.shutdown()
+
+
+async def test_find_connection_settings_skips_generated(
+    connection_settings_service: ConnectionSettingsService,
+    network_manager: NetworkManager,
+):
+    """Test a profile NetworkManager generated itself is not the device's own.
+
+    The in-memory auto-default ("Wired connection 1") names the device via
+    interface-name, so it would match, but it is a fallback rather than a
+    stored configuration.
+    """
+    connection_settings_service.flags = (
+        ConnectionFlags.UNSAVED | ConnectionFlags.NM_GENERATED
+    )
+    inet = network_manager.get(TEST_INTERFACE_ETH_NAME)
+
+    assert await network_manager.find_connection_settings(inet) is None
 
 
 async def test_find_connection_settings_no_match(
