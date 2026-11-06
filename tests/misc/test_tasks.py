@@ -1,9 +1,10 @@
 """Test scheduled tasks."""
 
 import asyncio
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from shutil import copy
-from unittest.mock import AsyncMock, Mock, PropertyMock, patch
+from typing import Any
+from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, call, patch
 
 from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
@@ -18,6 +19,7 @@ from supervisor.const import (
     Folder,
 )
 from supervisor.coresys import CoreSys
+from supervisor.docker.interface import DockerInterface
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
@@ -84,17 +86,95 @@ async def test_watchdog_homeassistant_api_off(tasks: Tasks, coresys: CoreSys):
         restart.assert_not_called()
 
 
-async def test_watchdog_homeassistant_api_error_state(tasks: Tasks, coresys: CoreSys):
-    """Test watchdog of homeassistant api does not restart when in error state."""
+@pytest.mark.parametrize(
+    ("api_up", "error_state"),
+    [
+        pytest.param(False, True, id="api_down_keeps_error_state"),
+        pytest.param(True, False, id="api_up_clears_error_state"),
+    ],
+)
+async def test_watchdog_homeassistant_api_error_state(
+    tasks: Tasks, coresys: CoreSys, api_up: bool, error_state: bool
+):
+    """Test watchdog of homeassistant api in error state.
+
+    It does not restart Core and clears the error state once Core responds.
+    """
     coresys.homeassistant.core._error_state = True
 
     with (
-        patch.object(HomeAssistantAPI, "check_api_state", return_value=False),
+        patch.object(HomeAssistantAPI, "check_api_state", return_value=api_up),
         patch.object(HomeAssistantCore, "restart") as restart,
     ):
         await tasks._watchdog_homeassistant_api()
         await tasks._watchdog_homeassistant_api()
         restart.assert_not_called()
+
+    assert coresys.homeassistant.error_state is error_state
+
+
+async def _block_forever(**_: Any) -> None:
+    """Never return, like a Core job that is still running."""
+    await asyncio.Event().wait()
+
+
+@pytest.mark.parametrize(
+    "stop_side_effect",
+    [
+        pytest.param(None, id="job_finished"),
+        pytest.param(_block_forever, id="job_running"),
+    ],
+)
+async def test_watchdog_homeassistant_api_keeps_error_state_after_core_job(
+    tasks: Tasks, coresys: CoreSys, stop_side_effect: Callable | None
+):
+    """Test a Core job during the API check keeps the error state."""
+    core = coresys.homeassistant.core
+    core._error_state = True
+    job_tasks: list[asyncio.Task] = []
+
+    async def check_api_state(*_: Any) -> bool:
+        job_tasks.append(asyncio.create_task(core.stop()))
+        await asyncio.wait(job_tasks, timeout=0.1)
+        return True
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=stop_side_effect),
+        patch.object(HomeAssistantAPI, "check_api_state", new=check_api_state),
+    ):
+        await tasks._watchdog_homeassistant_api()
+        job_tasks[0].cancel()
+
+    assert coresys.homeassistant.error_state is True
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_update_keeps_rollback_after_recovered_startup(
+    tasks: Tasks, coresys: CoreSys
+):
+    """Test update can roll back once Core recovered from a startup timeout."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.core._error_state = True
+
+    with patch.object(HomeAssistantAPI, "check_api_state", return_value=True):
+        await tasks._watchdog_homeassistant_api()
+
+    with (
+        patch.object(DockerInterface, "update") as update,
+        patch.object(DockerInterface, "is_running", return_value=True),
+        patch.object(
+            DockerInterface,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2023.12.0")),
+        ),
+        patch.object(HomeAssistantAPI, "get_config", side_effect=HomeAssistantError),
+    ):
+        await coresys.homeassistant.core.update(AwesomeVersion("2024.1.0"))
+
+    assert update.call_args_list == [
+        call(AwesomeVersion("2024.1.0"), image=ANY),
+        call(AwesomeVersion("2023.12.0"), image=ANY),
+    ]
 
 
 async def test_watchdog_homeassistant_api_landing_page(tasks: Tasks, coresys: CoreSys):
