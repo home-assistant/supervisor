@@ -825,6 +825,10 @@ class App(AppModel):
 
     async def prepare_sockets(self) -> None:
         """Create the app's socket folders and listen on its Supervisor socket."""
+        if self.slug_too_long_for_socket:
+            _LOGGER.debug("App %s slug is too long for a Supervisor socket", self.slug)
+            return
+
         # Bind mount sources must exist before every container start, and the
         # run folder is a tmpfs that does not survive a host reboot
         try:

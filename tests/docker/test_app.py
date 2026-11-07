@@ -162,6 +162,24 @@ def test_supervisor_socket_environment(
     } == tokens
 
 
+@pytest.mark.usefixtures("path_extern")
+def test_supervisor_socket_long_slug(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], addonsdata_user: PropertyMock
+):
+    """Test an app whose slug is over the cap gets no socket and keeps its token."""
+    config = load_json_fixture("basic-app-config.json") | {"supervisor_api_tcp": False}
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    with patch("supervisor.apps.model.SLUG_MAX_LENGTH", 5):
+        mounts = docker_app.mounts
+        addonsdata_user.return_value = {"test_addon": {"access_token": "abc123"}}
+        environment = docker_app.environment
+
+    assert "SUPERVISOR_SOCKET" not in environment
+    assert environment["SUPERVISOR_TOKEN"] == "abc123"
+    assert "/run/supervisor/api" not in [mount.target for mount in mounts]
+
+
 def test_legacy_app_environment_does_not_modify_app_data(
     coresys: CoreSys,
     addonsdata_system: dict[str, Data],

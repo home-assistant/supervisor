@@ -238,8 +238,11 @@ class DockerApp(DockerInterface):
         environment: dict[str, str | int | None] = {
             **app_env,
             ENV_TIME: self.sys_timezone,
-            ENV_SUPERVISOR_SOCKET: (PATH_RUN_API / SOCKET_NAME_SUPERVISOR).as_posix(),
         }
+        if not self.app.slug_too_long_for_socket:
+            environment[ENV_SUPERVISOR_SOCKET] = (
+                PATH_RUN_API / SOCKET_NAME_SUPERVISOR
+            ).as_posix()
         if self.app.supervisor_api_tcp:
             environment[ENV_TOKEN] = self.app.supervisor_token
             environment[ENV_TOKEN_OLD] = self.app.supervisor_token
@@ -469,14 +472,18 @@ class DockerApp(DockerInterface):
                 target=target_data_path or PATH_PRIVATE_DATA.as_posix(),
                 read_only=False,
             ),
-            # Supervisor listens for the app in here
-            DockerMount(
-                type=MountType.BIND,
-                source=self.app.path_extern_run_supervisor.as_posix(),
-                target=PATH_RUN_API.as_posix(),
-                read_only=True,
-            ),
         ]
+
+        # Supervisor listens for the app in here
+        if not self.app.slug_too_long_for_socket:
+            mounts.append(
+                DockerMount(
+                    type=MountType.BIND,
+                    source=self.app.path_extern_run_supervisor.as_posix(),
+                    target=PATH_RUN_API.as_posix(),
+                    read_only=True,
+                )
+            )
 
         # setup config mappings
         if MappingType.CONFIG in app_mapping:

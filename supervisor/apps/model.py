@@ -118,6 +118,7 @@ from .const import (
     ATTR_LOG_FORMAT,
     ATTR_PATH,
     ATTR_READ_ONLY,
+    SLUG_MAX_LENGTH,
     SUPERVISOR_API_TCP_DEFAULT,
     AppBackupMode,
     MappingType,
@@ -478,8 +479,19 @@ class AppModel(JobGroup, ABC):
         return self.data[ATTR_HASSIO_ROLE]
 
     @property
+    def slug_too_long_for_socket(self) -> bool:
+        """Return True if the app's socket path may not fit in sun_path.
+
+        Apps installed before the slug cap, or restored from their backups, keep
+        their slug. They get no Supervisor socket and stay on the TCP API.
+        """
+        return len(self.slug) > SLUG_MAX_LENGTH
+
+    @property
     def supervisor_api_tcp(self) -> bool:
         """Return True if the app gets a token to call the Supervisor API over TCP."""
+        if self.slug_too_long_for_socket:
+            return True
         return self.data.get(ATTR_SUPERVISOR_API_TCP, SUPERVISOR_API_TCP_DEFAULT)
 
     @property

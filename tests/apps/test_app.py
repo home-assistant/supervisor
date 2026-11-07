@@ -904,6 +904,24 @@ def test_supervisor_api_tcp(
     assert install_app_ssh.supervisor_api_tcp is expected
 
 
+@pytest.mark.parametrize(
+    "config",
+    [
+        pytest.param({}, id="default"),
+        pytest.param({"supervisor_api_tcp": False}, id="socket"),
+    ],
+)
+def test_supervisor_api_tcp_long_slug(
+    install_app_ssh: App, config: dict[str, bool]
+) -> None:
+    """Test an app whose slug is over the cap gets no socket and stays on TCP."""
+    install_app_ssh.data.update(config)
+
+    with patch("supervisor.apps.model.SLUG_MAX_LENGTH", 5):
+        assert install_app_ssh.slug_too_long_for_socket is True
+        assert install_app_ssh.supervisor_api_tcp is True
+
+
 async def _start(coresys: CoreSys, app: App) -> asyncio.Task | None:
     """Start the app."""
     return await app.start()
@@ -1012,6 +1030,23 @@ async def test_start_socket_listen_error(
         await install_app_ssh.start()
 
     run.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_long_slug(coresys: CoreSys, install_app_ssh: App) -> None:
+    """Test an app whose slug is over the cap starts without a socket."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+
+    with (
+        patch("supervisor.apps.model.SLUG_MAX_LENGTH", 5),
+        patch.object(DockerAPI, "run") as run,
+    ):
+        await install_app_ssh.start()
+
+    run.assert_called_once()
+    coresys.api.sockets.register.assert_not_awaited()
+    assert not install_app_ssh.path_run_supervisor.exists()
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
