@@ -13,24 +13,21 @@ from ..const import ATTR_ACCESS_TOKEN
 from ..coresys import CoreSys
 from ..docker.cli import DockerCli
 from ..docker.const import ContainerState
-from ..docker.stats import DockerStats
 from ..exceptions import (
-    CliError,
     CliJobError,
+    CliNotInstalledError,
     CliNotRunningError,
+    CliRestartError,
+    CliStartError,
     CliStatsTimeoutError,
+    CliStopError,
     CliUnknownError,
+    CliUpdateAlreadyInstalledError,
     CliUpdateError,
-    DockerContainerNotFoundError,
-    DockerContainerNotRunningError,
-    DockerError,
-    DockerStatsTimeoutError,
-    PluginError,
 )
 from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
-from ..utils.sentry import async_capture_exception
-from .base import PluginBase
+from .base import PluginBase, PluginErrors
 from .const import (
     FILE_HASSIO_CLI,
     PLUGIN_UPDATE_CONDITIONS,
@@ -44,6 +41,18 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 class PluginCli(PluginBase):
     """HA cli interface inside supervisor."""
+
+    errors = PluginErrors(
+        start=CliStartError,
+        stop=CliStopError,
+        update=CliUpdateError,
+        restart=CliRestartError,
+        not_running=CliNotRunningError,
+        stats_timeout=CliStatsTimeoutError,
+        unknown=CliUnknownError,
+        not_installed=CliNotInstalledError,
+        already_installed=CliUpdateAlreadyInstalledError,
+    )
 
     def __init__(self, coresys: CoreSys):
         """Initialize cli handler."""
@@ -74,54 +83,15 @@ class PluginCli(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=CliJobError,
     )
-    async def update(self, version: AwesomeVersion | None = None) -> None:
+    async def update(self, version: str | None = None) -> None:
         """Update local HA cli."""
-        try:
-            await super().update(version)
-        except (DockerError, PluginError) as err:
-            raise CliUpdateError("CLI update failed", _LOGGER.error) from err
-
-    async def restart(self) -> None:
-        """Restart cli."""
-        async with self._lifecycle_lock:
-            _LOGGER.info("Restarting cli plugin")
-            try:
-                await self.instance.restart()
-            except DockerError as err:
-                raise CliError("Can't restart cli plugin", _LOGGER.error) from err
+        await super().update(version)
 
     async def start(self) -> None:
-        """Run cli."""
-        # Create new API token
+        """Run cli with a new API token."""
         self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         await self.save_data()
-
-        # Start Instance
-        _LOGGER.info("Starting CLI plugin")
-        try:
-            await self.instance.run()
-        except DockerError as err:
-            raise CliError("Can't start cli plugin", _LOGGER.error) from err
-
-    async def stop(self) -> None:
-        """Stop cli."""
-        _LOGGER.info("Stopping cli plugin")
-        try:
-            await self.instance.stop()
-        except DockerError as err:
-            raise CliError("Can't stop cli plugin", _LOGGER.error) from err
-
-    async def stats(self, *, one_shot: bool = False) -> DockerStats:
-        """Return stats of cli."""
-        try:
-            return await self.instance.stats(one_shot=one_shot)
-        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
-            raise CliNotRunningError(_LOGGER.warning) from err
-        except DockerStatsTimeoutError as err:
-            raise CliStatsTimeoutError(_LOGGER.error) from err
-        except DockerError as err:
-            _LOGGER.error("Could not get stats of container for HA cli: %s", err)
-            raise CliUnknownError from err
+        await super().start()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -129,18 +99,6 @@ class PluginCli(PluginBase):
         Return a coroutine.
         """
         return self.instance.is_running()
-
-    async def repair(self) -> None:
-        """Repair cli container."""
-        if await self.instance.exists():
-            return
-
-        _LOGGER.info("Repairing HA cli %s", self.version)
-        try:
-            await self.instance.install(self.version)
-        except DockerError as err:
-            _LOGGER.error("Repair of HA cli failed")
-            await async_capture_exception(err)
 
     @Job(
         name="plugin_cli_restart_after_problem",

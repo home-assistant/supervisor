@@ -13,26 +13,21 @@ from ..const import ATTR_ACCESS_TOKEN
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
 from ..docker.observer import DockerObserver
-from ..docker.stats import DockerStats
 from ..exceptions import (
-    DockerContainerNotFoundError,
-    DockerContainerNotRunningError,
-    DockerContainerPortConflict,
-    DockerError,
-    DockerStatsTimeoutError,
-    ObserverError,
     ObserverJobError,
+    ObserverNotInstalledError,
     ObserverNotRunningError,
     ObserverPortConflict,
+    ObserverRestartError,
+    ObserverStartError,
     ObserverStatsTimeoutError,
     ObserverUnknownError,
+    ObserverUpdateAlreadyInstalledError,
     ObserverUpdateError,
-    PluginError,
 )
 from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
-from ..utils.sentry import async_capture_exception
-from .base import PluginBase
+from .base import PluginBase, PluginErrors
 from .const import (
     FILE_HASSIO_OBSERVER,
     PLUGIN_UPDATE_CONDITIONS,
@@ -46,6 +41,18 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 class PluginObserver(PluginBase):
     """Supervisor observer instance."""
+
+    errors = PluginErrors(
+        start=ObserverStartError,
+        update=ObserverUpdateError,
+        restart=ObserverRestartError,
+        not_running=ObserverNotRunningError,
+        stats_timeout=ObserverStatsTimeoutError,
+        unknown=ObserverUnknownError,
+        not_installed=ObserverNotInstalledError,
+        already_installed=ObserverUpdateAlreadyInstalledError,
+        port_conflict=ObserverPortConflict,
+    )
 
     def __init__(self, coresys: CoreSys):
         """Initialize observer handler."""
@@ -76,57 +83,15 @@ class PluginObserver(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=ObserverJobError,
     )
-    async def update(self, version: AwesomeVersion | None = None) -> None:
+    async def update(self, version: str | None = None) -> None:
         """Update local HA observer."""
-        try:
-            await super().update(version)
-        except (DockerError, PluginError) as err:
-            raise ObserverUpdateError(
-                "HA observer update failed", _LOGGER.error
-            ) from err
-
-    async def restart(self) -> None:
-        """Restart observer."""
-        async with self._lifecycle_lock:
-            _LOGGER.info("Restarting observer plugin")
-            try:
-                await self.instance.restart()
-            except DockerError as err:
-                raise ObserverError(
-                    "Can't restart observer plugin", _LOGGER.error
-                ) from err
+        await super().update(version)
 
     async def start(self) -> None:
-        """Run observer."""
-        # Create new API token
+        """Run observer with a new API token."""
         self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         await self.save_data()
-
-        # Start Instance
-        _LOGGER.info("Starting observer plugin")
-        try:
-            await self.instance.run()
-        except DockerContainerPortConflict as err:
-            raise ObserverPortConflict(_LOGGER.error) from err
-        except DockerError as err:
-            _LOGGER.error("Can't start observer plugin")
-            raise ObserverError from err
-
-    async def stop(self) -> None:
-        """Raise. Supervisor should not stop observer."""
-        raise RuntimeError("Stopping observer without a restart is not supported!")
-
-    async def stats(self, *, one_shot: bool = False) -> DockerStats:
-        """Return stats of observer."""
-        try:
-            return await self.instance.stats(one_shot=one_shot)
-        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
-            raise ObserverNotRunningError(_LOGGER.warning) from err
-        except DockerStatsTimeoutError as err:
-            raise ObserverStatsTimeoutError(_LOGGER.error) from err
-        except DockerError as err:
-            _LOGGER.error("Could not get stats of container for Observer: %s", err)
-            raise ObserverUnknownError from err
+        await super().start()
 
     async def check_system_runtime(self) -> bool:
         """Check if the observer is running."""
@@ -141,18 +106,6 @@ class PluginObserver(PluginBase):
             pass
 
         return False
-
-    async def repair(self) -> None:
-        """Repair observer container."""
-        if await self.instance.exists():
-            return
-
-        _LOGGER.info("Repairing HA observer %s", self.version)
-        try:
-            await self.instance.install(self.version)
-        except DockerError as err:
-            _LOGGER.error("Repair of HA observer failed")
-            await async_capture_exception(err)
 
     @Job(
         name="plugin_observer_restart_after_problem",

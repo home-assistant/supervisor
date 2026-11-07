@@ -14,25 +14,46 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
+    AudioConfigError,
     AudioError,
     AudioJobError,
+    AudioRestartError,
+    AudioStartError,
+    AudioStopError,
     AudioUpdateError,
     CliError,
     CliJobError,
+    CliRestartError,
+    CliStartError,
+    CliStopError,
     CliUpdateError,
+    ConfigurationFileError,
+    CoreDNSConfigError,
     CoreDNSError,
     CoreDNSJobError,
+    CoreDNSRestartError,
+    CoreDNSStartError,
+    CoreDNSStopError,
     CoreDNSUpdateError,
+    DockerContainerPortConflict,
     DockerError,
     MulticastDisabledError,
     MulticastError,
     MulticastJobError,
+    MulticastRestartError,
+    MulticastStartError,
+    MulticastStopError,
+    MulticastUpdateError,
     ObserverError,
     ObserverJobError,
+    ObserverPortConflict,
+    ObserverRestartError,
+    ObserverStartError,
     ObserverUpdateError,
     PluginDisabledError,
     PluginError,
     PluginJobError,
+    PluginLatestVersionUnknownError,
 )
 from supervisor.plugins.audio import PluginAudio
 from supervisor.plugins.base import PluginBase
@@ -43,6 +64,8 @@ from supervisor.plugins.observer import PluginObserver
 from supervisor.utils import check_exception_chain
 
 from tests.common import fire_bus_event
+
+ALL_PLUGINS = [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver]
 
 
 @pytest.fixture(name="plugin")
@@ -348,14 +371,143 @@ async def test_update_fails_if_out_of_date(
         await plugin.update()
 
 
+UPDATE_ERRORS = [
+    (PluginAudio, AudioUpdateError),
+    (PluginCli, CliUpdateError),
+    (PluginDns, CoreDNSUpdateError),
+    (PluginMulticast, MulticastUpdateError),
+    (PluginObserver, ObserverUpdateError),
+]
+
+
+@pytest.mark.parametrize(("plugin", "error"), UPDATE_ERRORS, indirect=["plugin"])
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data")
+async def test_update_failed(
+    coresys: CoreSys, plugin: PluginBase, error: type[PluginError]
+) -> None:
+    """Test a failed update raises the plugin specific error."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin.version = AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(plugin.instance), "update", side_effect=DockerError),
+        pytest.raises(error),
+    ):
+        await plugin.update("2024.02.0")
+
+
+@pytest.mark.parametrize(("plugin", "error"), UPDATE_ERRORS, indirect=["plugin"])
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data")
+async def test_update_latest_version_unknown(
+    coresys: CoreSys, plugin: PluginBase, error: type[PluginError]
+) -> None:
+    """Test update without a version fails when the latest version is unknown."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin.version = AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(
+            type(plugin), "latest_version", new=PropertyMock(return_value=None)
+        ),
+        patch.object(type(plugin.instance), "update") as update,
+        pytest.raises(error) as exc_info,
+    ):
+        await plugin.update()
+
+    assert isinstance(exc_info.value.__cause__, PluginLatestVersionUnknownError)
+    update.assert_not_called()
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data")
+async def test_update_same_version_skipped(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test update to the installed version does nothing."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    plugin.version = AwesomeVersion("2024.01.0")
+
+    with (
+        patch.object(type(plugin.instance), "update") as update,
+        patch.object(type(plugin.instance), "run") as run,
+    ):
+        await plugin.update("2024.01.0")
+
+    update.assert_not_called()
+    run.assert_not_called()
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_install_latest_version_unknown(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test install reloads the versions and fails if the latest is still unknown."""
+    with (
+        patch.object(
+            type(plugin), "latest_version", new=PropertyMock(return_value=None)
+        ),
+        patch.object(type(coresys.updater), "reload") as reload,
+        patch.object(type(plugin.instance), "install") as install,
+        pytest.raises(PluginLatestVersionUnknownError),
+    ):
+        await plugin._install()  # pylint: disable=protected-access
+
+    reload.assert_called_once()
+    install.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("plugin", "writer", "error"),
+    [
+        pytest.param(
+            PluginAudio,
+            "supervisor.plugins.audio.write_json_file",
+            AudioConfigError,
+            id="audio",
+        ),
+        pytest.param(
+            PluginDns,
+            "supervisor.plugins.dns.write_json_file",
+            CoreDNSConfigError,
+            id="dns",
+        ),
+    ],
+    indirect=["plugin"],
+)
+@pytest.mark.parametrize(
+    ("operation", "docker_call"),
+    [
+        pytest.param("start", "run", id="start"),
+        pytest.param("restart", "restart", id="restart"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_config_write_failed(
+    plugin: PluginBase,
+    writer: str,
+    error: type[PluginError],
+    operation: str,
+    docker_call: str,
+) -> None:
+    """Test a failed config write raises the config error before the container runs."""
+    with (
+        patch(writer, side_effect=ConfigurationFileError),
+        patch.object(type(plugin.instance), docker_call) as docker_method,
+        pytest.raises(error),
+    ):
+        await getattr(plugin, operation)()
+
+    docker_method.assert_not_called()
+
+
 @pytest.mark.parametrize(
     ("plugin", "error"),
     [
-        (PluginAudio, AudioError),
-        (PluginCli, CliError),
-        (PluginDns, CoreDNSError),
-        (PluginMulticast, MulticastError),
-        (PluginObserver, ObserverError),
+        (PluginAudio, AudioRestartError),
+        (PluginCli, CliRestartError),
+        (PluginDns, CoreDNSRestartError),
+        (PluginMulticast, MulticastRestartError),
+        (PluginObserver, ObserverRestartError),
     ],
     indirect=["plugin"],
 )
@@ -367,6 +519,85 @@ async def test_restart_failed(plugin: PluginBase, error: type[PluginError]) -> N
         pytest.raises(error),
     ):
         await plugin.restart()
+
+
+@pytest.mark.parametrize(
+    ("plugin", "error"),
+    [
+        (PluginAudio, AudioStartError),
+        (PluginCli, CliStartError),
+        (PluginDns, CoreDNSStartError),
+        (PluginMulticast, MulticastStartError),
+        (PluginObserver, ObserverStartError),
+    ],
+    indirect=["plugin"],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_start_failed(plugin: PluginBase, error: type[PluginError]) -> None:
+    """Test a failed start raises the plugin specific error."""
+    with (
+        patch.object(type(plugin.instance), "run", side_effect=DockerError),
+        pytest.raises(error),
+    ):
+        await plugin.start()
+
+
+@pytest.mark.parametrize(
+    ("plugin", "error"),
+    [
+        (PluginAudio, AudioStartError),
+        (PluginCli, CliStartError),
+        (PluginDns, CoreDNSStartError),
+        (PluginMulticast, MulticastStartError),
+        (PluginObserver, ObserverPortConflict),
+    ],
+    indirect=["plugin"],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_start_port_conflict(
+    plugin: PluginBase, error: type[PluginError]
+) -> None:
+    """Test a port conflict raises the port conflict error, else the start error."""
+    with (
+        patch.object(
+            type(plugin.instance),
+            "run",
+            side_effect=DockerContainerPortConflict(name="test", port=1234),
+        ),
+        pytest.raises(error),
+    ):
+        await plugin.start()
+
+
+@pytest.mark.parametrize(
+    ("plugin", "error"),
+    [
+        (PluginAudio, AudioStopError),
+        (PluginCli, CliStopError),
+        (PluginDns, CoreDNSStopError),
+        (PluginMulticast, MulticastStopError),
+    ],
+    indirect=["plugin"],
+)
+async def test_stop_failed(plugin: PluginBase, error: type[PluginError]) -> None:
+    """Test a failed stop raises the plugin specific error."""
+    with (
+        patch.object(DockerInterface, "stop", side_effect=DockerError),
+        pytest.raises(error),
+    ):
+        await plugin.stop()
+
+
+@pytest.mark.parametrize("plugin", [PluginObserver], indirect=True)
+async def test_stop_not_supported(plugin: PluginBase) -> None:
+    """Test a plugin without a stop error refuses to stop."""
+    with (
+        patch.object(DockerInterface, "stop") as stop,
+        pytest.raises(RuntimeError),
+    ):
+        await plugin.stop()
+
+    stop.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -439,9 +670,6 @@ async def test_default_image_fallback(coresys: CoreSys, plugin: PluginBase):
     """Test default image falls back to hard-coded constant if we fail to fetch version file."""
     assert getattr(coresys.updater, f"image_{plugin.slug}") is None
     assert plugin.default_image == f"ghcr.io/home-assistant/amd64-hassio-{plugin.slug}"
-
-
-ALL_PLUGINS = [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver]
 
 
 @pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
@@ -768,37 +996,93 @@ async def test_plugin_enable_disable_serialized(
     assert plugin.version is None
 
 
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+@pytest.mark.parametrize("method", ["restart", "repair"])
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_plugin_operation_waits_for_lifecycle_lock(
+    plugin: PluginBase, method: str
+) -> None:
+    """Test operations called from the API wait for a running lifecycle operation."""
+    with (
+        patch.object(DockerInterface, "restart") as restart,
+        patch.object(DockerInterface, "exists", return_value=False),
+        patch.object(DockerInterface, "install") as install,
+    ):
+        async with plugin._lifecycle_lock:  # pylint: disable=protected-access
+            task = asyncio.create_task(getattr(plugin, method)())
+            await asyncio.sleep(0)
+            assert not task.done()
+            restart.assert_not_called()
+            install.assert_not_called()
+
+        await task
+
+    assert restart.call_count + install.call_count == 1
+
+
+async def test_dns_reset_waits_for_lifecycle_lock(coresys: CoreSys) -> None:
+    """Test a DNS reset waits for a running lifecycle operation."""
+    dns = coresys.plugins.dns
+    with (
+        patch.object(type(dns), "save_data") as save_data,
+        patch.object(type(dns), "_init_hosts"),
+        patch.object(type(coresys.apps), "sync_dns"),
+    ):
+        async with dns._lifecycle_lock:  # pylint: disable=protected-access
+            task = asyncio.create_task(dns.reset())
+            await asyncio.sleep(0)
+            assert not task.done()
+            save_data.assert_not_called()
+
+        await task
+
+    save_data.assert_called_once()
+
+
 @pytest.mark.parametrize(
     ("plugin", "error"),
     [
-        (PluginAudio, AudioUpdateError),
-        (PluginCli, CliUpdateError),
-        (PluginDns, CoreDNSUpdateError),
+        (PluginAudio, PluginDisabledError),
+        (PluginCli, PluginDisabledError),
+        (PluginDns, PluginDisabledError),
         (PluginMulticast, MulticastDisabledError),
-        (PluginObserver, ObserverUpdateError),
+        (PluginObserver, PluginDisabledError),
     ],
     indirect=["plugin"],
 )
-async def test_plugin_update_rejected_when_disabled(
-    coresys: CoreSys, plugin: PluginBase, error: type[PluginError]
+@pytest.mark.usefixtures("tmp_supervisor_data")
+@pytest.mark.parametrize(
+    ("operation", "docker_call"),
+    [
+        pytest.param("update", "update", id="update"),
+        pytest.param("restart", "restart", id="restart"),
+        pytest.param("stats", "stats", id="stats"),
+        pytest.param("start", "run", id="start"),
+    ],
+)
+async def test_plugin_operation_rejected_when_disabled(
+    coresys: CoreSys,
+    plugin: PluginBase,
+    error: type[PluginError],
+    operation: str,
+    docker_call: str,
 ) -> None:
-    """Test update refuses to run while disabled."""
+    """Test operations that require the plugin refuse to run while disabled."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    plugin._data["enabled"] = False  # pylint: disable=protected-access
 
     with (
+        patch.object(type(plugin), "enabled", new=PropertyMock(return_value=False)),
         patch.object(
             type(plugin),
             "latest_version",
             new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
         ),
-        patch.object(type(plugin.instance), "update") as update,
-        pytest.raises(error) as exc_info,
+        patch.object(type(plugin.instance), docker_call) as docker_method,
+        pytest.raises(error),
     ):
-        await plugin.update()
+        await getattr(plugin, operation)()
 
-    update.assert_not_called()
-    assert check_exception_chain(exc_info.value, PluginDisabledError)
+    docker_method.assert_not_called()
 
 
 @pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)

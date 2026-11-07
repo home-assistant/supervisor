@@ -449,9 +449,58 @@ class PluginDisabledError(PluginError, APIError):
     """Raise when an action requires a disabled plugin."""
 
     error_key = "plugin_disabled_error"
-    message_template = "Plugin {plugin} is disabled"
+    message_template = "Plugin is disabled"
 
-    def __init__(self, plugin: str, logger: Callable[..., None] | None = None) -> None:
+
+class PluginNotInstalledError(PluginError, APIError):
+    """Raise when an action requires a plugin that is not installed."""
+
+
+class PluginUpdateAlreadyInstalledError(PluginError, APIError):
+    """Raise when the requested plugin version is already installed."""
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
+
+
+class PluginLatestVersionUnknownError(PluginError):
+    """Raise when the latest version of a plugin cannot be determined."""
+
+    message_template = "Can't determine latest version of {plugin} plugin"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, plugin: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"plugin": plugin}
+        super().__init__(None, logger)
+
+
+class PluginInstallError(PluginError):
+    """Raise when a plugin cannot be installed."""
+
+    message_template = "Can't install {plugin} plugin"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, plugin: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"plugin": plugin}
+        super().__init__(None, logger)
+
+
+class PluginRemoveError(PluginError):
+    """Raise when a plugin cannot be removed."""
+
+    message_template = "Can't remove {plugin} plugin"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, plugin: str
+    ) -> None:
         """Raise & log."""
         self.extra_fields = {"plugin": plugin}
         super().__init__(None, logger)
@@ -464,12 +513,50 @@ class CliError(PluginError):
     """HA cli exception."""
 
 
-class CliUpdateError(CliError):
-    """Error on update of a HA cli."""
+class CliUpdateError(CliError, APIUnknownSupervisorError):
+    """Raise when updating HA cli fails."""
+
+    error_key = "cli_update_error"
+    message_template = "Updating HA cli failed"
+
+
+class CliNotInstalledError(CliError, PluginNotInstalledError):
+    """Raise when an action requires HA cli to be installed."""
+
+    error_key = "cli_not_installed_error"
+    message_template = "HA cli is not installed"
+
+
+class CliUpdateAlreadyInstalledError(CliError, PluginUpdateAlreadyInstalledError):
+    """Raise when the requested HA cli version is already installed."""
+
+    error_key = "cli_update_already_installed_error"
+    message_template = "Version {version} of HA cli is already installed"
 
 
 class CliJobError(CliError, PluginJobError):
     """Raise on job error with cli plugin."""
+
+
+class CliStartError(CliError, APIUnknownSupervisorError):
+    """Raise when HA cli cannot be started."""
+
+    error_key = "cli_start_error"
+    message_template = "Can't start HA cli"
+
+
+class CliStopError(CliError, APIUnknownSupervisorError):
+    """Raise when HA cli cannot be stopped."""
+
+    error_key = "cli_stop_error"
+    message_template = "Can't stop HA cli"
+
+
+class CliRestartError(CliError, APIUnknownSupervisorError):
+    """Raise when HA cli cannot be restarted."""
+
+    error_key = "cli_restart_error"
+    message_template = "Can't restart HA cli"
 
 
 class CliNotRunningError(CliError, APIError):
@@ -508,12 +595,45 @@ class ObserverError(PluginError):
     """General Observer exception."""
 
 
-class ObserverUpdateError(ObserverError):
-    """Error on update of a Observer."""
+class ObserverUpdateError(ObserverError, APIUnknownSupervisorError):
+    """Raise when updating Observer fails."""
+
+    error_key = "observer_update_error"
+    message_template = "Updating Observer failed"
+
+
+class ObserverNotInstalledError(ObserverError, PluginNotInstalledError):
+    """Raise when an action requires Observer to be installed."""
+
+    error_key = "observer_not_installed_error"
+    message_template = "Observer is not installed"
+
+
+class ObserverUpdateAlreadyInstalledError(
+    ObserverError, PluginUpdateAlreadyInstalledError
+):
+    """Raise when the requested Observer version is already installed."""
+
+    error_key = "observer_update_already_installed_error"
+    message_template = "Version {version} of Observer is already installed"
 
 
 class ObserverJobError(ObserverError, PluginJobError):
     """Raise on job error with observer plugin."""
+
+
+class ObserverStartError(ObserverError, APIUnknownSupervisorError):
+    """Raise when Observer cannot be started."""
+
+    error_key = "observer_start_error"
+    message_template = "Can't start Observer"
+
+
+class ObserverRestartError(ObserverError, APIUnknownSupervisorError):
+    """Raise when Observer cannot be restarted."""
+
+    error_key = "observer_restart_error"
+    message_template = "Can't restart Observer"
 
 
 class ObserverPortConflict(ObserverError, APIError):
@@ -564,12 +684,66 @@ class MulticastError(PluginError):
     """Multicast exception."""
 
 
-class MulticastUpdateError(MulticastError):
-    """Error on update of a multicast."""
+class MulticastUpdateError(MulticastError, APIUnknownSupervisorError):
+    """Raise when updating Multicast fails."""
+
+    error_key = "multicast_update_error"
+    message_template = "Updating Multicast failed"
+
+
+class MulticastNotInstalledError(MulticastError, PluginNotInstalledError):
+    """Raise when an action requires Multicast to be installed."""
+
+    error_key = "multicast_not_installed_error"
+    message_template = "Multicast is not installed"
+
+
+class MulticastUpdateAlreadyInstalledError(
+    MulticastError, PluginUpdateAlreadyInstalledError
+):
+    """Raise when the requested Multicast version is already installed."""
+
+    error_key = "multicast_update_already_installed_error"
+    message_template = "Version {version} of Multicast is already installed"
 
 
 class MulticastJobError(MulticastError, PluginJobError):
     """Raise on job error with multicast plugin."""
+
+
+class MulticastStartError(MulticastError, APIUnknownSupervisorError):
+    """Raise when Multicast cannot be started."""
+
+    error_key = "multicast_start_error"
+    message_template = "Can't start Multicast"
+
+
+class MulticastStopError(MulticastError, APIUnknownSupervisorError):
+    """Raise when Multicast cannot be stopped."""
+
+    error_key = "multicast_stop_error"
+    message_template = "Can't stop Multicast"
+
+
+class MulticastRestartError(MulticastError, APIUnknownSupervisorError):
+    """Raise when Multicast cannot be restarted."""
+
+    error_key = "multicast_restart_error"
+    message_template = "Can't restart Multicast"
+
+
+class MulticastEnableError(MulticastError, APIUnknownSupervisorError):
+    """Raise when Multicast cannot be enabled."""
+
+    error_key = "multicast_enable_error"
+    message_template = "Can't enable Multicast"
+
+
+class MulticastDisableError(MulticastError, APIUnknownSupervisorError):
+    """Raise when Multicast cannot be disabled."""
+
+    error_key = "multicast_disable_error"
+    message_template = "Can't disable Multicast"
 
 
 class MulticastDisabledError(MulticastError, PluginDisabledError):
@@ -577,10 +751,6 @@ class MulticastDisabledError(MulticastError, PluginDisabledError):
 
     error_key = "multicast_disabled_error"
     message_template = "Multicast plugin is disabled"
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__("multicast", logger)
 
 
 class MulticastNotRunningError(MulticastError, APIError):
@@ -619,12 +789,66 @@ class CoreDNSError(PluginError):
     """CoreDNS exception."""
 
 
-class CoreDNSUpdateError(CoreDNSError):
-    """Error on update of a CoreDNS."""
+class CoreDNSUpdateError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when updating CoreDNS fails."""
+
+    error_key = "coredns_update_error"
+    message_template = "Updating CoreDNS failed"
+
+
+class CoreDNSNotInstalledError(CoreDNSError, PluginNotInstalledError):
+    """Raise when an action requires CoreDNS to be installed."""
+
+    error_key = "coredns_not_installed_error"
+    message_template = "CoreDNS is not installed"
+
+
+class CoreDNSUpdateAlreadyInstalledError(
+    CoreDNSError, PluginUpdateAlreadyInstalledError
+):
+    """Raise when the requested CoreDNS version is already installed."""
+
+    error_key = "coredns_update_already_installed_error"
+    message_template = "Version {version} of CoreDNS is already installed"
 
 
 class CoreDNSJobError(CoreDNSError, PluginJobError):
     """Raise on job error with dns plugin."""
+
+
+class CoreDNSStartError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when CoreDNS cannot be started."""
+
+    error_key = "coredns_start_error"
+    message_template = "Can't start CoreDNS"
+
+
+class CoreDNSStopError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when CoreDNS cannot be stopped."""
+
+    error_key = "coredns_stop_error"
+    message_template = "Can't stop CoreDNS"
+
+
+class CoreDNSRestartError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when CoreDNS cannot be restarted."""
+
+    error_key = "coredns_restart_error"
+    message_template = "Can't restart CoreDNS"
+
+
+class CoreDNSConfigError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when the CoreDNS config cannot be written."""
+
+    error_key = "coredns_config_error"
+    message_template = "Can't update CoreDNS config"
+
+
+class CoreDNSHostsError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when the CoreDNS hosts file cannot be written."""
+
+    error_key = "coredns_hosts_error"
+    message_template = "Can't update CoreDNS hosts"
 
 
 class CoreDNSNotRunningError(CoreDNSError, APIError):
@@ -663,12 +887,57 @@ class AudioError(PluginError):
     """PulseAudio exception."""
 
 
-class AudioUpdateError(AudioError):
-    """Error on update of a Audio."""
+class AudioUpdateError(AudioError, APIUnknownSupervisorError):
+    """Raise when updating Audio fails."""
+
+    error_key = "audio_update_error"
+    message_template = "Updating Audio failed"
+
+
+class AudioNotInstalledError(AudioError, PluginNotInstalledError):
+    """Raise when an action requires Audio to be installed."""
+
+    error_key = "audio_not_installed_error"
+    message_template = "Audio is not installed"
+
+
+class AudioUpdateAlreadyInstalledError(AudioError, PluginUpdateAlreadyInstalledError):
+    """Raise when the requested Audio version is already installed."""
+
+    error_key = "audio_update_already_installed_error"
+    message_template = "Version {version} of Audio is already installed"
 
 
 class AudioJobError(AudioError, PluginJobError):
     """Raise on job error with audio plugin."""
+
+
+class AudioStartError(AudioError, APIUnknownSupervisorError):
+    """Raise when Audio cannot be started."""
+
+    error_key = "audio_start_error"
+    message_template = "Can't start Audio"
+
+
+class AudioStopError(AudioError, APIUnknownSupervisorError):
+    """Raise when Audio cannot be stopped."""
+
+    error_key = "audio_stop_error"
+    message_template = "Can't stop Audio"
+
+
+class AudioRestartError(AudioError, APIUnknownSupervisorError):
+    """Raise when Audio cannot be restarted."""
+
+    error_key = "audio_restart_error"
+    message_template = "Can't restart Audio"
+
+
+class AudioConfigError(AudioError, APIUnknownSupervisorError):
+    """Raise when the Audio config cannot be written."""
+
+    error_key = "audio_config_error"
+    message_template = "Can't update Audio config"
 
 
 class AudioNotRunningError(AudioError, APIError):
