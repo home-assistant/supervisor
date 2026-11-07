@@ -175,14 +175,14 @@ class Core(CoreSysAttributes):
             self.sys_arch.load(),
             # Load Stores
             self.sys_store.load(),
+            # Load discovery before the apps, as their state changes push its messages
+            self.sys_discovery.load(),
             # Load Apps
             self.sys_apps.load(),
             # load last available data
             self.sys_backups.load(),
             # load services
             self.sys_services.load(),
-            # Load discovery
-            self.sys_discovery.load(),
             # Load ingress
             self.sys_ingress.load(),
             # Load Resolution
