@@ -19,7 +19,13 @@ import pytest
 from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode
+from supervisor.apps.const import (
+    WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_MAX_RETRY_SECONDS,
+    WATCHDOG_RETRY_BACKOFF_FACTOR,
+    WATCHDOG_RETRY_SECONDS,
+    AppBackupMode,
+)
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
 from supervisor.const import (
     ATTR_ADVANCED,
@@ -537,6 +543,60 @@ async def test_watchdog_port_conflict_does_not_retry(
         start.assert_called_once()
         capture_exception.assert_not_called()
         assert f"Watchdog cannot restart app {install_app_ssh.name}" in caplog.text
+
+
+async def test_watchdog_backoff_schedule(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Watchdog retries follow the capped exponential schedule and give up at max attempts."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    recorded: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        recorded.append(delay)
+
+    with (
+        patch.object(
+            App,
+            "start",
+            side_effect=AppsError("boom"),
+        ) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep", new=fake_sleep),
+        patch("supervisor.apps.app.async_capture_exception"),
+    ):
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    # Every failing attempt calls start(); loop exits only via WATCHDOG_MAX_ATTEMPTS.
+    assert start.call_count == WATCHDOG_MAX_ATTEMPTS
+    assert len(recorded) == WATCHDOG_MAX_ATTEMPTS - 1
+
+    expected = [
+        min(
+            WATCHDOG_MAX_RETRY_SECONDS,
+            int(WATCHDOG_RETRY_SECONDS * (WATCHDOG_RETRY_BACKOFF_FACTOR**n)),
+        )
+        for n in range(WATCHDOG_MAX_ATTEMPTS - 1)
+    ]
+    assert recorded == expected
+    # First sleep is the base delay; later sleeps saturate at the 6 h cap.
+    assert recorded[0] == WATCHDOG_RETRY_SECONDS
+    assert recorded[-1] == WATCHDOG_MAX_RETRY_SECONDS
+    assert f"Watchdog cannot restart app {install_app_ssh.name}" in caplog.text
 
 
 async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:

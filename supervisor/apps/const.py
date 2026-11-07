@@ -39,10 +39,15 @@ ATTR_CODENOTARY = "codenotary"
 ATTR_LOG_FORMAT = "log_format"
 ATTR_READ_ONLY = "read_only"
 ATTR_PATH = "path"
-WATCHDOG_RETRY_SECONDS = 10
-WATCHDOG_MAX_ATTEMPTS = 5
-WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)
-WATCHDOG_THROTTLE_MAX_CALLS = 10
+# Retry schedule: 30 s base, factor 1.5, 6 h cap (saturates ~attempt 18),
+# ~1 week total across 50 attempts. Throttle widened to match so repeated
+# deaths during one outage do not trip it before the inner loop acts.
+WATCHDOG_RETRY_SECONDS = 30
+WATCHDOG_RETRY_BACKOFF_FACTOR = 1.5
+WATCHDOG_MAX_RETRY_SECONDS = 6 * 60 * 60
+WATCHDOG_MAX_ATTEMPTS = 50
+WATCHDOG_THROTTLE_PERIOD = timedelta(days=14)
+WATCHDOG_THROTTLE_MAX_CALLS = 50
 
 APP_UPDATE_CONDITIONS = [
     JobCondition.FREE_SPACE,
