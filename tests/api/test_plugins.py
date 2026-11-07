@@ -11,6 +11,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
+from supervisor.exceptions import DockerError
 from supervisor.host.const import LogFormatter
 
 from tests.common import load_json_fixture
@@ -106,6 +107,36 @@ async def test_api_plugin_restart(
     restart.assert_called_once()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
+@pytest.mark.parametrize(
+    ("slug", "error_key"),
+    [
+        pytest.param("audio", "audio_restart_error", id="audio"),
+        pytest.param("cli", "cli_restart_error", id="cli"),
+        pytest.param("dns", "coredns_restart_error", id="dns"),
+        pytest.param("multicast", "multicast_restart_error", id="multicast"),
+        pytest.param("observer", "observer_restart_error", id="observer"),
+    ],
+)
+async def test_api_plugin_restart_failed(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    slug: str,
+    error_key: str,
+) -> None:
+    """Test a failed plugin operation returns its keyed error as a server error."""
+    api_client, prefix = api_client_with_prefix
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(DockerInterface, "restart", side_effect=DockerError):
+        resp = await api_client.post(f"{prefix}/{slug}/restart")
+
+    assert resp.status == 500
+    result = await resp.json()
+    assert result["error_key"] == error_key
+    assert result["message"].endswith("Check Supervisor logs for details")
+
+
 @pytest.mark.parametrize("slug", PLUGINS)
 async def test_api_plugin_update(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys, slug: str
@@ -130,9 +161,25 @@ async def test_api_plugin_update(
     update.assert_called_once_with(AwesomeVersion("2024.02.0"))
 
 
-@pytest.mark.parametrize("slug", PLUGINS)
+@pytest.mark.parametrize(
+    ("slug", "error_key"),
+    [
+        pytest.param("audio", "audio_update_already_installed_error", id="audio"),
+        pytest.param("cli", "cli_update_already_installed_error", id="cli"),
+        pytest.param("dns", "coredns_update_already_installed_error", id="dns"),
+        pytest.param(
+            "multicast", "multicast_update_already_installed_error", id="multicast"
+        ),
+        pytest.param(
+            "observer", "observer_update_already_installed_error", id="observer"
+        ),
+    ],
+)
 async def test_api_plugin_update_same_version(
-    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys, slug: str
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    slug: str,
+    error_key: str,
 ) -> None:
     """Test plugin update is rejected for the version already in use."""
     api_client, prefix = api_client_with_prefix
@@ -145,4 +192,39 @@ async def test_api_plugin_update_same_version(
 
     assert resp.status == 400
     result = await resp.json()
-    assert result["message"] == "Version 2024.01.0 is already in use"
+    assert result["error_key"] == error_key
+    assert result["extra_fields"] == {"version": "2024.01.0"}
+
+
+@pytest.mark.parametrize(
+    ("slug", "error_key"),
+    [
+        pytest.param("audio", "audio_not_installed_error", id="audio"),
+        pytest.param("cli", "cli_not_installed_error", id="cli"),
+        pytest.param("dns", "coredns_not_installed_error", id="dns"),
+        pytest.param("multicast", "multicast_not_installed_error", id="multicast"),
+        pytest.param("observer", "observer_not_installed_error", id="observer"),
+    ],
+)
+async def test_api_plugin_update_not_installed(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    slug: str,
+    error_key: str,
+) -> None:
+    """Test plugin update is rejected while the plugin is not installed."""
+    api_client, prefix = api_client_with_prefix
+    await coresys.core.set_state(CoreState.RUNNING)
+    plugin = getattr(coresys.plugins, slug)
+    plugin._data.pop("version", None)  # pylint: disable=protected-access
+
+    with patch.object(
+        type(plugin),
+        "latest_version",
+        new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+    ):
+        resp = await api_client.post(f"{prefix}/{slug}/update")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == error_key

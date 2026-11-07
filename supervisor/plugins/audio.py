@@ -14,26 +14,24 @@ from ..const import LogLevel
 from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
 from ..docker.const import ContainerState
-from ..docker.stats import DockerStats
 from ..exceptions import (
-    AudioError,
+    AudioConfigError,
     AudioJobError,
+    AudioNotInstalledError,
     AudioNotRunningError,
+    AudioRestartError,
+    AudioStartError,
     AudioStatsTimeoutError,
+    AudioStopError,
     AudioUnknownError,
+    AudioUpdateAlreadyInstalledError,
     AudioUpdateError,
     ConfigurationFileError,
-    DockerContainerNotFoundError,
-    DockerContainerNotRunningError,
-    DockerError,
-    DockerStatsTimeoutError,
-    PluginError,
 )
 from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
 from ..utils.json import write_json_file
-from ..utils.sentry import async_capture_exception
-from .base import PluginBase
+from .base import PluginBase, PluginErrors
 from .const import (
     FILE_HASSIO_AUDIO,
     PLUGIN_UPDATE_CONDITIONS,
@@ -52,6 +50,18 @@ ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
 
 class PluginAudio(PluginBase):
     """Home Assistant core object for handle audio."""
+
+    errors = PluginErrors(
+        start=AudioStartError,
+        stop=AudioStopError,
+        update=AudioUpdateError,
+        restart=AudioRestartError,
+        not_running=AudioNotRunningError,
+        stats_timeout=AudioStatsTimeoutError,
+        unknown=AudioUnknownError,
+        not_installed=AudioNotInstalledError,
+        already_installed=AudioUpdateAlreadyInstalledError,
+    )
 
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
@@ -123,60 +133,7 @@ class PluginAudio(PluginBase):
     )
     async def update(self, version: str | None = None) -> None:
         """Update Audio plugin."""
-        try:
-            await super().update(version)
-        except (DockerError, PluginError) as err:
-            raise AudioUpdateError("Audio update failed", _LOGGER.error) from err
-
-    async def restart(self) -> None:
-        """Restart Audio plugin."""
-        _LOGGER.info("Restarting Audio plugin")
-        await self._write_config()
-        try:
-            await self.instance.restart()
-        except DockerError as err:
-            raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
-
-    async def start(self) -> None:
-        """Run Audio plugin."""
-        _LOGGER.info("Starting Audio plugin")
-        await self._write_config()
-        try:
-            await self.instance.run()
-        except DockerError as err:
-            raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
-
-    async def stop(self) -> None:
-        """Stop Audio plugin."""
-        _LOGGER.info("Stopping Audio plugin")
-        try:
-            await self.instance.stop()
-        except DockerError as err:
-            raise AudioError("Can't stop Audio plugin", _LOGGER.error) from err
-
-    async def stats(self, *, one_shot: bool = False) -> DockerStats:
-        """Return stats of Audio plugin."""
-        try:
-            return await self.instance.stats(one_shot=one_shot)
-        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
-            raise AudioNotRunningError(_LOGGER.warning) from err
-        except DockerStatsTimeoutError as err:
-            raise AudioStatsTimeoutError(_LOGGER.error) from err
-        except DockerError as err:
-            _LOGGER.error("Could not get stats of container for Audio: %s", err)
-            raise AudioUnknownError from err
-
-    async def repair(self) -> None:
-        """Repair Audio plugin."""
-        if await self.instance.exists():
-            return
-
-        _LOGGER.info("Repairing Audio %s", self.version)
-        try:
-            await self.instance.install(self.version)
-        except DockerError as err:
-            _LOGGER.error("Repair of Audio failed")
-            await async_capture_exception(err)
+        await super().update(version)
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""
@@ -201,9 +158,7 @@ class PluginAudio(PluginBase):
                 },
             )
         except ConfigurationFileError as err:
-            raise AudioError(
-                f"Can't update pulse audio config: {err}", _LOGGER.error
-            ) from err
+            raise AudioConfigError(_LOGGER.error) from err
 
     @Job(
         name="plugin_audio_restart_after_problem",

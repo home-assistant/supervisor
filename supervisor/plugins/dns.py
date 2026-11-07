@@ -21,28 +21,27 @@ from ..dbus.const import MulticastProtocolEnabled
 from ..docker.const import ContainerState
 from ..docker.dns import DockerDNS
 from ..docker.monitor import DockerContainerStateEvent
-from ..docker.stats import DockerStats
 from ..exceptions import (
     ConfigurationFileError,
-    CoreDNSError,
+    CoreDNSConfigError,
+    CoreDNSHostsError,
     CoreDNSJobError,
+    CoreDNSNotInstalledError,
     CoreDNSNotRunningError,
+    CoreDNSRestartError,
+    CoreDNSStartError,
     CoreDNSStatsTimeoutError,
+    CoreDNSStopError,
     CoreDNSUnknownError,
+    CoreDNSUpdateAlreadyInstalledError,
     CoreDNSUpdateError,
-    DockerContainerNotFoundError,
-    DockerContainerNotRunningError,
-    DockerError,
-    DockerStatsTimeoutError,
-    PluginError,
 )
 from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
-from ..utils.sentry import async_capture_exception
 from ..validate import dns_url
-from .base import PluginBase
+from .base import PluginBase, PluginErrors, lifecycle_locked
 from .const import (
     ATTR_FALLBACK,
     FILE_HASSIO_DNS,
@@ -71,6 +70,18 @@ class HostEntry:
 
 class PluginDns(PluginBase):
     """Home Assistant core object for handle it."""
+
+    errors = PluginErrors(
+        start=CoreDNSStartError,
+        stop=CoreDNSStopError,
+        update=CoreDNSUpdateError,
+        restart=CoreDNSRestartError,
+        not_running=CoreDNSNotRunningError,
+        stats_timeout=CoreDNSStatsTimeoutError,
+        unknown=CoreDNSUnknownError,
+        not_installed=CoreDNSNotInstalledError,
+        already_installed=CoreDNSUpdateAlreadyInstalledError,
+    )
 
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
@@ -286,32 +297,9 @@ class PluginDns(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=CoreDNSJobError,
     )
-    async def update(self, version: AwesomeVersion | None = None) -> None:
+    async def update(self, version: str | None = None) -> None:
         """Update CoreDNS plugin."""
-        try:
-            await super().update(version)
-        except (DockerError, PluginError) as err:
-            raise CoreDNSUpdateError("CoreDNS update failed", _LOGGER.error) from err
-
-    async def restart(self) -> None:
-        """Restart CoreDNS plugin."""
-        await self._write_config()
-        _LOGGER.info("Restarting CoreDNS plugin")
-        try:
-            await self.instance.restart()
-        except DockerError as err:
-            raise CoreDNSError("Can't restart CoreDNS plugin", _LOGGER.error) from err
-
-    async def start(self) -> None:
-        """Run CoreDNS."""
-        await self._write_config()
-
-        # Start Instance
-        _LOGGER.info("Starting CoreDNS plugin")
-        try:
-            await self.instance.run()
-        except DockerError as err:
-            raise CoreDNSError("Can't start CoreDNS plugin", _LOGGER.error) from err
+        await super().update(version)
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
@@ -325,12 +313,9 @@ class PluginDns(PluginBase):
             self._restart_after_locals_change_handle.cancel()
             self._restart_after_locals_change_handle = None
 
-        _LOGGER.info("Stopping CoreDNS plugin")
-        try:
-            await self.instance.stop()
-        except DockerError as err:
-            raise CoreDNSError("Can't stop CoreDNS plugin", _LOGGER.error) from err
+        await super().stop()
 
+    @lifecycle_locked()
     async def reset(self) -> None:
         """Reset DNS and hosts."""
         # Reset manually defined DNS
@@ -423,9 +408,7 @@ class PluginDns(PluginBase):
                 },
             )
         except ConfigurationFileError as err:
-            raise CoreDNSError(
-                f"Can't update coredns config: {err}", _LOGGER.error
-            ) from err
+            raise CoreDNSConfigError(_LOGGER.error) from err
 
     async def _init_hosts(self) -> None:
         """Import hosts entry."""
@@ -460,7 +443,8 @@ class PluginDns(PluginBase):
                 )
             except OSError as err:
                 self.sys_resolution.check_oserror(err)
-                raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
+                _LOGGER.error("Can't update hosts: %s", err)
+                raise CoreDNSHostsError from err
 
     async def add_host(
         self, ipv4: IPv4Address, names: list[str], write: bool = True
@@ -510,30 +494,6 @@ class PluginDns(PluginBase):
                     continue
                 return entry
         return None
-
-    async def stats(self, *, one_shot: bool = False) -> DockerStats:
-        """Return stats of CoreDNS."""
-        try:
-            return await self.instance.stats(one_shot=one_shot)
-        except (DockerContainerNotFoundError, DockerContainerNotRunningError) as err:
-            raise CoreDNSNotRunningError(_LOGGER.warning) from err
-        except DockerStatsTimeoutError as err:
-            raise CoreDNSStatsTimeoutError(_LOGGER.error) from err
-        except DockerError as err:
-            _LOGGER.error("Could not get stats of container for CoreDNS: %s", err)
-            raise CoreDNSUnknownError from err
-
-    async def repair(self) -> None:
-        """Repair CoreDNS plugin."""
-        if await self.instance.exists():
-            return
-
-        _LOGGER.info("Repairing CoreDNS %s", self.version)
-        try:
-            await self.instance.install(self.version)
-        except DockerError as err:
-            _LOGGER.error("Repair of CoreDNS failed")
-            await async_capture_exception(err)
 
     async def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
