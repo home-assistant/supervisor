@@ -289,7 +289,7 @@ class SecurityMiddleware(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._api: RestAPI = api
         self._tcp_api_request_paths: set[str] = set()
-        self._tcp_api_request_apps: set[tuple[str, str]] = set()
+        self._tcp_api_request_apps: set[tuple[str, str, bool]] = set()
 
     @middleware
     async def block_bad_requests(
@@ -408,14 +408,14 @@ class SecurityMiddleware(CoreSysAttributes):
 
     def _report_app_tcp_api_request(self, app: App) -> None:
         """Report an app calling the Supervisor API over TCP, once per version and boot."""
-        # Keyed by version so an update that still uses TCP is reported again
-        version = str(app.version)
-        if (app.slug, version) in self._tcp_api_request_apps:
-            return
-        self._tcp_api_request_apps.add((app.slug, version))
-
         # Only the app's developer can act on it
         developer = app.user_is_developer
+        # Reported again after an update that still uses TCP, or once a switch to
+        # the dev channel makes the user a developer
+        version = str(app.version)
+        if (key := (app.slug, version, developer)) in self._tcp_api_request_apps:
+            return
+        self._tcp_api_request_apps.add(key)
         log = _LOGGER.warning if developer else _LOGGER.debug
         log(
             "App %s called the Supervisor API over TCP. Support for this will be "

@@ -894,6 +894,27 @@ async def test_app_tcp_api_request_repair_per_version(
     ]
 
 
+async def test_app_tcp_api_request_repair_after_dev_channel(
+    call_api: CallAPI, coresys: CoreSys, install_app_example: App
+):
+    """Test switching to the dev channel raises the repair on the next request."""
+    install_app_example.data["repository"] = "a0d7b954"
+    await call_api("token", "app", "get", "/addons/self/info")
+    assert coresys.resolution.issues == []
+
+    coresys.updater.channel = UpdateChannel.DEV
+    await call_api("token", "app", "get", "/addons/self/info")
+
+    assert coresys.resolution.issues == [
+        Issue(
+            IssueType.DEPRECATED_TCP_API_REQUEST,
+            ContextType.ADDON,
+            "local_example",
+            {"version": "1.2.0"},
+        )
+    ]
+
+
 async def test_app_socket_request_no_repair(call_api: CallAPI, coresys: CoreSys):
     """Test an app calling over its socket raises no repair."""
     status, _ = await call_api("socket", "app", "get", "/addons/self/info")
