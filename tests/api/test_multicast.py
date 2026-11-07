@@ -93,4 +93,4 @@ async def test_api_multicast_update_not_installed(
 
     assert resp.status == 400
     result = await resp.json()
-    assert result["message"] == "Plugin multicast is not installed"
+    assert result["message"] == "Multicast is not installed"
