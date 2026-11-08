@@ -161,6 +161,8 @@ class App(AppModel):
         # Cached app state. Updated only via ``_update_state`` so the value
         # consumers see matches what was last emitted.
         self._state: AppState = AppState.UNKNOWN
+        # Startup ended with a failed healthcheck and none passed since
+        self._push_discovery_when_healthy: bool = False
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
@@ -233,12 +235,22 @@ class App(AppModel):
         container state untouched. ``operation_error`` is a momentary signal
         forcing ERROR for the current transition; a later container
         observation supersedes it via the default.
+
+        If startup ended unhealthy, the first passed healthcheck pushes the
+        app's discovery messages without a state change.
         """
         if container_state is not None:
             self._container_state = container_state
 
         new_state = self._derive_state(operation_error)
         if new_state == self._state:
+            # The app stays started when a healthcheck passes after a failed one
+            if (
+                self._push_discovery_when_healthy
+                and self._container_state == ContainerState.HEALTHY
+            ):
+                self._push_discovery_when_healthy = False
+                self.sys_discovery.push_messages(self)
             return
         old_state = self._state
         self._state = new_state
@@ -268,6 +280,11 @@ class App(AppModel):
         elif old_state == AppState.STARTUP:
             # Pushes during startup were dropped or came before the app was ready
             self.sys_discovery.push_messages(self)
+        # If startup ended unhealthy, the first passed healthcheck pushes instead
+        self._push_discovery_when_healthy = (
+            old_state == AppState.STARTUP
+            and self._container_state == ContainerState.UNHEALTHY
+        )
 
         # Dismiss device access missing issue if present and we stopped
         if new_state == AppState.STOPPED and (
