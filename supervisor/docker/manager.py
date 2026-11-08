@@ -793,13 +793,7 @@ class DockerAPI(CoreSysAttributes):
             _LOGGER.warning("Error for images prune: %s", err)
 
         _LOGGER.info("Prune stale builds")
-        try:
-            output = await self.images.prune_builds()
-            _LOGGER.debug("Builds prune: %s", output)
-        except TimeoutError:
-            _LOGGER.warning("Error for builds prune: timed out")
-        except aiodocker.DockerError as err:
-            _LOGGER.warning("Error for builds prune: %s", err)
+        await self.prune_build_cache()
 
         _LOGGER.info("Prune stale volumes")
         try:
@@ -830,6 +824,16 @@ class DockerAPI(CoreSysAttributes):
             await self.prune_networks(DOCKER_NETWORK_HOST)
         except aiodocker.DockerError as err:
             _LOGGER.warning("Error for networks host prune: %s", err)
+
+    async def prune_build_cache(self) -> None:
+        """Remove build cache not used by any image. Errors are logged, not raised."""
+        try:
+            output = await self.images.prune_builds()
+            _LOGGER.debug("Builds prune: %s", output)
+        except TimeoutError:
+            _LOGGER.warning("Error for builds prune: timed out")
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error for builds prune: %s", err)
 
     async def prune_networks(self, network_name: str) -> None:
         """Prune stale container from network.

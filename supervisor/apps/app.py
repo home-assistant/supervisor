@@ -998,6 +998,9 @@ class App(AppModel):
             _LOGGER.error("Could not remove image for app %s: %s", self.slug, err)
             raise AppUnknownError(app=self.slug) from err
 
+        if remove_image and self.need_build:
+            self.sys_create_task(self.sys_docker.prune_build_cache())
+
         # The container (and possibly the image) is gone; the state derives
         # back to UNKNOWN via the image-removed instance.
         self._update_state(container_state=ContainerState.UNKNOWN)

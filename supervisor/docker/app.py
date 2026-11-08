@@ -891,6 +891,8 @@ class DockerApp(DockerInterface):
             # Clean up temporary directory
             if temp_dir:
                 await self.sys_run_in_executor(temp_dir.cleanup)
+            # BuildKit keeps layers of removed images and failed builds as cache
+            self.sys_create_task(self.sys_docker.prune_build_cache())
 
         logs = "".join(result.log)
         if result.exit_code != 0:
@@ -974,6 +976,8 @@ class DockerApp(DockerInterface):
                 and app.image in {old_image, use_image}
             },
         )
+        if self.app.need_build:
+            self.sys_create_task(self.sys_docker.prune_build_cache())
 
     @Job(
         name="docker_app_write_stdin",
