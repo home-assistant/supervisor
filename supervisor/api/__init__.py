@@ -255,7 +255,6 @@ class RestAPI(CoreSysAttributes):
                 web.get(f"{path}/info", api_plugin.info),
                 web.get(f"{path}/stats", stats_handler),
                 web.post(f"{path}/update", api_plugin.update),
-                web.post(f"{path}/restart", api_plugin.restart),
             ]
         )
         self._register_advanced_logs(
@@ -474,6 +473,7 @@ class RestAPI(CoreSysAttributes):
 
         app.add_routes(
             [
+                web.post("/multicast/restart", api_multicast.restart),
                 web.post("/multicast/options", api_multicast.options),
             ]
         )
@@ -970,6 +970,7 @@ class RestAPI(CoreSysAttributes):
 
         app.add_routes(
             [
+                web.post("/dns/restart", api_dns.restart),
                 web.post("/dns/options", api_dns.options),
                 web.post("/dns/reset", api_dns.reset),
             ]
@@ -982,6 +983,7 @@ class RestAPI(CoreSysAttributes):
 
         app.add_routes(
             [
+                web.post("/audio/restart", api_audio.restart),
                 web.post("/audio/reload", api_audio.reload),
                 web.post("/audio/profile", api_audio.set_profile),
                 web.post("/audio/volume/{source}/application", api_audio.set_volume),

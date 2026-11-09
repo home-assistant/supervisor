@@ -76,5 +76,5 @@ class APIPlugin[P: PluginBase](CoreSysAttributes):
     @api_process
     @require_running_system
     def restart(self, request: web.Request) -> Awaitable[None]:
-        """Restart plugin."""
+        """Restart plugin, for plugins that register a restart endpoint."""
         return asyncio.shield(self.plugin.restart())
