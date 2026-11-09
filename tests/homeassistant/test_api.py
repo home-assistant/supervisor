@@ -1,7 +1,7 @@
 """Test Home Assistant API."""
 
 from contextlib import asynccontextmanager
-from pathlib import Path
+from pathlib import Path, PurePath
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import aiohttp
@@ -135,32 +135,34 @@ async def test_supports_unix_socket(coresys: CoreSys, version: str, expected: bo
         pytest.param(
             "2026.4.0",
             ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"],
-            Path("/run/os/core.sock"),
+            PurePath("core.sock"),
             id="default-path",
         ),
         pytest.param(
             "2026.4.0",
             ["TZ=UTC", "SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"],
-            Path("/run/os/core/core.sock"),
+            PurePath("core/core.sock"),
             id="non-default-path",
         ),
         pytest.param(
             "2026.4.0",
             ["SUPERVISOR_CORE_API_SOCKET=/somewhere/else/core.sock"],
-            Path("/run/os/core.sock"),
+            PurePath("core.sock"),
             id="unmapped-path-fallback",
         ),
         pytest.param("2026.4.0", ["TZ=UTC", "SUPERVISOR_TOKEN=abc"], None, id="no-env"),
     ],
 )
 async def test_core_socket_path(
-    coresys: CoreSys, version: str, env: list[str], expected: Path | None
+    coresys: CoreSys, version: str, env: list[str], expected: PurePath | None
 ):
     """Test Core socket path and use_unix_socket based on version and container env."""
     coresys.homeassistant.version = AwesomeVersion(version)
     # pylint: disable-next=protected-access
     coresys.homeassistant.core.instance._meta = {"Config": {"Env": env}}
-    assert coresys.homeassistant.api.core_socket_path == expected
+    assert coresys.homeassistant.api.core_socket_path == (
+        expected and coresys.config.path_run / expected
+    )
     assert coresys.homeassistant.api.use_unix_socket is (expected is not None)
 
 
@@ -174,7 +176,9 @@ async def test_unix_session_uses_core_socket_path(coresys: CoreSys):
     session = coresys.homeassistant.api.session
     try:
         assert isinstance(session.connector, aiohttp.UnixConnector)
-        assert session.connector.path == "/run/os/core/core.sock"
+        assert session.connector.path == str(
+            coresys.config.path_run / "core" / "core.sock"
+        )
         assert isinstance(session.cookie_jar, aiohttp.DummyCookieJar)
         assert session.headers[aiohttp.hdrs.USER_AGENT] == SERVER_SOFTWARE
     finally:

@@ -23,6 +23,7 @@ from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
+    SOCKET_NAME_SUPERVISOR,
     SYSTEMD_JOURNAL_PERSISTENT,
     SYSTEMD_JOURNAL_VOLATILE,
     BusEvent,
@@ -49,6 +50,7 @@ from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
 from .const import (
     ADDON_BUILDER_IMAGE,
+    ENV_SUPERVISOR_SOCKET,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_OLD,
@@ -66,6 +68,7 @@ from .const import (
     PATH_MEDIA,
     PATH_PRIVATE_DATA,
     PATH_PUBLIC_CONFIG,
+    PATH_RUN_API,
     PATH_SHARE,
     PATH_SSL,
     REDUCED_CAPABILITIES_DROP,
@@ -232,12 +235,18 @@ class DockerApp(DockerInterface):
                 else:
                     _LOGGER.warning("Can not set nested option %s as Docker env", key)
 
-        return {
+        environment: dict[str, str | int | None] = {
             **app_env,
             ENV_TIME: self.sys_timezone,
-            ENV_TOKEN: self.app.supervisor_token,
-            ENV_TOKEN_OLD: self.app.supervisor_token,
         }
+        if not self.app.slug_too_long_for_socket:
+            environment[ENV_SUPERVISOR_SOCKET] = (
+                PATH_RUN_API / SOCKET_NAME_SUPERVISOR
+            ).as_posix()
+        if self.app.supervisor_api_tcp:
+            environment[ENV_TOKEN] = self.app.supervisor_token
+            environment[ENV_TOKEN_OLD] = self.app.supervisor_token
+        return environment
 
     @property
     def cgroups_rules(self) -> list[str] | None:
@@ -464,6 +473,17 @@ class DockerApp(DockerInterface):
                 read_only=False,
             ),
         ]
+
+        # Supervisor listens for the app in here
+        if not self.app.slug_too_long_for_socket:
+            mounts.append(
+                DockerMount(
+                    type=MountType.BIND,
+                    source=self.app.path_extern_run_supervisor.as_posix(),
+                    target=PATH_RUN_API.as_posix(),
+                    read_only=True,
+                )
+            )
 
         # setup config mappings
         if MappingType.CONFIG in app_mapping:
