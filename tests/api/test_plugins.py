@@ -16,7 +16,6 @@ from supervisor.host.const import LogFormatter
 from tests.common import load_json_fixture
 
 PLUGINS = ["audio", "cli", "dns", "multicast", "observer"]
-RESTART_PLUGINS = ["audio", "dns", "multicast"]
 
 
 @pytest.fixture(name="running_container")
@@ -92,7 +91,7 @@ async def test_api_plugin_stats_v2(api_client_v2: TestClient, slug: str) -> None
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
-@pytest.mark.parametrize("slug", RESTART_PLUGINS)
+@pytest.mark.parametrize("slug", PLUGINS)
 async def test_api_plugin_restart(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys, slug: str
 ) -> None:
