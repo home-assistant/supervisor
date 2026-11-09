@@ -108,6 +108,8 @@ from ..utils.json import read_json_file, write_json_file
 from ..utils.sentry import async_capture_exception
 from .const import (
     WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_MAX_RETRY_SECONDS,
+    WATCHDOG_RETRY_BACKOFF_FACTOR,
     WATCHDOG_RETRY_SECONDS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
@@ -1838,8 +1840,15 @@ class App(AppModel):
                 )
                 break
 
-            # Exponential backoff to spread retries over the throttle window
-            delay = WATCHDOG_RETRY_SECONDS * (1 << max(attempts - 1, 0))
+            # Exponential backoff (capped) to spread retries across the
+            # throttle window; see WATCHDOG_* constants for tuning.
+            delay = min(
+                WATCHDOG_MAX_RETRY_SECONDS,
+                int(
+                    WATCHDOG_RETRY_SECONDS
+                    * (WATCHDOG_RETRY_BACKOFF_FACTOR ** max(attempts - 1, 0))
+                ),
+            )
             _LOGGER.debug(
                 "Watchdog will retry app %s in %s seconds (attempt %s)",
                 self.name,
