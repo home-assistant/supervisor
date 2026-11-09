@@ -10,7 +10,13 @@ import re
 from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
-from aiohttp import ClientPayloadError, ClientWebSocketResponse, WSCloseCode, web
+from aiohttp import (
+    ClientPayloadError,
+    ClientWebSocketResponse,
+    WSCloseCode,
+    WSServerHandshakeError,
+    web,
+)
 from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
@@ -85,6 +91,34 @@ class MockHAServerWebSocket:
 
 WebSocketGenerator = Callable[..., Coroutine[Any, Any, MockHAClientWebSocket]]
 
+# Whether the proxy sees a socket, and the headers the app sends
+PROXY_AUTH = {
+    "token": (False, {"Authorization": "Bearer abc123"}),
+    "socket": (True, {}),
+}
+
+
+@pytest.fixture(name="unix_socket")
+def fixture_unix_socket() -> Generator[None]:
+    """Make the proxy see every request as arriving on a Unix socket."""
+    with patch("supervisor.api.proxy.is_unix_socket_request", return_value=True):
+        yield
+
+
+@pytest.fixture(name="proxy_auth", params=list(PROXY_AUTH))
+def fixture_proxy_auth(
+    request: pytest.FixtureRequest, install_app_example: App
+) -> Generator[dict[str, str]]:
+    """Identify the example app by its token over TCP or by its socket.
+
+    Returns the headers to send.
+    """
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+    on_socket, headers = PROXY_AUTH[request.param]
+    with patch("supervisor.api.proxy.is_unix_socket_request", return_value=on_socket):
+        yield headers
+
 
 @pytest.fixture(name="ha_ws_server")
 async def fixture_ha_ws_server() -> MockHAServerWebSocket:
@@ -128,16 +162,14 @@ def fixture_proxy_ws_client(
     return create_client
 
 
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
 async def test_proxy_message(
     proxy_ws_client: WebSocketGenerator,
     ha_ws_server: MockHAServerWebSocket,
-    install_app_ssh: App,
+    proxy_auth: dict[str, str],
 ):
     """Test proxy a message to and from Home Assistant."""
-    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
-    client: MockHAClientWebSocket = await proxy_ws_client(
-        install_app_ssh.supervisor_token
-    )
+    client: MockHAClientWebSocket = await proxy_ws_client("abc123")
 
     await client.send_json_auto_id({"type": "hello"})
     proxied_msg = await ha_ws_server.incoming.get()
@@ -541,19 +573,12 @@ async def test_websocket_transport_none(
         assert "WebSocket connection lost before upgrade" in caplog.text
 
 
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
 @pytest.mark.parametrize("path", ["", "mock_path"])
 async def test_api_proxy_get_request(
-    api_client: TestClient,
-    install_app_example: App,
-    request: pytest.FixtureRequest,
-    path: str,
+    api_client: TestClient, proxy_auth: dict[str, str], path: str
 ):
     """Test the API proxy request using patch for make_request."""
-    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
-    install_app_example.data["homeassistant_api"] = True
-
-    request.param = "local_example"
-
     with patch.object(HomeAssistantAPI, "make_request") as make_request:
         # Mock the response from make_request
         mock_response = AsyncMock()
@@ -562,9 +587,7 @@ async def test_api_proxy_get_request(
         mock_response.read.return_value = b"mocked response"
         make_request.return_value.__aenter__.return_value = mock_response
 
-        response = await api_client.get(
-            f"/core/api/{path}", headers={"Authorization": "Bearer abc123"}
-        )
+        response = await api_client.get(f"/core/api/{path}", headers=proxy_auth)
 
         assert make_request.call_args[0][0] == "get"
         assert make_request.call_args[0][1] == f"api/{path}"
@@ -679,18 +702,11 @@ async def test_api_proxy_forwards_raw_path(
 @pytest.mark.parametrize(
     "path", ["config/automation/config/test_id", "services/light/turn_on"]
 )
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
 async def test_api_proxy_post_request(
-    api_client: TestClient,
-    install_app_example: App,
-    request: pytest.FixtureRequest,
-    path: str,
+    api_client: TestClient, proxy_auth: dict[str, str], path: str
 ):
     """Test the API proxy POST request."""
-    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
-    install_app_example.data["homeassistant_api"] = True
-
-    request.param = "local_example"
-
     with patch.object(HomeAssistantAPI, "make_request") as make_request:
         # Mock the response from make_request
         mock_response = AsyncMock()
@@ -700,9 +716,7 @@ async def test_api_proxy_post_request(
         make_request.return_value.__aenter__.return_value = mock_response
 
         response = await api_client.post(
-            f"/core/api/{path}",
-            headers={"Authorization": "Bearer abc123"},
-            json={"test": "data"},
+            f"/core/api/{path}", headers=proxy_auth, json={"test": "data"}
         )
 
         assert make_request.call_args[0][0] == "post"
@@ -716,18 +730,11 @@ async def test_api_proxy_post_request(
 @pytest.mark.parametrize(
     "path", ["config/automation/config/test_id", "states/light.test"]
 )
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
 async def test_api_proxy_delete_request(
-    api_client: TestClient,
-    install_app_example: App,
-    request: pytest.FixtureRequest,
-    path: str,
+    api_client: TestClient, proxy_auth: dict[str, str], path: str
 ):
     """Test the API proxy DELETE request."""
-    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
-    install_app_example.data["homeassistant_api"] = True
-
-    request.param = "local_example"
-
     with patch.object(HomeAssistantAPI, "make_request") as make_request:
         # Mock the response from make_request
         mock_response = AsyncMock()
@@ -736,9 +743,7 @@ async def test_api_proxy_delete_request(
         mock_response.read.return_value = b'{"result": "ok"}'
         make_request.return_value.__aenter__.return_value = mock_response
 
-        response = await api_client.delete(
-            f"/core/api/{path}", headers={"Authorization": "Bearer abc123"}
-        )
+        response = await api_client.delete(f"/core/api/{path}", headers=proxy_auth)
 
         assert make_request.call_args[0][0] == "delete"
         assert make_request.call_args[0][1] == f"api/{path}"
@@ -746,6 +751,74 @@ async def test_api_proxy_delete_request(
         assert response.status == 200
         assert await response.text() == '{"result": "ok"}'
         assert response.content_type == "application/json"
+
+
+@pytest.mark.parametrize(
+    ("api_client", "homeassistant_api"),
+    [
+        pytest.param(None, True, id="core"),
+        pytest.param("local_example", False, id="app-without-access"),
+    ],
+    indirect=["api_client"],
+)
+@pytest.mark.usefixtures("unix_socket")
+async def test_api_proxy_socket_denied(
+    api_client: TestClient,
+    install_app_example: App,
+    install_app_ssh: App,
+    homeassistant_api: bool,
+):
+    """Test only apps with API access may use the proxy, a token never counts."""
+    install_app_example.data["homeassistant_api"] = homeassistant_api
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_ssh.data["homeassistant_api"] = True
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        response = await api_client.get(
+            "/core/api/states", headers={"Authorization": "Bearer abc123"}
+        )
+
+    assert response.status == 403
+    make_request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("api_client", "homeassistant_api"),
+    [
+        pytest.param(None, True, id="core"),
+        pytest.param("local_example", False, id="app-without-access"),
+    ],
+    indirect=["api_client"],
+)
+@pytest.mark.usefixtures("unix_socket")
+async def test_proxy_websocket_socket_denied(
+    api_client: TestClient,
+    install_app_example: App,
+    install_app_ssh: App,
+    homeassistant_api: bool,
+):
+    """Test the WebSocket upgrade is refused on a socket without API access."""
+    install_app_example.data["homeassistant_api"] = homeassistant_api
+    install_app_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_ssh.data["homeassistant_api"] = True
+
+    with pytest.raises(WSServerHandshakeError) as err:
+        await api_client.ws_connect("/core/websocket")
+
+    assert err.value.status == 403
+
+
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+@pytest.mark.usefixtures("unix_socket", "ha_ws_server")
+async def test_proxy_websocket_socket_ignores_token(
+    proxy_ws_client: WebSocketGenerator, install_app_example: App
+):
+    """Test the socket identifies the app whatever token it sends."""
+    install_app_example.data["homeassistant_api"] = True
+
+    client = await proxy_ws_client("bad")
+
+    assert await client.close()
 
 
 @pytest.mark.parametrize(
