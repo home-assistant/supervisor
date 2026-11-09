@@ -20,7 +20,7 @@ from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode
+from supervisor.apps.const import WATCHDOG_MAX_ATTEMPTS, AppBackupMode
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
 from supervisor.const import (
     ATTR_ADVANCED,
@@ -65,6 +65,7 @@ from supervisor.hardware.helper import HwHelper
 from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.const import WSType
 from supervisor.ingress import Ingress
+from supervisor.jobs.const import JOB_GROUP_APP
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
@@ -83,8 +84,18 @@ from tests.common import (
     force_app_state,
     get_fixture_path,
     is_in_list,
+    reset_rate_limited_calls,
 )
 from tests.const import TEST_ADDON_SLUG
+
+
+@pytest.fixture(autouse=True)
+def reset_watchdog_rate_limit() -> None:
+    """Reset the app watchdog rate limit, which outlives each test."""
+    reset_rate_limited_calls(
+        App._restart_after_problem,  # pylint: disable=protected-access
+        JOB_GROUP_APP.format(slug=TEST_ADDON_SLUG),
+    )
 
 
 async def _fire_test_event(
@@ -574,6 +585,125 @@ async def test_watchdog_retries_socket_error(
         )
 
     assert start.await_count == 2
+
+
+def _no_user_action(app: App) -> None:
+    """Leave the app alone."""
+
+
+def _stop_app(app: App) -> None:
+    """Mark the app as stopped by the user."""
+    app._manual_stop = True  # pylint: disable=protected-access
+
+
+def _disable_watchdog(app: App) -> None:
+    """Turn off the app's watchdog."""
+    app.watchdog = False
+
+
+def _uninstall_app(app: App) -> None:
+    """Remove the app as uninstall does."""
+    app.sys_apps.local.pop(app.slug)
+
+
+@pytest.mark.parametrize(
+    ("state_after_start", "user_action", "start_calls", "gave_up"),
+    [
+        pytest.param(
+            ContainerState.UNKNOWN,
+            _no_user_action,
+            WATCHDOG_MAX_ATTEMPTS,
+            True,
+            id="container_removed",
+        ),
+        pytest.param(
+            ContainerState.STOPPED,
+            _no_user_action,
+            WATCHDOG_MAX_ATTEMPTS,
+            True,
+            id="container_created_not_started",
+        ),
+        pytest.param(
+            ContainerState.UNKNOWN,
+            _stop_app,
+            2,
+            False,
+            id="manual_stop",
+        ),
+        pytest.param(
+            ContainerState.UNKNOWN,
+            _disable_watchdog,
+            2,
+            False,
+            id="watchdog_disabled",
+        ),
+        pytest.param(
+            ContainerState.UNKNOWN,
+            _uninstall_app,
+            2,
+            False,
+            id="uninstall",
+        ),
+        pytest.param(
+            ContainerState.RUNNING,
+            _no_user_action,
+            1,
+            False,
+            id="started_during_backoff",
+        ),
+    ],
+)
+async def test_watchdog_retries_after_failed_container_removed(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+    state_after_start: ContainerState,
+    user_action: Callable[[App], None],
+    start_calls: int,
+    gave_up: bool,
+) -> None:
+    """Watchdog keeps retrying a failed app after removing its container."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    # The user action lands while the second start attempt fails
+    actions = iter(
+        [_no_user_action, user_action, *[_no_user_action] * WATCHDOG_MAX_ATTEMPTS]
+    )
+
+    def fail_start() -> None:
+        next(actions)(install_app_ssh)
+        raise AppsError("Device does not exist")
+
+    with (
+        patch.object(App, "start", side_effect=fail_start) as start,
+        patch.object(
+            DockerApp,
+            "current_state",
+            side_effect=[
+                ContainerState.FAILED,
+                *[state_after_start] * WATCHDOG_MAX_ATTEMPTS,
+            ],
+        ),
+        patch.object(DockerApp, "stop") as stop,
+        patch("supervisor.apps.app.WATCHDOG_RETRY_SECONDS", 0),
+    ):
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+        stop.assert_called_once_with(remove_container=True)
+        assert start.call_count == start_calls
+        assert (
+            f"failed all {WATCHDOG_MAX_ATTEMPTS} attempts" in caplog.text
+        ) is gave_up
 
 
 async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:

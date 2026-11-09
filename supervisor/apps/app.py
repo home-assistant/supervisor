@@ -1847,6 +1847,30 @@ class App(AppModel):
         _LOGGER.info("Finished restore for app %s", self.slug)
         return wait_for_start
 
+    async def _watchdog_can_retry(self, state: ContainerState, attempts: int) -> bool:
+        """Return whether the watchdog should make another restart attempt.
+
+        A failed container is removed before the first attempt, so after a
+        failed start it is missing or only created rather than still failed.
+        Retrying stops once the user stops the app, turns off its watchdog or
+        uninstalls it.
+        """
+        current = await self.instance.current_state()
+        if current == state:
+            return True
+
+        if state != ContainerState.FAILED or attempts == 0:
+            return False
+
+        if current not in (ContainerState.UNKNOWN, ContainerState.STOPPED):
+            return False
+
+        return (
+            self.watchdog
+            and not self._manual_stop
+            and self.sys_apps.get_local_only(self.slug) is self
+        )
+
     @Job(
         name="app_restart_after_problem",
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
@@ -1860,7 +1884,7 @@ class App(AppModel):
     ):
         """Restart unhealthy or failed app."""
         attempts = 0
-        while await self.instance.current_state() == state:
+        while await self._watchdog_can_retry(state, attempts):
             if not self.in_progress:
                 if state == ContainerState.FAILED:
                     _LOGGER.warning(

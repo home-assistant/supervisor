@@ -279,6 +279,11 @@ def reset_last_call(func, group: str | None = None) -> None:
     get_job_decorator(func).set_last_call(datetime.min, group)
 
 
+def reset_rate_limited_calls(func, group: str | None = None) -> None:
+    """Reset rate limited calls for a function using the Job decorator."""
+    get_job_decorator(func).set_rate_limited_calls([], group)
+
+
 def is_in_list(a: list, b: list):
     """Check if all elements in list a are in list b in order.
 
