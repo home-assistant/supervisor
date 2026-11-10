@@ -30,8 +30,16 @@ from ..exceptions import (
     PluginInstallError,
     PluginLatestVersionUnknownError,
     PluginNotInstalledError,
+    PluginNotRunningError,
+    PluginPortConflictError,
     PluginRemoveError,
+    PluginRestartError,
+    PluginStartError,
+    PluginStatsTimeoutError,
+    PluginStopError,
+    PluginUnknownError,
     PluginUpdateAlreadyInstalledError,
+    PluginUpdateError,
 )
 from ..utils.common import FileConfiguration
 from ..utils.sentry import async_capture_exception
@@ -44,18 +52,18 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class PluginErrors:
     """Plugin specific error types raised by the shared plugin operations."""
 
-    start: type[PluginError]
-    update: type[PluginError]
-    restart: type[PluginError]
-    not_running: type[PluginError]
-    stats_timeout: type[PluginError]
-    unknown: type[PluginError]
+    start: type[PluginStartError]
+    update: type[PluginUpdateError]
+    restart: type[PluginRestartError]
+    not_running: type[PluginNotRunningError]
+    stats_timeout: type[PluginStatsTimeoutError]
+    unknown: type[PluginUnknownError]
     not_installed: type[PluginNotInstalledError]
     already_installed: type[PluginUpdateAlreadyInstalledError]
-    disabled: type[PluginDisabledError] = PluginDisabledError
-    port_conflict: type[PluginError] | None = None
+    disabled: type[PluginDisabledError]
+    port_conflict: type[PluginPortConflictError] | None = None
     # None for a plugin that must not be stopped without a restart
-    stop: type[PluginError] | None = None
+    stop: type[PluginStopError] | None = None
 
 
 def lifecycle_locked[T: PluginBase, **P, R](

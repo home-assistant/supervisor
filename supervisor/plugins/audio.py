@@ -16,6 +16,7 @@ from ..docker.audio import DockerAudio
 from ..docker.const import ContainerState
 from ..exceptions import (
     AudioConfigError,
+    AudioDisabledError,
     AudioJobError,
     AudioNotInstalledError,
     AudioNotRunningError,
@@ -61,6 +62,7 @@ class PluginAudio(PluginBase):
         unknown=AudioUnknownError,
         not_installed=AudioNotInstalledError,
         already_installed=AudioUpdateAlreadyInstalledError,
+        disabled=AudioDisabledError,
     )
 
     def __init__(self, coresys: CoreSys):

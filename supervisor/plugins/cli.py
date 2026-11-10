@@ -14,6 +14,7 @@ from ..coresys import CoreSys
 from ..docker.cli import DockerCli
 from ..docker.const import ContainerState
 from ..exceptions import (
+    CliDisabledError,
     CliJobError,
     CliNotInstalledError,
     CliNotRunningError,
@@ -52,6 +53,7 @@ class PluginCli(PluginBase):
         unknown=CliUnknownError,
         not_installed=CliNotInstalledError,
         already_installed=CliUpdateAlreadyInstalledError,
+        disabled=CliDisabledError,
     )
 
     def __init__(self, coresys: CoreSys):

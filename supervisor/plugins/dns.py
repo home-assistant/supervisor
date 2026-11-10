@@ -24,6 +24,7 @@ from ..docker.monitor import DockerContainerStateEvent
 from ..exceptions import (
     ConfigurationFileError,
     CoreDNSConfigError,
+    CoreDNSDisabledError,
     CoreDNSHostsError,
     CoreDNSJobError,
     CoreDNSNotInstalledError,
@@ -81,6 +82,7 @@ class PluginDns(PluginBase):
         unknown=CoreDNSUnknownError,
         not_installed=CoreDNSNotInstalledError,
         already_installed=CoreDNSUpdateAlreadyInstalledError,
+        disabled=CoreDNSDisabledError,
     )
 
     def __init__(self, coresys: CoreSys):

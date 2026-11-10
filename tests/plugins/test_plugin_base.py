@@ -371,6 +371,16 @@ async def test_update_fails_if_out_of_date(
         await plugin.update()
 
 
+@pytest.mark.parametrize("plugin", ALL_PLUGINS, indirect=True)
+async def test_plugin_errors_use_shared_key_with_slug(plugin: PluginBase) -> None:
+    """Test plugin errors share one key and carry the plugin slug."""
+    err = plugin.errors.not_running()
+
+    assert err.error_key == "plugin_not_running_error"
+    assert err.extra_fields == {"plugin": plugin.slug}
+    assert str(err) == f"Plugin {plugin.slug} is not running"
+
+
 UPDATE_ERRORS = [
     (PluginAudio, AudioUpdateError),
     (PluginCli, CliUpdateError),

@@ -65,7 +65,7 @@ async def test_api_multicast_disabled_actions(
     resp = await api_client.post(f"{prefix}/multicast/restart")
     assert resp.status == 400
     result = await resp.json()
-    assert result["message"] == "Multicast plugin is disabled"
+    assert result["message"] == "Plugin multicast is disabled"
 
     with patch.object(
         PluginMulticast,
@@ -93,4 +93,4 @@ async def test_api_multicast_update_not_installed(
 
     assert resp.status == 400
     result = await resp.json()
-    assert result["message"] == "Multicast is not installed"
+    assert result["message"] == "Plugin multicast is not installed"

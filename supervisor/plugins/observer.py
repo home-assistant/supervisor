@@ -14,6 +14,7 @@ from ..coresys import CoreSys
 from ..docker.const import ContainerState
 from ..docker.observer import DockerObserver
 from ..exceptions import (
+    ObserverDisabledError,
     ObserverJobError,
     ObserverNotInstalledError,
     ObserverNotRunningError,
@@ -51,6 +52,7 @@ class PluginObserver(PluginBase):
         unknown=ObserverUnknownError,
         not_installed=ObserverNotInstalledError,
         already_installed=ObserverUpdateAlreadyInstalledError,
+        disabled=ObserverDisabledError,
         port_conflict=ObserverPortConflict,
     )
 
