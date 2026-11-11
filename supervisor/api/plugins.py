@@ -14,7 +14,6 @@ from ..const import (
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIError, PluginDisabledError
 from ..plugins.base import PluginBase
 from ..validate import version_tag
 from .utils import api_process, api_return_stats, api_validate, require_running_system
@@ -62,15 +61,15 @@ class APIPlugin[P: PluginBase](CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update plugin."""
         if not self.plugin.enabled:
-            raise PluginDisabledError(self.plugin.slug)
+            raise self.plugin.errors.disabled()
 
         body = await api_validate(SCHEMA_VERSION, request)
         version = body.get(ATTR_VERSION, self.plugin.latest_version)
 
         if not self.plugin.version:
-            raise APIError(f"Plugin {self.plugin.slug} is not installed")
+            raise self.plugin.errors.not_installed()
         if version == self.plugin.version:
-            raise APIError(f"Version {version} is already in use")
+            raise self.plugin.errors.already_installed(version=str(version))
         await asyncio.shield(self.plugin.update(version))
 
     @api_process

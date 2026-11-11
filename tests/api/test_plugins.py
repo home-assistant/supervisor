@@ -11,6 +11,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
+from supervisor.exceptions import DockerError
 from supervisor.host.const import LogFormatter
 
 from tests.common import load_json_fixture
@@ -106,6 +107,29 @@ async def test_api_plugin_restart(
     restart.assert_called_once()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
+@pytest.mark.parametrize("slug", PLUGINS)
+async def test_api_plugin_restart_failed(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    slug: str,
+) -> None:
+    """Test a failed plugin operation returns its keyed error as a server error."""
+    api_client, prefix = api_client_with_prefix
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(DockerInterface, "restart", side_effect=DockerError):
+        resp = await api_client.post(f"{prefix}/{slug}/restart")
+
+    assert resp.status == 500
+    result = await resp.json()
+    assert result["error_key"] == "plugin_restart_error"
+    assert result["extra_fields"] == {"plugin": slug}
+    assert result["message"] == (
+        f"Can't restart plugin {slug}. Check Supervisor logs for details"
+    )
+
+
 @pytest.mark.parametrize("slug", PLUGINS)
 async def test_api_plugin_update(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys, slug: str
@@ -132,7 +156,9 @@ async def test_api_plugin_update(
 
 @pytest.mark.parametrize("slug", PLUGINS)
 async def test_api_plugin_update_same_version(
-    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys, slug: str
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    slug: str,
 ) -> None:
     """Test plugin update is rejected for the version already in use."""
     api_client, prefix = api_client_with_prefix
@@ -145,4 +171,30 @@ async def test_api_plugin_update_same_version(
 
     assert resp.status == 400
     result = await resp.json()
-    assert result["message"] == "Version 2024.01.0 is already in use"
+    assert result["error_key"] == "plugin_update_already_installed_error"
+    assert result["extra_fields"] == {"plugin": slug, "version": "2024.01.0"}
+
+
+@pytest.mark.parametrize("slug", PLUGINS)
+async def test_api_plugin_update_not_installed(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    slug: str,
+) -> None:
+    """Test plugin update is rejected while the plugin is not installed."""
+    api_client, prefix = api_client_with_prefix
+    await coresys.core.set_state(CoreState.RUNNING)
+    plugin = getattr(coresys.plugins, slug)
+    plugin._data.pop("version", None)  # pylint: disable=protected-access
+
+    with patch.object(
+        type(plugin),
+        "latest_version",
+        new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+    ):
+        resp = await api_client.post(f"{prefix}/{slug}/update")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["error_key"] == "plugin_not_installed_error"
+    assert result["extra_fields"] == {"plugin": slug}
