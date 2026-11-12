@@ -5,6 +5,7 @@ import errno
 from functools import partial
 from pathlib import Path
 from shutil import copy, rmtree
+import time
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
@@ -18,8 +19,13 @@ from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel
 from supervisor.backups.backup import Backup, BackupLocation
-from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
-from supervisor.backups.manager import BackupManager
+from supervisor.backups.const import (
+    LOCATION_CLOUD_BACKUP,
+    LOCATION_TYPE,
+    BackupJobStage,
+    BackupType,
+)
+from supervisor.backups.manager import BackupManager, _move_no_replace
 from supervisor.const import AppState, CoreState, Folder
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
@@ -2745,6 +2751,200 @@ async def test_import_backup_consolidate_unlink_oserror(
     ) is unhealthy
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_import_backup_filename_taken(coresys: CoreSys):
+    """Test import backup does not replace a different backup with the same filename."""
+    existing_file = Path(
+        copy(
+            get_fixture_path("test_consolidate.tar"),
+            coresys.config.path_backup / "taken.tar",
+        )
+    )
+    existing_content = existing_file.read_bytes()
+    await coresys.backups.reload()
+    existing_slugs = {backup.slug for backup in coresys.backups.list_backups}
+
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    with pytest.raises(BackupFileExistError):
+        await coresys.backups.import_backup(tar_file, "taken.tar")
+
+    assert existing_file.read_bytes() == existing_content
+    assert {backup.slug for backup in coresys.backups.list_backups} == existing_slugs
+    assert not coresys.backups.get("7fed74c8")
+    assert tar_file.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_import_backup_already_imported(coresys: CoreSys):
+    """Test importing a backup again to the same file keeps the existing one."""
+    existing_file = Path(
+        copy(
+            get_fixture_path("backup_example.tar"),
+            coresys.config.path_backup / "7fed74c8.tar",
+        )
+    )
+    await coresys.backups.reload()
+    existing = coresys.backups.get("7fed74c8")
+
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    backup = await coresys.backups.import_backup(tar_file)
+
+    assert backup is existing
+    assert existing_file.exists()
+    assert tar_file.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+@pytest.mark.parametrize(
+    "error_num", [errno.EPERM, errno.EOPNOTSUPP, errno.ENOSYS, errno.EACCES]
+)
+async def test_import_backup_no_hardlink_support(coresys: CoreSys, error_num: int):
+    """Test import backup on a filesystem without hard link support."""
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    with patch("os.link", side_effect=OSError(error_num, "Not supported")):
+        backup = await coresys.backups.import_backup(tar_file, "imported.tar")
+
+    assert backup
+    assert backup.tarfile == coresys.config.path_backup / "imported.tar"
+    assert backup.tarfile.exists()
+    assert not tar_file.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_import_backup_no_hardlink_support_filename_taken(coresys: CoreSys):
+    """Test import backup without hard link support refuses an existing filename."""
+    existing_file = Path(
+        copy(
+            get_fixture_path("test_consolidate.tar"),
+            coresys.config.path_backup / "taken.tar",
+        )
+    )
+    existing_content = existing_file.read_bytes()
+
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    with (
+        patch("os.link", side_effect=OSError(errno.EPERM, "Not supported")),
+        pytest.raises(BackupFileExistError),
+    ):
+        await coresys.backups.import_backup(tar_file, "taken.tar")
+
+    assert existing_file.read_bytes() == existing_content
+    assert tar_file.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_import_backup_no_hardlink_support_concurrent(coresys: CoreSys):
+    """Test concurrent imports without hard link support don't replace each other."""
+    contents = {
+        "7fed74c8": get_fixture_path("backup_example.tar").read_bytes(),
+        "d9c48f8b": get_fixture_path("test_consolidate.tar").read_bytes(),
+    }
+    tar_files = [
+        Path(copy(get_fixture_path(fixture), coresys.config.path_tmp))
+        for fixture in ("backup_example.tar", "test_consolidate.tar")
+    ]
+
+    running = 0
+    max_running = 0
+
+    def _slow_move_no_replace(src: Path, dst: Path) -> None:
+        nonlocal running, max_running
+        running += 1
+        max_running = max(max_running, running)
+        time.sleep(0.1)
+        try:
+            _move_no_replace(src, dst)
+        finally:
+            running -= 1
+
+    with (
+        patch("os.link", side_effect=OSError(errno.EPERM, "Not supported")),
+        patch("supervisor.backups.manager._move_no_replace", new=_slow_move_no_replace),
+    ):
+        results = await asyncio.gather(
+            *(
+                coresys.backups.import_backup(tar_file, "taken.tar")
+                for tar_file in tar_files
+            ),
+            return_exceptions=True,
+        )
+
+    assert max_running == 1
+    imported = [result for result in results if isinstance(result, Backup)]
+    assert len(imported) == 1
+    assert [type(result) for result in results if result not in imported] == [
+        BackupFileExistError
+    ]
+    taken = coresys.config.path_backup / "taken.tar"
+    assert taken.read_bytes() == contents[imported[0].slug]
+
+
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
+async def test_import_backup_already_imported_additional_location(coresys: CoreSys):
+    """Test re-importing a backup copies the matched file to additional locations."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    copy(get_fixture_path("backup_example.tar"), coresys.config.path_backup)
+    cloud_file = Path(
+        copy(
+            get_fixture_path("backup_example.tar"),
+            coresys.config.path_core_backup / "cloud.tar",
+        )
+    )
+    await coresys.backups.reload()
+    existing = coresys.backups.get("7fed74c8")
+    # Locations are compared without protection, so copies may differ in it
+    existing.all_locations[".cloud_backup"] = cloud_location = BackupLocation(
+        path=cloud_file, protected=True, size_bytes=12345
+    )
+    assert existing.location is None
+
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+    backup = await coresys.backups.import_backup(
+        tar_file,
+        "cloud.tar",
+        location=".cloud_backup",
+        additional_locations=[mount],
+    )
+
+    assert backup is existing
+    assert existing.all_locations["backup_test"] == BackupLocation(
+        path=mount_dir / "cloud.tar",
+        protected=cloud_location.protected,
+        size_bytes=cloud_location.size_bytes,
+    )
+    assert (mount_dir / "cloud.tar").exists()
+    assert not (mount_dir / "7fed74c8.tar").exists()
+
+
 @pytest.mark.parametrize("same_mount", [True, False])
 async def test_get_upload_path_for_backup_location(coresys: CoreSys, same_mount: bool):
     """Test get_upload_path_for_location with local backup location."""
@@ -2827,3 +3027,52 @@ async def test_backup_app_skips_uninstalled(
         "Skipping backup of app local_example because it has been uninstalled"
         in caplog.text
     )
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_import_backup_additional_location_filename_taken(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test copying to an additional location does not replace an existing file."""
+    taken = Path(
+        copy(
+            get_fixture_path("test_consolidate.tar"),
+            coresys.config.path_core_backup / "7fed74c8.tar",
+        )
+    )
+    taken_content = taken.read_bytes()
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    backup = await coresys.backups.import_backup(
+        tar_file, additional_locations=[LOCATION_CLOUD_BACKUP]
+    )
+
+    assert backup
+    assert backup.location is None
+    assert LOCATION_CLOUD_BACKUP not in backup.all_locations
+    assert taken.read_bytes() == taken_content
+    assert f"{taken.as_posix()} already exists" in caplog.text
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_backup_create_waits_for_location_lock(coresys: CoreSys):
+    """Test creating a backup file waits while the location is locked."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    tar_file = coresys.config.path_backup / "locked.tar"
+
+    async with coresys.backups.location_lock(None):
+        task = asyncio.create_task(
+            coresys.backups.do_backup_partial(
+                "test", folders=[Folder.SHARE], filename="locked.tar"
+            )
+        )
+        await asyncio.sleep(0.1)
+        assert not tar_file.exists()
+
+    backup = await task
+    assert backup
+    assert backup.tarfile == tar_file
+    assert tar_file.exists()
