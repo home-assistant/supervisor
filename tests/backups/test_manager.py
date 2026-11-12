@@ -19,7 +19,12 @@ from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel
 from supervisor.backups.backup import Backup, BackupLocation
-from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
+from supervisor.backups.const import (
+    LOCATION_CLOUD_BACKUP,
+    LOCATION_TYPE,
+    BackupJobStage,
+    BackupType,
+)
 from supervisor.backups.manager import BackupManager, _move_no_replace
 from supervisor.const import AppState, CoreState, Folder
 from supervisor.coresys import CoreSys
@@ -3022,3 +3027,52 @@ async def test_backup_app_skips_uninstalled(
         "Skipping backup of app local_example because it has been uninstalled"
         in caplog.text
     )
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_import_backup_additional_location_filename_taken(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test copying to an additional location does not replace an existing file."""
+    taken = Path(
+        copy(
+            get_fixture_path("test_consolidate.tar"),
+            coresys.config.path_core_backup / "7fed74c8.tar",
+        )
+    )
+    taken_content = taken.read_bytes()
+    tar_file = Path(
+        copy(get_fixture_path("backup_example.tar"), coresys.config.path_tmp)
+    )
+
+    backup = await coresys.backups.import_backup(
+        tar_file, additional_locations=[LOCATION_CLOUD_BACKUP]
+    )
+
+    assert backup
+    assert backup.location is None
+    assert LOCATION_CLOUD_BACKUP not in backup.all_locations
+    assert taken.read_bytes() == taken_content
+    assert f"{taken.as_posix()} already exists" in caplog.text
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_backup_create_waits_for_location_lock(coresys: CoreSys):
+    """Test creating a backup file waits while the location is locked."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    tar_file = coresys.config.path_backup / "locked.tar"
+
+    async with coresys.backups.location_lock(None):
+        task = asyncio.create_task(
+            coresys.backups.do_backup_partial(
+                "test", folders=[Folder.SHARE], filename="locked.tar"
+            )
+        )
+        await asyncio.sleep(0.1)
+        assert not tar_file.exists()
+
+    backup = await task
+    assert backup
+    assert backup.tarfile == tar_file
+    assert tar_file.exists()
