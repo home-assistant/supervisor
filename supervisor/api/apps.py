@@ -408,7 +408,7 @@ class APIApps(CoreSysAttributes):
             return data
 
         # Pwned check
-        for secret in options_schema.pwned:
+        for secret in set(options_schema.pwned.values()):
             try:
                 await self.sys_security.verify_secret(secret)
                 continue
