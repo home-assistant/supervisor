@@ -246,7 +246,6 @@ async def test_app_state_event_name_compatibility(
     [
         pytest.param(AppState.ERROR, id="error"),
         pytest.param(AppState.STOPPED, id="stopped"),
-        pytest.param(AppState.STARTUP, id="startup"),
     ],
 )
 async def test_app_not_started_pushes_next_discovery_send(
@@ -335,6 +334,30 @@ async def test_app_stopped_during_discovery_push_pushes_next_send(
     websession.request.assert_called_once()
 
 
+async def test_app_discovery_send_while_stopped_pushes_next_send(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+) -> None:
+    """Test the next send is pushed if the app sent while it was not started.
+
+    The request of an app can reach Supervisor after Supervisor saw its container stop.
+    """
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+    # Started now, the app sends the unchanged message
+    force_app_state(install_app_ssh, AppState.STARTED)
+    websession.request.reset_mock()
+    await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+
 async def test_app_restarted_during_discovery_save_pushes_next_send(
     coresys: CoreSys,
     install_app_ssh: App,
@@ -366,33 +389,163 @@ async def test_app_restarted_during_discovery_save_pushes_next_send(
     websession.request.assert_called_once()
 
 
-async def test_app_discovery_send_in_startup_pushes_next_send(
+@pytest.mark.parametrize(
+    ("core_state", "startup_pushes"),
+    [
+        pytest.param(None, 0, id="core-down"),
+        pytest.param(APIState("RUNNING", False), 2, id="core-running"),
+    ],
+)
+async def test_app_discovery_sent_in_startup_pushed_after_healthcheck(
     coresys: CoreSys,
     install_app_ssh: App,
+    install_app_example: App,
     websession: MagicMock,
+    core_state: APIState | None,
+    startup_pushes: int,
 ) -> None:
-    """Test the next send is pushed if the app sent before it was started.
+    """Test all messages of an app are pushed once its healthcheck passes.
 
-    An app with a healthcheck can send before it is ready for Home Assistant.
+    A push during startup was dropped or came before the app was ready.
     """
     coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
     websession.request.return_value = MockResponse()
     force_app_state(install_app_ssh, AppState.STARTED)
+    force_app_state(install_app_example, AppState.STARTED)
+    known = await coresys.discovery.send(install_app_ssh, "known", {})
+    await coresys.discovery.send(install_app_example, "other", {})
+    await coresys.block_till_done()
+
+    # The app restarts and sends a known and a new message before its healthcheck
+    coresys.homeassistant.api.get_api_state.return_value = core_state
+    websession.request.reset_mock()
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    await coresys.discovery.send(install_app_ssh, "known", {})
+    new = await coresys.discovery.send(install_app_ssh, "new", {})
+    await coresys.block_till_done()
+
+    # Home Assistant got both pushes, or none while it was down
+    assert websession.request.call_count == startup_pushes
+
+    # The healthcheck passes while Home Assistant is running
+    coresys.homeassistant.api.get_api_state.return_value = APIState("RUNNING", False)
+    websession.request.reset_mock()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    await coresys.block_till_done()
+
+    # Both messages of the app are pushed, the message of the other app is not
+    assert websession.request.call_count == 2
+    assert {str(push.args[1]) for push in websession.request.call_args_list} == {
+        f"http://172.30.32.1/api/hassio_push/discovery/{known.uuid}",
+        f"http://172.30.32.1/api/hassio_push/discovery/{new.uuid}",
+    }
+
+    # Home Assistant got both after the healthcheck, so these sends are not pushed
+    websession.request.reset_mock()
+    await coresys.discovery.send(install_app_ssh, "known", {})
+    await coresys.discovery.send(install_app_ssh, "new", {})
+    await coresys.block_till_done()
+    websession.request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("container_state", "pushes"),
+    [
+        pytest.param(ContainerState.HEALTHY, 2, id="healthcheck-passes"),
+        pytest.param(ContainerState.UNHEALTHY, 1, id="healthcheck-fails"),
+    ],
+)
+async def test_app_healthcheck_during_discovery_push_pushes_next_send(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+    container_state: ContainerState,
+    pushes: int,
+) -> None:
+    """Test the next send is pushed if the healthcheck ends during a push from startup.
+
+    The push from startup reached Home Assistant before the app was ready.
+    The push after a passed healthcheck fails, so the next send is pushed.
+    """
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    responses = iter([MockResponse(), MockResponse(status=503)])
+
+    def healthcheck_ends_during_push(*_args: Any, **_kwargs: Any) -> MockResponse:
+        install_app_ssh._update_state(container_state=container_state)  # pylint: disable=protected-access
+        return next(responses)
+
+    websession.request.side_effect = healthcheck_ends_during_push
     await coresys.discovery.send(install_app_ssh, "test", {})
     await coresys.block_till_done()
 
-    # The app restarts and sends before its healthcheck passed
-    force_app_state(install_app_ssh, AppState.STOPPED)
-    force_app_state(install_app_ssh, AppState.STARTUP)
+    # One push from startup, and one more only if the healthcheck passed
+    assert websession.request.call_count == pushes
+
+    # Home Assistant has no valid push for this start, so the next send is pushed
+    websession.request.side_effect = None
+    websession.request.return_value = MockResponse()
     websession.request.reset_mock()
     await coresys.discovery.send(install_app_ssh, "test", {})
     await coresys.block_till_done()
     websession.request.assert_called_once()
 
-    # Started now, the app sends the unchanged message
-    force_app_state(install_app_ssh, AppState.STARTED)
-    websession.request.reset_mock()
+
+async def test_app_healthcheck_passed_after_failed_one_pushes_discovery(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+) -> None:
+    """Test the first passed healthcheck of each start pushes, even after a failed one.
+
+    The app stays started when a healthcheck passes after a failed one.
+    Home Assistant got the push of the unhealthy app before the app was ready.
+    """
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    websession.request.return_value = MockResponse()
+
+    def healthcheck(result: ContainerState) -> None:
+        install_app_ssh._update_state(container_state=result)  # pylint: disable=protected-access
+
+    # The first healthcheck fails, and the message the unhealthy app sends is pushed
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    healthcheck(ContainerState.UNHEALTHY)
     await coresys.discovery.send(install_app_ssh, "test", {})
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+    # A later healthcheck passes and pushes the message once more, further ones not
+    websession.request.reset_mock()
+    healthcheck(ContainerState.HEALTHY)
+    healthcheck(ContainerState.UNHEALTHY)
+    healthcheck(ContainerState.HEALTHY)
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+    # The same after a restart
+    websession.request.reset_mock()
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    healthcheck(ContainerState.UNHEALTHY)
+    healthcheck(ContainerState.HEALTHY)
+    healthcheck(ContainerState.UNHEALTHY)
+    healthcheck(ContainerState.HEALTHY)
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+
+    # After a restart the first healthcheck fails, and the watchdog restarts the app
+    websession.request.reset_mock()
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    healthcheck(ContainerState.UNHEALTHY)
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    force_app_state(install_app_ssh, AppState.STARTUP)
+
+    # Only the first passed healthcheck of the new start pushes
+    healthcheck(ContainerState.HEALTHY)
+    healthcheck(ContainerState.UNHEALTHY)
+    healthcheck(ContainerState.HEALTHY)
     await coresys.block_till_done()
     websession.request.assert_called_once()
 
