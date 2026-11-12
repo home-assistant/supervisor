@@ -176,10 +176,11 @@ class Tasks(CoreSysAttributes):
         if self.sys_homeassistant.core.in_progress:
             # Home Assistant has a task in progress
             return
-        generation = self.sys_homeassistant.core.generation
         if await self.sys_homeassistant.api.check_api_state():
             # Home Assistant is running properly
-            self.sys_homeassistant.core.clear_error_state(generation)
+            if self.sys_homeassistant.core.in_progress:
+                return
+            self.sys_homeassistant.core.clear_error_state()
             self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = 0
             self._cache[HASS_WATCHDOG_API_FAILURES] = 0
             return

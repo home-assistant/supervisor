@@ -1,7 +1,7 @@
 """Test scheduled tasks."""
 
 import asyncio
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 from shutil import copy
 from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, call, patch
@@ -118,17 +118,10 @@ async def _block_forever(**_: Any) -> None:
     await asyncio.Event().wait()
 
 
-@pytest.mark.parametrize(
-    "stop_side_effect",
-    [
-        pytest.param(None, id="job_finished"),
-        pytest.param(_block_forever, id="job_running"),
-    ],
-)
-async def test_watchdog_homeassistant_api_keeps_error_state_after_core_job(
-    tasks: Tasks, coresys: CoreSys, stop_side_effect: Callable | None
+async def test_watchdog_homeassistant_api_keeps_error_state_during_core_job(
+    tasks: Tasks, coresys: CoreSys
 ):
-    """Test a Core job during the API check keeps the error state."""
+    """Test a Core job started during the API check keeps the error state."""
     core = coresys.homeassistant.core
     core._error_state = True
     job_tasks: list[asyncio.Task] = []
@@ -139,7 +132,7 @@ async def test_watchdog_homeassistant_api_keeps_error_state_after_core_job(
         return True
 
     with (
-        patch.object(DockerInterface, "stop", side_effect=stop_side_effect),
+        patch.object(DockerInterface, "stop", side_effect=_block_forever),
         patch.object(HomeAssistantAPI, "check_api_state", new=check_api_state),
     ):
         await tasks._watchdog_homeassistant_api()

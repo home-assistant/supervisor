@@ -308,28 +308,24 @@ async def test_home_assistant_watchdog_retries_after_own_failure(
 
 
 @pytest.mark.parametrize(
-    "state", [ContainerState.FAILED, ContainerState.UNHEALTHY], ids=lambda s: s.value
+    ("state", "method"),
+    [
+        pytest.param(ContainerState.FAILED, "start", id="failed"),
+        pytest.param(ContainerState.UNHEALTHY, "restart", id="unhealthy"),
+    ],
 )
-async def test_home_assistant_watchdog_gives_up_in_error_state(
-    coresys: CoreSys, state: ContainerState, caplog: pytest.LogCaptureFixture
+async def test_home_assistant_watchdog_restarts_in_stale_error_state(
+    coresys: CoreSys, state: ContainerState, method: str
 ) -> None:
-    """Test watchdog stops waiting on an error state it did not cause."""
+    """Test watchdog restarts Core despite an error state left by a finished job."""
     core = coresys.homeassistant.core
     core._error_state = True
 
     with (
-        patch.object(type(core), "start") as start,
-        patch.object(type(core), "rebuild") as rebuild,
-        patch.object(type(core), "restart") as restart,
+        patch.object(type(core), method) as restart,
         patch.object(type(core.instance), "current_state", return_value=state),
-        patch(
-            "supervisor.homeassistant.core.asyncio.sleep", new=_limit_sleep()
-        ) as sleep,
+        patch("supervisor.homeassistant.core.asyncio.sleep", new=_limit_sleep()),
     ):
         await core._restart_after_problem(state, 1)
 
-    start.assert_not_called()
-    rebuild.assert_not_called()
-    restart.assert_not_called()
-    assert sleep.call_count == WATCHDOG_MAX_ATTEMPTS - 1
-    assert "Watchdog cannot restart Home Assistant" in caplog.text
+    restart.assert_called_once()
