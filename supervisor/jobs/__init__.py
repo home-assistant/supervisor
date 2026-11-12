@@ -12,10 +12,9 @@ import logging
 from typing import Any, Self, cast
 from uuid import uuid4
 
-from attr.validators import gt, lt
 from attrs import Attribute, define, field
 from attrs.setters import convert as attr_convert, frozen, validate as attr_validate
-from attrs.validators import ge, le
+from attrs.validators import ge, gt, le, lt
 
 from ..const import BusEvent, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
