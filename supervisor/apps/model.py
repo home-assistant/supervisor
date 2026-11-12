@@ -83,6 +83,7 @@ from ..const import (
     ATTR_WATCHDOG,
     ATTR_WEBUI,
     MACHINE_DEPRECATED,
+    REPOSITORY_LOCAL,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
@@ -91,6 +92,7 @@ from ..const import (
     AppStage,
     AppStartup,
     CpuArch,
+    UpdateChannel,
 )
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
@@ -293,6 +295,19 @@ class AppModel(JobGroup, ABC):
     def repository(self) -> str:
         """Return repository of app."""
         return self.data[ATTR_REPOSITORY]
+
+    @property
+    def user_is_developer(self) -> bool:
+        """Return True if this system's user is presumably the app's developer.
+
+        There is no direct signal, so assume it for local apps and on
+        development systems.
+        """
+        return (
+            self.repository == REPOSITORY_LOCAL
+            or self.sys_dev
+            or self.sys_updater.channel == UpdateChannel.DEV
+        )
 
     @property
     def translations(self) -> dict:
