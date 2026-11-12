@@ -1,5 +1,6 @@
 """Test docker app setup."""
 
+from contextlib import AbstractContextManager, nullcontext as does_not_raise
 from dataclasses import replace
 from http import HTTPStatus
 from ipaddress import IPv4Address
@@ -9,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.apps import validate as vd
@@ -29,6 +31,7 @@ from supervisor.docker.const import (
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import (
     CoreDNSError,
+    DockerBuildError,
     DockerError,
     DockerNotFound,
     DockerTimeoutError,
@@ -1080,6 +1083,92 @@ async def test_app_build_inspect_timeout(
         ),
     ):
         await docker_app.install(docker_app.version, need_build=True)
+
+
+@pytest.mark.parametrize(
+    ("exit_code", "side_effect", "expectation"),
+    [
+        pytest.param(0, None, does_not_raise(), id="success"),
+        pytest.param(1, None, pytest.raises(DockerBuildError), id="build-failed"),
+        pytest.param(
+            0, DockerError(), pytest.raises(DockerBuildError), id="builder-error"
+        ),
+    ],
+)
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_build_prunes_build_cache(
+    coresys: CoreSys,
+    build_cache_query: AsyncMock,
+    addonsdata_system: dict[str, Data],
+    exit_code: int,
+    side_effect: Exception | None,
+    expectation: AbstractContextManager,
+):
+    """Test every build attempt prunes the unused build cache it created."""
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+
+    mock_build_env = MagicMock()
+    mock_build_env.is_valid = AsyncMock()
+    mock_build_env.get_docker_config_json.return_value = None
+    mock_build_env.get_docker_args.return_value = {}
+    coresys.docker.run_command = AsyncMock(
+        return_value=MagicMock(exit_code=exit_code, log=[]), side_effect=side_effect
+    )
+    old = {"ID": "old", "Shared": False, "InUse": False}
+    build_cache_query.side_effect = [
+        {"BuildCache": [old]},
+        {"BuildCache": [old, {"ID": "new", "Shared": False, "InUse": False}]},
+    ]
+
+    with (
+        patch(
+            "supervisor.docker.app.AppBuild.create",
+            AsyncMock(return_value=mock_build_env),
+        ),
+        expectation,
+    ):
+        await docker_app.install(docker_app.version, need_build=True)
+    await coresys.block_till_done()
+
+    coresys.docker.images.prune_builds.assert_called_once_with(
+        filters={"id": "^(new)$"}
+    )
+
+
+@pytest.mark.parametrize(
+    ("need_build", "old_need_build", "pruned"),
+    [
+        pytest.param(True, False, True, id="local-build"),
+        pytest.param(False, True, True, id="local-build-to-prebuilt"),
+        pytest.param(False, False, False, id="prebuilt-image"),
+    ],
+)
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_app_cleanup_prunes_build_cache(
+    coresys: CoreSys,
+    build_cache_query: AsyncMock,
+    addonsdata_system: dict[str, Data],
+    need_build: bool,
+    old_need_build: bool,
+    pruned: bool,
+):
+    """Test cleanup prunes the build cache of removed locally built images."""
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+    build_cache_query.side_effect = [
+        {"BuildCache": [{"ID": "removed", "Shared": True, "InUse": False}]},
+        {"BuildCache": [{"ID": "removed", "Shared": False, "InUse": False}]},
+    ]
+
+    with patch.object(App, "need_build", new=PropertyMock(return_value=need_build)):
+        await docker_app.cleanup(
+            image="test/amd64-my-custom-addon",
+            version=AwesomeVersion("1.0.0"),
+            old_need_build=old_need_build,
+        )
+    await coresys.block_till_done()
+
+    assert build_cache_query.called is pruned
+    assert coresys.docker.images.prune_builds.called is pruned
 
 
 @pytest.mark.parametrize(

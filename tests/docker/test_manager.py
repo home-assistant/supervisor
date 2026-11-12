@@ -493,6 +493,128 @@ async def test_repair_failures(coresys: CoreSys, caplog: pytest.LogCaptureFixtur
     assert f"Error for networks host prune: {missing_err!s}" in caplog.text
 
 
+def _cache_record(record_id: str, shared: bool, in_use: bool = False) -> dict:
+    """Return a build cache record as reported by Docker's disk usage endpoint."""
+    return {"ID": record_id, "Shared": shared, "InUse": in_use}
+
+
+async def test_release_build_cache(coresys: CoreSys, build_cache_query: AsyncMock):
+    """Test only build cache released by the wrapped block is pruned."""
+    build_cache_query.side_effect = [
+        {
+            "BuildCache": [
+                _cache_record("flipped", shared=True),
+                _cache_record("still_shared", shared=True),
+                _cache_record("stale", shared=False),
+            ]
+        },
+        {
+            "BuildCache": [
+                _cache_record("new", shared=False),
+                _cache_record("flipped", shared=False),
+                _cache_record("still_shared", shared=True),
+                _cache_record("stale", shared=False),
+                _cache_record("new_shared", shared=True),
+                _cache_record("in_use", shared=False, in_use=True),
+            ]
+        },
+    ]
+
+    async with coresys.docker.release_build_cache():
+        pass
+    await coresys.block_till_done()
+
+    build_cache_query.assert_called_with("system/df", params={"type": "build-cache"})
+    coresys.docker.images.prune_builds.assert_called_once_with(
+        filters={"id": "^(new|flipped)$"}
+    )
+
+
+async def test_release_build_cache_on_error(
+    coresys: CoreSys, build_cache_query: AsyncMock
+):
+    """Test build cache is still pruned when the wrapped block raises."""
+    build_cache_query.side_effect = [
+        {"BuildCache": []},
+        {"BuildCache": [_cache_record("failed", shared=False)]},
+    ]
+
+    with pytest.raises(DockerError):
+        async with coresys.docker.release_build_cache():
+            raise DockerError
+    await coresys.block_till_done()
+
+    coresys.docker.images.prune_builds.assert_called_once_with(
+        filters={"id": "^(failed)$"}
+    )
+
+
+async def test_release_build_cache_nothing_released(
+    coresys: CoreSys, build_cache_query: AsyncMock
+):
+    """Test no prune is sent when nothing was released."""
+    build_cache_query.side_effect = [
+        {"BuildCache": [_cache_record("kept", shared=True)]},
+        {"BuildCache": [_cache_record("kept", shared=True)]},
+    ]
+
+    async with coresys.docker.release_build_cache():
+        pass
+    await coresys.block_till_done()
+
+    coresys.docker.images.prune_builds.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("side_effect", "message"),
+    [
+        pytest.param(
+            [TimeoutError()],
+            "Error reading build cache: timed out",
+            id="before-timeout",
+        ),
+        pytest.param(
+            [aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "x"})],
+            "Error reading build cache: [500] {'message': 'x'}",
+            id="before-error",
+        ),
+        pytest.param(
+            [{"BuildCache": []}, TimeoutError()],
+            "Error reading build cache: timed out",
+            id="after-timeout",
+        ),
+        pytest.param(
+            [
+                {"BuildCache": []},
+                aiodocker.DockerError(
+                    HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "x"}
+                ),
+            ],
+            "Error reading build cache: [500] {'message': 'x'}",
+            id="after-error",
+        ),
+    ],
+)
+async def test_release_build_cache_read_failure(
+    coresys: CoreSys,
+    build_cache_query: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+    side_effect: list,
+    message: str,
+):
+    """Test failing to read the build cache skips the prune but runs the block."""
+    build_cache_query.side_effect = side_effect
+    block = AsyncMock()
+
+    async with coresys.docker.release_build_cache():
+        await block()
+    await coresys.block_till_done()
+
+    block.assert_called_once()
+    coresys.docker.images.prune_builds.assert_not_called()
+    assert message in caplog.text
+
+
 @pytest.mark.parametrize("log_starter", [("Loaded image ID"), ("Loaded image")])
 async def test_import_image(coresys: CoreSys, tmp_path: Path, log_starter: str):
     """Test importing an image into docker."""

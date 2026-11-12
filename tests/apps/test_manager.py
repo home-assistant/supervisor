@@ -709,7 +709,7 @@ async def test_watchdog_runs_during_update(
 
 
 async def test_shared_image_kept_on_uninstall(
-    coresys: CoreSys, install_app_example: App
+    coresys: CoreSys, build_cache_query: AsyncMock, install_app_example: App
 ):
     """Test if two apps share an image it is not removed on uninstall."""
     # Clone example to a new mock copy so two share an image
@@ -727,7 +727,9 @@ async def test_shared_image_kept_on_uninstall(
     latest = f"{install_app_example.image}:latest"
 
     await coresys.apps.uninstall("local_example2")
+    await coresys.block_till_done()
     coresys.docker.images.delete.assert_not_called()
+    build_cache_query.assert_not_called()
     assert not coresys.apps.get("local_example2", local_only=True)
 
     await coresys.apps.uninstall("local_example")
@@ -735,6 +737,30 @@ async def test_shared_image_kept_on_uninstall(
     assert coresys.docker.images.delete.call_args_list[0] == call(latest, force=True)
     assert coresys.docker.images.delete.call_args_list[1] == call(image, force=True)
     assert not coresys.apps.get("local_example", local_only=True)
+
+
+@pytest.mark.parametrize(
+    ("slug", "pruned"),
+    [
+        pytest.param("local_example", True, id="local-build"),
+        pytest.param("local_example_image", False, id="prebuilt-image"),
+    ],
+)
+@pytest.mark.usefixtures("install_app_example", "install_app_example_image")
+async def test_uninstall_prunes_build_cache(
+    coresys: CoreSys, build_cache_query: AsyncMock, slug: str, pruned: bool
+):
+    """Test uninstall prunes the build cache of locally built images."""
+    build_cache_query.side_effect = [
+        {"BuildCache": [{"ID": "removed", "Shared": True, "InUse": False}]},
+        {"BuildCache": [{"ID": "removed", "Shared": False, "InUse": False}]},
+    ]
+
+    await coresys.apps.uninstall(slug)
+    await coresys.block_till_done()
+
+    assert build_cache_query.called is pruned
+    assert coresys.docker.images.prune_builds.called is pruned
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
