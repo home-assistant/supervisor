@@ -103,6 +103,86 @@ def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Da
     )
 
 
+@pytest.mark.parametrize(
+    "app_config",
+    [
+        pytest.param({}, id="default"),
+        pytest.param({"supervisor_api_tcp": False}, id="socket"),
+    ],
+)
+@pytest.mark.usefixtures("path_extern")
+def test_supervisor_socket_mount(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], app_config: dict[str, bool]
+):
+    """Test every app gets its Supervisor socket folder read-only."""
+    config = load_json_fixture("basic-app-config.json") | app_config
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    assert (
+        DockerMount(
+            type=MountType.BIND,
+            source="/run/supervisor/supervisor/apps/test_addon",
+            target="/run/supervisor/api",
+            read_only=True,
+        )
+        in docker_app.mounts
+    )
+
+
+@pytest.mark.parametrize(
+    ("app_config", "tokens"),
+    [
+        pytest.param(
+            {}, {"SUPERVISOR_TOKEN": "abc123", "HASSIO_TOKEN": "abc123"}, id="default"
+        ),
+        pytest.param(
+            {"supervisor_api_tcp": True},
+            {"SUPERVISOR_TOKEN": "abc123", "HASSIO_TOKEN": "abc123"},
+            id="tcp",
+        ),
+        pytest.param({"supervisor_api_tcp": False}, {}, id="socket"),
+    ],
+)
+def test_supervisor_socket_environment(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    addonsdata_user: PropertyMock,
+    app_config: dict[str, bool],
+    tokens: dict[str, str],
+):
+    """Test the token is only passed to apps on the TCP API."""
+    config = load_json_fixture("basic-app-config.json") | app_config
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+    addonsdata_user.return_value = {"test_addon": {"access_token": "abc123"}}
+
+    environment = docker_app.environment
+
+    assert environment["SUPERVISOR_SOCKET"] == "/run/supervisor/api/supervisor.sock"
+    assert {
+        key: environment[key]
+        for key in ("SUPERVISOR_TOKEN", "HASSIO_TOKEN")
+        if key in environment
+    } == tokens
+
+
+@pytest.mark.usefixtures("path_extern")
+def test_supervisor_socket_long_slug(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], addonsdata_user: PropertyMock
+):
+    """Test an app whose slug is over the cap gets no socket and keeps its token."""
+    config = load_json_fixture("basic-app-config.json") | {"supervisor_api_tcp": False}
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    with patch("supervisor.apps.model.SLUG_MAX_LENGTH", 5):
+        mounts = docker_app.mounts
+        addonsdata_user.return_value = {"test_addon": {"access_token": "abc123"}}
+        environment = docker_app.environment
+
+    assert "SUPERVISOR_SOCKET" not in environment
+    assert environment["SUPERVISOR_TOKEN"] == "abc123"
+    assert "/run/supervisor/api" not in [mount.target for mount in mounts]
+
+
 def test_legacy_app_environment_does_not_modify_app_data(
     coresys: CoreSys,
     addonsdata_system: dict[str, Data],

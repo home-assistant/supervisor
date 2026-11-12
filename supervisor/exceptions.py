@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from .const import OBSERVER_PORT
+from .host.const import StreamType
 
 
 class HassioError(Exception):
@@ -440,6 +441,15 @@ class HassOSSlotUpdateError(HassOSError):
 class PluginError(HassioError):
     """Plugin error."""
 
+    # Slug of the plugin, added to the extra fields of every error it raises
+    plugin: str | None = None
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Raise & log."""
+        if self.plugin:
+            self.extra_fields = {"plugin": self.plugin, **(self.extra_fields or {})}
+        super().__init__(*args, **kwargs)
+
 
 class PluginJobError(PluginError, JobException):
     """Raise on job error with plugin."""
@@ -451,7 +461,149 @@ class PluginDisabledError(PluginError, APIError):
     error_key = "plugin_disabled_error"
     message_template = "Plugin {plugin} is disabled"
 
-    def __init__(self, plugin: str, logger: Callable[..., None] | None = None) -> None:
+
+class PluginNotInstalledError(PluginError, APIError):
+    """Raise when an action requires a plugin that is not installed."""
+
+    error_key = "plugin_not_installed_error"
+    message_template = "Plugin {plugin} is not installed"
+
+
+class PluginUpdateAlreadyInstalledError(PluginError, APIError):
+    """Raise when the requested plugin version is already installed."""
+
+    error_key = "plugin_update_already_installed_error"
+    message_template = "Version {version} of plugin {plugin} is already installed"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, version: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"version": version}
+        super().__init__(None, logger)
+
+
+class PluginNotRunningError(PluginError, APIError):
+    """Raise when a plugin is not running."""
+
+    error_key = "plugin_not_running_error"
+    message_template = "Plugin {plugin} is not running"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class PluginStatsTimeoutError(PluginError, APIInternalServerError):
+    """Raise when fetching stats for a plugin times out."""
+
+    error_key = "plugin_stats_timeout_error"
+    message_template = "Timed out getting stats for plugin {plugin}"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
+class PluginUnknownError(PluginError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs with a plugin."""
+
+    error_key = "plugin_unknown_error"
+    message_template = "An unknown error occurred with plugin {plugin}"
+
+
+class PluginStartError(PluginError, APIUnknownSupervisorError):
+    """Raise when a plugin cannot be started."""
+
+    error_key = "plugin_start_error"
+    message_template = "Can't start plugin {plugin}"
+
+
+class PluginStopError(PluginError, APIUnknownSupervisorError):
+    """Raise when a plugin cannot be stopped."""
+
+    error_key = "plugin_stop_error"
+    message_template = "Can't stop plugin {plugin}"
+
+
+class PluginRestartError(PluginError, APIUnknownSupervisorError):
+    """Raise when a plugin cannot be restarted."""
+
+    error_key = "plugin_restart_error"
+    message_template = "Can't restart plugin {plugin}"
+
+
+class PluginUpdateError(PluginError, APIUnknownSupervisorError):
+    """Raise when updating a plugin fails."""
+
+    error_key = "plugin_update_error"
+    message_template = "Updating plugin {plugin} failed"
+
+
+class PluginEnableError(PluginError, APIUnknownSupervisorError):
+    """Raise when a plugin cannot be enabled."""
+
+    error_key = "plugin_enable_error"
+    message_template = "Can't enable plugin {plugin}"
+
+
+class PluginDisableError(PluginError, APIUnknownSupervisorError):
+    """Raise when a plugin cannot be disabled."""
+
+    error_key = "plugin_disable_error"
+    message_template = "Can't disable plugin {plugin}"
+
+
+class PluginConfigError(PluginError, APIUnknownSupervisorError):
+    """Raise when the config of a plugin cannot be written."""
+
+    error_key = "plugin_config_error"
+    message_template = "Can't update config of plugin {plugin}"
+
+
+class PluginPortConflictError(PluginError, APIError):
+    """Raise when a plugin cannot start due to a port conflict."""
+
+    error_key = "plugin_port_conflict_error"
+    message_template = (
+        "Can't start plugin {plugin} because port {port} is already in use"
+    )
+
+
+class PluginLatestVersionUnknownError(PluginError):
+    """Raise when the latest version of a plugin cannot be determined."""
+
+    message_template = "Can't determine latest version of {plugin} plugin"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, plugin: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"plugin": plugin}
+        super().__init__(None, logger)
+
+
+class PluginInstallError(PluginError):
+    """Raise when a plugin cannot be installed."""
+
+    message_template = "Can't install {plugin} plugin"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, plugin: str
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"plugin": plugin}
+        super().__init__(None, logger)
+
+
+class PluginRemoveError(PluginError):
+    """Raise when a plugin cannot be removed."""
+
+    message_template = "Can't remove {plugin} plugin"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, plugin: str
+    ) -> None:
         """Raise & log."""
         self.extra_fields = {"plugin": plugin}
         super().__init__(None, logger)
@@ -463,42 +615,51 @@ class PluginDisabledError(PluginError, APIError):
 class CliError(PluginError):
     """HA cli exception."""
 
+    plugin = "cli"
 
-class CliUpdateError(CliError):
-    """Error on update of a HA cli."""
+
+class CliUpdateError(CliError, PluginUpdateError):
+    """Raise when updating HA cli fails."""
+
+
+class CliNotInstalledError(CliError, PluginNotInstalledError):
+    """Raise when an action requires HA cli to be installed."""
+
+
+class CliUpdateAlreadyInstalledError(CliError, PluginUpdateAlreadyInstalledError):
+    """Raise when the requested HA cli version is already installed."""
+
+
+class CliDisabledError(CliError, PluginDisabledError):
+    """Raise when an action requires the disabled HA cli plugin."""
 
 
 class CliJobError(CliError, PluginJobError):
     """Raise on job error with cli plugin."""
 
 
-class CliNotRunningError(CliError, APIError):
-    """Raise when the HA cli plugin is not running."""
-
-    error_key = "cli_not_running_error"
-    message_template = "HA cli is not running"
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
+class CliStartError(CliError, PluginStartError):
+    """Raise when HA cli cannot be started."""
 
 
-class CliStatsTimeoutError(CliError, APIInternalServerError):
-    """Raise when fetching stats for the HA cli plugin times out."""
-
-    error_key = "cli_stats_timeout_error"
-    message_template = "Timed out getting stats for HA cli"
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
+class CliStopError(CliError, PluginStopError):
+    """Raise when HA cli cannot be stopped."""
 
 
-class CliUnknownError(CliError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs getting stats for the HA cli plugin."""
+class CliRestartError(CliError, PluginRestartError):
+    """Raise when HA cli cannot be restarted."""
 
-    error_key = "cli_unknown_error"
-    message_template = "An unknown error occurred with HA cli"
+
+class CliNotRunningError(CliError, PluginNotRunningError):
+    """Raise when HA cli is not running."""
+
+
+class CliStatsTimeoutError(CliError, PluginStatsTimeoutError):
+    """Raise when fetching stats for HA cli times out."""
+
+
+class CliUnknownError(CliError, PluginUnknownError):
+    """Raise when an unknown error occurs with HA cli."""
 
 
 # Observer
@@ -507,54 +668,59 @@ class CliUnknownError(CliError, APIUnknownSupervisorError):
 class ObserverError(PluginError):
     """General Observer exception."""
 
+    plugin = "observer"
 
-class ObserverUpdateError(ObserverError):
-    """Error on update of a Observer."""
+
+class ObserverUpdateError(ObserverError, PluginUpdateError):
+    """Raise when updating Observer fails."""
+
+
+class ObserverNotInstalledError(ObserverError, PluginNotInstalledError):
+    """Raise when an action requires Observer to be installed."""
+
+
+class ObserverUpdateAlreadyInstalledError(
+    ObserverError, PluginUpdateAlreadyInstalledError
+):
+    """Raise when the requested Observer version is already installed."""
+
+
+class ObserverDisabledError(ObserverError, PluginDisabledError):
+    """Raise when an action requires the disabled Observer plugin."""
 
 
 class ObserverJobError(ObserverError, PluginJobError):
     """Raise on job error with observer plugin."""
 
 
-class ObserverPortConflict(ObserverError, APIError):
-    """Raise if observer cannot start due to a port conflict."""
-
-    error_key = "observer_port_conflict"
-    message_template = "Cannot start {observer} because port {port} is already in use"
-    extra_fields = {"observer": "observer", "port": OBSERVER_PORT}
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
+class ObserverStartError(ObserverError, PluginStartError):
+    """Raise when Observer cannot be started."""
 
 
-class ObserverNotRunningError(ObserverError, APIError):
+class ObserverRestartError(ObserverError, PluginRestartError):
+    """Raise when Observer cannot be restarted."""
+
+
+class ObserverNotRunningError(ObserverError, PluginNotRunningError):
     """Raise when Observer is not running."""
 
-    error_key = "observer_not_running_error"
-    message_template = "Observer is not running"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
-
-
-class ObserverStatsTimeoutError(ObserverError, APIInternalServerError):
+class ObserverStatsTimeoutError(ObserverError, PluginStatsTimeoutError):
     """Raise when fetching stats for Observer times out."""
 
-    error_key = "observer_stats_timeout_error"
-    message_template = "Timed out getting stats for Observer"
+
+class ObserverUnknownError(ObserverError, PluginUnknownError):
+    """Raise when an unknown error occurs with Observer."""
+
+
+class ObserverPortConflict(ObserverError, PluginPortConflictError):
+    """Raise if observer cannot start due to a port conflict."""
+
+    extra_fields = {"port": OBSERVER_PORT}
 
     def __init__(self, logger: Callable[..., None] | None = None) -> None:
         """Raise & log."""
         super().__init__(None, logger)
-
-
-class ObserverUnknownError(ObserverError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs getting stats for Observer."""
-
-    error_key = "observer_unknown_error"
-    message_template = "An unknown error occurred with Observer"
 
 
 # Multicast
@@ -563,53 +729,61 @@ class ObserverUnknownError(ObserverError, APIUnknownSupervisorError):
 class MulticastError(PluginError):
     """Multicast exception."""
 
+    plugin = "multicast"
 
-class MulticastUpdateError(MulticastError):
-    """Error on update of a multicast."""
+
+class MulticastUpdateError(MulticastError, PluginUpdateError):
+    """Raise when updating Multicast fails."""
+
+
+class MulticastNotInstalledError(MulticastError, PluginNotInstalledError):
+    """Raise when an action requires Multicast to be installed."""
+
+
+class MulticastUpdateAlreadyInstalledError(
+    MulticastError, PluginUpdateAlreadyInstalledError
+):
+    """Raise when the requested Multicast version is already installed."""
+
+
+class MulticastDisabledError(MulticastError, PluginDisabledError):
+    """Raise when an action requires the disabled Multicast plugin."""
 
 
 class MulticastJobError(MulticastError, PluginJobError):
     """Raise on job error with multicast plugin."""
 
 
-class MulticastDisabledError(MulticastError, PluginDisabledError):
-    """Raise when an action requires the disabled Multicast plugin."""
-
-    error_key = "multicast_disabled_error"
-    message_template = "Multicast plugin is disabled"
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__("multicast", logger)
+class MulticastStartError(MulticastError, PluginStartError):
+    """Raise when Multicast cannot be started."""
 
 
-class MulticastNotRunningError(MulticastError, APIError):
+class MulticastStopError(MulticastError, PluginStopError):
+    """Raise when Multicast cannot be stopped."""
+
+
+class MulticastRestartError(MulticastError, PluginRestartError):
+    """Raise when Multicast cannot be restarted."""
+
+
+class MulticastNotRunningError(MulticastError, PluginNotRunningError):
     """Raise when Multicast is not running."""
 
-    error_key = "multicast_not_running_error"
-    message_template = "Multicast is not running"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
-
-
-class MulticastStatsTimeoutError(MulticastError, APIInternalServerError):
+class MulticastStatsTimeoutError(MulticastError, PluginStatsTimeoutError):
     """Raise when fetching stats for Multicast times out."""
 
-    error_key = "multicast_stats_timeout_error"
-    message_template = "Timed out getting stats for Multicast"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
+class MulticastUnknownError(MulticastError, PluginUnknownError):
+    """Raise when an unknown error occurs with Multicast."""
 
 
-class MulticastUnknownError(MulticastError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs getting stats for Multicast."""
+class MulticastEnableError(MulticastError, PluginEnableError):
+    """Raise when Multicast cannot be enabled."""
 
-    error_key = "multicast_unknown_error"
-    message_template = "An unknown error occurred with Multicast"
+
+class MulticastDisableError(MulticastError, PluginDisableError):
+    """Raise when Multicast cannot be disabled."""
 
 
 # DNS
@@ -618,42 +792,64 @@ class MulticastUnknownError(MulticastError, APIUnknownSupervisorError):
 class CoreDNSError(PluginError):
     """CoreDNS exception."""
 
+    plugin = "dns"
 
-class CoreDNSUpdateError(CoreDNSError):
-    """Error on update of a CoreDNS."""
+
+class CoreDNSUpdateError(CoreDNSError, PluginUpdateError):
+    """Raise when updating CoreDNS fails."""
+
+
+class CoreDNSNotInstalledError(CoreDNSError, PluginNotInstalledError):
+    """Raise when an action requires CoreDNS to be installed."""
+
+
+class CoreDNSUpdateAlreadyInstalledError(
+    CoreDNSError, PluginUpdateAlreadyInstalledError
+):
+    """Raise when the requested CoreDNS version is already installed."""
+
+
+class CoreDNSDisabledError(CoreDNSError, PluginDisabledError):
+    """Raise when an action requires the disabled CoreDNS plugin."""
 
 
 class CoreDNSJobError(CoreDNSError, PluginJobError):
     """Raise on job error with dns plugin."""
 
 
-class CoreDNSNotRunningError(CoreDNSError, APIError):
+class CoreDNSStartError(CoreDNSError, PluginStartError):
+    """Raise when CoreDNS cannot be started."""
+
+
+class CoreDNSStopError(CoreDNSError, PluginStopError):
+    """Raise when CoreDNS cannot be stopped."""
+
+
+class CoreDNSRestartError(CoreDNSError, PluginRestartError):
+    """Raise when CoreDNS cannot be restarted."""
+
+
+class CoreDNSNotRunningError(CoreDNSError, PluginNotRunningError):
     """Raise when CoreDNS is not running."""
 
-    error_key = "coredns_not_running_error"
-    message_template = "CoreDNS is not running"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
-
-
-class CoreDNSStatsTimeoutError(CoreDNSError, APIInternalServerError):
+class CoreDNSStatsTimeoutError(CoreDNSError, PluginStatsTimeoutError):
     """Raise when fetching stats for CoreDNS times out."""
 
-    error_key = "coredns_stats_timeout_error"
-    message_template = "Timed out getting stats for CoreDNS"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
+class CoreDNSUnknownError(CoreDNSError, PluginUnknownError):
+    """Raise when an unknown error occurs with CoreDNS."""
 
 
-class CoreDNSUnknownError(CoreDNSError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs getting stats for CoreDNS."""
+class CoreDNSConfigError(CoreDNSError, PluginConfigError):
+    """Raise when the CoreDNS config cannot be written."""
 
-    error_key = "coredns_unknown_error"
-    message_template = "An unknown error occurred with CoreDNS"
+
+class CoreDNSHostsError(CoreDNSError, APIUnknownSupervisorError):
+    """Raise when the CoreDNS hosts file cannot be written."""
+
+    error_key = "coredns_hosts_error"
+    message_template = "Can't update hosts file of plugin {plugin}"
 
 
 # Audio
@@ -662,42 +858,72 @@ class CoreDNSUnknownError(CoreDNSError, APIUnknownSupervisorError):
 class AudioError(PluginError):
     """PulseAudio exception."""
 
+    plugin = "audio"
 
-class AudioUpdateError(AudioError):
-    """Error on update of a Audio."""
+
+class AudioUpdateError(AudioError, PluginUpdateError):
+    """Raise when updating Audio fails."""
+
+
+class AudioNotInstalledError(AudioError, PluginNotInstalledError):
+    """Raise when an action requires Audio to be installed."""
+
+
+class AudioUpdateAlreadyInstalledError(AudioError, PluginUpdateAlreadyInstalledError):
+    """Raise when the requested Audio version is already installed."""
+
+
+class AudioDisabledError(AudioError, PluginDisabledError):
+    """Raise when an action requires the disabled Audio plugin."""
 
 
 class AudioJobError(AudioError, PluginJobError):
     """Raise on job error with audio plugin."""
 
 
-class AudioNotRunningError(AudioError, APIError):
+class AudioStartError(AudioError, PluginStartError):
+    """Raise when Audio cannot be started."""
+
+
+class AudioStopError(AudioError, PluginStopError):
+    """Raise when Audio cannot be stopped."""
+
+
+class AudioRestartError(AudioError, PluginRestartError):
+    """Raise when Audio cannot be restarted."""
+
+
+class AudioNotRunningError(AudioError, PluginNotRunningError):
     """Raise when Audio is not running."""
 
-    error_key = "audio_not_running_error"
-    message_template = "Audio is not running"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger)
-
-
-class AudioStatsTimeoutError(AudioError, APIInternalServerError):
+class AudioStatsTimeoutError(AudioError, PluginStatsTimeoutError):
     """Raise when fetching stats for Audio times out."""
 
-    error_key = "audio_stats_timeout_error"
-    message_template = "Timed out getting stats for Audio"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
+class AudioUnknownError(AudioError, PluginUnknownError):
+    """Raise when an unknown error occurs with Audio."""
+
+
+class AudioConfigError(AudioError, PluginConfigError):
+    """Raise when the Audio config cannot be written."""
+
+
+class AudioInvalidSource(AudioError, APIError):
+    """Raise when an invalid source value is provided for an audio API."""
+
+    error_key = "audio_invalid_source"
+    message_template = "Invalid audio source {source}, must be one of: {stream_types}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        source: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"source": source, "stream_types": ", ".join(StreamType)}
         super().__init__(None, logger)
-
-
-class AudioUnknownError(AudioError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs getting stats for Audio."""
-
-    error_key = "audio_unknown_error"
-    message_template = "An unknown error occurred with Audio"
 
 
 # Apps
@@ -1005,6 +1231,30 @@ class AppBuildFailedUnknownError(AppsError, APIUnknownSupervisorError):
     message_template = (
         "An unknown error occurred while trying to build the image for app {app}"
     )
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"app": app}
+        super().__init__(logger)
+
+
+class AppSocketDirsError(AppsError, APIUnknownSupervisorError):
+    """Raise when the folders for an app's socket mounts cannot be created."""
+
+    error_key = "app_socket_dirs_error"
+    message_template = "Can't create the socket folders for app {app}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"app": app}
+        super().__init__(logger)
+
+
+class AppSocketListenError(AppsError, APIUnknownSupervisorError):
+    """Raise when Supervisor cannot listen on an app's socket."""
+
+    error_key = "app_socket_listen_error"
+    message_template = "Can't listen on the Supervisor socket for app {app}"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, app: str) -> None:
         """Initialize exception."""
