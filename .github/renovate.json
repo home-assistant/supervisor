@@ -117,12 +117,6 @@
       "matchPackageNames": ["astroid"],
       "matchUpdateTypes": ["major", "minor"],
       "minimumGroupSize": 2
-    },
-    {
-      "description": "Group setuptools in requirements.txt with the build requirement in pyproject.toml",
-      "matchPackageNames": ["setuptools"],
-      "groupName": "setuptools",
-      "groupSlug": "setuptools"
     }
   ]
 }
