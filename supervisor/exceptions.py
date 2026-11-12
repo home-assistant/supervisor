@@ -4,6 +4,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from .const import OBSERVER_PORT
+from .host.const import StreamType
 
 
 class HassioError(Exception):
@@ -906,6 +907,23 @@ class AudioUnknownError(AudioError, PluginUnknownError):
 
 class AudioConfigError(AudioError, PluginConfigError):
     """Raise when the Audio config cannot be written."""
+
+
+class AudioInvalidSource(AudioError, APIError):
+    """Raise when an invalid source value is provided for an audio API."""
+
+    error_key = "audio_invalid_source"
+    message_template = "Invalid audio source {source}, must be one of: {stream_types}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        source: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"source": source, "stream_types": ", ".join(StreamType)}
+        super().__init__(None, logger)
 
 
 # Apps
