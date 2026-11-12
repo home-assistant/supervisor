@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from http import HTTPStatus
 from ipaddress import IPv4Address
 import logging
@@ -897,12 +897,13 @@ class DockerApp(DockerInterface):
 
             temp_dir, build_args = await self.sys_run_in_executor(pre_build_setup)
 
-            result = await self.sys_docker.run_command(
-                ADDON_BUILDER_IMAGE,
-                tag=builder_version_tag,
-                name=builder_name,
-                **build_args,
-            )
+            async with self.sys_docker.release_build_cache():
+                result = await self.sys_docker.run_command(
+                    ADDON_BUILDER_IMAGE,
+                    tag=builder_version_tag,
+                    name=builder_name,
+                    **build_args,
+                )
         except DockerError as err:
             raise DockerBuildError(
                 f"Can't build {self.image}:{version}: {err!s}", _LOGGER.error
@@ -911,8 +912,6 @@ class DockerApp(DockerInterface):
             # Clean up temporary directory
             if temp_dir:
                 await self.sys_run_in_executor(temp_dir.cleanup)
-            # BuildKit keeps layers of removed images and failed builds as cache
-            self.sys_create_task(self.sys_docker.prune_build_cache())
 
         logs = "".join(result.log)
         if result.exit_code != 0:
@@ -977,6 +976,7 @@ class DockerApp(DockerInterface):
         old_image: str | None = None,
         image: str | None = None,
         version: AwesomeVersion | None = None,
+        old_need_build: bool = False,
     ) -> None:
         """Check if old version exists and cleanup other versions of image not in use."""
         if not (use_image := image or self.image):
@@ -984,20 +984,24 @@ class DockerApp(DockerInterface):
         if not (use_version := version or self.version):
             raise DockerError("Cannot determine version from metadata!", _LOGGER.error)
 
-        await self.sys_docker.cleanup_old_images(
-            use_image,
-            use_version,
-            {old_image} if old_image else None,
-            keep_images={
-                f"{app.image}:{app.version}"
-                for app in self.sys_apps.installed
-                if app.slug != self.app.slug
-                and app.image
-                and app.image in {old_image, use_image}
-            },
-        )
-        if self.app.need_build:
-            self.sys_create_task(self.sys_docker.prune_build_cache())
+        # Pulled images leave no build cache behind
+        async with (
+            self.sys_docker.release_build_cache()
+            if old_need_build or self.app.need_build
+            else nullcontext()
+        ):
+            await self.sys_docker.cleanup_old_images(
+                use_image,
+                use_version,
+                {old_image} if old_image else None,
+                keep_images={
+                    f"{app.image}:{app.version}"
+                    for app in self.sys_apps.installed
+                    if app.slug != self.app.slug
+                    and app.image
+                    and app.image in {old_image, use_image}
+                },
+            )
 
     @Job(
         name="docker_app_write_stdin",

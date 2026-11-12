@@ -1098,12 +1098,13 @@ async def test_app_build_inspect_timeout(
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_app_build_prunes_build_cache(
     coresys: CoreSys,
+    build_cache_query: AsyncMock,
     addonsdata_system: dict[str, Data],
     exit_code: int,
     side_effect: Exception | None,
     expectation: AbstractContextManager,
 ):
-    """Test every build attempt prunes unused build cache in the background."""
+    """Test every build attempt prunes the unused build cache it created."""
     docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
 
     mock_build_env = MagicMock()
@@ -1113,6 +1114,11 @@ async def test_app_build_prunes_build_cache(
     coresys.docker.run_command = AsyncMock(
         return_value=MagicMock(exit_code=exit_code, log=[]), side_effect=side_effect
     )
+    old = {"ID": "old", "Shared": False, "InUse": False}
+    build_cache_query.side_effect = [
+        {"BuildCache": [old]},
+        {"BuildCache": [old, {"ID": "new", "Shared": False, "InUse": False}]},
+    ]
 
     with (
         patch(
@@ -1124,27 +1130,45 @@ async def test_app_build_prunes_build_cache(
         await docker_app.install(docker_app.version, need_build=True)
     await coresys.block_till_done()
 
-    coresys.docker.images.prune_builds.assert_called_once_with()
+    coresys.docker.images.prune_builds.assert_called_once_with(
+        filters={"id": "^(new)$"}
+    )
 
 
 @pytest.mark.parametrize(
-    "need_build",
-    [pytest.param(True, id="local-build"), pytest.param(False, id="prebuilt-image")],
+    ("need_build", "old_need_build", "pruned"),
+    [
+        pytest.param(True, False, True, id="local-build"),
+        pytest.param(False, True, True, id="local-build-to-prebuilt"),
+        pytest.param(False, False, False, id="prebuilt-image"),
+    ],
 )
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_app_cleanup_prunes_build_cache(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], need_build: bool
+    coresys: CoreSys,
+    build_cache_query: AsyncMock,
+    addonsdata_system: dict[str, Data],
+    need_build: bool,
+    old_need_build: bool,
+    pruned: bool,
 ):
-    """Test cleanup prunes unused build cache only for locally built apps."""
+    """Test cleanup prunes the build cache of removed locally built images."""
     docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
+    build_cache_query.side_effect = [
+        {"BuildCache": [{"ID": "removed", "Shared": True, "InUse": False}]},
+        {"BuildCache": [{"ID": "removed", "Shared": False, "InUse": False}]},
+    ]
 
     with patch.object(App, "need_build", new=PropertyMock(return_value=need_build)):
         await docker_app.cleanup(
-            image="test/amd64-my-custom-addon", version=AwesomeVersion("1.0.0")
+            image="test/amd64-my-custom-addon",
+            version=AwesomeVersion("1.0.0"),
+            old_need_build=old_need_build,
         )
     await coresys.block_till_done()
 
-    assert coresys.docker.images.prune_builds.called is need_build
+    assert build_cache_query.called is pruned
+    assert coresys.docker.images.prune_builds.called is pruned
 
 
 @pytest.mark.parametrize(
