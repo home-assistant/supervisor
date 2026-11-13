@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 import voluptuous as vol
 
-from supervisor.apps.options import AppOptions, UiOptions
+from supervisor.apps.options import AppDeviceMissingError, AppOptions, UiOptions
 from supervisor.coresys import CoreSys
 from supervisor.hardware.data import Device
 
@@ -351,7 +351,7 @@ def test_simple_device_schema(coresys):
         MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "input": "/dev/ttyACM0"})
 
-    with pytest.raises(vol.error.Invalid):
+    with pytest.raises(AppDeviceMissingError):
         assert AppOptions(
             coresys,
             {"name": "str", "password": "password", "input": "device"},

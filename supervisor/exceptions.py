@@ -1041,6 +1041,10 @@ class AppConfigurationInvalidError(AppConfigurationError, APIError):
         super().__init__(None, logger)
 
 
+class AppConfigurationDeviceMissingError(AppConfigurationInvalidError):
+    """Raise if app configuration is invalid only because a device is missing."""
+
+
 class AppBootConfigCannotChangeError(AppsError, APIError):
     """Raise if user attempts to change app boot config when it can't be changed."""
 
