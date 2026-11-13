@@ -1885,7 +1885,7 @@ class App(AppModel):
         """Restart unhealthy or failed app."""
         attempts = 0
         while await self._watchdog_can_retry(state, attempts):
-            if not self.in_progress:
+            if not self.in_progress and not self.active_job:
                 if state == ContainerState.FAILED:
                     _LOGGER.warning(
                         "Watchdog found app %s exited with code %d, restarting...",

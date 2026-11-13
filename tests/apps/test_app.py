@@ -587,6 +587,42 @@ async def test_watchdog_retries_socket_error(
     assert start.await_count == 2
 
 
+async def test_watchdog_waits_for_app_job(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test the watchdog makes no attempt while another app job is running."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    with (
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
+        patch.object(
+            App,
+            "active_job",
+            new=PropertyMock(side_effect=[MagicMock(), None]),
+        ) as active_job,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.WATCHDOG_RETRY_SECONDS", 0),
+        patch("supervisor.apps.app.async_capture_exception") as capture_exception,
+    ):
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert active_job.call_count == 2
+    start.assert_awaited_once()
+    capture_exception.assert_not_called()
+
+
 def _no_user_action(app: App) -> None:
     """Leave the app alone."""
 
