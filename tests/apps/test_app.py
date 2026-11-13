@@ -641,15 +641,20 @@ async def test_watchdog_waits_for_app_job(
 
 
 @pytest.mark.parametrize(
-    ("error", "start_calls", "gave_up"),
+    ("error", "start_calls", "message"),
     [
         pytest.param(
             AppConfigurationDeviceMissingError,
             WATCHDOG_MAX_ATTEMPTS,
-            True,
+            f"device still missing after {WATCHDOG_MAX_ATTEMPTS} attempts",
             id="device_missing",
         ),
-        pytest.param(AppConfigurationInvalidError, 1, False, id="invalid_options"),
+        pytest.param(
+            AppConfigurationInvalidError,
+            1,
+            "until its options are fixed",
+            id="invalid_options",
+        ),
     ],
 )
 async def test_watchdog_configuration_error(
@@ -658,7 +663,7 @@ async def test_watchdog_configuration_error(
     caplog: pytest.LogCaptureFixture,
     error: type[AppConfigurationInvalidError],
     start_calls: int,
-    gave_up: bool,
+    message: str,
 ) -> None:
     """Test the watchdog only retries invalid options for a missing device."""
     with patch.object(DockerApp, "attach"):
@@ -687,8 +692,10 @@ async def test_watchdog_configuration_error(
         )
 
     assert start.call_count == start_calls
+    # Neither an explicit capture nor a critical log, both reach Sentry
     capture_exception.assert_not_called()
-    assert (f"failed all {WATCHDOG_MAX_ATTEMPTS} attempts" in caplog.text) is gave_up
+    assert not [r for r in caplog.records if r.levelno >= logging.CRITICAL]
+    assert message in caplog.text
 
 
 @pytest.mark.parametrize(

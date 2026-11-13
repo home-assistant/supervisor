@@ -1910,6 +1910,15 @@ class App(AppModel):
                 except AppConfigurationDeviceMissingError:
                     # The device may come back, e.g. a replugged USB radio
                     _LOGGER.error("Watchdog restart of app %s failed!", self.name)
+                    if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                        # Not critical, that level is reported to Sentry
+                        _LOGGER.error(
+                            "Watchdog cannot restart app %s, device still missing "
+                            "after %s attempts",
+                            self.name,
+                            attempts,
+                        )
+                        return
                 except AppConfigurationInvalidError:
                     _LOGGER.error(
                         "Watchdog cannot restart app %s until its options are fixed",
