@@ -69,6 +69,7 @@ from ..exceptions import (
     APISocketError,
     AppBackupMetadataInvalidError,
     AppBuildFailedUnknownError,
+    AppConfigurationDeviceMissingError,
     AppConfigurationInvalidError,
     AppFileReadError,
     AppNotRunningError,
@@ -119,7 +120,7 @@ from .const import (
     MappingType,
 )
 from .model import AppModel, Data
-from .options import AppOptions
+from .options import AppDeviceMissingError, AppOptions
 from .utils import remove_data
 from .validate import SCHEMA_APP_BACKUP
 
@@ -938,7 +939,13 @@ class App(AppModel):
             options = self.schema.validate(self.options)
             await self.sys_run_in_executor(write_json_file, self.path_options, options)
         except vol.Invalid as ex:
-            raise AppConfigurationInvalidError(
+            errors = ex.errors if isinstance(ex, vol.MultipleInvalid) else [ex]
+            error_type = (
+                AppConfigurationDeviceMissingError
+                if all(isinstance(error, AppDeviceMissingError) for error in errors)
+                else AppConfigurationInvalidError
+            )
+            raise error_type(
                 _LOGGER.error,
                 app=self.slug,
                 validation_error=humanize_error(self.options, ex),
@@ -1913,8 +1920,18 @@ class App(AppModel):
                         "Watchdog cannot restart app %s: %s", self.name, err
                     )
                     break
+                except AppConfigurationDeviceMissingError:
+                    # The device may come back, e.g. a replugged USB radio
+                    attempts += 1
+                    _LOGGER.error("Watchdog restart of app %s failed!", self.name)
+                except AppConfigurationInvalidError:
+                    _LOGGER.error(
+                        "Watchdog cannot restart app %s until its options are fixed",
+                        self.name,
+                    )
+                    break
                 except AppsError as err:
-                    attempts = attempts + 1
+                    attempts += 1
                     _LOGGER.error("Watchdog restart of app %s failed!", self.name)
                     await async_capture_exception(err)
                 else:

@@ -22,6 +22,7 @@ from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
 from supervisor.apps.const import WATCHDOG_MAX_ATTEMPTS, AppBackupMode
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
+from supervisor.apps.options import AppOptions
 from supervisor.const import (
     ATTR_ADVANCED,
     ATTR_LOCATION,
@@ -38,6 +39,8 @@ from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     APISocketListenError,
+    AppConfigurationDeviceMissingError,
+    AppConfigurationInvalidError,
     AppFileReadError,
     AppNotRunningError,
     AppNotSupportedArchitectureError,
@@ -621,6 +624,86 @@ async def test_watchdog_waits_for_app_job(
     assert active_job.call_count == 2
     start.assert_awaited_once()
     capture_exception.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("error", "start_calls", "gave_up"),
+    [
+        pytest.param(
+            AppConfigurationDeviceMissingError,
+            WATCHDOG_MAX_ATTEMPTS,
+            True,
+            id="device_missing",
+        ),
+        pytest.param(AppConfigurationInvalidError, 1, False, id="invalid_options"),
+    ],
+)
+async def test_watchdog_configuration_error(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+    error: type[AppConfigurationInvalidError],
+    start_calls: int,
+    gave_up: bool,
+) -> None:
+    """Test the watchdog only retries invalid options for a missing device."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            App,
+            "start",
+            side_effect=error(app=TEST_ADDON_SLUG, validation_error="invalid"),
+        ) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.WATCHDOG_RETRY_SECONDS", 0),
+        patch("supervisor.apps.app.async_capture_exception") as capture_exception,
+    ):
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert start.call_count == start_calls
+    capture_exception.assert_not_called()
+    assert (f"failed all {WATCHDOG_MAX_ATTEMPTS} attempts" in caplog.text) is gave_up
+
+
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [
+        pytest.param(
+            "/dev/missing", AppConfigurationDeviceMissingError, id="device_missing"
+        ),
+        pytest.param(1, AppConfigurationInvalidError, id="invalid_options"),
+    ],
+)
+async def test_write_options_error(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    value: str | int,
+    error: type[AppConfigurationInvalidError],
+) -> None:
+    """Test write options tells a missing device apart from other invalid options."""
+    schema = AppOptions(
+        coresys, {"device": "device"}, install_app_ssh.name, TEST_ADDON_SLUG
+    )
+    with (
+        patch.object(App, "schema", new=PropertyMock(return_value=schema)),
+        patch.object(App, "options", new=PropertyMock(return_value={"device": value})),
+        pytest.raises(AppConfigurationInvalidError) as exc_info,
+    ):
+        await install_app_ssh.write_options()
+
+    assert type(exc_info.value) is error
 
 
 def _no_user_action(app: App) -> None:
