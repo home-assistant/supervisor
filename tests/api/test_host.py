@@ -810,6 +810,39 @@ async def test_advanced_logs_gateway_reset_before_stream(
     )
 
 
+@pytest.mark.parametrize(
+    ("gateway_status", "captured"),
+    [
+        pytest.param(400, 0, id="rejected-request"),
+        pytest.param(500, 1, id="gateway-failure"),
+    ],
+)
+async def test_advanced_logs_gateway_error_status(
+    journald_gateway: MagicMock,
+    api_client_with_prefix: tuple[TestClient, str],
+    gateway_status: int,
+    captured: int,
+):
+    """Test an error response of the journal gateway is not parsed as journal data."""
+    api_client, prefix = api_client_with_prefix
+
+    journald_gateway.status = gateway_status
+    journald_gateway.content.feed_data(b"Failed to parse Range header.\n")
+    journald_gateway.content.feed_eof()
+
+    with patch("supervisor.api.utils.async_capture_exception") as capture_exception:
+        resp = await api_client.get(
+            f"{prefix}/host/logs", headers={"Range": "entries=:-1:0"}
+        )
+
+    assert resp.status == 400
+    assert await resp.text() == (
+        f"systemd-journal-gatewayd returned HTTP {gateway_status}: "
+        "Failed to parse Range header."
+    )
+    assert capture_exception.call_count == captured
+
+
 async def test_advanced_logs_gateway_unavailable(
     api_client_with_prefix: tuple[TestClient, str],
     journald_logs: MagicMock,
