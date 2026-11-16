@@ -791,13 +791,19 @@ async def test_advanced_logs_client_disconnect_while_connecting(
     assert "Error handling request" not in caplog.text
 
 
+@pytest.mark.parametrize(
+    "gateway_status",
+    [pytest.param(200, id="log-stream"), pytest.param(400, id="error-response")],
+)
 async def test_advanced_logs_gateway_reset_before_stream(
     journald_gateway: MagicMock,
     api_client_with_prefix: tuple[TestClient, str],
+    gateway_status: int,
 ):
     """Test connection reset before the log stream started returns an API error."""
     api_client, prefix = api_client_with_prefix
 
+    journald_gateway.status = gateway_status
     journald_gateway.content.set_exception(
         ClientPayloadError("Response payload is not completed")
     )

@@ -395,14 +395,14 @@ class APIHost(CoreSysAttributes):
                 params=params, range_header=range_header, accept=LogFormat.JOURNAL
             ) as resp,
         ):
-            if resp.status != 200:
-                # The body is a plain text error message, not journal data
-                message = f"systemd-journal-gatewayd returned HTTP {resp.status}: {(await resp.text()).strip()}"
-                if 400 <= resp.status < 500:
-                    raise HostJournalGatewaydRequestError(message, _LOGGER.debug)
-                raise HostLogError(message, _LOGGER.error)
-
             try:
+                if resp.status != 200:
+                    # The body is a plain text error message, not journal data
+                    message = f"systemd-journal-gatewayd returned HTTP {resp.status}: {(await resp.text()).strip()}"
+                    if 400 <= resp.status < 500:
+                        raise HostJournalGatewaydRequestError(message, _LOGGER.debug)
+                    raise HostLogError(message, _LOGGER.error)
+
                 async for cursor, line in journal_logs_reader(
                     resp, log_formatter, no_colors, tz=self.sys_timezone_tzinfo
                 ):
