@@ -2271,7 +2271,11 @@ class BackupFileNotFoundError(BackupError, APINotFound):
     """Raise if the backup file hasn't been found."""
 
 
-class BackupPermissionError(BackupError):
+class BackupLocationWriteError(BackupError):
+    """Raise if the backup file could not be created in a location."""
+
+
+class BackupPermissionError(BackupLocationWriteError):
     """Raise if we could not write the backup due to permission error."""
 
 

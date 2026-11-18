@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 import errno
 import logging
@@ -22,9 +22,11 @@ from ..exceptions import (
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
+    BackupLocationWriteError,
     BackupMountDownError,
     BackupSupervisorUpdateInProgressError,
     BackupSupervisorVersionError,
+    JobConditionException,
     UpdaterError,
 )
 from ..jobs import JobSchedulerOptions
@@ -526,7 +528,9 @@ class BackupManager(FileConfiguration, JobGroup):
         """Create a backup.
 
         Must be called from an existing backup job. If the backup failed, the
-        backup file is being deleted and None is returned.
+        backup file is being deleted and None is returned. If the backup file
+        cannot be created in this location and additional locations are given,
+        BackupLocationWriteError is raised instead so the caller can fall back.
         """
         app_start_tasks: list[Awaitable[None]] | None = None
 
@@ -568,6 +572,8 @@ class BackupManager(FileConfiguration, JobGroup):
             self.sys_jobs.current.capture_error(err)
             return None
         except BackupError as err:
+            if isinstance(err, BackupLocationWriteError) and additional_locations:
+                raise
             await self.sys_run_in_executor(backup.tarfile.unlink, missing_ok=True)
             _LOGGER.error("Backup %s error: %s", backup.slug, err)
             self.sys_jobs.current.capture_error(err)
@@ -596,6 +602,51 @@ class BackupManager(FileConfiguration, JobGroup):
         finally:
             await self.sys_core.set_state(CoreState.RUNNING)
 
+    async def _create_in_first_usable_location(
+        self,
+        location: LOCATION_TYPE | type[DEFAULT],
+        additional_locations: list[LOCATION_TYPE] | None,
+        create: Callable[
+            [LOCATION_TYPE | type[DEFAULT], list[LOCATION_TYPE] | None],
+            Awaitable[Backup | None],
+        ],
+        validation_complete: asyncio.Event | None,
+    ) -> Backup | None:
+        """Create a backup in the first location that can be written to.
+
+        The backup file is created in the first location. If that location is
+        down, not writable or low on free space, fall back to the next one
+        instead of failing the whole backup. The skipped locations are not
+        copied to afterwards. Once validation has completed and the caller has been
+        notified, a failure of the last attempt is captured on the job instead
+        of raised.
+        """
+        locations: list[LOCATION_TYPE | type[DEFAULT]] = [
+            location,
+            *(additional_locations or []),
+        ]
+        while True:
+            primary, remaining = locations[0], cast(list[LOCATION_TYPE], locations[1:])
+            try:
+                return await create(primary, remaining or None)
+            except (
+                BackupMountDownError,
+                BackupLocationWriteError,
+                JobConditionException,
+            ) as err:
+                if not remaining:
+                    if validation_complete is None or not validation_complete.is_set():
+                        raise
+                    self.sys_jobs.current.capture_error(err)
+                    return None
+                _LOGGER.error(
+                    "Cannot create backup in %s: %s. Using %s instead",
+                    self._get_location_name(primary) or "local storage",
+                    err,
+                    self._get_location_name(remaining[0]) or "local storage",
+                )
+                locations = cast(list[LOCATION_TYPE | type[DEFAULT]], remaining)
+
     @Job(
         name="backup_manager_full_backup",
         conditions=[JobCondition.RUNNING],
@@ -617,32 +668,40 @@ class BackupManager(FileConfiguration, JobGroup):
         validation_complete: asyncio.Event | None = None,
     ) -> Backup | None:
         """Create a full backup."""
-        await self._check_location(location)
 
-        if self._get_base_path(location) in {
-            self.sys_config.path_backup,
-            self.sys_config.path_core_backup,
-        }:
-            await Job.check_conditions(
-                self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_full"
+        async def _create(
+            loc: LOCATION_TYPE | type[DEFAULT], remaining: list[LOCATION_TYPE] | None
+        ) -> Backup | None:
+            await self._check_location(loc)
+
+            if self._get_base_path(loc) in {
+                self.sys_config.path_backup,
+                self.sys_config.path_core_backup,
+            }:
+                await Job.check_conditions(
+                    self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_full"
+                )
+
+            new_backup = self._create_backup(
+                name, filename, BackupType.FULL, password, compressed, loc, extra
             )
 
-        new_backup = self._create_backup(
-            name, filename, BackupType.FULL, password, compressed, location, extra
-        )
+            # If being run in the background, notify caller that validation has completed
+            if validation_complete:
+                validation_complete.set()
 
-        # If being run in the background, notify caller that validation has completed
-        if validation_complete:
-            validation_complete.set()
+            _LOGGER.info("Creating new full backup with slug %s", new_backup.slug)
+            return await self._do_backup(
+                new_backup,
+                self.sys_apps.installed,
+                ALL_FOLDERS,
+                True,
+                homeassistant_exclude_database,
+                remaining,
+            )
 
-        _LOGGER.info("Creating new full backup with slug %s", new_backup.slug)
-        backup = await self._do_backup(
-            new_backup,
-            self.sys_apps.installed,
-            ALL_FOLDERS,
-            True,
-            homeassistant_exclude_database,
-            additional_locations,
+        backup = await self._create_in_first_usable_location(
+            location, additional_locations, _create, validation_complete
         )
         if backup:
             _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
@@ -672,46 +731,53 @@ class BackupManager(FileConfiguration, JobGroup):
         validation_complete: asyncio.Event | None = None,
     ) -> Backup | None:
         """Create a partial backup."""
-        await self._check_location(location)
-
-        if self._get_base_path(location) in {
-            self.sys_config.path_backup,
-            self.sys_config.path_core_backup,
-        }:
-            await Job.check_conditions(
-                self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_partial"
-            )
-
         apps = apps or []
         folders = folders or []
 
-        if len(apps) == 0 and len(folders) == 0 and not homeassistant:
-            _LOGGER.error("Nothing to create backup for")
+        async def _create(
+            loc: LOCATION_TYPE | type[DEFAULT], remaining: list[LOCATION_TYPE] | None
+        ) -> Backup | None:
+            await self._check_location(loc)
 
-        new_backup = self._create_backup(
-            name, filename, BackupType.PARTIAL, password, compressed, location, extra
-        )
+            if self._get_base_path(loc) in {
+                self.sys_config.path_backup,
+                self.sys_config.path_core_backup,
+            }:
+                await Job.check_conditions(
+                    self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_partial"
+                )
 
-        _LOGGER.info("Creating new partial backup with slug %s", new_backup.slug)
-        app_list = []
-        for app_slug in apps:
-            app = self.sys_apps.get(app_slug)
-            if app and app.is_installed:
-                app_list.append(cast(App, app))
-                continue
-            _LOGGER.warning("App %s not found/installed", app_slug)
+            if len(apps) == 0 and len(folders) == 0 and not homeassistant:
+                _LOGGER.error("Nothing to create backup for")
 
-        # If being run in the background, notify caller that validation has completed
-        if validation_complete:
-            validation_complete.set()
+            new_backup = self._create_backup(
+                name, filename, BackupType.PARTIAL, password, compressed, loc, extra
+            )
 
-        backup = await self._do_backup(
-            new_backup,
-            app_list,
-            folders,
-            homeassistant,
-            homeassistant_exclude_database,
-            additional_locations,
+            _LOGGER.info("Creating new partial backup with slug %s", new_backup.slug)
+            app_list = []
+            for app_slug in apps:
+                app = self.sys_apps.get(app_slug)
+                if app and app.is_installed:
+                    app_list.append(cast(App, app))
+                    continue
+                _LOGGER.warning("App %s not found/installed", app_slug)
+
+            # If being run in the background, notify caller that validation has completed
+            if validation_complete:
+                validation_complete.set()
+
+            return await self._do_backup(
+                new_backup,
+                app_list,
+                folders,
+                homeassistant,
+                homeassistant_exclude_database,
+                remaining,
+            )
+
+        backup = await self._create_in_first_usable_location(
+            location, additional_locations, _create, validation_complete
         )
         if backup:
             _LOGGER.info("Creating partial backup with slug %s completed", backup.slug)

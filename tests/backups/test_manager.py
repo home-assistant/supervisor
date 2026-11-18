@@ -1,6 +1,7 @@
 """Test BackupManager class."""
 
 import asyncio
+from collections.abc import Callable
 import errno
 from functools import partial
 from pathlib import Path
@@ -17,7 +18,7 @@ import pytest
 from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel
-from supervisor.backups.backup import Backup, BackupLocation
+from supervisor.backups.backup import Backup, BackupLocation, SecureTarArchive
 from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import AppState, CoreState, Folder
@@ -34,9 +35,11 @@ from supervisor.exceptions import (
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
+    BackupPermissionError,
     BackupSupervisorUpdateInProgressError,
     BackupSupervisorVersionError,
     DockerError,
+    JobConditionException,
     MountError,
 )
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -2643,6 +2646,179 @@ async def test_remove_non_existing_backup_raises(coresys: CoreSys):
 
     with pytest.raises(BackupFileNotFoundError):
         await coresys.backups.remove(backup)
+
+
+BACKUP_METHODS = [
+    pytest.param("do_backup_full", {}, id="full"),
+    pytest.param("do_backup_partial", {"folders": [Folder.SSL]}, id="partial"),
+]
+LOCATION_ORDERS = [(None, ".cloud_backup"), (".cloud_backup", None)]
+
+
+def _open_failing_first(error: OSError) -> Callable[..., Any]:
+    """Return a SecureTarArchive.open replacement which fails on its first call."""
+    original_open = SecureTarArchive.open
+    errors = [error]
+
+    def _open(self: SecureTarArchive, *args: Any, **kwargs: Any) -> Any:
+        if errors:
+            raise errors.pop()
+        return original_open(self, *args, **kwargs)
+
+    return _open
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+@pytest.mark.parametrize(("method", "kwargs"), BACKUP_METHODS)
+@pytest.mark.parametrize(("first_location", "second_location"), LOCATION_ORDERS)
+async def test_backup_falls_back_when_first_location_permission_denied(
+    coresys: CoreSys,
+    method: str,
+    kwargs: dict[str, Any],
+    first_location: str | None,
+    second_location: str | None,
+):
+    """Test backup falls back to the next location if the first is not writable."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    open_error = PermissionError(errno.EACCES, "Permission denied")
+
+    with patch.object(SecureTarArchive, "open", _open_failing_first(open_error)):
+        backup = await getattr(coresys.backups, method)(
+            name="test",
+            location=first_location,
+            additional_locations=[second_location],
+            **kwargs,
+        )
+
+    assert backup
+    assert coresys.backups.get(backup.slug) == backup
+    assert backup.location == second_location
+    assert backup.locations == [second_location]
+    assert backup.tarfile.is_file()
+    assert list(backup.tarfile.parent.iterdir()) == [backup.tarfile]
+    assert not any(job.errors for job in coresys.jobs.jobs)
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+@pytest.mark.parametrize(("method", "kwargs"), BACKUP_METHODS)
+@pytest.mark.parametrize(("first_location", "second_location"), LOCATION_ORDERS)
+async def test_backup_falls_back_when_first_location_unusable(
+    coresys: CoreSys,
+    method: str,
+    kwargs: dict[str, Any],
+    first_location: str | None,
+    second_location: str | None,
+):
+    """Test backup falls back if the first location cannot be accessed at all."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    first_path = coresys.backups._get_base_path(first_location)  # pylint: disable=protected-access
+    rmtree(first_path)
+    first_path.write_text("not a directory")
+
+    backup = await getattr(coresys.backups, method)(
+        name="test",
+        location=first_location,
+        additional_locations=[second_location],
+        **kwargs,
+    )
+
+    assert backup
+    assert backup.location == second_location
+    assert backup.locations == [second_location]
+    assert backup.tarfile.is_file()
+    assert not any(job.errors for job in coresys.jobs.jobs)
+
+
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
+@pytest.mark.parametrize(("method", "kwargs"), BACKUP_METHODS)
+async def test_backup_falls_back_when_first_mount_down(
+    coresys: CoreSys, mock_is_mount: MagicMock, method: str, kwargs: dict[str, Any]
+):
+    """Test backup falls back to the next location if the first mount is down."""
+    (coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    mock_is_mount.return_value = False
+
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup = await getattr(coresys.backups, method)(
+        name="test", location=mount, additional_locations=[None], **kwargs
+    )
+
+    assert backup
+    assert backup.location is None
+    assert backup.locations == [None]
+    assert not any(job.errors for job in coresys.jobs.jobs)
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+@pytest.mark.parametrize("additional_locations", [None, [".cloud_backup"]])
+async def test_backup_fails_when_no_location_writable(
+    coresys: CoreSys, additional_locations: list[str] | None
+):
+    """Test backup fails if none of the locations are writable."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        SecureTarArchive,
+        "open",
+        side_effect=PermissionError(errno.EACCES, "Permission denied"),
+    ) as mock_open:
+        backup = await coresys.backups.do_backup_full(
+            name="test", location=None, additional_locations=additional_locations
+        )
+
+    assert backup is None
+    assert mock_open.call_count == len(additional_locations or []) + 1
+    assert not coresys.backups.list_backups
+    assert [error.type_ for job in coresys.jobs.jobs for error in job.errors] == [
+        BackupPermissionError
+    ]
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_backup_fallback_not_enough_free_space(coresys: CoreSys):
+    """Test an attempt failing validation after a fallback is captured on the job."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    open_error = PermissionError(errno.EACCES, "Permission denied")
+    validation_complete = asyncio.Event()
+
+    with (
+        patch.object(SecureTarArchive, "open", _open_failing_first(open_error)),
+        patch.object(
+            type(coresys.host.info), "free_space", AsyncMock(side_effect=[100, 0])
+        ),
+    ):
+        backup = await coresys.backups.do_backup_full(
+            name="test",
+            location=".cloud_backup",
+            additional_locations=[None],
+            validation_complete=validation_complete,
+        )
+
+    assert backup is None
+    assert validation_complete.is_set()
+    assert [error.type_ for job in coresys.jobs.jobs for error in job.errors] == [
+        JobConditionException
+    ]
+    assert not coresys.backups.list_backups
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")

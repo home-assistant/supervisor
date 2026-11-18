@@ -58,6 +58,7 @@ from ..exceptions import (
     BackupFileExistError,
     BackupFileNotFoundError,
     BackupInvalidError,
+    BackupLocationWriteError,
     BackupPermissionError,
     MountActivationError,
     MountError,
@@ -510,12 +511,10 @@ class Backup(JobGroup):
             except PermissionError as ex:
                 raise BackupPermissionError(
                     f"Cannot open backup file {self.tarfile.as_posix()}, permission error!",
-                    _LOGGER.error,
                 ) from ex
             except OSError as ex:
-                raise BackupError(
+                raise BackupLocationWriteError(
                     f"Cannot open backup file {self.tarfile.as_posix()} for writing",
-                    _LOGGER.error,
                 ) from ex
 
             return _outer_secure_tarfile
