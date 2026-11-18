@@ -957,4 +957,6 @@ class AppModel(JobGroup, ABC):
 
         # local build
         arch = self.sys_arch.match(config[ATTR_ARCH])
-        return f"{config[ATTR_REPOSITORY]}/{arch!s}-addon-{config[ATTR_SLUG]}"
+        # App slugs are allowed to contain uppercase characters,
+        # but Docker image names must be lowercase
+        return f"{config[ATTR_REPOSITORY]}/{arch!s}-addon-{config[ATTR_SLUG]}".lower()
