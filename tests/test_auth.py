@@ -1,6 +1,7 @@
 """Test auth object."""
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -221,3 +222,28 @@ async def test_auth_backend_login_group_ids(
     assert coresys.auth._check_cache("username", "password") == LoginResult(
         group_ids=expected
     )
+
+
+async def test_auth_repeated_login_logged_once(
+    coresys: CoreSys, mock_api_state: AsyncMock, caplog: pytest.LogCaptureFixture
+):
+    """Test a repeated login and its background refresh do not log at INFO."""
+    del coresys.auth._backend_login
+    app = MagicMock()
+    mock_api_state.return_value = True
+    make_request = MagicMock(
+        side_effect=lambda *args, **kwargs: MockResponse(status=200, text="{}")
+    )
+    caplog.set_level(logging.INFO, logger="supervisor.auth")
+
+    with patch.object(coresys.homeassistant.api, "make_request", make_request):
+        assert await coresys.auth.check_login(app, "username", "password")
+        assert await coresys.auth.check_login(app, "username", "password")
+        await coresys.auth._running["username"]
+
+    assert make_request.call_count == 2
+    assert [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "supervisor.auth" and record.levelno >= logging.INFO
+    ] == ["Successful login for 'username'"]

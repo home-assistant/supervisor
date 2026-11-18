@@ -85,19 +85,23 @@ class Auth(FileConfiguration, CoreSysAttributes):
 
     async def _update_cache(
         self, username: str, password: str, group_ids: list[str]
-    ) -> None:
-        """Cache a username, password and group IDs."""
+    ) -> bool:
+        """Cache a username, password and group IDs.
+
+        Return True if the cached entry changed.
+        """
         username_h = self._rehash(username)
         password_h = self._rehash(password, username)
 
         if self._cache_entry(username_h) == (password_h, group_ids):
-            return
+            return False
 
         self._data[username_h] = {
             ATTR_PASSWORD: password_h,
             ATTR_GROUP_IDS: group_ids,
         }
         await self.save_data()
+        return True
 
     async def _dismatch_cache(self, username: str, password: str) -> None:
         """Remove user from cache."""
@@ -117,7 +121,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
         if username is None or password is None:
             raise AuthInvalidNonStringValueError(_LOGGER.error)
 
-        _LOGGER.info("Auth request from '%s' for '%s'", app.slug, username)
+        _LOGGER.debug("Auth request from '%s' for '%s'", app.slug, username)
 
         # Read the entry once so the groups belong to the password just checked
         cached_login = self._check_cache(username, password)
@@ -170,9 +174,13 @@ class Auth(FileConfiguration, CoreSysAttributes):
                 ),
             ) as req:
                 if req.status == 200:
-                    _LOGGER.info("Successful login for '%s'", username)
                     group_ids = _group_ids_from_body(await req.read())
-                    await self._update_cache(username, password, group_ids)
+                    # Every cache hit re-validates in the background, so an
+                    # unchanged login is routine; log only new or changed ones
+                    if await self._update_cache(username, password, group_ids):
+                        _LOGGER.info("Successful login for '%s'", username)
+                    else:
+                        _LOGGER.debug("Successful login for '%s'", username)
                     return LoginResult(group_ids=group_ids)
 
                 _LOGGER.warning("Unauthorized login for '%s'", username)
