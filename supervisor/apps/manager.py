@@ -34,7 +34,12 @@ from ..resolution.const import ContextType, IssueType, SuggestionType, Unhealthy
 from ..store.app import AppStore
 from ..utils.sentry import async_capture_exception
 from .app import App
-from .const import APP_UPDATE_CONDITIONS
+from .const import (
+    APP_UPDATE_CONDITIONS,
+    JOB_APP_MANAGER_BOOT,
+    JOB_APP_MANAGER_REPAIR,
+    AppOperation,
+)
 from .data import AppsData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -140,6 +145,7 @@ class AppManager(CoreSysAttributes):
         # Sync DNS
         await self.sync_dns()
 
+    @Job(name=JOB_APP_MANAGER_BOOT, internal=True)
     async def boot(self, stage: AppStartup) -> None:
         """Boot apps with mode auto."""
         tasks: list[App] = []
@@ -231,7 +237,7 @@ class AppManager(CoreSysAttributes):
             await async_capture_exception(err)
 
     @Job(
-        name="app_manager_install",
+        name=AppOperation.INSTALLING.job_name,
         conditions=APP_UPDATE_CONDITIONS,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.QUEUE,
@@ -262,9 +268,11 @@ class AppManager(CoreSysAttributes):
 
         _LOGGER.info("App '%s' successfully installed", slug)
 
-    @Job(name="app_manager_uninstall")
+    @Job(name=AppOperation.UNINSTALLING.job_name)
     async def uninstall(self, slug: str, *, remove_config: bool = False) -> None:
         """Remove an app."""
+        self.sys_jobs.current.reference = slug
+
         if slug not in self.local:
             _LOGGER.warning("App %s is not installed", slug)
             return
@@ -282,7 +290,7 @@ class AppManager(CoreSysAttributes):
         _LOGGER.info("App '%s' successfully removed", slug)
 
     @Job(
-        name="app_manager_update",
+        name=AppOperation.UPDATING.job_name,
         conditions=APP_UPDATE_CONDITIONS,
         on_condition=AppsJobError,
         # We assume for now the docker image pull is 100% of this task for progress
@@ -338,7 +346,7 @@ class AppManager(CoreSysAttributes):
         return task
 
     @Job(
-        name="app_manager_rebuild",
+        name=AppOperation.REBUILDING.job_name,
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
@@ -371,7 +379,7 @@ class AppManager(CoreSysAttributes):
         return await app.rebuild()
 
     @Job(
-        name="app_manager_restore",
+        name=AppOperation.RESTORING.job_name,
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
@@ -411,7 +419,7 @@ class AppManager(CoreSysAttributes):
         return wait_for_start
 
     @Job(
-        name="app_manager_repair",
+        name=JOB_APP_MANAGER_REPAIR,
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST],
     )
     async def repair(self) -> None:

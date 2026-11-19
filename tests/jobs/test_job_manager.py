@@ -1,7 +1,7 @@
 """Test the condition decorators."""
 
 import asyncio
-from unittest.mock import ANY, AsyncMock
+from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
@@ -241,3 +241,48 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
         }
     )
     # pylint: enable=protected-access
+
+
+async def test_job_change_listener(coresys: CoreSys):
+    """Test a job change listener gets each change until the job is done."""
+    job = coresys.jobs.new_job("test_job_change_listener")
+    changes: list[tuple[float, bool | None]] = []
+    coresys.jobs.add_job_change_listener(
+        job, lambda data: changes.append((data["progress"], data["done"]))
+    )
+
+    with job.start():
+        job.progress = 50
+    job.reference = "after_done"
+
+    assert changes == [(0, False), (50, False), (100, True)]
+
+
+async def test_job_change_listener_removed(coresys: CoreSys):
+    """Test a removed job change listener is no longer called."""
+    job = coresys.jobs.new_job("test_job_change_listener_removed")
+    listener = Mock()
+    remove_listener = coresys.jobs.add_job_change_listener(job, listener)
+    remove_listener()
+
+    with job.start():
+        pass
+
+    listener.assert_not_called()
+
+
+async def test_job_change_listener_error(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test an error in a job change listener does not break the job."""
+    job = coresys.jobs.new_job("test_job_change_listener_error")
+    coresys.jobs.add_job_change_listener(job, Mock(side_effect=ValueError))
+
+    with job.start():
+        job.progress = 50
+
+    assert job.done is True
+    assert job.progress == 100
+    assert "Error in change listener for job test_job_change_listener_error" in (
+        caplog.text
+    )
