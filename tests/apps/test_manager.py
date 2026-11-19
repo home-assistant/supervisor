@@ -411,7 +411,7 @@ async def test_load_socket_error(
     with (
         patch.object(DockerApp, "attach"),
         patch.object(PluginDns, "write_hosts"),
-        patch.object(App, "state", new=PropertyMock(return_value=state)),
+        patch.object(App, "raw_state", new=PropertyMock(return_value=state)),
         caplog.at_level(logging.INFO),
     ):
         await coresys.apps.load()
@@ -447,7 +447,7 @@ async def test_boot_waits_for_apps(coresys: CoreSys, install_app_ssh: App):
     with patch.object(DockerApp, "run", new=fire_container_event):
         await coresys.apps.boot(AppStartup.APPLICATION)
 
-    assert app_state == AppState.STOPPED
+    assert app_state == AppState.STARTUP
     assert install_app_ssh.state == AppState.STARTED
 
 

@@ -55,6 +55,7 @@ from supervisor.exceptions import (
     DockerAPIError,
     DockerContainerNotFoundError,
     DockerContainerNotRunningError,
+    DockerContainerPortConflict,
     DockerError,
     DockerRegistryAuthError,
     DockerStatsTimeoutError,
@@ -661,6 +662,10 @@ async def test_stop_stopping_until_container_stops(
 
         # Docker can answer the stop request before its die event arrives
         assert install_app_ssh.state == AppState.STOPPING
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
+        )
+        assert install_app_ssh.state == AppState.STOPPING
         await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", event_state)
         assert install_app_ssh.state == expected_state
 
@@ -845,6 +850,175 @@ async def test_stopping_state_event_compatibility(
         await collect_sent()
 
     assert sent == expected_sent
+
+
+async def test_stop_cancelled_not_stopping(install_app_ssh: App) -> None:
+    """Test a cancelled stop request leaves the app as its container is."""
+    force_app_state(install_app_ssh, AppState.STARTED)
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=asyncio.CancelledError),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await install_app_ssh.stop()
+
+    assert install_app_ssh.state == AppState.STARTED
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_startup_until_container_runs(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test app is in startup from the start request until its container runs."""
+    install_app_ssh.path_data.mkdir()
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    states_during_run: list[tuple[AppState, AppState]] = []
+
+    async def mock_run(*args: Any, **kwargs: Any) -> None:
+        states_during_run.append((install_app_ssh.state, install_app_ssh.raw_state))
+
+    with (
+        patch.object(DockerApp, "run", side_effect=mock_run),
+        patch.object(DockerApp, "is_running", return_value=False),
+    ):
+        start_task = await install_app_ssh.start()
+
+        # Docker can answer the start request before its start event arrives
+        assert states_during_run == [(AppState.STARTUP, AppState.STOPPED)]
+        assert install_app_ssh.state == AppState.STARTUP
+        assert not start_task.done()
+
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
+        assert install_app_ssh.state == AppState.STARTED
+        await start_task
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_not_startup_when_running(install_app_ssh: App) -> None:
+    """Test starting an app which is running does not enter startup."""
+    force_app_state(install_app_ssh, AppState.STARTED)
+
+    with (
+        patch.object(DockerApp, "run") as run,
+        patch.object(DockerApp, "is_running", return_value=True),
+    ):
+        await install_app_ssh.start()
+
+    run.assert_not_called()
+    assert install_app_ssh.state == AppState.STARTED
+
+
+@pytest.mark.parametrize(
+    ("run_error", "error", "expected_state"),
+    [
+        pytest.param(DockerError(), AppUnknownError, AppState.ERROR, id="error"),
+        pytest.param(
+            DockerContainerPortConflict(name="test", port=1234),
+            AppPortConflict,
+            AppState.STOPPED,
+            id="port_conflict",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_failed_leaves_startup(
+    install_app_ssh: App,
+    run_error: DockerError,
+    error: type[Exception],
+    expected_state: AppState,
+) -> None:
+    """Test a failed start request leaves startup."""
+    install_app_ssh.path_data.mkdir()
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    state_during_run: list[AppState] = []
+
+    async def mock_run(*args: Any, **kwargs: Any) -> None:
+        state_during_run.append(install_app_ssh.state)
+        raise run_error
+
+    with (
+        patch.object(DockerApp, "run", side_effect=mock_run),
+        patch.object(DockerApp, "is_running", return_value=False),
+        pytest.raises(error),
+    ):
+        await install_app_ssh.start()
+
+    assert state_during_run == [AppState.STARTUP]
+    assert install_app_ssh.state == expected_state
+
+
+@pytest.mark.parametrize(
+    ("die_state", "raw_state"),
+    [
+        pytest.param(ContainerState.STOPPED, AppState.STOPPED, id="stopped"),
+        pytest.param(ContainerState.FAILED, AppState.ERROR, id="failed"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("websocket_v2_enabled", "expected_sent"),
+    [
+        pytest.param(False, ["{raw_state}", "started"], id="v1"),
+        pytest.param(True, ["stopping", "startup", "started"], id="v2"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_restart_stopping_then_startup(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    ha_ws_client: AsyncMock,
+    die_state: ContainerState,
+    raw_state: AppState,
+    websocket_v2_enabled: bool,
+    expected_sent: list[str],
+) -> None:
+    """Test a restart is stopping, then startup, until the new container runs."""
+    coresys.config.set_feature_flag(
+        FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, websocket_v2_enabled
+    )
+    install_app_ssh.path_data.mkdir()
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    states: list[tuple[AppState, AppState]] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        states.append((install_app_ssh.state, install_app_ssh.raw_state))
+        await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", die_state)
+        states.append((install_app_ssh.state, install_app_ssh.raw_state))
+
+    async def mock_run(*args: Any, **kwargs: Any) -> None:
+        states.append((install_app_ssh.state, install_app_ssh.raw_state))
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
+        states.append((install_app_ssh.state, install_app_ssh.raw_state))
+
+    await asyncio.sleep(0)
+    ha_ws_client.async_send_command.reset_mock()
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(DockerApp, "run", side_effect=mock_run),
+        patch.object(DockerApp, "is_running", return_value=False),
+        patch.object(App, "watchdog_container"),
+    ):
+        await (await install_app_ssh.restart())
+        await asyncio.sleep(0)
+
+    assert states == [
+        (AppState.STOPPING, AppState.STARTED),
+        (AppState.STARTUP, raw_state),
+        (AppState.STARTUP, raw_state),
+        (AppState.STARTED, AppState.STARTED),
+    ]
+    assert [
+        data["state"]
+        for call_ in ha_ws_client.async_send_command.call_args_list
+        if (data := call_.args[0].get("data", {})).get("event") in ("addon", "app")
+    ] == [state.format(raw_state=raw_state) for state in expected_sent]
 
 
 @pytest.mark.usefixtures("mock_amd64_arch_supported", "test_repository")

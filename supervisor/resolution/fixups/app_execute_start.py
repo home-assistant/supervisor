@@ -36,7 +36,7 @@ class FixupAppExecuteStart(FixupBase):
 
         # Wait for app start. If it ends up in error or unknown state it's not fixed
         await start_task
-        if app.state in {AppState.ERROR, AppState.UNKNOWN}:
+        if app.raw_state in {AppState.ERROR, AppState.UNKNOWN}:
             raise AppsError(
                 f"App {suggestion.reference} could not start successfully",
                 _LOGGER.error,

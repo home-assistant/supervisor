@@ -1,8 +1,9 @@
 """Init file for Supervisor apps."""
 
 import asyncio
+from collections import deque
 from collections.abc import Awaitable, Generator
-from contextlib import contextmanager, suppress
+from contextlib import AbstractContextManager, contextmanager, nullcontext, suppress
 from copy import deepcopy
 from datetime import datetime
 from functools import partial
@@ -152,7 +153,6 @@ _OPTIONS_MERGER: Final = Merger(
 # Map other app states to those two
 _MAP_APP_STATE = {
     AppState.STARTUP: AppState.STARTED,
-    AppState.STOPPING: AppState.STOPPED,
     AppState.ERROR: AppState.STOPPED,
     AppState.UNKNOWN: AppState.STOPPED,
 }
@@ -179,11 +179,12 @@ class App(AppModel):
         # Cached app state. Updated only via ``_update_state`` so the value
         # consumers see matches what was last emitted.
         self._state: AppState = AppState.UNKNOWN
-        # App state from docker signals alone, without our STOPPING overlay.
+        # App state from docker signals alone, without the overlay of pending goals.
         self._raw_state: AppState = AppState.UNKNOWN
-        # Set while our stop request to docker is in flight; docker has no such state.
-        # Managed by ``stopping``.
-        self._stopping: bool = False
+        # Whether the container should run, for each change an operation still
+        # waits on docker to report. Managed by ``_transition``.
+        self._goals: deque[bool] = deque()
+        self._in_transition: bool = False
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
@@ -217,8 +218,20 @@ class App(AppModel):
 
     @property
     def raw_state(self) -> AppState:
-        """Return app state from docker signals alone, never STOPPING."""
+        """Return app state from docker signals alone.
+
+        Never STOPPING, and STARTUP only once the container is running.
+        """
         return self._raw_state
+
+    def _pending_state(self) -> AppState | None:
+        """Return the state of the goal the container has not reached yet."""
+        running = self._container_state in _RUNNING_CONTAINER_STATES
+        while self._goals and self._goals[0] == running:
+            self._goals.popleft()
+        if not self._goals:
+            return None
+        return AppState.STARTUP if self._goals[0] else AppState.STOPPING
 
     def _derive_state(self, operation_error: bool) -> AppState:
         """Derive the app state from the cached docker signals.
@@ -266,22 +279,21 @@ class App(AppModel):
         if container_state is not None:
             self._container_state = container_state
 
+        if operation_error:
+            self._goals.clear()
+
         raw_state = self._derive_state(operation_error)
-        new_state = (
-            AppState.STOPPING
-            if self._stopping
-            and not operation_error
-            and self._container_state in _RUNNING_CONTAINER_STATES
-            else raw_state
-        )
+        new_state = self._pending_state() or raw_state
         old_state, old_raw_state = self._state, self._raw_state
         self._state, self._raw_state = new_state, raw_state
 
-        if new_state != old_state:
-            # Signal listeners about app state change
-            if new_state == AppState.STARTED or old_state == AppState.STARTUP:
-                self._startup_event.set()
+        # Startup ends with the container, a pending goal does not end it
+        if raw_state != old_raw_state and (
+            raw_state == AppState.STARTED or old_raw_state == AppState.STARTUP
+        ):
+            self._startup_event.set()
 
+        if new_state != old_state:
             # Dismiss boot failed or port conflict issue if present and we started
             if new_state == AppState.STARTED:
                 for issue in self.sys_resolution.issues:
@@ -305,7 +317,7 @@ class App(AppModel):
             ):
                 self.sys_resolution.dismiss_issue(access_issue)
 
-        # Core versions predating the v2 API do not know STOPPING
+        # Core versions predating the v2 API get the state without pending goals
         if not self.sys_config.feature_flags.get(
             FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
         ):
@@ -320,19 +332,49 @@ class App(AppModel):
             )
 
     @contextmanager
-    def stopping(self) -> Generator[None]:
-        """Report a running app as STOPPING while docker stops its container."""
-        self._stopping = True
+    def _transition(self, *goals: bool) -> Generator[None]:
+        """Report the app as heading for each goal until docker reports it reached.
+
+        Docker can answer a request before its event arrives, so the goals
+        outlive the operation unless it fails. Only the outermost operation
+        sets goals, so a restart is not replaced by the stop and start it runs.
+        """
+        if self._in_transition:
+            yield
+            return
+
+        self._in_transition = True
+        self._goals = deque(goals)
         self._update_state()
         try:
             yield
-        except DockerError:
-            # Some callers suppress stop failures, so mark the error here
-            self._update_state(operation_error=True)
+        except BaseException:
+            # An operation error has reset the goals and must stay visible
+            if self._goals:
+                self._goals.clear()
+                self._update_state()
             raise
         finally:
-            # Docker can answer before its die event arrives, which then ends STOPPING
-            self._stopping = False
+            self._in_transition = False
+
+    @contextmanager
+    def stopping(self) -> Generator[None]:
+        """Report a running app as STOPPING until its container stopped."""
+        with self._transition(False):
+            try:
+                yield
+            except DockerError:
+                # Some callers suppress stop failures, so mark the error here
+                self._update_state(operation_error=True)
+                raise
+
+    def starting(self) -> AbstractContextManager[None]:
+        """Report a stopped app as STARTUP until its container runs."""
+        return self._transition(True)
+
+    def restarting(self) -> AbstractContextManager[None]:
+        """Report STOPPING, then STARTUP, until a new container runs."""
+        return self._transition(False, True)
 
     @property
     def in_progress(self) -> bool:
@@ -1192,35 +1234,32 @@ class App(AppModel):
             _LOGGER.error("Could not pull image to update app %s: %s", self.slug, err)
             raise AppUnknownError(app=self.slug) from err
 
-        # Stop the app if running
-        if (last_state := self.state) in {AppState.STARTED, AppState.STARTUP}:
-            await self.stop()
+        was_running = self.raw_state in {AppState.STARTED, AppState.STARTUP}
+        with self.restarting() if was_running else nullcontext():
+            if was_running:
+                await self.stop()
 
-        try:
-            _LOGGER.info("App '%s' successfully updated", self.slug)
-            await self.sys_apps.data.update(store)
-            await self._check_ingress_port()
+            try:
+                _LOGGER.info("App '%s' successfully updated", self.slug)
+                await self.sys_apps.data.update(store)
+                await self._check_ingress_port()
 
-            # Reload ingress tokens in case app gained ingress support
-            if self.with_ingress:
-                await self.sys_ingress.reload()
+                # Reload ingress tokens in case app gained ingress support
+                if self.with_ingress:
+                    await self.sys_ingress.reload()
 
-            # Cleanup
-            with suppress(DockerError):
-                await self.instance.cleanup(
-                    old_image=old_image, image=store.image, version=store.version
-                )
+                # Cleanup
+                with suppress(DockerError):
+                    await self.instance.cleanup(
+                        old_image=old_image, image=store.image, version=store.version
+                    )
 
-            # Setup/Fix AppArmor profile
-            await self.install_apparmor()
+                # Setup/Fix AppArmor profile
+                await self.install_apparmor()
 
-        finally:
-            # restore state. Return Task for caller if no exception
-            out = (
-                await self.start()
-                if last_state in {AppState.STARTED, AppState.STARTUP}
-                else None
-            )
+            finally:
+                # restore state. Return Task for caller if no exception
+                out = await self.start() if was_running else None
         return out
 
     @Job(
@@ -1242,7 +1281,7 @@ class App(AppModel):
                 _LOGGER.error, app=self, architectures=self.supported_arch
             ) from None
 
-        last_state: AppState = self.state
+        last_state: AppState = self.raw_state
         try:
             # remove docker container and image but not app config
             try:
@@ -1438,47 +1477,50 @@ class App(AppModel):
                 )
             return self._wait_for_startup_task
 
-        # Access Token, the socket identifies an app off TCP so a token issued
-        # before must stop working
-        if self.supervisor_api_tcp:
-            self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
-        else:
-            self.persist.pop(ATTR_ACCESS_TOKEN, None)
-        await self.save_persist()
+        with self.starting():
+            # Access Token, the socket identifies an app off TCP so a token issued
+            # before must stop working
+            if self.supervisor_api_tcp:
+                self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+            else:
+                self.persist.pop(ATTR_ACCESS_TOKEN, None)
+            await self.save_persist()
 
-        # Options
-        await self.write_options()
+            # Options
+            await self.write_options()
 
-        # Sound
-        if self.with_audio:
-            await self.write_pulse()
+            # Sound
+            if self.with_audio:
+                await self.write_pulse()
 
-        def _check_app_config_dir():
-            if self.path_config.is_dir():
-                return
+            def _check_app_config_dir():
+                if self.path_config.is_dir():
+                    return
 
-            _LOGGER.info(
-                "Creating Home Assistant app config folder %s", self.path_config
-            )
-            self.path_config.mkdir()
+                _LOGGER.info(
+                    "Creating Home Assistant app config folder %s", self.path_config
+                )
+                self.path_config.mkdir()
 
-        if self.app_config_used:
-            await self.sys_run_in_executor(_check_app_config_dir)
+            if self.app_config_used:
+                await self.sys_run_in_executor(_check_app_config_dir)
 
-        await self.prepare_sockets()
+            await self.prepare_sockets()
 
-        # Start App
-        self._startup_event.clear()
-        try:
-            await self.instance.run()
-        except DockerContainerPortConflict as err:
-            port = cast(dict[str, Any], err.extra_fields)["port"]
-            self.create_port_conflict_issue(port)
-            raise AppPortConflict(_LOGGER.error, name=self.slug, port=port) from err
-        except DockerError as err:
-            _LOGGER.error("Could not start container for app %s: %s", self.slug, err)
-            self._update_state(operation_error=True)
-            raise AppUnknownError(app=self.slug) from err
+            # Start App
+            self._startup_event.clear()
+            try:
+                await self.instance.run()
+            except DockerContainerPortConflict as err:
+                port = cast(dict[str, Any], err.extra_fields)["port"]
+                self.create_port_conflict_issue(port)
+                raise AppPortConflict(_LOGGER.error, name=self.slug, port=port) from err
+            except DockerError as err:
+                _LOGGER.error(
+                    "Could not start container for app %s: %s", self.slug, err
+                )
+                self._update_state(operation_error=True)
+                raise AppUnknownError(app=self.slug) from err
 
         self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
         return self._wait_for_startup_task
@@ -1508,9 +1550,10 @@ class App(AppModel):
 
         Returns a Task that completes when app has state 'started' (see start).
         """
-        with suppress(AppsError):
-            await self.stop()
-        return await self.start()
+        with self.restarting():
+            with suppress(AppsError):
+                await self.stop()
+            return await self.start()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -1703,7 +1746,7 @@ class App(AppModel):
             ATTR_USER: self.persist,
             ATTR_SYSTEM: self.data,
             ATTR_VERSION: self.version,
-            ATTR_STATE: _MAP_APP_STATE.get(self.state, self.state),
+            ATTR_STATE: _MAP_APP_STATE.get(self.raw_state, self.raw_state),
         }
         apparmor_profile = (
             self.slug if self.sys_host.apparmor.exists(self.slug) else None

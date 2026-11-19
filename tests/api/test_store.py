@@ -302,7 +302,8 @@ async def test_api_store_update_healthcheck(
     ):
         resp = await api_client.post(f"/store/addons/{TEST_ADDON_SLUG}/update")
 
-    assert state_changes == [AppState.STOPPED, AppState.STARTUP]
+    # A running app stays in startup from its container stopping until it is healthy
+    assert state_changes == [AppState.STARTUP, AppState.STARTUP]
     assert install_app_ssh.state == AppState.STARTED
     assert resp.status == 200
 
