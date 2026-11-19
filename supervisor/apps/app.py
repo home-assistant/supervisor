@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from copy import deepcopy
 from datetime import datetime
 from functools import partial
@@ -1050,7 +1050,12 @@ class App(AppModel):
             self.path_run_supervisor / SOCKET_NAME_SUPERVISOR
         )
         try:
-            await self.instance.remove(remove_image=remove_image)
+            async with (
+                self.sys_docker.release_build_cache()
+                if remove_image and self.need_build
+                else nullcontext()
+            ):
+                await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
             _LOGGER.error("Could not remove image for app %s: %s", self.slug, err)
             raise AppUnknownError(app=self.slug) from err
@@ -1126,6 +1131,7 @@ class App(AppModel):
             raise StoreAppNotFoundError(app=self.slug)
 
         old_image = self.image
+        old_need_build = self.need_build
         # Cache data to prevent races with other updates to global
         store = self.app_store.clone()
 
@@ -1160,7 +1166,10 @@ class App(AppModel):
             # Cleanup
             with suppress(DockerError):
                 await self.instance.cleanup(
-                    old_image=old_image, image=store.image, version=store.version
+                    old_image=old_image,
+                    image=store.image,
+                    version=store.version,
+                    old_need_build=old_need_build,
                 )
 
             # Setup/Fix AppArmor profile

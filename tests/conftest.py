@@ -206,6 +206,7 @@ async def docker() -> DockerAPI:
                     events=(docker_events := MagicMock(spec=DockerEvents)),
                     system=(docker_system := MagicMock(spec=DockerSystem)),
                     volumes=MagicMock(spec=DockerVolumes),
+                    _query_json=AsyncMock(return_value={"BuildCache": []}),
                 )
             ),
         ),
@@ -312,6 +313,12 @@ async def docker() -> DockerAPI:
 
         # Clean up
         await docker_obj.unload()
+
+
+@pytest.fixture
+def build_cache_query(docker: DockerAPI) -> AsyncMock:
+    """Return the mock for Docker's build cache disk usage query."""
+    return docker.docker._query_json  # pylint: disable=protected-access
 
 
 @pytest.fixture(scope="session")

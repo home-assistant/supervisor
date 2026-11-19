@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Mapping
-from contextlib import suppress
+from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from http import HTTPStatus
 from io import BufferedReader, BufferedWriter
@@ -793,13 +793,7 @@ class DockerAPI(CoreSysAttributes):
             _LOGGER.warning("Error for images prune: %s", err)
 
         _LOGGER.info("Prune stale builds")
-        try:
-            output = await self.images.prune_builds()
-            _LOGGER.debug("Builds prune: %s", output)
-        except TimeoutError:
-            _LOGGER.warning("Error for builds prune: timed out")
-        except aiodocker.DockerError as err:
-            _LOGGER.warning("Error for builds prune: %s", err)
+        await self.prune_build_cache()
 
         _LOGGER.info("Prune stale volumes")
         try:
@@ -830,6 +824,73 @@ class DockerAPI(CoreSysAttributes):
             await self.prune_networks(DOCKER_NETWORK_HOST)
         except aiodocker.DockerError as err:
             _LOGGER.warning("Error for networks host prune: %s", err)
+
+    async def prune_build_cache(self, filters: Mapping[str, Any] | None = None) -> None:
+        """Remove build cache not used by any image. Errors are logged, not raised."""
+        try:
+            output = await self.images.prune_builds(filters=filters)
+            _LOGGER.debug("Builds prune: %s", output)
+        except TimeoutError:
+            _LOGGER.warning("Error for builds prune: timed out")
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error for builds prune: %s", err)
+
+    async def _query_build_cache(self) -> dict[str, dict[str, Any]]:
+        """Return build cache records by ID.
+
+        aiodocker has no wrapper for the disk usage endpoint.
+        """
+        data = await self.docker._query_json(  # pylint: disable=protected-access
+            "system/df", params={"type": "build-cache"}
+        )
+        return {record["ID"]: record for record in data.get("BuildCache") or []}
+
+    async def _prune_released_build_cache(
+        self, before: dict[str, dict[str, Any]]
+    ) -> None:
+        """Prune build cache records released since the before snapshot."""
+        try:
+            after = await self._query_build_cache()
+        except TimeoutError:
+            _LOGGER.warning("Error reading build cache: timed out")
+            return
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error reading build cache: %s", err)
+            return
+
+        # Unused records that are new (failed builds, multi-stage intermediates)
+        # or that only a removed image was sharing
+        released = [
+            record_id
+            for record_id, record in after.items()
+            if not record["Shared"]
+            and not record["InUse"]
+            and (record_id not in before or before[record_id]["Shared"])
+        ]
+        if released:
+            # Docker matches the id filter as a regex and takes one value per key
+            await self.prune_build_cache(filters={"id": f"^({'|'.join(released)})$"})
+
+    @asynccontextmanager
+    async def release_build_cache(self) -> AsyncIterator[None]:
+        """Prune in the background the build cache released by the wrapped block.
+
+        Docker can't map build cache to images, so the records are found by
+        comparing them before and after a build or image removal.
+        """
+        before: dict[str, dict[str, Any]] | None = None
+        try:
+            before = await self._query_build_cache()
+        except TimeoutError:
+            _LOGGER.warning("Error reading build cache: timed out")
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error reading build cache: %s", err)
+
+        try:
+            yield
+        finally:
+            if before is not None:
+                self.sys_create_task(self._prune_released_build_cache(before))
 
     async def prune_networks(self, network_name: str) -> None:
         """Prune stale container from network.
