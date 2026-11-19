@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
+import hashlib
 from pathlib import PurePath
 from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
 
@@ -688,6 +689,27 @@ async def test_app_set_options_keeps_secret_refs(
     resp = await client.post(f"{root}/local_example/options", json={"options": options})
     assert resp.status == 200
     assert install_app_example.options == options
+
+
+async def test_app_options_validate_checks_password_hashes(
+    app_api_client_with_root: tuple[TestClient, str],
+    install_app_example: App,
+    coresys: CoreSys,
+):
+    """Test options/validate passes password hashes, not paths, to the check."""
+    client, root = app_api_client_with_root
+    install_app_example.data["schema"] = {"password": "password"}
+    coresys.security.pwned = True
+    coresys.security.verify_secret = AsyncMock()
+
+    resp = await client.post(
+        f"{root}/local_example/options/validate",
+        json={"password": "hunter2"},
+    )
+    assert resp.status == 200
+    coresys.security.verify_secret.assert_awaited_once_with(
+        hashlib.sha1(b"hunter2").hexdigest()
+    )
 
 
 async def test_app_reset_options(
