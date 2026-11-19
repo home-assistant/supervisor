@@ -52,6 +52,9 @@ def force_app_state(app: App, state: AppState) -> None:
             container_state = ContainerState.STOPPED
         case AppState.STARTED:
             container_state = ContainerState.HEALTHY
+        case AppState.STOPPING:
+            container_state = ContainerState.HEALTHY
+            app._stopping = True
         case AppState.STARTUP:
             container_state = ContainerState.RUNNING
             # STARTUP only resolves from RUNNING when the container has a

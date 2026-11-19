@@ -1044,7 +1044,8 @@ class DockerApp(DockerInterface):
             self.sys_bus.remove_listener(self._hw_listener)
             self._hw_listener = None
 
-        await super().stop(remove_container)
+        with self.app.stopping():
+            await super().stop(remove_container)
 
         # If there is a device access issue and the container is removed, clear it
         if remove_container and (

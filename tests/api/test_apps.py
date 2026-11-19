@@ -918,6 +918,33 @@ async def test_v2_list_apps_excludes_deprecated_advanced(api_client_v2: TestClie
     assert "advanced" not in body["data"]["apps"][0]
 
 
+async def test_v1_app_state_stopping_reported_as_started(
+    api_client: TestClient, install_app_ssh: App
+):
+    """V1 predates the stopping state and reports a stopping app as started."""
+    force_app_state(install_app_ssh, AppState.STOPPING)
+
+    resp = await api_client.get("/addons")
+    assert (await resp.json())["data"]["addons"][0]["state"] == "started"
+
+    resp = await api_client.get(f"/addons/{TEST_ADDON_SLUG}/info")
+    assert (await resp.json())["data"]["state"] == "started"
+
+    resp = await api_client.get("/supervisor/info")
+    assert (await resp.json())["data"]["addons"][0]["state"] == "started"
+
+
+async def test_v2_app_state_stopping(api_client_v2: TestClient, install_app_ssh: App):
+    """V2 reports a stopping app as stopping."""
+    force_app_state(install_app_ssh, AppState.STOPPING)
+
+    resp = await api_client_v2.get("/v2/apps")
+    assert (await resp.json())["data"]["apps"][0]["state"] == "stopping"
+
+    resp = await api_client_v2.get(f"/v2/apps/{TEST_ADDON_SLUG}/info")
+    assert (await resp.json())["data"]["state"] == "stopping"
+
+
 @pytest.mark.usefixtures("install_app_ssh")
 async def test_apps_info_versioned_advanced_field(
     app_api_client_with_root: tuple[TestClient, str],

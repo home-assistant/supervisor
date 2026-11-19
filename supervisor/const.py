@@ -543,6 +543,7 @@ class AppState(StrEnum):
 
     STARTUP = "startup"
     STARTED = "started"
+    STOPPING = "stopping"
     STOPPED = "stopped"
     UNKNOWN = "unknown"
     ERROR = "error"

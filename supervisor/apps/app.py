@@ -1,8 +1,8 @@
 """Init file for Supervisor apps."""
 
 import asyncio
-from collections.abc import Awaitable
-from contextlib import suppress
+from collections.abc import Awaitable, Generator
+from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import datetime
 from functools import partial
@@ -58,6 +58,7 @@ from ..const import (
     AppStartup,
     AppState,
     BusEvent,
+    FeatureFlag,
 )
 from ..coresys import CoreSys
 from ..docker.app import DockerApp
@@ -151,9 +152,19 @@ _OPTIONS_MERGER: Final = Merger(
 # Map other app states to those two
 _MAP_APP_STATE = {
     AppState.STARTUP: AppState.STARTED,
+    AppState.STOPPING: AppState.STOPPED,
     AppState.ERROR: AppState.STOPPED,
     AppState.UNKNOWN: AppState.STOPPED,
 }
+
+_RUNNING_CONTAINER_STATES = frozenset(
+    {
+        ContainerState.RUNNING,
+        ContainerState.STARTING,
+        ContainerState.HEALTHY,
+        ContainerState.UNHEALTHY,
+    }
+)
 
 
 class App(AppModel):
@@ -168,6 +179,11 @@ class App(AppModel):
         # Cached app state. Updated only via ``_update_state`` so the value
         # consumers see matches what was last emitted.
         self._state: AppState = AppState.UNKNOWN
+        # App state from docker signals alone, without our STOPPING overlay.
+        self._raw_state: AppState = AppState.UNKNOWN
+        # Set while our stop request to docker is in flight; docker has no such state.
+        # Managed by ``stopping``.
+        self._stopping: bool = False
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
@@ -198,6 +214,11 @@ class App(AppModel):
     def state(self) -> AppState:
         """Return current state of the app."""
         return self._state
+
+    @property
+    def raw_state(self) -> AppState:
+        """Return app state from docker signals alone, never STOPPING."""
+        return self._raw_state
 
     def _derive_state(self, operation_error: bool) -> AppState:
         """Derive the app state from the cached docker signals.
@@ -245,46 +266,73 @@ class App(AppModel):
         if container_state is not None:
             self._container_state = container_state
 
-        new_state = self._derive_state(operation_error)
-        if new_state == self._state:
-            return
-        old_state = self._state
-        self._state = new_state
-
-        # Signal listeners about app state change
-        if new_state == AppState.STARTED or old_state == AppState.STARTUP:
-            self._startup_event.set()
-
-        # Dismiss boot failed or port conflict issue if present and we started
-        if new_state == AppState.STARTED:
-            for issue in self.sys_resolution.issues:
-                if (
-                    issue == self.boot_failed_issue
-                    or issue.type == IssueType.APP_PORT_CONFLICT
-                    and issue.context == ContextType.ADDON
-                    and issue.reference == self.slug
-                ):
-                    self.sys_resolution.dismiss_issue(issue)
-
-        # Home Assistant lists discovery messages only of started apps
-        if new_state != AppState.STARTED:
-            self.sys_discovery.mark_unannounced(self)
-
-        # Dismiss device access missing issue if present and we stopped
-        if new_state == AppState.STOPPED and (
-            access_issue := self.sys_resolution.get_issue_if_present(
-                self.device_access_missing_issue
-            )
-        ):
-            self.sys_resolution.dismiss_issue(access_issue)
-
-        self.sys_homeassistant.websocket.supervisor_event_custom(
-            WSEvent.APP,
-            {
-                ATTR_SLUG: self.slug,
-                ATTR_STATE: new_state,
-            },
+        raw_state = self._derive_state(operation_error)
+        new_state = (
+            AppState.STOPPING
+            if self._stopping
+            and not operation_error
+            and self._container_state in _RUNNING_CONTAINER_STATES
+            else raw_state
         )
+        old_state, old_raw_state = self._state, self._raw_state
+        self._state, self._raw_state = new_state, raw_state
+
+        if new_state != old_state:
+            # Signal listeners about app state change
+            if new_state == AppState.STARTED or old_state == AppState.STARTUP:
+                self._startup_event.set()
+
+            # Dismiss boot failed or port conflict issue if present and we started
+            if new_state == AppState.STARTED:
+                for issue in self.sys_resolution.issues:
+                    if (
+                        issue == self.boot_failed_issue
+                        or issue.type == IssueType.APP_PORT_CONFLICT
+                        and issue.context == ContextType.ADDON
+                        and issue.reference == self.slug
+                    ):
+                        self.sys_resolution.dismiss_issue(issue)
+
+            # Home Assistant lists discovery messages only of started apps
+            if new_state != AppState.STARTED:
+                self.sys_discovery.mark_unannounced(self)
+
+            # Dismiss device access missing issue if present and we stopped
+            if new_state == AppState.STOPPED and (
+                access_issue := self.sys_resolution.get_issue_if_present(
+                    self.device_access_missing_issue
+                )
+            ):
+                self.sys_resolution.dismiss_issue(access_issue)
+
+        # Core versions predating the v2 API do not know STOPPING
+        if not self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            new_state, old_state = raw_state, old_raw_state
+        if new_state != old_state:
+            self.sys_homeassistant.websocket.supervisor_event_custom(
+                WSEvent.APP,
+                {
+                    ATTR_SLUG: self.slug,
+                    ATTR_STATE: new_state,
+                },
+            )
+
+    @contextmanager
+    def stopping(self) -> Generator[None]:
+        """Report a running app as STOPPING while docker stops its container."""
+        self._stopping = True
+        self._update_state()
+        try:
+            yield
+        except DockerError:
+            # Some callers suppress stop failures, so mark the error here
+            self._update_state(operation_error=True)
+            raise
+        finally:
+            # Docker can answer before its die event arrives, which then ends STOPPING
+            self._stopping = False
 
     @property
     def in_progress(self) -> bool:
