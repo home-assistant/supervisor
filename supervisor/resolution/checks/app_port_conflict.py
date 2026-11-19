@@ -42,7 +42,7 @@ class CheckAppPortConflict(CheckBase):
             return False
 
         # If the app is running then the conflict has been resolved
-        if app.state in (AppState.STARTED, AppState.STARTUP):
+        if app.raw_state in (AppState.STARTED, AppState.STARTUP):
             return False
 
         # Our validation option are not totally reliable. So we assume if the port

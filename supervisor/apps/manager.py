@@ -127,7 +127,7 @@ class AppManager(CoreSysAttributes):
                 await app.prepare_sockets()
             except AppSocketDirsError, AppSocketListenError:
                 # Every start prepares the sockets again
-                if app.state in (AppState.STARTED, AppState.STARTUP):
+                if app.raw_state in (AppState.STARTED, AppState.STARTUP):
                     _LOGGER.warning(
                         "App %s can't reach Supervisor on its socket until it is restarted",
                         app.slug,
@@ -193,7 +193,7 @@ class AppManager(CoreSysAttributes):
         # Ignore stopped as single shot apps can be run at boot and this is successful exit
         # Timeout waiting for startup is not a failure, app is probably just slow
         for app in tasks:
-            if app.state in {AppState.ERROR, AppState.UNKNOWN}:
+            if app.raw_state in {AppState.ERROR, AppState.UNKNOWN}:
                 self.sys_resolution.add_issue(
                     app.boot_failed_issue,
                     suggestions=[
@@ -207,7 +207,7 @@ class AppManager(CoreSysAttributes):
         tasks: list[App] = []
         for app in self.installed:
             if (
-                app.state not in (AppState.STARTED, AppState.STARTUP)
+                app.raw_state not in (AppState.STARTED, AppState.STARTUP)
                 or app.startup != stage
             ):
                 continue
