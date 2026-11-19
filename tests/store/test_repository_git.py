@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import configparser
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 import pytest
@@ -167,6 +167,68 @@ async def test_git_load_error(coresys: CoreSys, tmp_path: Path, git_errors: Exce
             await repo.load()
 
     assert len(coresys.resolution.suggestions) == 0
+
+
+@pytest.mark.parametrize(
+    ("remote_commit", "changed"),
+    [
+        pytest.param("abcdef0", False, id="unchanged"),
+        pytest.param("fedcba0", True, id="changed"),
+    ],
+)
+async def test_git_pull_checks_remote_with_repository_config(
+    coresys: CoreSys, tmp_path: Path, remote_commit: str, changed: bool
+):
+    """Test pull can check a remote that requires repository-local configuration."""
+    repo = GitRepo(coresys, tmp_path, REPO_URL)
+    mock_repo = MagicMock()
+    origin = mock_repo.remotes.origin
+    origin.name = "origin"
+    origin.url = REPO_URL
+    mock_repo.remotes.__iter__.return_value = [origin]
+    mock_repo.active_branch.name = "main"
+    mock_repo.commit.side_effect = {
+        "main": "abcdef0",
+        "origin/main": remote_commit,
+    }.__getitem__
+    mock_repo.git.ls_remote.return_value = ""
+    repo.repo = mock_repo
+
+    with patch("git.Git") as unbound_git:
+        unbound_git.return_value.ls_remote.side_effect = GitCommandError(
+            "ls-remote", 128, stderr="Authentication failed"
+        )
+        assert await repo.pull.__wrapped__(repo) is changed
+
+    mock_repo.git.ls_remote.assert_called_once_with("--heads", REPO_URL)
+    origin.fetch.assert_called_once_with(**{"update-shallow": True, "depth": 1})
+    reset_call = call("origin/main", hard=True)
+    assert mock_repo.git.reset.call_args_list == [reset_call] * int(changed)
+
+
+async def test_git_pull_remote_check_failure(coresys: CoreSys, tmp_path: Path):
+    """Test a remote check failure stops the update without marking corruption."""
+    repo = GitRepo(coresys, tmp_path, REPO_URL)
+    mock_repo = MagicMock()
+    repo.repo = mock_repo
+    error = GitCommandError("ls-remote", 128, stderr="Authentication failed")
+    mock_repo.git.ls_remote.side_effect = error
+    unbound_git = MagicMock()
+    unbound_git.ls_remote.side_effect = error
+
+    with (
+        patch("git.Git", return_value=unbound_git),
+        pytest.raises(StoreGitError) as raised,
+    ):
+        await repo.pull.__wrapped__(repo)
+
+    assert raised.value.__cause__ is error
+    mock_repo.git.ls_remote.assert_called_once_with("--heads", REPO_URL)
+    mock_repo.remotes.origin.fetch.assert_not_called()
+    mock_repo.git.reset.assert_not_called()
+    mock_repo.git.submodule.assert_not_called()
+    mock_repo.git.clean.assert_not_called()
+    assert not coresys.resolution.issues
 
 
 @pytest.mark.usefixtures("supervisor_internet")
