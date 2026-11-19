@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "extends": ["config:recommended"],
   "enabledManagers": [
     "custom.regex",
     "github-actions",
@@ -10,6 +10,9 @@
   ],
   "pre-commit": {
     "enabled": true
+  },
+  "constraints": {
+    "ghActionsLock": "v0.5.0"
   },
   "customManagers": [
     {
@@ -38,6 +41,20 @@
       "depNameTemplate": "python",
       "datasourceTemplate": "python-version",
       "versioningTemplate": "python"
+    },
+    {
+      "customType": "regex",
+      "description": "Keep gh-actions-lock in CI and Renovate's lockfile generator on the same version",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/actions-lock\\.yaml$/",
+        "/^\\.github/renovate\\.json$/"
+      ],
+      "matchStrings": [
+        "GH_ACTIONS_LOCK_VERSION: (?<currentValue>v\\d+\\.\\d+\\.\\d+)",
+        "\"ghActionsLock\": \"(?<currentValue>v\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "github/gh-actions-lock",
+      "datasourceTemplate": "github-releases"
     }
   ],
   "minimumReleaseAge": "3 days",
@@ -93,11 +110,10 @@
       "enabled": false
     },
     {
-      "description": "Our own actions that follow a branch (like home-assistant/actions@master) float on purpose. Pinning them would open a digest PR in every repository for each change to them. Our own actions on a version tag are pinned like any other.",
+      "description": "No cooldown for our own actions. A # master pin has no release timestamp, so a cooldown would hold its digest updates indefinitely",
       "matchManagers": ["github-actions"],
       "matchPackageNames": ["home-assistant/**"],
-      "matchCurrentValue": "/^(dev|main|master)$/",
-      "pinDigests": false
+      "minimumReleaseAge": null
     },
     {
       "description": "Group the ruff pre-commit hook with its PyPI twin into one PR",
