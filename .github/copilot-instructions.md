@@ -30,6 +30,11 @@ This repository contains the Home Assistant Supervisor, a Python 3 based contain
 - Avoid using conditions/branching in tests. Instead, either split tests or adjust the test parametrization to cover all cases without branching.
 - If multiple tests share most of their code, use `pytest.mark.parametrize` to merge them into a single parameterized test instead of duplicating the body. Use `pytest.param` with an `id` parameter to name the test cases clearly.
 
+## GitHub Actions workflows
+
+- `.github/workflows/actions.lock` locks the actions every workflow uses. After changing a `uses:` line, run `gh actions-lock --no-narrow` and commit the lockfile with the change. Without `--no-narrow` it rewrites intentional SHA pins to tags or branches. Install it with `gh extension install github/gh-actions-lock`.
+- Don't edit `actions.lock` by hand. On a merge conflict, take the version from `main` and run `gh actions-lock --no-narrow` again.
+
 ## Good practices
 
 - Apps are the containerized applications installed from stores. "Add-on" is the legacy term for the same thing. Use "app" in new code, comments and docs, and keep "addon" only where an existing API field, config key or class name still uses it.

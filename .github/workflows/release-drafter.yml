@@ -11,7 +11,7 @@ jobs:
     name: Release Drafter
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -36,7 +36,7 @@ jobs:
           echo "version=$datepre.$newpost" >> "$GITHUB_OUTPUT"
 
       - name: Run Release Drafter
-        uses: release-drafter/release-drafter@d1a19e60e81a7e650d00a7de9277f87e439117ea # v7.11.0
+        uses: release-drafter/release-drafter@v7.11.0
         with:
           tag: ${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.version }}
