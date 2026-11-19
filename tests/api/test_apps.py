@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from pathlib import PurePath
+from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
 
 import aiodocker
@@ -18,6 +19,7 @@ from supervisor.const import AppState, CoreState, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
+from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HassioError
@@ -943,6 +945,37 @@ async def test_v2_app_state_stopping(api_client_v2: TestClient, install_app_ssh:
 
     resp = await api_client_v2.get(f"/v2/apps/{TEST_ADDON_SLUG}/info")
     assert (await resp.json())["data"]["state"] == "stopping"
+
+
+async def test_v2_apps_report_operation(
+    api_client_v2: TestClient, install_app_ssh: App
+):
+    """V2 app list and info include the operation in progress."""
+    operations: list[dict[str, Any]] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        resp = await api_client_v2.get(f"/v2/apps/{TEST_ADDON_SLUG}/info")
+        operations.append((await resp.json())["data"]["operation"])
+        resp = await api_client_v2.get("/v2/apps")
+        operations.append((await resp.json())["data"]["apps"][0]["operation"])
+
+    with patch.object(DockerInterface, "stop", side_effect=mock_stop):
+        await install_app_ssh.stop()
+
+    assert [operation["name"] for operation in operations] == ["stopping", "stopping"]
+
+    resp = await api_client_v2.get(f"/v2/apps/{TEST_ADDON_SLUG}/info")
+    assert (await resp.json())["data"]["operation"] is None
+
+
+@pytest.mark.usefixtures("install_app_ssh")
+async def test_v1_apps_exclude_operation(api_client: TestClient):
+    """V1 app list and info do not include the operation in progress."""
+    resp = await api_client.get(f"/addons/{TEST_ADDON_SLUG}/info")
+    assert "operation" not in (await resp.json())["data"]
+
+    resp = await api_client.get("/addons")
+    assert "operation" not in (await resp.json())["data"]["addons"][0]
 
 
 @pytest.mark.usefixtures("install_app_ssh")

@@ -63,6 +63,7 @@ from ..const import (
     ATTR_NETWORK,
     ATTR_NETWORK_DESCRIPTION,
     ATTR_ONE_SHOT,
+    ATTR_OPERATION,
     ATTR_OPTIONS,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
@@ -210,7 +211,10 @@ class APIApps(CoreSysAttributes):
     @api_process
     async def list_apps(self, request: web.Request) -> dict[str, Any]:
         """Return all installed apps (v2: uses "apps" key)."""
-        return {ATTR_APPS: self._list_apps_data()}
+        data = self._list_apps_data()
+        for idx, app in enumerate(self.sys_apps.installed):
+            data[idx][ATTR_OPERATION] = app.operation
+        return {ATTR_APPS: data}
 
     @api_process
     async def list_apps_v1(self, request: web.Request) -> dict[str, Any]:
@@ -326,7 +330,7 @@ class APIApps(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return app information."""
         app: App = self.get_app_for_request(request)
-        return await self.info_data(app, request)
+        return await self.info_data(app, request) | {ATTR_OPERATION: app.operation}
 
     @api_process
     async def options(self, request: web.Request) -> None:
