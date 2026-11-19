@@ -2059,6 +2059,7 @@ class App(AppModel):
     async def _restart_after_problem(self) -> None:
         """Restart app until it runs again or is no longer wanted."""
         attempts = 0
+        needs_backoff = False
         while True:
             state = await self.instance.current_state()
             if state in (
@@ -2076,56 +2077,18 @@ class App(AppModel):
             ):
                 return
 
+            # The last start succeeded but the app went down again
             if attempts >= WATCHDOG_MAX_ATTEMPTS:
-                _LOGGER.critical(
-                    "Watchdog cannot restart app %s, failed all %s attempts",
+                _LOGGER.error(
+                    "Watchdog gave up on app %s, still %s after %s attempts",
                     self.name,
+                    state,
                     attempts,
                 )
                 return
 
-            if not self.in_progress and not self.active_job:
-                _LOGGER.warning(
-                    "Watchdog found app %s is %s, restarting...", self.name, state
-                )
-                attempts += 1
-                try:
-                    # Not App.stop, the watchdog must not count as a manual stop
-                    with suppress(DockerError):
-                        await self.instance.stop()
-
-                    await (await self.start())
-                except AppPortConflict as err:
-                    _LOGGER.warning(
-                        "Watchdog cannot restart app %s: %s", self.name, err
-                    )
-                    return
-                except AppConfigurationDeviceMissingError:
-                    # The device may come back, e.g. a replugged USB radio
-                    _LOGGER.error("Watchdog restart of app %s failed!", self.name)
-                    if attempts >= WATCHDOG_MAX_ATTEMPTS:
-                        # Not critical, that level is reported to Sentry
-                        _LOGGER.error(
-                            "Watchdog cannot restart app %s, device still missing "
-                            "after %s attempts",
-                            self.name,
-                            attempts,
-                        )
-                        return
-                except AppConfigurationInvalidError:
-                    _LOGGER.error(
-                        "Watchdog cannot restart app %s until its options are fixed",
-                        self.name,
-                    )
-                    return
-                except AppsError as err:
-                    _LOGGER.error("Watchdog restart of app %s failed!", self.name)
-                    await async_capture_exception(err)
-                else:
-                    # The state decides whether the start was enough
-                    continue
-
-            if attempts < WATCHDOG_MAX_ATTEMPTS:
+            if needs_backoff or self.in_progress or self.active_job:
+                needs_backoff = False
                 # Exponential backoff to spread retries over the throttle window
                 delay = WATCHDOG_RETRY_SECONDS * (1 << max(attempts - 1, 0))
                 _LOGGER.debug(
@@ -2135,6 +2098,50 @@ class App(AppModel):
                     attempts + 1,
                 )
                 await asyncio.sleep(delay)
+                continue
+
+            _LOGGER.warning(
+                "Watchdog found app %s is %s, restarting...", self.name, state
+            )
+            attempts += 1
+            needs_backoff = True
+            try:
+                # Not App.stop, the watchdog must not count as a manual stop
+                with suppress(DockerError):
+                    await self.instance.stop()
+
+                await (await self.start())
+            except AppPortConflict as err:
+                _LOGGER.warning("Watchdog cannot restart app %s: %s", self.name, err)
+                return
+            except AppConfigurationDeviceMissingError:
+                # The device may come back, e.g. a replugged USB radio
+                _LOGGER.error("Watchdog restart of app %s failed!", self.name)
+                if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                    # Not critical, that level is reported to Sentry
+                    _LOGGER.error(
+                        "Watchdog cannot restart app %s, device still missing "
+                        "after %s attempts",
+                        self.name,
+                        attempts,
+                    )
+                    return
+            except AppConfigurationInvalidError:
+                _LOGGER.error(
+                    "Watchdog cannot restart app %s until its options are fixed",
+                    self.name,
+                )
+                return
+            except AppsError as err:
+                _LOGGER.error("Watchdog restart of app %s failed!", self.name)
+                await async_capture_exception(err)
+                if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                    _LOGGER.critical(
+                        "Watchdog cannot restart app %s, failed all %s attempts",
+                        self.name,
+                        attempts,
+                    )
+                    return
 
     async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
         """Update cached container state and emit transitions."""
