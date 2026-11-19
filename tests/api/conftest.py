@@ -78,7 +78,7 @@ async def _common_test_api_advanced_logs(
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
 
-    mock_response = MagicMock()
+    mock_response = MagicMock(status=200)
     mock_response.text = AsyncMock(
         return_value='{"CONTAINER_LOG_EPOCH": "12345"}\n{"CONTAINER_LOG_EPOCH": "12345"}\n'
     )
