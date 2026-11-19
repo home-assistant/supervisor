@@ -130,7 +130,7 @@ class APISupervisor(CoreSysAttributes):
                 ATTR_VERSION: app.version,
                 ATTR_VERSION_LATEST: app.latest_version,
                 ATTR_UPDATE_AVAILABLE: app.need_update,
-                ATTR_STATE: app.state,
+                ATTR_STATE: app.raw_state,
                 ATTR_REPOSITORY: app.repository,
                 ATTR_ICON: app.with_icon,
             }

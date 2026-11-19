@@ -1,7 +1,7 @@
 """Test Home Assistant Apps."""
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 import errno
 from http import HTTPStatus
@@ -34,6 +34,7 @@ from supervisor.const import (
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
+from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
@@ -614,6 +615,236 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
         restart.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "stop",
+    [
+        pytest.param(App.stop, id="app"),
+        pytest.param(lambda app: app.instance.stop(), id="container"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("event_state", "expected_state"),
+    [
+        pytest.param(ContainerState.STOPPED, AppState.STOPPED, id="stopped"),
+        pytest.param(ContainerState.FAILED, AppState.ERROR, id="failed"),
+    ],
+)
+async def test_stop_stopping_until_container_stops(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    stop: Callable[[App], Awaitable[None]],
+    event_state: ContainerState,
+    expected_state: AppState,
+) -> None:
+    """Test app is stopping during the stop request until docker reports it stopped."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        state_during_stop.append(install_app_ssh.state)
+        # Health checks while shutting down do not end stopping
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY
+        )
+        state_during_stop.append(install_app_ssh.state)
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await stop(install_app_ssh)
+        assert state_during_stop == [AppState.STOPPING, AppState.STOPPING]
+
+        # Docker can answer the stop request before its die event arrives
+        assert install_app_ssh.state == AppState.STOPPING
+        await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", event_state)
+        assert install_app_ssh.state == expected_state
+
+        # Next start is not mistaken for stopping
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
+        assert install_app_ssh.state == AppState.STARTED
+
+
+async def test_stop_container_stopped_during_stop_request(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test docker reporting the container stopped ends stopping right away."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
+        state_during_stop.append(install_app_ssh.state)
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.stop()
+
+    assert state_during_stop == [AppState.STOPPED]
+    assert install_app_ssh.state == AppState.STOPPED
+
+
+async def test_stop_not_stopping_when_not_running(install_app_ssh: App) -> None:
+    """Test stopping an app which is not running does not enter stopping."""
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        state_during_stop.append(install_app_ssh.state)
+
+    with patch.object(DockerInterface, "stop", side_effect=mock_stop):
+        await install_app_ssh.stop()
+
+    assert state_during_stop == [AppState.STOPPED]
+    assert install_app_ssh.state == AppState.STOPPED
+
+
+@pytest.mark.parametrize(
+    ("stop", "error"),
+    [
+        pytest.param(App.stop, AppUnknownError, id="app"),
+        pytest.param(lambda app: app.instance.stop(), DockerError, id="container"),
+    ],
+)
+@pytest.mark.parametrize(
+    "running_state",
+    [
+        pytest.param(AppState.STARTED, id="started"),
+        pytest.param(AppState.STARTUP, id="startup"),
+    ],
+)
+async def test_stop_failed_error(
+    install_app_ssh: App,
+    stop: Callable[[App], Awaitable[None]],
+    error: type[Exception],
+    running_state: AppState,
+) -> None:
+    """Test a failed stop request leaves stopping for error."""
+    force_app_state(install_app_ssh, running_state)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        state_during_stop.append(install_app_ssh.state)
+        raise DockerError
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        pytest.raises(error),
+    ):
+        await stop(install_app_ssh)
+
+    assert state_during_stop == [AppState.STOPPING]
+    assert install_app_ssh.state == AppState.ERROR
+
+
+@pytest.mark.parametrize(
+    "running_state",
+    [
+        pytest.param(AppState.STARTED, id="started"),
+        pytest.param(AppState.STARTUP, id="startup"),
+    ],
+)
+async def test_stopping_raw_state(
+    coresys: CoreSys, install_app_ssh: App, running_state: AppState
+) -> None:
+    """Test raw state follows the container while the app is stopping."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, running_state)
+    states_during_stop: list[tuple[AppState, AppState]] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        states_during_stop.append((install_app_ssh.state, install_app_ssh.raw_state))
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
+        )
+        states_during_stop.append((install_app_ssh.state, install_app_ssh.raw_state))
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.stop()
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
+
+    assert states_during_stop == [
+        (AppState.STOPPING, running_state),
+        (AppState.STOPPING, AppState.STARTED),
+    ]
+    assert install_app_ssh.state == AppState.STOPPED
+    assert install_app_ssh.raw_state == AppState.STOPPED
+
+
+@pytest.mark.parametrize(
+    ("websocket_v2_enabled", "expected_sent"),
+    [
+        pytest.param(False, [[], [AppState.STARTED], [AppState.STOPPED]], id="v1"),
+        pytest.param(True, [[AppState.STOPPING], [], [AppState.STOPPED]], id="v2"),
+    ],
+)
+async def test_stopping_state_event_compatibility(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    ha_ws_client: AsyncMock,
+    websocket_v2_enabled: bool,
+    expected_sent: list[list[AppState]],
+) -> None:
+    """Test Home Assistant only gets the stopping state with WS v2 enabled."""
+    install_app_ssh.sys_config.set_feature_flag(
+        FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, websocket_v2_enabled
+    )
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    sent: list[list[AppState]] = []
+
+    async def collect_sent() -> None:
+        await asyncio.sleep(0)
+        sent.append(
+            [
+                data["state"]
+                for call_ in ha_ws_client.async_send_command.call_args_list
+                if (data := call_.args[0].get("data", {})).get("event")
+                in ("addon", "app")
+            ]
+        )
+        ha_ws_client.async_send_command.reset_mock()
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        await collect_sent()
+        # Health check passing while stopping still completes startup for v1
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
+        )
+        await collect_sent()
+
+    await asyncio.sleep(0)
+    ha_ws_client.async_send_command.reset_mock()
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.stop()
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
+        await collect_sent()
+
+    assert sent == expected_sent
 
 
 @pytest.mark.usefixtures("mock_amd64_arch_supported", "test_repository")

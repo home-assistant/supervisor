@@ -218,6 +218,7 @@ class APIApps(CoreSysAttributes):
         data = self._list_apps_data()
         for idx, app in enumerate(self.sys_apps.installed):
             data[idx][ATTR_ADVANCED] = app.advanced  # Deprecated 2026.03
+            data[idx][ATTR_STATE] = app.raw_state
         return {ATTR_ADDONS: data}
 
     @api_process
@@ -318,6 +319,7 @@ class APIApps(CoreSysAttributes):
         """Build and return v1 app information dict."""
         data = await self.info_data(app, request)
         data[ATTR_ADVANCED] = app.advanced  # Deprecated 2026.03
+        data[ATTR_STATE] = app.raw_state
         return data
 
     @api_process
