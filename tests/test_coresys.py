@@ -54,7 +54,7 @@ async def test_custom_user_agent(coresys: CoreSys):
     ) as mock_session:
         await coresys.init_websession()
         assert (
-            "HomeAssistantSupervisor/9999.09.9.dev9999"
+            "HomeAssistantSupervisor/9999.9.9.dev9999"
             in mock_session.call_args_list[0][1]["headers"][USER_AGENT]
         )
 

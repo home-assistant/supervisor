@@ -48,7 +48,7 @@ RUN \
         ${LOCAL_WHEELS:+--find-links $LOCAL_WHEELS}
 
 # Install Home Assistant Supervisor
-ARG BUILD_VERSION="9999.09.9.dev9999"
+ARG BUILD_VERSION="9999.9.9.dev9999"
 COPY . supervisor
 RUN \
     --mount=type=bind,source=./wheels,target=/usr/src/wheels \

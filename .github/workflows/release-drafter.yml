@@ -15,23 +15,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find Next Version
+      - name: Find next version
         id: version
         run: |
           declare -i newpost
           latest=$(git describe --tags $(git rev-list --tags --max-count=1))
           latestpre=$(echo "$latest" | awk '{split($0,a,"."); print a[1] "." a[2]}')
-          datepre=$(date --utc '+%Y.%m')
-
+          datepre=$(date --utc '+%Y.%-m')
 
           if [[ "$latestpre" == "$datepre" ]]; then
-              latestpost=$(echo "$latest" | awk '{split($0,a,"."); print a[3]}')
-              newpost=$latestpost+1
+            latestpost=$(echo "$latest" | awk '{split($0,a,"."); print a[3]}')
+            newpost=$latestpost+1
           else
-              newpost=0
+            newpost=0
           fi
 
-          echo Current version:    $latest
+          echo Current version: $latest
           echo New target version: $datepre.$newpost
           echo "version=$datepre.$newpost" >> "$GITHUB_OUTPUT"
 
