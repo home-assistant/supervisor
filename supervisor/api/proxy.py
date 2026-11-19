@@ -20,10 +20,9 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps, json_loads
 from ..utils.logging import AppLoggerAdapter
-from .const import WEBSOCKETS
 from .middleware.security import recursive_unquote
 from .sockets import is_unix_socket_request
-from .utils import stop_on_disconnect
+from .utils import prepare_websocket, stop_on_disconnect
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -104,9 +103,9 @@ class APIProxy(CoreSysAttributes):
                 await response.prepare(request)
                 async for data in client.content:
                     await response.write(data)
-            except aiohttp.ClientError, aiohttp.ClientPayloadError:
-                # Client disconnected or upstream closed
-                pass
+            except (aiohttp.ClientError, ConnectionError) as err:
+                # Client disconnected or upstream closed the stream.
+                _LOGGER.debug("Stream response closed: %s", err)
 
         return response
 
@@ -351,18 +350,15 @@ class APIProxy(CoreSysAttributes):
             raise HTTPBadGateway
         _LOGGER.info("Home Assistant WebSocket API request initialize")
 
-        # Check if transport is still valid before WebSocket upgrade
-        if request.transport is None:
-            _LOGGER.warning("WebSocket connection lost before upgrade")
-            raise web.HTTPBadRequest(reason="Connection closed")
-
-        # init server
+        # Prepare the WebSocket response and track it for shutdown.
         server = web.WebSocketResponse(heartbeat=30)
-        await server.prepare(request)
-        request.config_dict[WEBSOCKETS].add(server)
-        # The upgrade may complete after API stop closed the tracked websockets
-        if self.sys_core.state in STOPPING_STATES:
-            await server.close(code=WSCloseCode.GOING_AWAY)
+        if not await prepare_websocket(
+            request,
+            server,
+            self.coresys,
+            logger=_LOGGER,
+            disconnect_log_level=logging.WARNING,
+        ):
             return server
         app_name = None
 
@@ -409,6 +405,11 @@ class APIProxy(CoreSysAttributes):
                 return server
             _LOGGER.error(
                 "Unexpected message during authentication for WebSocket API: %s", err
+            )
+            return server
+        except ConnectionError as err:
+            _LOGGER.debug(
+                "Client disconnected during WebSocket API authentication: %s", err
             )
             return server
         except (RuntimeError, ValueError) as err:

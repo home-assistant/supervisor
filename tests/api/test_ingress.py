@@ -2,15 +2,24 @@
 
 import asyncio
 from collections.abc import AsyncGenerator, Callable
+import logging
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
-from aiohttp import WSCloseCode, WSMsgType, hdrs, web
+from aiohttp import (
+    ClientConnectionResetError,
+    WSCloseCode,
+    WSMsgType,
+    WSServerHandshakeError,
+    hdrs,
+    web,
+)
 from aiohttp.test_utils import TestClient, TestServer, make_mocked_request
 from multidict import CIMultiDictProxy
 import pytest
 
+from supervisor.api import ingress as ingress_module
 from supervisor.api.const import WEBSOCKETS
 from supervisor.api.ingress import _init_header
 from supervisor.apps.app import App
@@ -919,3 +928,214 @@ def test_init_header_forwarded_for(peername: tuple[str, int] | str, expected: st
     headers = _init_header(request, MagicMock(spec=App), None)
 
     assert headers.getall(hdrs.X_FORWARDED_FOR) == [expected]
+
+
+@pytest.mark.usefixtures("core_users")
+@pytest.mark.parametrize(
+    "error",
+    [
+        ClientConnectionResetError("Cannot write to closing transport"),
+        ConnectionError("Connection lost"),
+    ],
+)
+async def test_ingress_websocket_prepare_connection_error(
+    api_client: TestClient,
+    coresys: CoreSys,
+    error: ConnectionError,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test ingress WebSocket catches disconnect errors during prepare."""
+
+    class FailingPrepareWebSocket(web.WebSocketResponse):
+        """WebSocketResponse that raises a disconnect error in prepare."""
+
+        async def prepare(self, request: web.BaseRequest) -> Any:
+            raise error
+
+    resp = await api_client.post("/ingress/session", json={"user_id": "admin-id"})
+    session = (await resp.json())["data"]["session"]
+
+    mock_app = MagicMock(spec=App)
+    mock_app.slug = "test_app"
+    mock_app.panel_admin = False
+    mock_app.ip_address = "127.0.0.1"
+    mock_app.ingress_port = 8099
+
+    ingress_token = coresys.ingress.create_session()
+    caplog.clear()
+    with (
+        caplog.at_level(logging.DEBUG),
+        caplog.at_level(logging.DEBUG, logger="supervisor"),
+        patch.object(coresys.ingress, "get", return_value=mock_app),
+        patch.object(
+            ingress_module,
+            "web",
+            MagicMock(wraps=web, WebSocketResponse=FailingPrepareWebSocket),
+        ),
+        pytest.raises(WSServerHandshakeError) as exc_info,
+    ):
+        await api_client.ws_connect(
+            f"/ingress/{ingress_token}/ws",
+            headers={hdrs.COOKIE: f"ingress_session={session}"},
+        )
+
+    assert exc_info.value.status == 400
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert any(
+        r.name == "supervisor.api.ingress"
+        and r.levelno == logging.DEBUG
+        and "WebSocket connection lost before upgrade" in r.message
+        for r in caplog.records
+    )
+
+
+@pytest.mark.usefixtures("core_users")
+@pytest.mark.parametrize("fail_site", ["prepare", "write"])
+@pytest.mark.parametrize(
+    "error",
+    [
+        ClientConnectionResetError("Cannot write to closing transport"),
+        ConnectionError("Connection lost"),
+    ],
+)
+async def test_ingress_stream_client_disconnect_logs_debug(
+    api_client: TestClient,
+    coresys: CoreSys,
+    real_websession: aiohttp.ClientSession,
+    fail_site: str,
+    error: ConnectionError,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test ingress streaming logs downstream client disconnects at DEBUG."""
+
+    async def mock_app_handler(request: web.Request) -> web.StreamResponse:
+        """Stream finite chunks without a Content-Length header."""
+        response = web.StreamResponse()
+        response.content_type = "text/event-stream"
+        await response.prepare(request)
+        await response.write(b"data: one\n\n")
+        await response.write_eof()
+        return response
+
+    class FailingStreamResponse(web.StreamResponse):
+        """StreamResponse that raises a disconnect error at the target site."""
+
+        async def prepare(self, request: web.BaseRequest) -> Any:
+            if fail_site == "prepare":
+                raise error
+            return await super().prepare(request)
+
+        async def write(self, data: bytes | bytearray | memoryview) -> None:
+            if fail_site == "write":
+                raise error
+            await super().write(data)
+
+    app = web.Application()
+    app.router.add_get("/stream", mock_app_handler)
+    app_server = TestServer(app)
+    await app_server.start_server()
+
+    try:
+        resp = await api_client.post("/ingress/session", json={"user_id": "admin-id"})
+        session = (await resp.json())["data"]["session"]
+
+        mock_app = MagicMock(spec=App)
+        mock_app.slug = "test_app"
+        mock_app.panel_admin = False
+        mock_app.ip_address = app_server.host
+        mock_app.ingress_port = app_server.port
+        mock_app.ingress_stream = False
+
+        ingress_token = coresys.ingress.create_session()
+        caplog.clear()
+        with (
+            caplog.at_level(logging.DEBUG),
+            caplog.at_level(logging.DEBUG, logger="supervisor"),
+            patch.object(coresys.ingress, "get", return_value=mock_app),
+            patch.object(
+                ingress_module,
+                "web",
+                MagicMock(wraps=web, StreamResponse=FailingStreamResponse),
+            ),
+        ):
+            if fail_site == "prepare":
+                with pytest.raises(aiohttp.ServerDisconnectedError):
+                    await api_client.get(
+                        f"/ingress/{ingress_token}/stream",
+                        cookies={"ingress_session": session},
+                    )
+            else:
+                stream_resp = await api_client.get(
+                    f"/ingress/{ingress_token}/stream",
+                    cookies={"ingress_session": session},
+                )
+                assert stream_resp.status == 200
+                await stream_resp.read()
+
+        assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+        expected_msg = (
+            "Client disconnected before ingress stream to"
+            if fail_site == "prepare"
+            else "Client disconnected during ingress stream to"
+        )
+        assert any(
+            r.name == "supervisor.api.ingress"
+            and r.levelno == logging.DEBUG
+            and expected_msg in r.message
+            for r in caplog.records
+        )
+    finally:
+        await app_server.close()
+
+
+@pytest.mark.usefixtures("core_users")
+async def test_ingress_stream_upstream_error_logs_error(
+    api_client: TestClient,
+    coresys: CoreSys,
+    websession: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test ingress streaming logs upstream read errors at ERROR."""
+    resp = await api_client.post("/ingress/session", json={"user_id": "admin-id"})
+    session = (await resp.json())["data"]["session"]
+
+    mock_app = MagicMock(spec=App)
+    mock_app.slug = "test_app"
+    mock_app.panel_admin = False
+    mock_app.ip_address = "127.0.0.1"
+    mock_app.ingress_port = 8099
+    mock_app.ingress_stream = False
+
+    async def failing_chunks():
+        yield b"chunk", True
+        raise aiohttp.ClientPayloadError("Upstream truncated")
+
+    upstream_resp = MagicMock()
+    upstream_resp.status = 200
+    upstream_resp.headers = {}
+    upstream_resp.content_type = "text/event-stream"
+    upstream_resp.content.iter_chunks = MagicMock(return_value=failing_chunks())
+
+    request_cm = AsyncMock()
+    request_cm.__aenter__.return_value = upstream_resp
+    websession.request.return_value = request_cm
+
+    ingress_token = coresys.ingress.create_session()
+    caplog.clear()
+    with (
+        caplog.at_level(logging.DEBUG),
+        patch.object(coresys.ingress, "get", return_value=mock_app),
+    ):
+        stream_resp = await api_client.get(
+            f"/ingress/{ingress_token}/stream",
+            cookies={"ingress_session": session},
+        )
+        assert stream_resp.status == 200
+        await stream_resp.read()
+
+    assert any(
+        r.name == "supervisor.api.ingress"
+        and r.levelno == logging.ERROR
+        and "Stream error with" in r.message
+        for r in caplog.records
+    )

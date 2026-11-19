@@ -8,9 +8,10 @@ from json import dumps
 import logging
 import re
 from typing import Any, cast
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import (
+    ClientConnectionResetError,
     ClientPayloadError,
     ClientWebSocketResponse,
     WSCloseCode,
@@ -21,6 +22,7 @@ from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.api import proxy as proxy_module
 from supervisor.api.const import WEBSOCKETS
 from supervisor.api.proxy import APIProxy
 from supervisor.apps.app import App
@@ -1034,3 +1036,139 @@ async def test_api_proxy_streaming_response_client_payload_error(
 
         content = await response.read()
         assert b"data: event1\n\n" in content
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ClientConnectionResetError("Cannot write to closing transport"),
+        ConnectionError("Connection lost"),
+    ],
+)
+async def test_websocket_prepare_connection_error(
+    api_client: TestClient,
+    error: ConnectionError,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test proxy WebSocket catches disconnect errors during prepare."""
+
+    class FailingPrepareWebSocket(web.WebSocketResponse):
+        """WebSocketResponse that raises a disconnect error in prepare."""
+
+        async def prepare(self, request: web.BaseRequest) -> Any:
+            raise error
+
+    caplog.clear()
+    with (
+        caplog.at_level(logging.DEBUG),
+        patch.object(
+            proxy_module,
+            "web",
+            MagicMock(wraps=web, WebSocketResponse=FailingPrepareWebSocket),
+        ),
+        pytest.raises(WSServerHandshakeError) as exc_info,
+    ):
+        await api_client.ws_connect("/core/websocket")
+
+    assert exc_info.value.status == 400
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert any(
+        r.levelno == logging.WARNING
+        and "WebSocket connection lost before upgrade" in r.message
+        for r in caplog.records
+    )
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ClientConnectionResetError("Cannot write to closing transport"),
+        ConnectionError("Connection lost"),
+    ],
+)
+async def test_websocket_auth_connection_error(
+    api_client: TestClient,
+    error: ConnectionError,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test proxy WebSocket catches disconnect errors during authentication."""
+
+    class FailingAuthWebSocket(web.WebSocketResponse):
+        """WebSocketResponse that raises a disconnect error in send_json."""
+
+        async def send_json(self, *args: Any, **kwargs: Any) -> None:
+            raise error
+
+    caplog.clear()
+    with (
+        caplog.at_level(logging.DEBUG),
+        caplog.at_level(logging.DEBUG, logger="supervisor"),
+        patch.object(
+            proxy_module,
+            "web",
+            MagicMock(wraps=web, WebSocketResponse=FailingAuthWebSocket),
+        ),
+    ):
+        websocket = await api_client.ws_connect("/core/websocket")
+        msg = await websocket.receive()
+        assert msg.type == WSMsgType.CLOSE
+
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert any(
+        r.levelno == logging.DEBUG
+        and "Client disconnected during WebSocket API authentication" in r.message
+        for r in caplog.records
+    )
+
+
+async def test_stream_client_response_connection_error(
+    api_client: TestClient,
+    install_app_example: App,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test proxy stream catches base ConnectionError during response write."""
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+
+    class FailingWriteStreamResponse(web.StreamResponse):
+        """StreamResponse that raises ConnectionError in write."""
+
+        async def write(self, data: bytes | bytearray | memoryview) -> None:
+            raise ConnectionError("Connection lost")
+
+    async def mock_content_iter():
+        yield b"data: event1\n\n"
+
+    caplog.clear()
+    with (
+        caplog.at_level(logging.DEBUG),
+        caplog.at_level(logging.DEBUG, logger="supervisor"),
+        patch.object(
+            proxy_module,
+            "web",
+            MagicMock(wraps=web, StreamResponse=FailingWriteStreamResponse),
+        ),
+        patch.object(HomeAssistantAPI, "make_request") as make_request,
+    ):
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "text/event-stream"
+        mock_response.headers = {}
+        mock_response.content = mock_content_iter()
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.get(
+            "/core/api/mcp",
+            headers={
+                "Authorization": "Bearer abc123",
+                "Accept": "text/event-stream",
+            },
+        )
+        assert response.status == 200
+        await response.read()
+
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)
+    assert any(
+        r.levelno == logging.DEBUG and "Stream response closed" in r.message
+        for r in caplog.records
+    )

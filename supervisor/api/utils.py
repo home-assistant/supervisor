@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Any, cast
 
-from aiohttp import web
+from aiohttp import WSCloseCode, web
 from aiohttp.hdrs import AUTHORIZATION, USER_AGENT
 from aiohttp.web_exceptions import HTTPUnauthorized
 from aiohttp.web_request import Request
@@ -38,6 +38,7 @@ from ..const import (
     REQUEST_FROM,
     RESULT_ERROR,
     RESULT_OK,
+    STOPPING_STATES,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.stats import DockerStats
@@ -428,3 +429,39 @@ async def stop_on_disconnect(request: web.Request) -> AsyncIterator[None]:
             raise
     finally:
         watcher.cancel()
+
+
+async def prepare_websocket(
+    request: web.Request,
+    ws_response: web.WebSocketResponse,
+    coresys: CoreSys,
+    *,
+    logger: logging.Logger = _LOGGER,
+    disconnect_log_level: int = logging.DEBUG,
+) -> bool:
+    """Prepare and register a WebSocket response.
+
+    Returns False if the client disconnects after headers are sent or if
+    Supervisor is stopping.
+    """
+    if request.transport is None or request.transport.is_closing():
+        logger.log(disconnect_log_level, "WebSocket connection lost before upgrade")
+        raise web.HTTPBadRequest(reason="Connection closed")
+
+    try:
+        await ws_response.prepare(request)
+    except ConnectionError as err:
+        if ws_response.prepared:
+            logger.log(disconnect_log_level, "WebSocket connection lost during upgrade")
+            await ws_response.close()
+            return False
+        logger.log(disconnect_log_level, "WebSocket connection lost before upgrade")
+        raise web.HTTPBadRequest(reason="Connection closed") from err
+
+    request.config_dict[const.WEBSOCKETS].add(ws_response)
+    # Close the socket if API stop already ran during the upgrade.
+    if coresys.core.state in STOPPING_STATES:
+        await ws_response.close(code=WSCloseCode.GOING_AWAY)
+        return False
+
+    return True
