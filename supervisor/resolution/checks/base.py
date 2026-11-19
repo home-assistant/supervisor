@@ -5,6 +5,7 @@ import logging
 
 from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
+from ...exceptions import ResolutionCheckSkipped
 from ..const import ContextType, IssueType
 from ..data import Issue
 
@@ -37,7 +38,11 @@ class CheckBase(ABC, CoreSysAttributes):
                 self.context,
                 issue.reference,
             )
-            if await self.approve_check(issue):
+            try:
+                if await self.approve_check(issue):
+                    continue
+            except ResolutionCheckSkipped:
+                # Unknown whether the issue persists, keep it
                 continue
             self.sys_resolution.dismiss_issue(issue)
 

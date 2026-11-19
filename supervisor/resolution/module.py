@@ -7,7 +7,15 @@ import logging
 from typing import Any
 
 from ..bus import EventListener
-from ..const import FeatureFlag
+from ..const import (
+    ATTR_CONTEXT,
+    ATTR_ISSUES,
+    ATTR_REFERENCE,
+    ATTR_REFERENCE_EXTRA,
+    ATTR_SUGGESTIONS,
+    ATTR_TYPE,
+    FeatureFlag,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     ResolutionError,
@@ -319,11 +327,48 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     async def load(self):
         """Load the resolution manager."""
+        self._restore_issues()
+
         # Initial healthcheck check
         await self.healthcheck()
 
         # Schedule the healthcheck
         self.sys_scheduler.register_task(self.healthcheck, SCHEDULED_HEALTHCHECK)
+
+    def _restore_issues(self) -> None:
+        """Restore issues raised by checks before the last shutdown.
+
+        Home Assistant drops the repair (and its ignored state) of an issue
+        missing from Supervisor, so keep them until their check approved or
+        dismissed them again.
+        """
+        for data in self._data[ATTR_ISSUES]:
+            issue = Issue(
+                data[ATTR_TYPE],
+                data[ATTR_CONTEXT],
+                data[ATTR_REFERENCE],
+                data[ATTR_REFERENCE_EXTRA],
+            )
+            if not (check := self.check.get_for_issue(issue)) or not check.enabled:
+                continue
+            self.add_issue(issue, data[ATTR_SUGGESTIONS])
+
+    async def save_data(self) -> None:
+        """Store data, including the issues raised by checks."""
+        self._data[ATTR_ISSUES] = [
+            {
+                ATTR_TYPE: issue.type,
+                ATTR_CONTEXT: issue.context,
+                ATTR_REFERENCE: issue.reference,
+                ATTR_REFERENCE_EXTRA: issue.reference_extra,
+                ATTR_SUGGESTIONS: sorted(
+                    suggestion.type for suggestion in self.suggestions_for_issue(issue)
+                ),
+            }
+            for issue in self._issues
+            if self.check.get_for_issue(issue)
+        ]
+        await super().save_data()
 
     async def healthcheck(self):
         """Scheduled task to check for known issues."""
@@ -332,6 +377,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Run autofix if possible
         await self.fixup.run_autofix()
+
+        await self.save_data()
 
     async def apply_suggestion(self, suggestion: Suggestion) -> None:
         """Apply suggested action."""

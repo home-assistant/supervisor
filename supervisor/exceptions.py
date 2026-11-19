@@ -2049,6 +2049,10 @@ class ResolutionCheckError(ResolutionError):
     """Raise when there are an issue managing checks."""
 
 
+class ResolutionCheckSkipped(ResolutionCheckError, JobException):
+    """Raise when a check cannot run as its job conditions are not met."""
+
+
 class ResolutionNotFound(ResolutionError):
     """Raise if suggestion/issue was not found."""
 

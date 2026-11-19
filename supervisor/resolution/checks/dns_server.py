@@ -9,6 +9,7 @@ from aiodns.error import DNSError
 
 from ...const import CoreState
 from ...coresys import CoreSys
+from ...exceptions import ResolutionCheckSkipped
 from ...jobs.const import JobCondition, JobThrottle
 from ...jobs.decorator import Job
 from ...utils.sentry import async_capture_exception
@@ -62,6 +63,7 @@ class CheckDNSServer(CheckBase):
     @Job(
         name="check_dns_server_approve",
         conditions=[JobCondition.INTERNET_SYSTEM],
+        on_condition=ResolutionCheckSkipped,
         internal=True,
     )
     async def approve_check(self, issue: Issue) -> bool:

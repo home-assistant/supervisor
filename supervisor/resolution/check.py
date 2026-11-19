@@ -9,6 +9,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionCheckNotFound
 from ..utils.sentry import async_capture_exception
 from .checks.base import CheckBase
+from .data import Issue
 from .validate import get_valid_modules
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -51,6 +52,13 @@ class ResolutionCheck(CoreSysAttributes):
             return self._checks[slug]
 
         raise ResolutionCheckNotFound(check=slug)
+
+    def get_for_issue(self, issue: Issue) -> CheckBase | None:
+        """Return the check which raises and approves an issue, if any."""
+        for check in self._checks.values():
+            if check.issue == issue.type and check.context == issue.context:
+                return check
+        return None
 
     async def check_system(self) -> None:
         """Check the system."""
