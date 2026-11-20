@@ -22,7 +22,7 @@ RUN \
         openssl \
         yaml \
     \
-    && pip3 install uv==0.13.8
+    && pip3 install uv==0.13.9
 
 #############################################
 # Install requirements and build Supervisor #
