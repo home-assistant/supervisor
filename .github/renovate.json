@@ -110,7 +110,7 @@
       "enabled": false
     },
     {
-      "description": "No cooldown for our own actions. A # master pin has no release timestamp, so a cooldown would hold its digest updates indefinitely",
+      "description": "No cooldown for our own actions",
       "matchManagers": ["github-actions"],
       "matchPackageNames": ["home-assistant/**"],
       "minimumReleaseAge": null
