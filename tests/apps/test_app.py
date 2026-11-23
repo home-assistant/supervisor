@@ -22,10 +22,13 @@ from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
+from supervisor.apps.validate import SCHEMA_APP_USER
 from supervisor.const import (
     ATTR_ADVANCED,
+    ATTR_IMAGE,
     ATTR_LOCATION,
     ATTR_PORTS,
+    ATTR_SLUG,
     AppBoot,
     AppState,
     BusEvent,
@@ -1783,6 +1786,24 @@ async def test_local_example_install(coresys: CoreSys, tmp_supervisor_data: Path
         install.assert_called_once()
 
     assert data_dir.is_dir()
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [pytest.param("ssh", id="lowercase"), pytest.param("SSH", id="uppercase")],
+)
+@pytest.mark.usefixtures("test_repository", "mock_amd64_arch_supported")
+async def test_local_build_image_valid(coresys: CoreSys, slug: str):
+    """Test locally built app image name is valid regardless of slug case."""
+    store = coresys.apps.store[TEST_ADDON_SLUG]
+    store.data[ATTR_SLUG] = slug
+    assert store.need_build
+    await coresys.apps.data.install(store)
+
+    # save_data is mocked in tests.
+    # The real one validates with this schema and discards the install data if the image is invalid.
+    user_data = SCHEMA_APP_USER(coresys.apps.data.user[TEST_ADDON_SLUG])
+    assert user_data[ATTR_IMAGE] == "local/amd64-addon-ssh"
 
 
 @pytest.mark.usefixtures("test_repository", "tmp_supervisor_data")
