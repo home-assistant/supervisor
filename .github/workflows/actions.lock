@@ -31,7 +31,7 @@ workflows:
         - 'actions/github-script@v9.0.0'
     '.github/workflows/sentry.yaml':
         - 'actions/checkout@v7.0.1'
-        - 'getsentry/action-release@v3.8.0'
+        - 'getsentry/action-release@v3.9.1'
     '.github/workflows/stale.yml':
         - 'actions/stale@v11.0.0'
 dependencies:
@@ -107,9 +107,9 @@ dependencies:
         commit: 'sha1-37fe631027851001ddb9b187196cc803df7f5f0e'
         owner_id: 5429470
         repo_id: 288485773
-    'getsentry/action-release@v3.8.0':
-        ref: 'v3.8.0'
-        commit: 'sha1-d55c8c3b7375607e972b710f12926b676d89d7d2'
+    'getsentry/action-release@v3.9.1':
+        ref: 'v3.9.1'
+        commit: 'sha1-2e505a70ff06dac263413242aa3617fec90134e5'
         owner_id: 1396951
         repo_id: 273043452
         uses:
