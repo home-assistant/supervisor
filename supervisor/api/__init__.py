@@ -818,7 +818,9 @@ class RestAPI(CoreSysAttributes):
             app.add_routes(
                 [
                     web.get("/apps", api_apps.list_apps),
+                    web.get("/apps/status", api_apps.status_list),
                     web.get("/apps/{app}/info", api_apps.info),
+                    web.get("/apps/{app}/status", api_apps.status),
                     web.post("/apps/{app}/uninstall", api_apps.uninstall),
                     web.post("/apps/{app}/start", api_apps.start),
                     web.post("/apps/{app}/stop", api_apps.stop),

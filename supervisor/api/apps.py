@@ -211,10 +211,7 @@ class APIApps(CoreSysAttributes):
     @api_process
     async def list_apps(self, request: web.Request) -> dict[str, Any]:
         """Return all installed apps (v2: uses "apps" key)."""
-        data = self._list_apps_data()
-        for idx, app in enumerate(self.sys_apps.installed):
-            data[idx][ATTR_OPERATION] = app.operation
-        return {ATTR_APPS: data}
+        return {ATTR_APPS: self._list_apps_data()}
 
     @api_process
     async def list_apps_v1(self, request: web.Request) -> dict[str, Any]:
@@ -331,6 +328,20 @@ class APIApps(CoreSysAttributes):
         """Return app information."""
         app: App = self.get_app_for_request(request)
         return await self.info_data(app, request) | {ATTR_OPERATION: app.operation}
+
+    @api_process
+    async def status_list(self, request: web.Request) -> dict[str, Any]:
+        """Return status of installed apps and apps being installed or removed."""
+        # An app can be in both while an install or uninstall is in progress
+        apps = self.sys_apps.pending | self.sys_apps.local
+        return {ATTR_APPS: [app.status for app in apps.values()]}
+
+    @api_process
+    async def status(self, request: web.Request) -> dict[str, Any]:
+        """Return status of an app, including one being installed or removed."""
+        if app := self.sys_apps.pending.get(request.match_info["app"]):
+            return app.status
+        return self.get_app_for_request(request).status
 
     @api_process
     async def options(self, request: web.Request) -> None:

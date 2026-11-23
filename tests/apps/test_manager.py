@@ -2,14 +2,17 @@
 
 import asyncio
 from collections.abc import AsyncGenerator, Generator
+from contextlib import AbstractContextManager, nullcontext
 from copy import deepcopy
 import logging
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, Mock, PropertyMock, call, patch
 
 from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
+from securetar import SecureTarFile
 
 from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
@@ -899,3 +902,67 @@ async def test_from_token_missing(
     install_app_ssh.persist.pop(ATTR_ACCESS_TOKEN, None)
 
     assert coresys.apps.from_token(token) is None
+
+
+@pytest.mark.parametrize(
+    ("install_error", "expectation"),
+    [
+        pytest.param(None, nullcontext(), id="installed"),
+        pytest.param(AppsError, pytest.raises(AppsError), id="failed"),
+    ],
+)
+@pytest.mark.usefixtures("mock_amd64_arch_supported", "test_repository")
+async def test_install_pending_until_done(
+    coresys: CoreSys,
+    install_error: type[Exception] | None,
+    expectation: AbstractContextManager,
+):
+    """Test an app being installed is pending until its install ends."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    pending: list[list[str]] = []
+
+    async def mock_install(app: App) -> None:
+        pending.append(list(coresys.apps.pending))
+        if install_error:
+            raise install_error
+
+    with patch.object(App, "install", new=mock_install), expectation:
+        await coresys.apps.install(TEST_ADDON_SLUG)
+
+    assert pending == [[TEST_ADDON_SLUG]]
+    assert coresys.apps.pending == {}
+
+
+@pytest.mark.usefixtures("test_repository")
+async def test_restore_new_app_pending_until_done(coresys: CoreSys):
+    """Test an app restored without being installed is pending until done."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    pending: list[list[str]] = []
+
+    async def mock_restore(app: App, tar_file: SecureTarFile) -> None:
+        pending.append(list(coresys.apps.pending))
+
+    with (
+        patch.object(App, "restore", new=mock_restore),
+        patch.object(App, "ingress_panel", new=PropertyMock(return_value=False)),
+    ):
+        await coresys.apps.restore(TEST_ADDON_SLUG, Mock(spec=SecureTarFile))
+
+    assert pending == [[TEST_ADDON_SLUG]]
+    assert coresys.apps.pending == {}
+    assert TEST_ADDON_SLUG in coresys.apps.local
+
+
+async def test_uninstall_pending_until_done(coresys: CoreSys, install_app_ssh: App):
+    """Test an app being uninstalled stays pending after it leaves local."""
+    pending: list[list[str]] = []
+
+    async def mock_uninstall(app: App, **kwargs: Any) -> None:
+        coresys.apps.local.pop(app.slug)
+        pending.append(list(coresys.apps.pending))
+
+    with patch.object(App, "uninstall", new=mock_uninstall):
+        await coresys.apps.uninstall(TEST_ADDON_SLUG)
+
+    assert pending == [[TEST_ADDON_SLUG]]
+    assert coresys.apps.pending == {}

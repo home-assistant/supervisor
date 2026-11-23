@@ -64,6 +64,9 @@ class AppManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.data: AppsData = AppsData(coresys)
         self.local: dict[str, App] = {}
+        # Apps being installed, uninstalled or restored when not installed,
+        # which may not be in local for part of it
+        self.pending: dict[str, App] = {}
         self.store: dict[str, AppStore] = {}
 
     @property
@@ -264,7 +267,11 @@ class AppManager(CoreSysAttributes):
         if validation_complete:
             validation_complete.set()
 
-        await App(self.coresys, slug).install()
+        app = self.pending[slug] = App(self.coresys, slug)
+        try:
+            await app.install()
+        finally:
+            self.pending.pop(slug, None)
 
         _LOGGER.info("App '%s' successfully installed", slug)
 
@@ -283,9 +290,13 @@ class AppManager(CoreSysAttributes):
             for app in self.installed
             if app.slug != slug
         )
-        await self.local[slug].uninstall(
-            remove_config=remove_config, remove_image=not shared_image
-        )
+        app = self.pending[slug] = self.local[slug]
+        try:
+            await app.uninstall(
+                remove_config=remove_config, remove_image=not shared_image
+            )
+        finally:
+            self.pending.pop(slug, None)
 
         _LOGGER.info("App '%s' successfully removed", slug)
 
@@ -397,19 +408,22 @@ class AppManager(CoreSysAttributes):
 
         if slug not in self.local:
             _LOGGER.debug("App %s is not locally available for restore", slug)
-            app = App(self.coresys, slug)
+            app = self.pending[slug] = App(self.coresys, slug)
             had_ingress: bool | None = False
         else:
             _LOGGER.debug("App %s is locally available for restore", slug)
             app = self.local[slug]
             had_ingress = app.ingress_panel
 
-        wait_for_start = await app.restore(tar_file)
+        try:
+            wait_for_start = await app.restore(tar_file)
 
-        # Check if new
-        if slug not in self.local:
-            _LOGGER.info("Detected new app after restore: %s", slug)
-            self.local[slug] = app
+            # Check if new
+            if slug not in self.local:
+                _LOGGER.info("Detected new app after restore: %s", slug)
+                self.local[slug] = app
+        finally:
+            self.pending.pop(slug, None)
 
         # Update ingress
         if had_ingress != app.ingress_panel:

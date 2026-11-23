@@ -297,6 +297,24 @@ async def test_token_validation(
         assert resp.status == 403
 
 
+@pytest.mark.parametrize("request_path", ["/v2/apps/status", "/v2/apps/abc123/status"])
+@pytest.mark.usefixtures("plugin_tokens")
+async def test_app_status_access(
+    api_token_validation: TestClient,
+    install_app_example: App,
+    request_path: str,
+):
+    """Test every role can read app status, like app info."""
+    install_app_example.persist["access_token"] = "abc123"
+    install_app_example.data["hassio_api"] = True
+    for role in ROLE_ALL:
+        install_app_example.data["hassio_role"] = role
+        resp = await api_token_validation.get(
+            request_path, headers={"Authorization": "Bearer abc123"}
+        )
+        assert resp.status == 200, role
+
+
 @pytest.mark.usefixtures("plugin_tokens")
 async def test_home_assistant_paths(
     api_token_validation_with_prefix: tuple[TestClient, str], coresys: CoreSys
