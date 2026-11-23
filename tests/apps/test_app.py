@@ -2799,12 +2799,15 @@ async def test_operation_initiator_from_root_job(
 async def test_operation_progress(
     coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
 ) -> None:
-    """Test progress is null until the operation's job reports some."""
+    """Test progress is null until the operation's job reports some, then a number."""
     coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
     update_job = coresys.jobs.new_job("app_manager_update", reference=TEST_ADDON_SLUG)
 
     with patch.object(DockerInterface, "stop"), update_job.start():
         await install_app_ssh.stop()
+        update_job.progress = 50
+        # A reset after progress was reported, like a retried image pull
+        update_job.progress = 0
         update_job.progress = 50
         await coresys.block_till_done()
 
@@ -2823,7 +2826,7 @@ async def test_operation_progress(
         for status in _app_statuses(ha_ws_client)
         if status["operation"]
     ]
-    assert progress == [None, 50, 100]
+    assert progress == [None, 50, 0, 50, 100]
     assert install_app_ssh.operation is None
 
 

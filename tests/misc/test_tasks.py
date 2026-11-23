@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from shutil import copy
+from typing import Any
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiodocker.containers import DockerContainer
@@ -10,6 +11,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.apps.app import App
+from supervisor.apps.const import AppOperation, AppOperationInitiator
 from supervisor.const import (
     ATTR_VERSION_TIMESTAMP,
     AppState,
@@ -18,6 +20,7 @@ from supervisor.const import (
     Folder,
 )
 from supervisor.coresys import CoreSys
+from supervisor.docker.interface import DockerInterface
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
@@ -26,7 +29,7 @@ from supervisor.misc.tasks import Tasks
 from supervisor.plugins.dns import PluginDns
 from supervisor.supervisor import Supervisor
 
-from tests.common import MockResponse, get_fixture_path
+from tests.common import MockResponse, force_app_state, get_fixture_path
 
 # pylint: disable=protected-access
 
@@ -364,3 +367,29 @@ async def test_watchdog_app_application_first_miss_checks_other_apps(
     app_1.watchdog_application.assert_awaited_once()
     app_2.watchdog_application.assert_awaited_once()
     assert tasks._cache == {app_1.slug: 1, app_2.slug: 1}
+
+
+async def test_watchdog_app_application_restart_initiator(
+    tasks: Tasks, install_app_ssh: App
+):
+    """Test a restart by the application watchdog reports the watchdog started it."""
+    install_app_ssh.watchdog = True
+    force_app_state(install_app_ssh, AppState.STARTED)
+    tasks._cache[install_app_ssh.slug] = 1
+    operations: list[dict[str, Any] | None] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        operations.append(install_app_ssh.operation)
+
+    started = asyncio.get_running_loop().create_future()
+    started.set_result(None)
+    with (
+        patch.object(App, "watchdog_application", return_value=False),
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "start", return_value=started),
+    ):
+        await tasks._watchdog_app_application()
+
+    assert [
+        (operation["name"], operation["initiator"]) for operation in operations
+    ] == [(AppOperation.RESTARTING, AppOperationInitiator.WATCHDOG)]

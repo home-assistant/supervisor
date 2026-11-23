@@ -23,7 +23,7 @@ from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     ATTR_IGNORE_CONDITIONS,
     FILE_CONFIG_JOBS,
@@ -351,7 +351,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                 listener(job_data)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 _LOGGER.exception("Error in change listener for job %s", job.name)
-                capture_exception(err)
+                self.sys_create_task(async_capture_exception(err))
         if attribute.name == "done" and value is True:
             self._job_change_listeners.pop(job.uuid, None)
 

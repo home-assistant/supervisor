@@ -32,6 +32,7 @@ class FixupAppDisableBoot(FixupBase):
 
         # Disable boot on app
         app.boot = AppBoot.MANUAL
+        await app.save_persist()
 
     @property
     def suggestion(self) -> SuggestionType:

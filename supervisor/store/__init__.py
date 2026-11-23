@@ -133,10 +133,6 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             await self.data.update()
             await self._read_apps()
 
-            # Latest version and update available may have changed
-            for app in self.sys_apps.installed:
-                app.publish_status()
-
             # Notify Home Assistant so add-on update entities pick up the newly
             # loaded store data instead of waiting for the next scheduled poll.
             self.sys_homeassistant.websocket.supervisor_event(
@@ -358,3 +354,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         # remove
         for slug in del_apps:
             self.sys_apps.store.pop(slug)
+
+        # Latest version and update available may have changed
+        for app in self.sys_apps.installed:
+            app.publish_status()

@@ -108,6 +108,7 @@ SLUG_MAX_LENGTH = 60
 JOB_APP_MANAGER_BOOT = "app_manager_boot"
 JOB_APP_MANAGER_REPAIR = "app_manager_repair"
 JOB_APP_RESTART_AFTER_PROBLEM = "app_restart_after_problem"
+JOB_APP_WATCHDOG_APPLICATION = "tasks_watchdog_app_application"
 
 # Jobs which are an operation on the app they reference. The outermost one in a
 # job's chain is the operation, so a restart is not reported as stop and start.
@@ -120,6 +121,7 @@ OPERATION_INITIATOR_JOBS: dict[str, AppOperationInitiator] = {
     JOB_APP_MANAGER_BOOT: AppOperationInitiator.BOOT,
     JOB_APP_MANAGER_REPAIR: AppOperationInitiator.REPAIR,
     JOB_APP_RESTART_AFTER_PROBLEM: AppOperationInitiator.WATCHDOG,
+    JOB_APP_WATCHDOG_APPLICATION: AppOperationInitiator.WATCHDOG,
     JOB_FREEZE_ALL: AppOperationInitiator.BACKUP,
     JOB_FULL_BACKUP: AppOperationInitiator.BACKUP,
     JOB_FULL_RESTORE: AppOperationInitiator.RESTORE,

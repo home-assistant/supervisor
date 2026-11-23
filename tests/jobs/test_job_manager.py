@@ -272,7 +272,7 @@ async def test_job_change_listener_removed(coresys: CoreSys):
 
 
 async def test_job_change_listener_error(
-    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, capture_exception: Mock
 ):
     """Test an error in a job change listener does not break the job."""
     job = coresys.jobs.new_job("test_job_change_listener_error")
@@ -280,8 +280,10 @@ async def test_job_change_listener_error(
 
     with job.start():
         job.progress = 50
+    await coresys.block_till_done()
 
     assert job.done is True
+    capture_exception.assert_called()
     assert job.progress == 100
     assert "Error in change listener for job test_job_change_listener_error" in (
         caplog.text

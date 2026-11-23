@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import logging
 from typing import cast
 
-from ..apps.const import APP_UPDATE_CONDITIONS
+from ..apps.const import APP_UPDATE_CONDITIONS, JOB_APP_WATCHDOG_APPLICATION
 from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
 from ..const import ATTR_APP, ATTR_BACKUP, ATTR_TYPE, AppState
 from ..coresys import CoreSysAttributes
@@ -327,6 +327,7 @@ class Tasks(CoreSysAttributes):
         except ObserverError:
             _LOGGER.error("Observer watchdog reanimation failed!")
 
+    @Job(name=JOB_APP_WATCHDOG_APPLICATION, internal=True)
     async def _watchdog_app_application(self):
         """Check running state of the application and start if they is hangs."""
         for app in self.sys_apps.installed:

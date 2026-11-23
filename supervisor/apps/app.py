@@ -458,8 +458,13 @@ class App(AppModel):
         if not self._operation:
             return
 
+        progress: float | None = job_data[ATTR_PROGRESS]
+        # Job progress starts at 0, report it as unknown until the job reports any
+        if progress == 0 and self._operation[ATTR_PROGRESS] is None:
+            progress = None
+
         operation = self._operation | {
-            ATTR_PROGRESS: job_data[ATTR_PROGRESS] or None,
+            ATTR_PROGRESS: progress,
             ATTR_DONE: bool(job_data[ATTR_DONE]),
             ATTR_ERRORS: job_data[ATTR_ERRORS],
         }
