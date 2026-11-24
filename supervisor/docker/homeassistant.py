@@ -75,6 +75,18 @@ class DockerHomeAssistant(DockerInterface):
         """Return name of Docker container."""
         return HASS_DOCKER_NAME
 
+    async def container_uses_supervisor_token(self, token: str) -> bool:
+        """Check whether the existing Core container has the given token."""
+        if not (container := await self._get_container()):
+            return False
+
+        environment = dict(
+            entry.split("=", 1)
+            for entry in container.get("Config", {}).get("Env") or ()
+            if entry.startswith((f"{ENV_TOKEN}=", f"{ENV_TOKEN_OLD}="))
+        )
+        return (environment.get(ENV_TOKEN) or environment.get(ENV_TOKEN_OLD)) == token
+
     @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
