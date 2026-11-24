@@ -58,6 +58,14 @@ class CoreHTTPConfig:
     server_host: list[str]
 
 
+@dataclass(frozen=True, slots=True)
+class CoreContainer:
+    """Core container Supervisor talks to."""
+
+    id: str
+    socket_path: Path | None
+
+
 class HomeAssistantAPI(CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
@@ -69,6 +77,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         self._access_token: str | None = None
         self._access_token_expires: datetime | None = None
         self._token_lock: asyncio.Lock = asyncio.Lock()
+        self._container: CoreContainer | None = None
         self._unix_session: aiohttp.ClientSession | None = None
         self._core_connected: bool = False
         self._core_used_supervisor_socket: bool = False
@@ -99,31 +108,44 @@ class HomeAssistantAPI(CoreSysAttributes):
             return self.sys_config.path_run / SOCKET_NAME_CORE
         return self.sys_config.path_run / relative
 
+    async def bind_container(self, metadata: dict[str, Any] | None) -> None:
+        """Set the Core container to talk to, None once it is removed.
+
+        The socket path is read from the container's SUPERVISOR_CORE_API_SOCKET
+        env var, so it matches how that container was started, even by an
+        older Supervisor.
+        """
+        container: CoreContainer | None = None
+        if metadata:
+            socket_path: Path | None = None
+            for env in metadata.get("Config", {}).get("Env") or []:
+                name, _, value = env.partition("=")
+                if name == ENV_CORE_API_SOCKET:
+                    socket_path = self._supervisor_view_of_core_socket(value)
+            container = CoreContainer(metadata["Id"], socket_path)
+
+        if container == self._container:
+            return
+
+        self._container = container
+        self._core_connected = False
+        self._core_used_supervisor_socket = False
+        await self.close()
+
     @property
     def core_socket_path(self) -> Path | None:
-        """Return the running Core container's Unix socket path, None for TCP.
+        """Return the Core container's Unix socket path, None for TCP.
 
         Checks both version support and that the container was actually started
-        with the SUPERVISOR_CORE_API_SOCKET env var. The path is read from that
-        env var, so it always matches how the running container was started,
-        even when Core is still running with a container started by an older
-        Supervisor.
+        with the SUPERVISOR_CORE_API_SOCKET env var.
 
-        Raises HomeAssistantAPIError without container metadata, i.e. when no
-        Core container exists to connect to.
+        Raises HomeAssistantAPIError when no Core container exists to connect to.
         """
         if not self.supports_unix_socket:
             return None
-        instance = self.sys_homeassistant.core.instance
-        if not instance.attached:
-            raise HomeAssistantAPIError(
-                "Cannot determine Core connection mode: container metadata not available"
-            )
-        for env in instance.meta_config.get("Env", []):
-            name, _, value = env.partition("=")
-            if name == ENV_CORE_API_SOCKET:
-                return self._supervisor_view_of_core_socket(value)
-        return None
+        if not self._container:
+            raise HomeAssistantAPIError("Core container is not running")
+        return self._container.socket_path
 
     @property
     def core_used_supervisor_socket(self) -> bool:
@@ -140,10 +162,9 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     @property
     def use_unix_socket(self) -> bool:
-        """Return True if the running Core container is configured for Unix socket.
+        """Return True if the Core container is configured for Unix socket.
 
-        Raises HomeAssistantAPIError without container metadata, i.e. when no
-        Core container exists to connect to.
+        Raises HomeAssistantAPIError when no Core container exists to connect to.
         """
         return self.core_socket_path is not None
 
@@ -187,6 +208,9 @@ class HomeAssistantAPI(CoreSysAttributes):
         """Process Core container state changes."""
         if event.name != self.sys_homeassistant.core.instance.name:
             return
+        # A replaced container can still report its exit
+        if self._container and event.id != self._container.id:
+            return
 
         # A pending or failed healthcheck still means the process is up
         self._core_container_running = event.state in (
@@ -200,15 +224,13 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         self._core_connected = False
         self._core_used_supervisor_socket = False
-        if self._unix_session and not self._unix_session.closed:
-            await self._unix_session.close()
-            self._unix_session = None
 
     async def close(self) -> None:
         """Close the Unix socket session."""
-        if self._unix_session and not self._unix_session.closed:
-            await self._unix_session.close()
-            self._unix_session = None
+        # Detach first, a request during the close would create a new session
+        session, self._unix_session = self._unix_session, None
+        if session and not session.closed:
+            await session.close()
 
     async def _ensure_access_token(self) -> None:
         """Ensure there is a valid access token.

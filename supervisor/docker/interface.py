@@ -477,6 +477,7 @@ class DockerInterface(JobGroup, ABC):
                 docker_container = self.sys_docker.containers.container(self.name)
             if isinstance(docker_container, DockerContainer):
                 self._meta = await docker_container.show()
+                await self._container_changed(self._meta)
                 self.sys_docker.monitor.watch_container(self._meta)
 
                 state, exit_code = _container_state_from_model(self._meta)
@@ -561,6 +562,10 @@ class DockerInterface(JobGroup, ABC):
 
         # Store metadata
         self._meta = container_metadata
+        await self._container_changed(container_metadata)
+
+    async def _container_changed(self, metadata: dict[str, Any] | None) -> None:
+        """Handle a new container being attached or run, None once it is removed."""
 
     @Job(
         name="docker_interface_stop",
@@ -573,6 +578,8 @@ class DockerInterface(JobGroup, ABC):
             await self.sys_docker.stop_container(
                 self.name, self.timeout, remove_container
             )
+        if remove_container:
+            await self._container_changed(None)
 
     @Job(
         name="docker_interface_start",

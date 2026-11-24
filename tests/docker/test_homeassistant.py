@@ -19,6 +19,7 @@ from supervisor.docker.const import (
 )
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.manager import DockerAPI
+from supervisor.exceptions import HomeAssistantAPIError
 from supervisor.homeassistant.const import LANDINGPAGE
 
 from . import DEV_MOUNT
@@ -318,3 +319,60 @@ async def test_timeout(coresys: CoreSys, container: DockerContainer):
     }
     await coresys.homeassistant.core.instance.attach(AwesomeVersion("2024.3.0"))
     assert coresys.homeassistant.core.instance.timeout == 320
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_run_after_stop_uses_new_socket_path(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test a Core container replacing a stopped one is reached on its own socket."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    container.show.return_value |= {
+        "Id": "old",
+        "Config": {"Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"]},
+    }
+    await instance.attach(AwesomeVersion("2026.4.0"))
+    await instance.stop(remove_container=False)
+
+    # A request while Core is stopped still targets the existing container
+    old_session = api.session
+    assert old_session.connector.path == str(coresys.config.path_run / "core.sock")
+
+    new_container = {
+        "Id": "new",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+    }
+    with (
+        patch.object(DockerAPI, "run", return_value=new_container),
+        patch.object(DockerHomeAssistant, "is_running", return_value=False),
+    ):
+        await instance.run()
+
+    try:
+        assert old_session.closed
+        assert api.session.connector.path == str(
+            coresys.config.path_run / "core" / "core.sock"
+        )
+    finally:
+        await api.close()
+
+
+async def test_stop_and_remove_unbinds_core_api(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test removing the Core container leaves nothing to connect to."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    container.show.return_value |= {"Id": "old", "Config": {"Env": []}}
+    await instance.attach(AwesomeVersion("2026.4.0"))
+    assert api.use_unix_socket is False
+
+    await instance.stop()
+
+    with pytest.raises(HomeAssistantAPIError, match="Core container is not running"):
+        _ = api.use_unix_socket
