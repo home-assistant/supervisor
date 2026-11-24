@@ -957,7 +957,7 @@ async def test_watchdog_retries_after_failed_container_removed(
 
     def fail_start() -> None:
         next(actions_during_start)(install_app_ssh)
-        raise AppsError("Device does not exist")
+        raise AppsError("fail")
 
     async def fake_sleep(_delay: float) -> None:
         next(actions_during_sleep)(install_app_ssh)
@@ -1118,6 +1118,77 @@ async def test_watchdog_restarts_again_if_not_running(
     # App startup/healthcheck failures are not Supervisor errors
     capture_exception.assert_not_called()
     assert not [r for r in caplog.records if r.levelno >= logging.CRITICAL]
+
+
+@pytest.mark.parametrize(
+    ("checks", "expected_starts", "expected_sleeps"),
+    [
+        pytest.param(
+            [
+                (ContainerState.FAILED, ()),
+                (ContainerState.RUNNING, (ContainerState.FAILED,)),
+                (ContainerState.FAILED, ()),
+                (ContainerState.FAILED, ()),
+                (ContainerState.RUNNING, ()),
+            ],
+            2,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            id="crashed_during_check",
+        ),
+        pytest.param(
+            [
+                (ContainerState.FAILED, ()),
+                (ContainerState.RUNNING, (ContainerState.STOPPED,)),
+                (ContainerState.RUNNING, ()),
+            ],
+            1,
+            [],
+            id="stale_event_while_running",
+        ),
+    ],
+)
+async def test_watchdog_rechecks_state_on_racing_event(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    checks: list[tuple[ContainerState, tuple[ContainerState, ...]]],
+    expected_starts: int,
+    expected_sleeps: list[Any],
+) -> None:
+    """Test the watchdog re-checks state when an event arrives during current_state."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    check_iter = iter(checks)
+
+    async def mock_current_state() -> ContainerState:
+        state, racing_events = next(check_iter)
+        for racing_state in racing_events:
+            await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", racing_state)
+        return state
+
+    with (
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
+        patch.object(
+            DockerApp, "current_state", side_effect=mock_current_state
+        ) as current_state,
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
+    ):
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert current_state.await_count == len(checks)
+    assert start.await_count == expected_starts
+    assert sleep.await_args_list == expected_sleeps
 
 
 async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:

@@ -209,6 +209,7 @@ class App(AppModel):
         self._published_status: dict[str, Any] | None = None
         self._manual_stop: bool = False
         self._watchdog_restarting: bool = False
+        self._watchdog_event_pending: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._wait_for_startup_task: asyncio.Task | None = None
@@ -2061,12 +2062,15 @@ class App(AppModel):
         attempts = 0
         needs_backoff = False
         while True:
+            self._watchdog_event_pending = False
             state = await self.instance.current_state()
             if state in (
                 ContainerState.RUNNING,
                 ContainerState.HEALTHY,
                 ContainerState.STARTING,
             ):
+                if self._watchdog_event_pending:
+                    continue
                 return
 
             # Stopped by the user, watchdog turned off or uninstalled
@@ -2175,9 +2179,8 @@ class App(AppModel):
         if event.name != self.instance.name:
             return
 
-        # Skip watchdog if not enabled or manual stopped. A running restart
-        # checks the state itself and its own stop must not start another one.
-        if not self.watchdog or self._manual_stop or self._watchdog_restarting:
+        # Skip watchdog if not enabled or manual stopped
+        if not self.watchdog or self._manual_stop:
             return
 
         if event.state in [
@@ -2185,11 +2188,17 @@ class App(AppModel):
             ContainerState.STOPPED,
             ContainerState.UNHEALTHY,
         ]:
+            if self._watchdog_restarting:
+                # Re-check state before exiting in case this raced current_state()
+                self._watchdog_event_pending = True
+                return
+
             self._watchdog_restarting = True
             try:
                 await self._restart_after_problem()
             finally:
                 self._watchdog_restarting = False
+                self._watchdog_event_pending = False
 
     async def refresh_path_cache(self) -> None:
         """Refresh cache of existing paths."""
