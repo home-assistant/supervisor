@@ -16,6 +16,7 @@ from ..apps.validate import (
     SCHEMA_APP_TRANSLATIONS,
 )
 from ..const import (
+    ATTR_IMAGE,
     ATTR_LOCATION,
     ATTR_REPOSITORY,
     ATTR_SLUG,
@@ -31,6 +32,7 @@ from ..exceptions import ConfigurationFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import find_one_filetype, read_json_or_yaml_file
 from ..utils.json import read_json_file
+from ..validate import docker_image
 from .utils import extract_hash_from_path
 from .validate import SCHEMA_REPOSITORY_CONFIG
 
@@ -258,6 +260,20 @@ class StoreData(CoreSysAttributes):
                             SLUG_MAX_LENGTH,
                         )
                     continue
+
+                # Locally built apps derive their image name from the slug
+                if ATTR_IMAGE not in app:
+                    try:
+                        docker_image(f"{repository}/addon-{app[ATTR_SLUG]}".lower())
+                    except vol.Invalid:
+                        log = _LOGGER.warning if always_verbose else _LOGGER.debug
+                        log(
+                            "Can't read %s: slug %s is not usable as image name "
+                            "for a locally built app",
+                            app_config,
+                            app[ATTR_SLUG],
+                        )
+                        continue
 
                 # store
                 app[ATTR_REPOSITORY] = repository

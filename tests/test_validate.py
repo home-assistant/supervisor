@@ -35,6 +35,11 @@ IMAGE_NAME_GOOD = [
     "ghcr.io/blakeblackshear/frigate",
     "index.docker.io/homeassistant/amd64-homeassistant",
     "[2001:db8::1]/myimage",
+    "local/amd64-addon-foo.bar",
+    "local/amd64-addon-foo_bar",
+    "local/amd64-addon-foo__bar",
+    "local/amd64-addon-foo--bar",
+    "local/{arch}-addon-{arch}",
 ]
 IMAGE_NAME_BAD = [
     "ghcr.io/home-assistant/homeassistant:123",
@@ -48,6 +53,17 @@ IMAGE_NAME_BAD = [
     "myreg.local:8080/homeassistant:1.2.3",
     "myreg.local:port/homeassistant",
     "-badreg-.local/homeassistant",
+    "local/amd64-addon-foo..bar",
+    "local/amd64-addon-foo._bar",
+    "local/amd64-addon-foo___bar",
+    "local/amd64-addon-foo-_bar",
+    "local/amd64-addon-_foo",
+    "local/amd64-addon-foo-",
+    "local/amd64-addon-foo.",
+    "local/amd64-addon-foo_",
+    "local/{arch",
+    "local/arch}",
+    "local/{}",
 ]
 
 
