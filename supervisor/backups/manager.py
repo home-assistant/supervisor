@@ -40,6 +40,12 @@ from ..utils.sentry import async_capture_exception
 from .backup import Backup, BackupLocation
 from .const import (
     DEFAULT_FREEZE_TIMEOUT,
+    JOB_FREEZE_ALL,
+    JOB_FULL_BACKUP,
+    JOB_FULL_RESTORE,
+    JOB_PARTIAL_BACKUP,
+    JOB_PARTIAL_RESTORE,
+    JOB_THAW_ALL,
     LOCATION_CLOUD_BACKUP,
     LOCATION_TYPE,
     BackupJobStage,
@@ -50,9 +56,6 @@ from .utils import create_slug
 from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-JOB_FULL_RESTORE = "backup_manager_full_restore"
-JOB_PARTIAL_RESTORE = "backup_manager_partial_restore"
 
 
 class BackupManager(FileConfiguration, JobGroup):
@@ -597,7 +600,7 @@ class BackupManager(FileConfiguration, JobGroup):
             await self.sys_core.set_state(CoreState.RUNNING)
 
     @Job(
-        name="backup_manager_full_backup",
+        name=JOB_FULL_BACKUP,
         conditions=[JobCondition.RUNNING],
         on_condition=BackupJobError,
         cleanup=False,
@@ -649,7 +652,7 @@ class BackupManager(FileConfiguration, JobGroup):
         return backup
 
     @Job(
-        name="backup_manager_partial_backup",
+        name=JOB_PARTIAL_BACKUP,
         conditions=[JobCondition.RUNNING],
         on_condition=BackupJobError,
         cleanup=False,
@@ -995,7 +998,7 @@ class BackupManager(FileConfiguration, JobGroup):
         return success
 
     @Job(
-        name="backup_manager_freeze_all",
+        name=JOB_FREEZE_ALL,
         conditions=[JobCondition.RUNNING],
         on_condition=BackupJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
@@ -1027,7 +1030,7 @@ class BackupManager(FileConfiguration, JobGroup):
         await asyncio.gather(*[app.begin_backup() for app in running_apps])
 
     @Job(
-        name="backup_manager_thaw_all",
+        name=JOB_THAW_ALL,
         conditions=[JobCondition.FROZEN],
         on_condition=BackupJobError,
     )

@@ -29,7 +29,7 @@ class FixupAppExecuteRemove(FixupBase):
 
         # Remove app
         _LOGGER.info("Remove app: %s", suggestion.reference)
-        await app.uninstall(remove_config=False)
+        await self.sys_apps.uninstall(app.slug)
 
     @property
     def suggestion(self) -> SuggestionType:

@@ -207,11 +207,13 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
         ROLE_DEFAULT: re.compile(
             r"^/v2(?:"
             r"|/.+/info"
+            r"|/apps(?:/" + RE_SLUG + r")?/status"
             r")$"
         ),
         ROLE_HOMEASSISTANT: re.compile(
             r"^/v2(?:"
             r"|/.+/info"
+            r"|/apps(?:/" + RE_SLUG + r")?/status"
             r"|/core/.+"
             r"|/homeassistant/.+"
             r")$"
@@ -219,12 +221,14 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
         ROLE_BACKUP: re.compile(
             r"^/v2(?:"
             r"|/.+/info"
+            r"|/apps(?:/" + RE_SLUG + r")?/status"
             r"|/backups.*"
             r")$"
         ),
         ROLE_MANAGER: re.compile(
             r"^/v2(?:"
             r"|/.+/info"
+            r"|/apps(?:/" + RE_SLUG + r")?/status"
             r"|/apps(?:/" + RE_SLUG + r"/(?!security).+)?"
             r"|/audio/.+"
             r"|/auth/cache"

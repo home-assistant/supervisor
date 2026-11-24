@@ -1,7 +1,7 @@
 """Init file for Supervisor apps."""
 
 import asyncio
-from collections.abc import Awaitable, Generator
+from collections.abc import Awaitable, Callable, Generator
 from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import datetime
@@ -30,15 +30,22 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
+    ATTR_DONE,
+    ATTR_ERRORS,
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
+    ATTR_INITIATOR,
+    ATTR_JOB_ID,
     ATTR_LOCATION,
+    ATTR_NAME,
     ATTR_NETWORK,
+    ATTR_OPERATION,
     ATTR_OPTIONS,
     ATTR_PORTS,
+    ATTR_PROGRESS,
     ATTR_PROTECTED,
     ATTR_SCHEMA,
     ATTR_SLUG,
@@ -46,9 +53,11 @@ from ..const import (
     ATTR_SYSTEM,
     ATTR_SYSTEM_MANAGED,
     ATTR_SYSTEM_MANAGED_CONFIG_ENTRY,
+    ATTR_UPDATE_AVAILABLE,
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_VERSION_TIMESTAMP,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
@@ -97,10 +106,12 @@ from ..exceptions import (
     DockerStatsTimeoutError,
     HassioArchNotFound,
     HostAppArmorError,
+    JobNotFound,
     StoreAppNotFoundError,
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent
+from ..jobs import SupervisorJob
 from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
@@ -112,11 +123,16 @@ from ..utils.dt import utc_from_timestamp
 from ..utils.json import read_json_file, write_json_file
 from ..utils.sentry import async_capture_exception
 from .const import (
+    JOB_APP_RESTART_AFTER_PROBLEM,
+    OPERATION_INITIATOR_JOBS,
+    OPERATION_JOBS,
     WATCHDOG_MAX_ATTEMPTS,
     WATCHDOG_RETRY_SECONDS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
     AppBackupMode,
+    AppOperation,
+    AppOperationInitiator,
     MappingType,
 )
 from .model import AppModel, Data
@@ -184,6 +200,12 @@ class App(AppModel):
         # Set while our stop request to docker is in flight; docker has no such state.
         # Managed by ``stopping``.
         self._stopping: bool = False
+        # Job of the operation in progress and the operation as last reported
+        self._operation_job: SupervisorJob | None = None
+        self._operation: dict[str, Any] | None = None
+        self._remove_operation_listener: Callable[[], None] | None = None
+        # Status last sent to Home Assistant
+        self._published_status: dict[str, Any] | None = None
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
@@ -305,17 +327,17 @@ class App(AppModel):
             ):
                 self.sys_resolution.dismiss_issue(access_issue)
 
-        # Core versions predating the v2 API do not know STOPPING
-        if not self.sys_config.feature_flags.get(
+        if self.sys_config.feature_flags.get(
             FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
         ):
-            new_state, old_state = raw_state, old_raw_state
-        if new_state != old_state:
+            self.publish_status()
+        # Core versions predating the v2 API do not know STOPPING
+        elif raw_state != old_raw_state:
             self.sys_homeassistant.websocket.supervisor_event_custom(
                 WSEvent.APP,
                 {
                     ATTR_SLUG: self.slug,
-                    ATTR_STATE: new_state,
+                    ATTR_STATE: raw_state,
                 },
             )
 
@@ -333,6 +355,128 @@ class App(AppModel):
         finally:
             # Docker can answer before its die event arrives, which then ends STOPPING
             self._stopping = False
+
+    @property
+    def operation(self) -> dict[str, Any] | None:
+        """Return the operation in progress on the app, if any."""
+        return self._operation
+
+    @property
+    def status(self) -> dict[str, Any]:
+        """Return a summary of the app's state, settings and operation."""
+        status: dict[str, Any] = {
+            ATTR_SLUG: self.slug,
+            ATTR_STATE: self.state,
+            ATTR_OPERATION: self.operation,
+        }
+        if self.slug in self.sys_apps.data.user:
+            return status | {
+                ATTR_NAME: self.name,
+                ATTR_VERSION: self.version,
+                ATTR_VERSION_LATEST: self.latest_version,
+                ATTR_UPDATE_AVAILABLE: self.need_update,
+                ATTR_BOOT: self.boot,
+                ATTR_WATCHDOG: self.watchdog,
+                ATTR_INGRESS_PANEL: self.ingress_panel,
+                ATTR_PROTECTED: self.protected,
+                ATTR_AUTO_UPDATE: self.auto_update,
+            }
+
+        # Not installed yet or anymore, only the store knows about it
+        store = self.app_store
+        return status | {
+            ATTR_NAME: store.name if store else None,
+            ATTR_VERSION: None,
+            ATTR_VERSION_LATEST: store.latest_version if store else None,
+            ATTR_UPDATE_AVAILABLE: False,
+            ATTR_BOOT: None,
+            ATTR_WATCHDOG: None,
+            ATTR_INGRESS_PANEL: None,
+            ATTR_PROTECTED: None,
+            ATTR_AUTO_UPDATE: None,
+        }
+
+    def publish_status(self) -> None:
+        """Send the app's status to Home Assistant if it changed since last sent."""
+        if not self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            return
+        if (status := self.status) == self._published_status:
+            return
+        self._published_status = status
+        self.sys_homeassistant.websocket.supervisor_event_custom(WSEvent.APP, status)
+
+    def _parent_job(self, job: SupervisorJob) -> SupervisorJob | None:
+        """Return the parent of a job if it has one."""
+        if job.parent_id:
+            with suppress(JobNotFound):
+                return self.sys_jobs.get_job(job.parent_id)
+        return None
+
+    def _on_lock_acquired(self, job: SupervisorJob) -> None:
+        """Track the operation which the job taking the app's lock is a part of."""
+        operation_job: SupervisorJob | None = None
+        root = job
+        current: SupervisorJob | None = job
+        while current:
+            if current.reference == self.slug and current.name in OPERATION_JOBS:
+                operation_job = current
+            root = current
+            current = self._parent_job(current)
+
+        if not operation_job or operation_job is self._operation_job:
+            return
+
+        # The lock holder wins if another operation slipped in between its steps
+        if self._remove_operation_listener:
+            self._remove_operation_listener()
+
+        self._operation_job = operation_job
+        self._operation = {
+            ATTR_NAME: OPERATION_JOBS[cast(str, operation_job.name)],
+            ATTR_INITIATOR: (
+                AppOperationInitiator.API
+                if root is operation_job
+                else OPERATION_INITIATOR_JOBS.get(
+                    cast(str, root.name), AppOperationInitiator.SUPERVISOR
+                )
+            ),
+            ATTR_JOB_ID: operation_job.uuid,
+            # Null until the job reports progress, so clients can tell it is unknown
+            ATTR_PROGRESS: round(operation_job.progress, 1) or None,
+            ATTR_DONE: False,
+            ATTR_ERRORS: [],
+        }
+        self._remove_operation_listener = self.sys_jobs.add_job_change_listener(
+            operation_job, self._operation_job_changed
+        )
+        self.publish_status()
+
+    def _operation_job_changed(self, job_data: dict[str, Any]) -> None:
+        """Update the operation in progress from a change to its job."""
+        if not self._operation:
+            return
+
+        progress: float | None = job_data[ATTR_PROGRESS]
+        # Job progress starts at 0, report it as unknown until the job reports any
+        if progress == 0 and self._operation[ATTR_PROGRESS] is None:
+            progress = None
+
+        operation = self._operation | {
+            ATTR_PROGRESS: progress,
+            ATTR_DONE: bool(job_data[ATTR_DONE]),
+            ATTR_ERRORS: job_data[ATTR_ERRORS],
+        }
+        self._operation = operation
+        self.publish_status()
+
+        # Job manager drops the listener of a done job
+        if operation[ATTR_DONE]:
+            self._operation_job = None
+            self._operation = None
+            self._remove_operation_listener = None
+            self.publish_status()
 
     @property
     def in_progress(self) -> bool:
@@ -933,6 +1077,7 @@ class App(AppModel):
     async def save_persist(self) -> None:
         """Save data of app."""
         await self.sys_apps.data.save_data()
+        self.publish_status()
 
     async def watchdog_application(self) -> bool:
         """Return True if application is running."""
@@ -1419,7 +1564,7 @@ class App(AppModel):
         )
 
     @Job(
-        name="app_start",
+        name=AppOperation.STARTING.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1484,7 +1629,7 @@ class App(AppModel):
         return self._wait_for_startup_task
 
     @Job(
-        name="app_stop",
+        name=AppOperation.STOPPING.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1499,7 +1644,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="app_restart",
+        name=AppOperation.RESTARTING.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1632,7 +1777,7 @@ class App(AppModel):
         return False
 
     @Job(
-        name="app_backup",
+        name=AppOperation.BACKING_UP.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1896,7 +2041,7 @@ class App(AppModel):
         return wait_for_start
 
     @Job(
-        name="app_restart_after_problem",
+        name=JOB_APP_RESTART_AFTER_PROBLEM,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         on_condition=AppsJobError,
