@@ -1004,3 +1004,77 @@ async def test_load_apply_changes_fails(
         )
         await dns_manager_service.ping()
     notify.assert_called_once()
+
+
+def _dns_config(
+    interface: str | None, priority: int, nameservers: list[str], *, vpn: bool = False
+) -> dict[str, Variant]:
+    """Return a NetworkManager DNS configuration entry."""
+    config = {
+        "nameservers": Variant("as", nameservers),
+        "priority": Variant("i", priority),
+        "vpn": Variant("b", vpn),
+    }
+    if interface:
+        config["interface"] = Variant("s", interface)
+    return config
+
+
+@pytest.mark.parametrize(
+    ("configuration", "expected"),
+    [
+        pytest.param(
+            [_dns_config("eth0", 100, ["10.2.1.53", "10.2.1.1"])],
+            ["10.2.1.53", "10.2.1.1"],
+            id="keep-order-within-configuration",
+        ),
+        pytest.param(
+            [
+                _dns_config("eth0.20", 100, ["192.168.180.1"]),
+                _dns_config("eth0.10", 100, ["192.168.144.9", "192.168.144.1"]),
+            ],
+            ["192.168.144.9", "192.168.144.1", "192.168.180.1"],
+            id="equal-priority-by-interface",
+        ),
+        pytest.param(
+            [
+                _dns_config("eth0", 100, ["192.168.1.1"]),
+                _dns_config("wlan0", 50, ["192.168.2.1"]),
+            ],
+            ["192.168.2.1", "192.168.1.1"],
+            id="priority-first",
+        ),
+        pytest.param(
+            [
+                _dns_config("eth0", 100, ["fd00::2", "fd00::1"]),
+                _dns_config("eth0", 100, ["192.168.1.1"]),
+            ],
+            ["192.168.1.1", "fd00::2", "fd00::1"],
+            id="ipv4-before-ipv6",
+        ),
+        pytest.param(
+            [
+                _dns_config("eth1", 100, ["192.168.1.2", "192.168.1.1"]),
+                _dns_config("eth0", 100, ["192.168.1.1"]),
+                _dns_config(None, 100, ["192.168.3.1"]),
+                _dns_config("tun0", 50, ["10.8.0.1"], vpn=True),
+            ],
+            ["192.168.3.1", "192.168.1.1", "192.168.1.2"],
+            id="duplicates-vpn-and-missing-interface",
+        ),
+    ],
+)
+async def test_dns_servers_order(
+    coresys: CoreSys,
+    dns_manager_service: DnsManagerService,
+    configuration: list[dict[str, Variant]],
+    expected: list[str],
+):
+    """Test DNS servers are ordered stably without reordering nameservers."""
+    await coresys.host.network.load()
+
+    with patch.object(coresys.plugins.dns, "notify_locals_changed"):
+        dns_manager_service.emit_properties_changed({"Configuration": configuration})
+        await dns_manager_service.ping()
+
+    assert coresys.host.network.dns_servers == expected
