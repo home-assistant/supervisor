@@ -229,7 +229,7 @@ async def test_auth_repeated_login_logged_once(
 ):
     """Test a repeated login and its background refresh do not log at INFO."""
     del coresys.auth._backend_login
-    app = MagicMock()
+    app = MagicMock(slug="test_app")
     mock_api_state.return_value = True
     make_request = MagicMock(
         side_effect=lambda *args, **kwargs: MockResponse(status=200, text="{}")
@@ -246,7 +246,7 @@ async def test_auth_repeated_login_logged_once(
         record.getMessage()
         for record in caplog.records
         if record.name == "supervisor.auth" and record.levelno >= logging.INFO
-    ] == ["Successful login for 'username'"]
+    ] == ["Successful login from 'test_app' for 'username'"]
 
 
 @pytest.mark.parametrize(
@@ -265,7 +265,7 @@ async def test_auth_changed_login_logged_at_info(
 ):
     """Test a changed login logs at INFO and the next unchanged one at debug."""
     del coresys.auth._backend_login
-    app = MagicMock()
+    app = MagicMock(slug="test_app")
     mock_api_state.return_value = True
     await coresys.auth._update_cache("username", cached_password, cached_group_ids)
     make_request = MagicMock(
@@ -284,7 +284,7 @@ async def test_auth_changed_login_logged_at_info(
     assert [
         record.levelno
         for record in caplog.records
-        if record.getMessage() == "Successful login for 'username'"
+        if record.getMessage() == "Successful login from 'test_app' for 'username'"
     ] == [logging.INFO, logging.DEBUG]
     assert coresys.auth._check_cache("username", "password") == LoginResult(
         group_ids=["system-admin"]

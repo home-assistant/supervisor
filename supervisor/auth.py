@@ -178,12 +178,18 @@ class Auth(FileConfiguration, CoreSysAttributes):
                     # Every cache hit re-validates in the background, so an
                     # unchanged login is routine; log only new or changed ones
                     if await self._update_cache(username, password, group_ids):
-                        _LOGGER.info("Successful login for '%s'", username)
+                        _LOGGER.info(
+                            "Successful login from '%s' for '%s'", app.slug, username
+                        )
                     else:
-                        _LOGGER.debug("Successful login for '%s'", username)
+                        _LOGGER.debug(
+                            "Successful login from '%s' for '%s'", app.slug, username
+                        )
                     return LoginResult(group_ids=group_ids)
 
-                _LOGGER.warning("Unauthorized login for '%s'", username)
+                _LOGGER.warning(
+                    "Unauthorized login from '%s' for '%s'", app.slug, username
+                )
                 await self._dismatch_cache(username, password)
                 return None
         except HomeAssistantAuthError:
