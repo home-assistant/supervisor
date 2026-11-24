@@ -9,13 +9,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientSession, UnixConnector, web
 from aiohttp.test_utils import TestClient, make_mocked_request
+from awesomeversion import AwesomeVersion
 import pytest
 import urllib3
 
 from supervisor.api import RestAPI
 from supervisor.api.middleware.security import FILTERS
 from supervisor.apps.app import App
-from supervisor.const import REQUEST_FROM, ROLE_ALL, CoreState
+from supervisor.const import REQUEST_FROM, ROLE_ALL, CoreState, UpdateChannel
 from supervisor.coresys import CoreSys, CoreSysAttributes
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
@@ -776,7 +777,19 @@ async def test_dropped_connection_rejected(
         pytest.param(
             [("app", "/addons/self/info")], "core", [], id="core-after-app-socket"
         ),
-        pytest.param([("core", "/addons/self/info")], "app", [], id="app"),
+        pytest.param(
+            [("core", "/addons/self/info")],
+            "app",
+            [
+                Issue(
+                    IssueType.DEPRECATED_TCP_API_REQUEST,
+                    ContextType.ADDON,
+                    "local_example",
+                    {"version": "1.2.0"},
+                )
+            ],
+            id="app",
+        ),
     ],
 )
 async def test_tcp_api_request_repair(
@@ -810,3 +823,101 @@ async def test_tcp_api_request_repair_once(call_api: CallAPI, coresys: CoreSys):
         "/supervisor/info",
         "/core/info",
     ]
+
+
+@pytest.mark.parametrize(
+    ("repository", "channel", "dev", "raised"),
+    [
+        pytest.param("local", UpdateChannel.STABLE, False, True, id="local"),
+        pytest.param("a0d7b954", UpdateChannel.STABLE, False, False, id="store"),
+        pytest.param("a0d7b954", UpdateChannel.DEV, False, True, id="dev-channel"),
+        pytest.param("a0d7b954", UpdateChannel.STABLE, True, True, id="dev-mode"),
+    ],
+)
+async def test_app_tcp_api_request_repair(
+    call_api: CallAPI,
+    coresys: CoreSys,
+    install_app_example: App,
+    monkeypatch: pytest.MonkeyPatch,
+    repository: str,
+    channel: UpdateChannel,
+    dev: bool,
+    raised: bool,
+):
+    """Test an app's token over TCP raises a repair only for its developer."""
+    install_app_example.data["repository"] = repository
+    coresys.updater.channel = channel
+    monkeypatch.setenv("SUPERVISOR_DEV", "1" if dev else "0")
+
+    with patch("supervisor.api.middleware.security._LOGGER") as logger:
+        status, _ = await call_api("token", "app", "get", "/addons/self/info")
+
+    assert status == 200
+    assert (
+        Issue(
+            IssueType.DEPRECATED_TCP_API_REQUEST,
+            ContextType.ADDON,
+            "local_example",
+            {"version": "1.2.0"},
+        )
+        in coresys.resolution.issues
+    ) is raised
+    log = logger.warning if raised else logger.debug
+    tcp_logs = [call.args for call in log.call_args_list if "TCP" in call.args[0]]
+    assert len(tcp_logs) == 1
+    assert tcp_logs[0][1] == "local_example"
+    assert "app developer" in tcp_logs[0][0]
+
+
+async def test_app_tcp_api_request_repair_once(call_api: CallAPI, coresys: CoreSys):
+    """Test an app's TCP use is reported once per boot, not again once dismissed."""
+    with patch("supervisor.api.middleware.security._LOGGER") as logger:
+        await call_api("token", "app", "get", "/addons/self/info")
+        coresys.resolution.dismiss_issue(coresys.resolution.issues[0])
+        await call_api("token", "app", "get", "/addons/self/options/config")
+
+    assert coresys.resolution.issues == []
+    logger.warning.assert_called_once()
+
+
+async def test_app_tcp_api_request_repair_per_version(
+    call_api: CallAPI, coresys: CoreSys, install_app_example: App
+):
+    """Test an update that still uses TCP is reported again."""
+    await call_api("token", "app", "get", "/addons/self/info")
+    install_app_example.persist["version"] = AwesomeVersion("1.3.0")
+    await call_api("token", "app", "get", "/addons/self/info")
+
+    assert [issue.reference_extra for issue in coresys.resolution.issues] == [
+        {"version": "1.2.0"},
+        {"version": "1.3.0"},
+    ]
+
+
+async def test_app_tcp_api_request_repair_after_dev_channel(
+    call_api: CallAPI, coresys: CoreSys, install_app_example: App
+):
+    """Test switching to the dev channel raises the repair on the next request."""
+    install_app_example.data["repository"] = "a0d7b954"
+    await call_api("token", "app", "get", "/addons/self/info")
+    assert coresys.resolution.issues == []
+
+    coresys.updater.channel = UpdateChannel.DEV
+    await call_api("token", "app", "get", "/addons/self/info")
+
+    assert coresys.resolution.issues == [
+        Issue(
+            IssueType.DEPRECATED_TCP_API_REQUEST,
+            ContextType.ADDON,
+            "local_example",
+            {"version": "1.2.0"},
+        )
+    ]
+
+
+async def test_app_socket_request_no_repair(call_api: CallAPI, coresys: CoreSys):
+    """Test an app calling over its socket raises no repair."""
+    status, _ = await call_api("socket", "app", "get", "/addons/self/info")
+
+    assert status == 200
+    assert coresys.resolution.issues == []
