@@ -247,3 +247,45 @@ async def test_auth_repeated_login_logged_once(
         for record in caplog.records
         if record.name == "supervisor.auth" and record.levelno >= logging.INFO
     ] == ["Successful login for 'username'"]
+
+
+@pytest.mark.parametrize(
+    ("cached_password", "cached_group_ids"),
+    [
+        pytest.param("old", ["system-admin"], id="password_changed"),
+        pytest.param("password", [], id="groups_changed"),
+    ],
+)
+async def test_auth_changed_login_logged_at_info(
+    coresys: CoreSys,
+    mock_api_state: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+    cached_password: str,
+    cached_group_ids: list[str],
+):
+    """Test a changed login logs at INFO and the next unchanged one at debug."""
+    del coresys.auth._backend_login
+    app = MagicMock()
+    mock_api_state.return_value = True
+    await coresys.auth._update_cache("username", cached_password, cached_group_ids)
+    make_request = MagicMock(
+        side_effect=lambda *args, **kwargs: MockResponse(
+            status=200, text='{"group_ids": ["system-admin"]}'
+        )
+    )
+    caplog.set_level(logging.DEBUG, logger="supervisor.auth")
+
+    with patch.object(coresys.homeassistant.api, "make_request", make_request):
+        for _ in range(2):
+            assert await coresys.auth.check_login(app, "username", "password")
+            await asyncio.gather(*coresys.auth._running.values())
+
+    assert make_request.call_count == 2
+    assert [
+        record.levelno
+        for record in caplog.records
+        if record.getMessage() == "Successful login for 'username'"
+    ] == [logging.INFO, logging.DEBUG]
+    assert coresys.auth._check_cache("username", "password") == LoginResult(
+        group_ids=["system-admin"]
+    )
