@@ -27,6 +27,7 @@ class HomeAssistantAPIRole(StrEnum):
     """Core group of the user an app with Core API access calls Core as."""
 
     ADMIN = "admin"
+    USER = "user"
 
 
 class MappingType(StrEnum):
