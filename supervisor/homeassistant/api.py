@@ -147,27 +147,40 @@ class HomeAssistantAPI(CoreSysAttributes):
         """
         return self.core_socket_path is not None
 
-    @property
-    def session(self) -> aiohttp.ClientSession:
+    async def get_session(self) -> aiohttp.ClientSession:
         """Return session for Core communication.
 
-        Uses a Unix socket session when the installed Core version supports it,
-        otherwise falls back to the default TCP websession. If the socket does
-        not exist yet (e.g. during Core startup), requests will fail with a
+        Uses a Unix socket session when the running Core container is configured
+        for it, otherwise falls back to the default TCP websession. If the socket
+        does not exist yet (e.g. during Core startup), requests will fail with a
         connection error handled by the caller.
+
+        Raises HomeAssistantAPIError without container metadata.
         """
-        if not self.use_unix_socket:
+        if (socket_path := self.core_socket_path) is None:
             return self.sys_websession
 
-        if self._unix_session is None or self._unix_session.closed:
-            # Unlike Core's IP over TCP, "localhost" lets a real jar store cookies
-            # from any Core view and replay them on every later request
-            self._unix_session = aiohttp.ClientSession(
-                connector=aiohttp.UnixConnector(path=str(self.core_socket_path)),
-                cookie_jar=aiohttp.DummyCookieJar(),
-                headers={hdrs.USER_AGENT: SERVER_SOFTWARE},
-            )
-        return self._unix_session
+        old_session = self._unix_session
+        # A recreated container can use another socket path without a stop event
+        if (
+            old_session
+            and not old_session.closed
+            and isinstance(connector := old_session.connector, aiohttp.UnixConnector)
+            and connector.path == str(socket_path)
+        ):
+            return old_session
+
+        # Unlike Core's IP over TCP, "localhost" lets a real jar store cookies
+        # from any Core view and replay them on every later request
+        session = aiohttp.ClientSession(
+            connector=aiohttp.UnixConnector(path=str(socket_path)),
+            cookie_jar=aiohttp.DummyCookieJar(),
+            headers={hdrs.USER_AGENT: SERVER_SOFTWARE},
+        )
+        self._unix_session = session
+        if old_session:
+            await old_session.close()
+        return session
 
     @property
     def api_url(self) -> str:
@@ -200,15 +213,14 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         self._core_connected = False
         self._core_used_supervisor_socket = False
-        if self._unix_session and not self._unix_session.closed:
-            await self._unix_session.close()
-            self._unix_session = None
+        await self.close()
 
     async def close(self) -> None:
         """Close the Unix socket session."""
-        if self._unix_session and not self._unix_session.closed:
-            await self._unix_session.close()
+        # Detach first so a caller during the close gets a new session
+        if session := self._unix_session:
             self._unix_session = None
+            await session.close()
 
     async def _ensure_access_token(self) -> None:
         """Ensure there is a valid access token.
@@ -283,14 +295,14 @@ class HomeAssistantAPI(CoreSysAttributes):
         """
         try:
             if self.use_unix_socket:
-                return await WSClient.connect(self.session, self.ws_url)
+                return await WSClient.connect(await self.get_session(), self.ws_url)
 
             for attempt in (1, 2):
                 try:
                     await self._ensure_access_token()
                     assert self._access_token
                     return await WSClient.connect_with_auth(
-                        self.session, self.ws_url, self._access_token
+                        await self.get_session(), self.ws_url, self._access_token
                     )
                 except HomeAssistantAuthError:
                     self._access_token = None
@@ -371,7 +383,8 @@ class HomeAssistantAPI(CoreSysAttributes):
                 if not self.use_unix_socket:
                     await self._ensure_access_token()
                     headers[hdrs.AUTHORIZATION] = f"Bearer {self._access_token}"
-                async with self.session.request(
+                session = await self.get_session()
+                async with session.request(
                     method,
                     url,
                     data=data,

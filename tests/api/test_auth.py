@@ -2,7 +2,7 @@
 
 import asyncio
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp.hdrs import WWW_AUTHENTICATE
 from aiohttp.test_utils import TestClient
@@ -164,10 +164,9 @@ async def test_password_reset_supervisor_rejected_by_core(
     with (
         patch.object(type(coresys.homeassistant.api), "use_unix_socket", True),
         patch.object(
-            type(coresys.homeassistant.api),
-            "session",
-            new_callable=PropertyMock,
-            return_value=websession,
+            coresys.homeassistant.api,
+            "get_session",
+            AsyncMock(return_value=websession),
         ),
     ):
         resp = await api_client.post(
@@ -304,10 +303,9 @@ async def test_auth_supervisor_rejected_by_core(
     with (
         patch.object(type(coresys.homeassistant.api), "use_unix_socket", True),
         patch.object(
-            type(coresys.homeassistant.api),
-            "session",
-            new_callable=PropertyMock,
-            return_value=websession,
+            coresys.homeassistant.api,
+            "get_session",
+            AsyncMock(return_value=websession),
         ),
         patch.object(coresys.homeassistant.api, "check_api_state", return_value=True),
     ):

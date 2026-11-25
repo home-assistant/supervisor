@@ -2,7 +2,7 @@
 
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePath
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -173,7 +173,7 @@ async def test_unix_session_uses_core_socket_path(coresys: CoreSys):
     coresys.homeassistant.core.instance._meta = {
         "Config": {"Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]}
     }
-    session = coresys.homeassistant.api.session
+    session = await coresys.homeassistant.api.get_session()
     try:
         assert isinstance(session.connector, aiohttp.UnixConnector)
         assert session.connector.path == str(
@@ -183,6 +183,60 @@ async def test_unix_session_uses_core_socket_path(coresys: CoreSys):
         assert session.headers[aiohttp.hdrs.USER_AGENT] == SERVER_SOFTWARE
     finally:
         await coresys.homeassistant.api.close()
+
+
+CORE_SOCKET_ENV_OLD = "SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"
+CORE_SOCKET_ENV_NEW = "SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"
+
+
+async def test_unix_session_recreated_on_socket_path_change(coresys: CoreSys):
+    """Test a recreated Core container with another socket path gets a new session."""
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    # pylint: disable-next=protected-access
+    instance._meta = {"Config": {"Env": [CORE_SOCKET_ENV_OLD]}}
+    old_session = await api.get_session()
+    assert await api.get_session() is old_session
+
+    # Container recreated without a stop event, e.g. update of a stopped Core
+    # pylint: disable-next=protected-access
+    instance._meta = {"Config": {"Env": [CORE_SOCKET_ENV_NEW]}}
+    try:
+        new_session = await api.get_session()
+        assert new_session is not old_session
+        assert old_session.closed
+        assert isinstance(new_session.connector, aiohttp.UnixConnector)
+        assert new_session.connector.path == str(
+            coresys.config.path_run / "core" / "core.sock"
+        )
+    finally:
+        await api.close()
+
+
+async def test_unix_session_requested_during_close(coresys: CoreSys):
+    """Test a session requested while the old one closes is kept, not orphaned."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.core.instance._meta = {
+        "Config": {"Env": [CORE_SOCKET_ENV_NEW]}
+    }
+    old_session = await api.get_session()
+    sessions: list[aiohttp.ClientSession] = []
+
+    async def close_with_concurrent_request() -> None:
+        sessions.append(await api.get_session())
+
+    with patch.object(old_session, "close", side_effect=close_with_concurrent_request):
+        await api.container_state_changed(core_state_event(ContainerState.STOPPED))
+
+    try:
+        assert sessions[0] is not old_session
+        assert await api.get_session() is sessions[0]
+    finally:
+        await api.close()
+        await old_session.close()
 
 
 # --- api_url / ws_url ---
@@ -747,9 +801,7 @@ async def test_make_request_unix_socket_401_raises(
 
     with (
         patch.object(type(api), "use_unix_socket", True),
-        patch.object(
-            type(api), "session", new_callable=PropertyMock, return_value=session
-        ),
+        patch.object(api, "get_session", AsyncMock(return_value=session)),
         pytest.raises(HomeAssistantAuthError),
     ):
         async with api.make_request("get", "api/test"):
@@ -764,19 +816,27 @@ async def test_make_request_unix_socket_401_raises(
 
 async def test_connect_websocket_unix(coresys: CoreSys):
     """Test connect_websocket uses WSClient.connect for Unix socket."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.core.instance._meta = {
+        "Config": {"Env": [CORE_SOCKET_ENV_NEW]}
+    }
     mock_ws_client = MagicMock()
-    with (
-        patch.object(type(coresys.homeassistant.api), "use_unix_socket", True),
-        patch(
+    try:
+        with patch(
             "supervisor.homeassistant.api.WSClient.connect",
             new_callable=AsyncMock,
             return_value=mock_ws_client,
-        ) as mock_connect,
-    ):
-        result = await coresys.homeassistant.api.connect_websocket()
+        ) as mock_connect:
+            result = await api.connect_websocket()
 
-    assert result is mock_ws_client
-    mock_connect.assert_called_once()
+        assert result is mock_ws_client
+        mock_connect.assert_called_once_with(
+            await api.get_session(), "ws://localhost/api/websocket"
+        )
+    finally:
+        await api.close()
 
 
 @pytest.mark.parametrize(
