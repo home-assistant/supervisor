@@ -834,6 +834,16 @@ async def test_make_request_unix_socket_401_raises(
 # --- connect_websocket ---
 
 
+async def test_connect_websocket_without_container(coresys: CoreSys):
+    """Test connect_websocket reports a missing Core container as connection error."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+
+    with pytest.raises(
+        HomeAssistantWSConnectionError, match="Core container is not running"
+    ):
+        await coresys.homeassistant.api.connect_websocket()
+
+
 async def test_connect_websocket_unix(coresys: CoreSys):
     """Test connect_websocket uses WSClient.connect for Unix socket."""
     mock_ws_client = MagicMock()

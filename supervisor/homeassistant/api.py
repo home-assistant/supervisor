@@ -303,16 +303,24 @@ class HomeAssistantAPI(CoreSysAttributes):
             HomeAssistantAPIError: On connection or auth failure.
 
         """
+        # Read once, the container can be removed while connecting
         try:
-            if self.use_unix_socket:
-                return await WSClient.connect(self.session, self.ws_url)
+            use_unix_socket = self.use_unix_socket
+            session = self.session
+            ws_url = self.ws_url
+        except HomeAssistantAPIError as err:
+            raise HomeAssistantWSConnectionError(str(err)) from err
+
+        try:
+            if use_unix_socket:
+                return await WSClient.connect(session, ws_url)
 
             for attempt in (1, 2):
                 try:
                     await self._ensure_access_token()
                     assert self._access_token
                     return await WSClient.connect_with_auth(
-                        self.session, self.ws_url, self._access_token
+                        session, ws_url, self._access_token
                     )
                 except HomeAssistantAuthError:
                     self._access_token = None
@@ -324,7 +332,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             aiohttp.ClientError,
         ) as err:
             raise self._request_error(
-                self.ws_url, err, HomeAssistantWSConnectionError
+                ws_url, err, HomeAssistantWSConnectionError
             ) from err
 
         # Unreachable, but satisfies type checker

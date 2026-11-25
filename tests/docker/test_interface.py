@@ -218,7 +218,7 @@ async def test_current_state(
     expected: ContainerState,
 ):
     """Test current state for container."""
-    container.show.return_value = attrs
+    container.show.return_value = {"Id": "abc123", **attrs}
     assert await coresys.homeassistant.core.instance.current_state() == expected
 
 

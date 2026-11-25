@@ -418,6 +418,13 @@ class DockerInterface(JobGroup, ABC):
 
     async def _get_container(self) -> dict[str, Any] | None:
         """Get docker container, returns None if not found."""
+        metadata = await self._inspect_container()
+        # Every inspect reports, so a missed attach or run is caught up on
+        await self._container_changed(metadata)
+        return metadata
+
+    async def _inspect_container(self) -> dict[str, Any] | None:
+        """Inspect docker container, returns None if not found."""
         try:
             # container() builds the handle from the name with no I/O;
             # show() below performs the actual inspect call.
@@ -565,7 +572,7 @@ class DockerInterface(JobGroup, ABC):
         await self._container_changed(container_metadata)
 
     async def _container_changed(self, metadata: dict[str, Any] | None) -> None:
-        """Handle a new container being attached or run, None once it is removed."""
+        """Handle the container as last seen in Docker, None if there is none."""
 
     @Job(
         name="docker_interface_stop",

@@ -376,3 +376,21 @@ async def test_stop_and_remove_unbinds_core_api(
 
     with pytest.raises(HomeAssistantAPIError, match="Core container is not running"):
         _ = api.use_unix_socket
+
+
+async def test_inspect_binds_core_api(coresys: CoreSys, container: DockerContainer):
+    """Test inspecting the Core container catches up on a missed attach or run."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    container.show.return_value |= {
+        "Id": "abc123",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+    }
+    with pytest.raises(HomeAssistantAPIError, match="Core container is not running"):
+        _ = api.use_unix_socket
+
+    await coresys.homeassistant.core.instance.is_running()
+
+    assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"

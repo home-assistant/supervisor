@@ -18,7 +18,11 @@ def make_mock_container(status: str) -> DockerContainer:
     """Make mock of container."""
     out = MagicMock(spec=DockerContainer)
     out.status = status
-    out.show.return_value = {"State": {"Status": status, "ExitCode": 0}, "Mounts": []}
+    out.show.return_value = {
+        "Id": "abc123",
+        "State": {"Status": status, "ExitCode": 0},
+        "Mounts": [],
+    }
     return out
 
 
