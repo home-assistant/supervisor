@@ -398,6 +398,16 @@ async def test_core_used_supervisor_socket_reset(
     assert api.core_used_supervisor_socket is expected
 
 
+async def test_bind_container_keeps_core_used_supervisor_socket(coresys: CoreSys):
+    """Test binding keeps socket use Core showed before its container was bound."""
+    api = coresys.homeassistant.api
+    api.core_used_supervisor_socket = True
+
+    await api.bind_container(core_container_metadata([]))
+
+    assert api.core_used_supervisor_socket is True
+
+
 async def test_container_state_changed_ignores_replaced_container(coresys: CoreSys):
     """Test a late exit of a replaced Core container does not reset the new one."""
     api = coresys.homeassistant.api
@@ -687,6 +697,40 @@ async def test_make_request_connection_error(
             pass
 
     is_running.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("running", "message"),
+    [
+        pytest.param(True, "connection refused", id="running"),
+        pytest.param(False, "Core container is not running", id="stopped"),
+    ],
+)
+@pytest.mark.usefixtures("websession")
+async def test_make_request_connection_error_after_bind(
+    coresys: CoreSys, running: bool, message: str
+):
+    """Test a bound container's own state replaces the one of its predecessor."""
+    api = coresys.homeassistant.api
+    coresys.websession.request = MagicMock(
+        side_effect=aiohttp.ClientConnectionError("connection refused")
+    )
+    await api.container_state_changed(
+        core_state_event(
+            ContainerState.RUNNING if not running else ContainerState.STOPPED
+        )
+    )
+    await api.bind_container(
+        {"Id": "new", "Config": {"Env": []}, "State": {"Running": running}}
+    )
+
+    with (
+        patch.object(type(api), "use_unix_socket", False),
+        patch.object(api, "_ensure_access_token", new_callable=AsyncMock),
+        pytest.raises(HomeAssistantAPIError, match=message),
+    ):
+        async with api.make_request("get", "api/test"):
+            pass
 
 
 @pytest.mark.usefixtures("websession")

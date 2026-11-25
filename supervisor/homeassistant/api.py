@@ -116,7 +116,9 @@ class HomeAssistantAPI(CoreSysAttributes):
         older Supervisor.
         """
         container: CoreContainer | None = None
+        running = False
         if metadata:
+            running = bool(metadata.get("State", {}).get("Running"))
             socket_path: Path | None = None
             for env in metadata.get("Config", {}).get("Env") or []:
                 name, _, value = env.partition("=")
@@ -128,8 +130,9 @@ class HomeAssistantAPI(CoreSysAttributes):
             return
 
         self._container = container
+        # State events of this container may have been missed or ignored
+        self._core_container_running = running
         self._core_connected = False
-        self._core_used_supervisor_socket = False
         await self.close()
 
     @property

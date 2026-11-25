@@ -394,3 +394,35 @@ async def test_inspect_binds_core_api(coresys: CoreSys, container: DockerContain
     await coresys.homeassistant.core.instance.is_running()
 
     assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_outdated_inspect_keeps_core_api_binding(coresys: CoreSys):
+    """Test an inspect from before a new container was run does not rebind."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    old_container = {
+        "Id": "old",
+        "Config": {"Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"]},
+        "State": {"Status": "exited", "ExitCode": 0},
+    }
+    new_container = {
+        "Id": "new",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+    }
+
+    async def inspect_during_run() -> dict[str, Any]:
+        with (
+            patch.object(DockerAPI, "run", return_value=new_container),
+            patch.object(DockerHomeAssistant, "is_running", return_value=False),
+        ):
+            await instance.run()
+        return old_container
+
+    with patch.object(instance, "_inspect_container", side_effect=inspect_during_run):
+        await instance.current_state()
+
+    assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"
