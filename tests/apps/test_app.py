@@ -407,7 +407,7 @@ async def test_app_restarted_during_discovery_save_pushes_next_send(
         pytest.param(APIState("RUNNING", False), 2, id="core-running"),
     ],
 )
-async def test_app_discovery_sent_in_startup_pushed_after_healthcheck(
+async def test_app_discovery_sent_in_startup_pushed_when_startup_ends(
     coresys: CoreSys,
     install_app_ssh: App,
     install_app_example: App,
@@ -415,7 +415,7 @@ async def test_app_discovery_sent_in_startup_pushed_after_healthcheck(
     core_state: APIState | None,
     startup_pushes: int,
 ) -> None:
-    """Test all messages of an app are pushed once its healthcheck passes.
+    """Test all messages of an app are pushed once it leaves startup.
 
     A push during startup was dropped or came before the app was ready.
     """
@@ -427,7 +427,7 @@ async def test_app_discovery_sent_in_startup_pushed_after_healthcheck(
     await coresys.discovery.send(install_app_example, "other", {})
     await coresys.block_till_done()
 
-    # The app restarts and sends a known and a new message before its healthcheck
+    # The app restarts and sends a known and a new message during startup
     coresys.homeassistant.api.get_api_state.return_value = core_state
     websession.request.reset_mock()
     force_app_state(install_app_ssh, AppState.STOPPED)
@@ -439,7 +439,7 @@ async def test_app_discovery_sent_in_startup_pushed_after_healthcheck(
     # Home Assistant got both pushes, or none while it was down
     assert websession.request.call_count == startup_pushes
 
-    # The healthcheck passes while Home Assistant is running
+    # Startup ends while Home Assistant is running
     coresys.homeassistant.api.get_api_state.return_value = APIState("RUNNING", False)
     websession.request.reset_mock()
     force_app_state(install_app_ssh, AppState.STARTED)
@@ -452,7 +452,7 @@ async def test_app_discovery_sent_in_startup_pushed_after_healthcheck(
         f"http://172.30.32.1/api/hassio_push/discovery/{new.uuid}",
     }
 
-    # Home Assistant got both after the healthcheck, so these sends are not pushed
+    # Home Assistant got both after startup ended, so these sends are not pushed
     websession.request.reset_mock()
     await coresys.discovery.send(install_app_ssh, "known", {})
     await coresys.discovery.send(install_app_ssh, "new", {})
