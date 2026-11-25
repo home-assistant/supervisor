@@ -462,6 +462,8 @@ async def fixture_call_api(
     Returns the status and who the middleware identified the caller as.
     """
     api = RestAPI(coresys)
+    # Reached through coresys by code outside the API
+    coresys.api.security = api.security
     app = web.Application(middlewares=[api.security.token_validation])
     app[RECORDED] = []
     app.router.add_route("*", "/{all:.*}", _recording_handler)
@@ -896,6 +898,26 @@ async def test_app_tcp_api_request_repair_once(call_api: CallAPI, coresys: CoreS
 
     assert coresys.resolution.issues == []
     logger.warning.assert_called_once()
+
+
+async def test_app_tcp_api_request_repair_after_forget(
+    call_api: CallAPI, coresys: CoreSys
+):
+    """Test a forgotten app report is dismissed and raised by the next TCP request."""
+    issue = Issue(
+        IssueType.DEPRECATED_TCP_API_REQUEST,
+        ContextType.ADDON,
+        "local_example",
+        {"version": "1.2.0"},
+    )
+    await call_api("token", "app", "get", "/addons/self/info")
+    assert coresys.resolution.issues == [issue]
+
+    coresys.api.security.forget_app_tcp_api_request("local_example")
+    assert coresys.resolution.issues == []
+
+    await call_api("token", "app", "get", "/addons/self/info")
+    assert coresys.resolution.issues == [issue]
 
 
 async def test_app_tcp_api_request_repair_per_version(

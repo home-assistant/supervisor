@@ -434,6 +434,19 @@ class SecurityMiddleware(CoreSysAttributes):
                 reference_extra={"version": version},
             )
 
+    def forget_app_tcp_api_request(self, slug: str) -> None:
+        """Dismiss an app's TCP API report, its next TCP request raises it again."""
+        self._tcp_api_request_apps = {
+            key for key in self._tcp_api_request_apps if key[0] != slug
+        }
+        for issue in list(self.sys_resolution.issues):
+            if (
+                issue.type == IssueType.DEPRECATED_TCP_API_REQUEST
+                and issue.context == ContextType.ADDON
+                and issue.reference == slug
+            ):
+                self.sys_resolution.dismiss_issue(issue)
+
     def _principal_for_token(self, supervisor_token: str) -> CoreSysAttributes | None:
         """Return the principal a Supervisor token was issued to."""
         if supervisor_token == self.sys_homeassistant.supervisor_token:

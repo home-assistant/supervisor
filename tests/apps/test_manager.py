@@ -484,6 +484,70 @@ async def test_update(
     assert bool(start_task) is (status == "running")
 
 
+def _add_deprecated_tcp_api_issues(coresys: CoreSys, app: App) -> list[Issue]:
+    """Add TCP API deprecation issues, return those not belonging to the app."""
+    others = [
+        Issue(
+            IssueType.DEPRECATED_TCP_API_REQUEST,
+            ContextType.ADDON,
+            reference="local_other",
+            reference_extra={"version": "1.0.0"},
+        ),
+        Issue(IssueType.DEPRECATED_TCP_API_REQUEST, ContextType.CORE, "/core/info"),
+    ]
+    coresys.resolution.create_issue(
+        IssueType.DEPRECATED_TCP_API_REQUEST,
+        ContextType.ADDON,
+        reference=app.slug,
+        reference_extra={"version": str(app.version)},
+    )
+    for issue in others:
+        coresys.resolution.add_issue(issue)
+    return others
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_update_dismisses_deprecated_tcp_api_issue(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test app update dismisses its TCP API deprecation issue only."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    with patch(
+        "supervisor.store.data.read_json_or_yaml_file",
+        return_value=load_json_fixture("app-config-add-image.json"),
+    ):
+        await coresys.store.data.update()
+    others = _add_deprecated_tcp_api_issues(coresys, install_app_ssh)
+
+    with (
+        patch.object(DockerInterface, "install"),
+        patch.object(DockerApp, "is_running", return_value=False),
+    ):
+        await coresys.apps.update(TEST_ADDON_SLUG)
+
+    assert coresys.resolution.issues == others
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_rebuild_dismisses_deprecated_tcp_api_issue(
+    coresys: CoreSys, install_app_ssh: App
+):
+    """Test app rebuild dismisses its TCP API deprecation issue only."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    others = _add_deprecated_tcp_api_issues(coresys, install_app_ssh)
+
+    with (
+        patch.object(DockerApp, "_build"),
+        patch.object(DockerApp, "is_running", return_value=False),
+        patch.object(App, "need_build", new=PropertyMock(return_value=True)),
+    ):
+        await coresys.apps.rebuild(TEST_ADDON_SLUG)
+
+    assert coresys.resolution.issues == others
+
+
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_update_uses_store_architecture(
     coresys: CoreSys,

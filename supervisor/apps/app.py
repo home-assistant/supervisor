@@ -1349,6 +1349,8 @@ class App(AppModel):
             await self.sys_apps.data.update(store)
             await self._check_ingress_port()
 
+            self.sys_api.security.forget_app_tcp_api_request(self.slug)
+
             # Reload ingress tokens in case app gained ingress support
             if self.with_ingress:
                 await self.sys_ingress.reload()
@@ -1416,6 +1418,7 @@ class App(AppModel):
                 await self.sys_apps.data.update(self.app_store)
 
             await self._check_ingress_port()
+            self.sys_api.security.forget_app_tcp_api_request(self.slug)
 
             # Reload ingress tokens in case app gained ingress support
             if self.with_ingress:
