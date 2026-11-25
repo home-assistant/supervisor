@@ -66,6 +66,7 @@ class JobGroup(CoreSysAttributes):
             if self._lock_owner:
                 self._parent_jobs.append(self._lock_owner)
             self._lock_owner = job
+            self._on_lock_acquired(job)
             return
 
         # If there's another job running and we're not waiting, raise
@@ -79,6 +80,10 @@ class JobGroup(CoreSysAttributes):
 
         # Set ownership
         self._lock_owner = job
+        self._on_lock_acquired(job)
+
+    def _on_lock_acquired(self, job: SupervisorJob) -> None:
+        """Handle a job taking the lock, including nested jobs of the owner."""
 
     def release(self, job: SupervisorJob) -> None:
         """Release the lock for the group or return it to parent."""

@@ -33,7 +33,7 @@ async def test_fixup(coresys: CoreSys, install_app_ssh: App):
     with patch.object(App, "uninstall") as uninstall:
         await app_execute_remove()
 
-        assert uninstall.called
+        uninstall.assert_called_once_with(remove_config=False, remove_image=True)
 
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
@@ -61,7 +61,7 @@ async def test_fixup_deprecated_arch_app(coresys: CoreSys, install_app_ssh: App)
     with patch.object(App, "uninstall") as uninstall:
         await app_execute_remove()
 
-        assert uninstall.called
+        uninstall.assert_called_once_with(remove_config=False, remove_image=True)
 
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0

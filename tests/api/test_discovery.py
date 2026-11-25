@@ -182,7 +182,7 @@ async def test_api_send_discovery_after_load(
 @pytest.mark.parametrize(
     ("api_state", "request_error", "status"),
     [
-        pytest.param(APIState("STARTING", False), None, 200, id="core-starting"),
+        pytest.param(APIState("NOT_RUNNING", False), None, 200, id="core-not-running"),
         pytest.param(
             APIState("RUNNING", False), TimeoutError, 200, id="request-timeout"
         ),
@@ -200,7 +200,7 @@ async def test_api_send_discovery_after_failed_push(
 ):
     """Test the message of a restarted app is pushed until Home Assistant got it.
 
-    Home Assistant can still be starting or restarting when an app sends, or
+    Home Assistant can still be booting or restarting when an app sends, or
     fail to read the message back from Supervisor.
     """
     api_client, prefix = app_api_client_with_prefix
@@ -240,6 +240,60 @@ async def test_api_send_discovery_after_failed_push(
     resp = await api_client.post(f"{prefix}/discovery", json=message)
     assert resp.status == 200
     websession.request.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "api_state",
+    [
+        pytest.param(APIState("STARTING", False), id="core-starting"),
+        pytest.param(APIState("NOT_RUNNING", True), id="database-migration"),
+    ],
+)
+async def test_api_send_discovery_while_core_starting(
+    app_api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    websession: MagicMock,
+    api_state: APIState,
+) -> None:
+    """Test a message sent while Home Assistant is starting is pushed.
+
+    Home Assistant lists the messages when its startup begins, so it only gets
+    a message sent later in its startup by a push. Pushes also go out while it
+    migrates its database.
+    """
+    api_client, prefix = app_api_client_with_prefix
+    install_app_ssh.data["discovery"] = ["test"]
+    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    coresys.homeassistant.api.get_api_state.return_value = api_state
+    websession.request.return_value = MockResponse()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    message = {"service": "test", "config": {}}
+
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    uuid = (await resp.json())["data"]["uuid"]
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+    assert (
+        str(websession.request.call_args.args[1])
+        == f"http://172.30.32.1/api/hassio_push/discovery/{uuid}"
+    )
+
+    # Home Assistant got it, so a repeated send is not pushed
+    websession.request.reset_mock()
+    resp = await api_client.post(f"{prefix}/discovery", json=message)
+    assert resp.status == 200
+    await coresys.block_till_done()
+    websession.request.assert_not_called()
+
+    # A removal while Home Assistant is starting reaches it too
+    websession.request.reset_mock()
+    resp = await api_client.delete(f"{prefix}/discovery/{uuid}")
+    assert resp.status == 200
+    await coresys.block_till_done()
+    websession.request.assert_called_once()
+    assert websession.request.call_args.args[0] == "delete"
 
 
 @pytest.mark.parametrize(

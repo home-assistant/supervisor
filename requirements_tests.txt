@@ -1,5 +1,5 @@
 astroid==4.3.4
-coverage==7.17.3
+coverage==7.17.4
 mypy==2.4.1
 pre-commit==4.7.0
 pylint==4.1.4
@@ -11,5 +11,5 @@ pytest-xdist==3.8.0
 pytest==9.2.0
 ruff==0.17.6
 time-machine==3.6.0
-types-pyyaml==6.0.12.20261113
+types-pyyaml==6.0.12.20261122
 urllib3==2.8.0

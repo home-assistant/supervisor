@@ -23,6 +23,7 @@ from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
+from ..utils.sentry import async_capture_exception
 from .const import (
     ATTR_IGNORE_CONDITIONS,
     FILE_CONFIG_JOBS,
@@ -298,6 +299,9 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         super().__init__(FILE_CONFIG_JOBS, SCHEMA_JOBS_CONFIG)
         self.coresys: CoreSys = coresys
         self._jobs: dict[str, SupervisorJob] = {}
+        self._job_change_listeners: dict[
+            str, list[Callable[[dict[str, Any]], None]]
+        ] = {}
 
         # Ensure tasks created via CoreSys.create_task do not have a parent
         self.coresys.add_set_task_context_callback(_remove_current_job)
@@ -341,6 +345,16 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         if attribute.name == "errors":
             value = [err.as_dict() for err in value]
         job_data = job.as_dict() | {attribute.name: value}
+        for listener in self._job_change_listeners.get(job.uuid, []).copy():
+            # A broken listener must not break the job it watches
+            try:
+                listener(job_data)
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                _LOGGER.exception("Error in change listener for job %s", job.name)
+                self.sys_create_task(async_capture_exception(err))
+        if attribute.name == "done" and value is True:
+            self._job_change_listeners.pop(job.uuid, None)
+
         if not self.sys_config.feature_flags.get(
             FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
         ):
@@ -442,6 +456,21 @@ class JobManager(FileConfiguration, CoreSysAttributes):
 
         self._jobs[job.uuid] = job
         return job
+
+    def add_job_change_listener(
+        self, job: SupervisorJob, listener: Callable[[dict[str, Any]], None]
+    ) -> Callable[[], None]:
+        """Call listener with the job's data on each change until it is done.
+
+        Returns a function which removes the listener.
+        """
+        self._job_change_listeners.setdefault(job.uuid, []).append(listener)
+
+        def remove_listener() -> None:
+            with suppress(KeyError, ValueError):
+                self._job_change_listeners[job.uuid].remove(listener)
+
+        return remove_listener
 
     def get_job(self, uuid: str) -> SupervisorJob:
         """Return a job by uuid. Raises if it does not exist."""

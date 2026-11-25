@@ -35,7 +35,12 @@ from ..resolution.const import ContextType, IssueType, SuggestionType, Unhealthy
 from ..store.app import AppStore
 from ..utils.sentry import async_capture_exception
 from .app import App
-from .const import APP_UPDATE_CONDITIONS
+from .const import (
+    APP_UPDATE_CONDITIONS,
+    JOB_APP_MANAGER_BOOT,
+    JOB_APP_MANAGER_REPAIR,
+    AppOperation,
+)
 from .data import AppsData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -60,6 +65,9 @@ class AppManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.data: AppsData = AppsData(coresys)
         self.local: dict[str, App] = {}
+        # Apps being installed, uninstalled or restored when not installed,
+        # which may not be in local for part of it
+        self.pending: dict[str, App] = {}
         self.store: dict[str, AppStore] = {}
         self._core_sockets: dict[str, tuple[str, str | None]] = {}
 
@@ -165,6 +173,7 @@ class AppManager(CoreSysAttributes):
         # Sync DNS
         await self.sync_dns()
 
+    @Job(name=JOB_APP_MANAGER_BOOT, internal=True)
     async def boot(self, stage: AppStartup) -> None:
         """Boot apps with mode auto."""
         tasks: list[App] = []
@@ -256,7 +265,7 @@ class AppManager(CoreSysAttributes):
             await async_capture_exception(err)
 
     @Job(
-        name="app_manager_install",
+        name=AppOperation.INSTALLING.job_name,
         conditions=APP_UPDATE_CONDITIONS,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.QUEUE,
@@ -283,13 +292,19 @@ class AppManager(CoreSysAttributes):
         if validation_complete:
             validation_complete.set()
 
-        await App(self.coresys, slug).install()
+        app = self.pending[slug] = App(self.coresys, slug)
+        try:
+            await app.install()
+        finally:
+            self.pending.pop(slug, None)
 
         _LOGGER.info("App '%s' successfully installed", slug)
 
-    @Job(name="app_manager_uninstall")
+    @Job(name=AppOperation.UNINSTALLING.job_name)
     async def uninstall(self, slug: str, *, remove_config: bool = False) -> None:
         """Remove an app."""
+        self.sys_jobs.current.reference = slug
+
         if slug not in self.local:
             _LOGGER.warning("App %s is not installed", slug)
             return
@@ -300,14 +315,18 @@ class AppManager(CoreSysAttributes):
             for app in self.installed
             if app.slug != slug
         )
-        await self.local[slug].uninstall(
-            remove_config=remove_config, remove_image=not shared_image
-        )
+        app = self.pending[slug] = self.local[slug]
+        try:
+            await app.uninstall(
+                remove_config=remove_config, remove_image=not shared_image
+            )
+        finally:
+            self.pending.pop(slug, None)
 
         _LOGGER.info("App '%s' successfully removed", slug)
 
     @Job(
-        name="app_manager_update",
+        name=AppOperation.UPDATING.job_name,
         conditions=APP_UPDATE_CONDITIONS,
         on_condition=AppsJobError,
         # We assume for now the docker image pull is 100% of this task for progress
@@ -363,7 +382,7 @@ class AppManager(CoreSysAttributes):
         return task
 
     @Job(
-        name="app_manager_rebuild",
+        name=AppOperation.REBUILDING.job_name,
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
@@ -396,7 +415,7 @@ class AppManager(CoreSysAttributes):
         return await app.rebuild()
 
     @Job(
-        name="app_manager_restore",
+        name=AppOperation.RESTORING.job_name,
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
@@ -414,19 +433,23 @@ class AppManager(CoreSysAttributes):
 
         if slug not in self.local:
             _LOGGER.debug("App %s is not locally available for restore", slug)
-            app = App(self.coresys, slug)
+            app = self.pending[slug] = App(self.coresys, slug)
             had_ingress: bool | None = False
         else:
             _LOGGER.debug("App %s is locally available for restore", slug)
             app = self.local[slug]
             had_ingress = app.ingress_panel
 
-        wait_for_start = await app.restore(tar_file)
+        try:
+            wait_for_start = await app.restore(tar_file)
 
-        # Check if new
-        if slug not in self.local:
-            _LOGGER.info("Detected new app after restore: %s", slug)
-            self.local[slug] = app
+            # Check if new
+            if slug not in self.local:
+                _LOGGER.info("Detected new app after restore: %s", slug)
+                self.local[slug] = app
+        finally:
+            self.pending.pop(slug, None)
+
         self.check_core_sockets_changed()
 
         # Update ingress
@@ -437,7 +460,7 @@ class AppManager(CoreSysAttributes):
         return wait_for_start
 
     @Job(
-        name="app_manager_repair",
+        name=JOB_APP_MANAGER_REPAIR,
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST],
     )
     async def repair(self) -> None:

@@ -237,7 +237,7 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(self._sync_origin_remote_url, repo)
 
             try:
-                git_cmd = git.Git()
+                git_cmd = repo.git
                 await self.sys_run_in_executor(git_cmd.ls_remote, "--heads", self.url)
             except git.CommandError as err:
                 _LOGGER.warning("Wasn't able to update %s repo: %s.", self.url, err)

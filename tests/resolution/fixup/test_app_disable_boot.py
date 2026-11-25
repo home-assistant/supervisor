@@ -1,5 +1,7 @@
 """Test fixup app disable boot."""
 
+from unittest.mock import patch
+
 from supervisor.apps.app import App
 from supervisor.const import AppBoot
 from supervisor.coresys import CoreSys
@@ -19,9 +21,11 @@ async def test_fixup(coresys: CoreSys, install_app_ssh: App):
         BOOT_FAIL_ISSUE,
         suggestions=[SuggestionType.DISABLE_BOOT],
     )
-    await app_disable_boot()
+    with patch.object(App, "save_persist") as save_persist:
+        await app_disable_boot()
 
     assert install_app_ssh.boot == AppBoot.MANUAL
+    save_persist.assert_called_once()
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
 

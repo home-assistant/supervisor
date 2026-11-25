@@ -354,3 +354,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         # remove
         for slug in del_apps:
             self.sys_apps.store.pop(slug)
+
+        # Latest version and update available may have changed
+        for app in self.sys_apps.installed:
+            app.publish_status()

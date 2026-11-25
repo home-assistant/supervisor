@@ -8,6 +8,7 @@ from ..exceptions import HassioError
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..utils.sentry import async_capture_exception
+from .const import JOB_RUN_AUTOFIX
 from .data import Issue, Suggestion
 from .fixups.base import FixupBase
 from .validate import get_valid_modules
@@ -62,7 +63,7 @@ class ResolutionFixup(CoreSysAttributes):
         return list(self._fixups.values())
 
     @Job(
-        name="resolution_fixup_run_autofix",
+        name=JOB_RUN_AUTOFIX,
         conditions=[JobCondition.HEALTHY, JobCondition.RUNNING],
     )
     async def run_autofix(self) -> None:

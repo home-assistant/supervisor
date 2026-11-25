@@ -63,6 +63,7 @@ from ..const import (
     ATTR_NETWORK,
     ATTR_NETWORK_DESCRIPTION,
     ATTR_ONE_SHOT,
+    ATTR_OPERATION,
     ATTR_OPTIONS,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
@@ -326,7 +327,21 @@ class APIApps(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return app information."""
         app: App = self.get_app_for_request(request)
-        return await self.info_data(app, request)
+        return await self.info_data(app, request) | {ATTR_OPERATION: app.operation}
+
+    @api_process
+    async def status_list(self, request: web.Request) -> dict[str, Any]:
+        """Return status of installed apps and apps being installed or removed."""
+        # An app can be in both while an install or uninstall is in progress
+        apps = self.sys_apps.pending | self.sys_apps.local
+        return {ATTR_APPS: [app.status for app in apps.values()]}
+
+    @api_process
+    async def status(self, request: web.Request) -> dict[str, Any]:
+        """Return status of an app, including one being installed or removed."""
+        if app := self.sys_apps.pending.get(request.match_info["app"]):
+            return app.status
+        return self.get_app_for_request(request).status
 
     @api_process
     async def options(self, request: web.Request) -> None:

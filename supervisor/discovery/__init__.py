@@ -118,6 +118,14 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             if message.app == app.slug:
                 self._unannounced[message.uuid] = object()
 
+    def push_messages(self, app: App) -> None:
+        """Push all messages of an app, as Home Assistant may have missed them."""
+        for message in self.list_messages:
+            if message.app == app.slug:
+                # A new mark, so a push still running from startup cannot clear it
+                mark = self._unannounced[message.uuid] = object()
+                self.sys_create_task(self._push_new_discovery(app, message, mark))
+
     async def remove(self, message: Message) -> None:
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
@@ -152,7 +160,13 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
     async def _push_discovery(self, message: Message, command: str) -> bool:
         """Send a discovery request and return whether Home Assistant got it."""
-        if not await self.sys_homeassistant.api.check_api_state():
+        # Home Assistant lists the messages itself as it enters STARTING, so it
+        # needs the pushes from then on
+        state = await self.sys_homeassistant.api.get_api_state()
+        if not state or (
+            state.core_state not in ("STARTING", "RUNNING")
+            and not state.offline_db_migration
+        ):
             _LOGGER.info("Discovery %s message ignore", message.uuid)
             return False
 

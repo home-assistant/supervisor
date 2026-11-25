@@ -124,7 +124,7 @@ class PluginDns(PluginBase):
     def _compute_locals(self) -> list[str]:
         """Compute list of local system DNS servers.
 
-        Returns servers in stable priority order from NetworkManager.
+        Returns servers in the stable order of the host network DNS servers.
         """
         servers: list[str] = []
         for server in [

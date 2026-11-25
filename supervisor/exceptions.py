@@ -1398,6 +1398,10 @@ class HostJournalGatewaydConnectionError(HostServiceError, APIError):
     """Connection to systemd-journal-gatewayd failed."""
 
 
+class HostJournalGatewaydRequestError(HostServiceError, APIError):
+    """systemd-journal-gatewayd rejected the request as invalid."""
+
+
 class HostAppArmorError(HostError):
     """Host apparmor functions failed."""
 

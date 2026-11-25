@@ -24,6 +24,7 @@ from ..exceptions import (
     APIAppNotInstalled,
     APISocketError,
     HostJournalGatewaydConnectionError,
+    HostJournalGatewaydRequestError,
     HostNotSupportedError,
 )
 from ..host.const import LogFormatter
@@ -622,7 +623,12 @@ class RestAPI(CoreSysAttributes):
                 # Supervisor logs are critical, so catch everything, log the exception
                 # and try to return Docker container logs as the fallback
                 if isinstance(
-                    err, (HostNotSupportedError, HostJournalGatewaydConnectionError)
+                    err,
+                    (
+                        HostNotSupportedError,
+                        HostJournalGatewaydConnectionError,
+                        HostJournalGatewaydRequestError,
+                    ),
                 ):
                     # No need for a traceback or capturing to Sentry, the cause
                     # is known and already logged at the source (e.g. missing or
@@ -819,7 +825,9 @@ class RestAPI(CoreSysAttributes):
             app.add_routes(
                 [
                     web.get("/apps", api_apps.list_apps),
+                    web.get("/apps/status", api_apps.status_list),
                     web.get("/apps/{app}/info", api_apps.info),
+                    web.get("/apps/{app}/status", api_apps.status),
                     web.post("/apps/{app}/uninstall", api_apps.uninstall),
                     web.post("/apps/{app}/start", api_apps.start),
                     web.post("/apps/{app}/stop", api_apps.stop),
