@@ -280,6 +280,18 @@ async def test_setup_unhandled_exception_captured(
     assert UnhealthyReason.SETUP in coresys.resolution.unhealthy
 
 
+@pytest.mark.usefixtures("mocked_setup_loads")
+async def test_setup_loads_discovery_before_apps(coresys: CoreSys):
+    """Test discovery loads before the apps, whose state changes push its messages."""
+    loaded: list[str] = []
+    coresys.discovery.load.side_effect = lambda: loaded.append("discovery")
+    coresys.apps.load.side_effect = lambda: loaded.append("apps")
+
+    await coresys.core.setup()
+
+    assert loaded == ["discovery", "apps"]
+
+
 async def test_shutdown_reentrant_waits(coresys: CoreSys):
     """Concurrent shutdown() calls await the in-flight shutdown rather than re-running."""
     call_count = 0

@@ -318,6 +318,9 @@ class App(AppModel):
             # Home Assistant lists discovery messages only of started apps
             if new_state != AppState.STARTED:
                 self.sys_discovery.mark_unannounced(self)
+            elif old_state == AppState.STARTUP:
+                # Pushes during startup were dropped or came before the app was ready
+                self.sys_discovery.push_messages(self)
 
             # Dismiss device access missing issue if present and we stopped
             if new_state == AppState.STOPPED and (

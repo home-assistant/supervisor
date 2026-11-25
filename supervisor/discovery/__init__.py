@@ -118,6 +118,14 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             if message.app == app.slug:
                 self._unannounced[message.uuid] = object()
 
+    def push_messages(self, app: App) -> None:
+        """Push all messages of an app, as Home Assistant may have missed them."""
+        for message in self.list_messages:
+            if message.app == app.slug:
+                # A new mark, so a push still running from startup cannot clear it
+                mark = self._unannounced[message.uuid] = object()
+                self.sys_create_task(self._push_new_discovery(app, message, mark))
+
     async def remove(self, message: Message) -> None:
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
