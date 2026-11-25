@@ -467,8 +467,11 @@ class HomeAssistantCore(JobGroup):
         # _update() correspondingly skipped the start step, so there is no
         # running Core to health-check. Returning early avoids a spurious
         # rollback that would otherwise overwrite the freshly installed
-        # image with the previous version.
+        # image with the previous version. Nothing removes the previous
+        # image later, so clean it up here.
         if not running:
+            with suppress(DockerError):
+                await self.instance.cleanup(old_image=old_image)
             return
 
         if not self.error_state and rollback_version:
