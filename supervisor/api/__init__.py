@@ -671,6 +671,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/core/info", api_hass.info),
                 web.get("/core/stats", stats_handler),
+                web.get("/core/sockets", api_hass.sockets),
                 web.post("/core/options", api_hass.options),
                 web.post("/core/update", api_hass.update),
                 web.post("/core/restart", api_hass.restart),

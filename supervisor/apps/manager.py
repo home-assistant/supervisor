@@ -27,6 +27,7 @@ from ..exceptions import (
     HassioArchNotFound,
     HassioError,
 )
+from ..homeassistant.const import WSEvent
 from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
@@ -60,6 +61,27 @@ class AppManager(CoreSysAttributes):
         self.data: AppsData = AppsData(coresys)
         self.local: dict[str, App] = {}
         self.store: dict[str, AppStore] = {}
+        self._core_sockets: dict[str, tuple[str, str | None]] = {}
+
+    @property
+    def with_core_socket(self) -> list[App]:
+        """Return installed apps Core listens on a socket for."""
+        return [app for app in self.installed if app.with_core_socket]
+
+    def _core_socket_listing(self) -> dict[str, tuple[str, str | None]]:
+        """Return what Core's app socket listing shows of each app."""
+        return {
+            app.slug: (app.name, app.homeassistant_api_role)
+            for app in self.with_core_socket
+        }
+
+    def check_core_sockets_changed(self) -> None:
+        """Tell Core to fetch the app socket listing again if it changed."""
+        sockets = self._core_socket_listing()
+        if sockets == self._core_sockets:
+            return
+        self._core_sockets = sockets
+        self.sys_homeassistant.websocket.supervisor_event(WSEvent.CORE_SOCKETS_CHANGED)
 
     @property
     def all(self) -> list[AnyApp]:
@@ -120,6 +142,9 @@ class AppManager(CoreSysAttributes):
         _LOGGER.info("Found %d installed apps", len(self.data.system))
         if tasks:
             await asyncio.gather(*tasks)
+
+        # Core fetches the listing itself when it starts
+        self._core_sockets = self._core_socket_listing()
 
         # Running apps keep their containers across a Supervisor restart
         for app in self.installed:
@@ -402,6 +427,7 @@ class AppManager(CoreSysAttributes):
         if slug not in self.local:
             _LOGGER.info("Detected new app after restore: %s", slug)
             self.local[slug] = app
+        self.check_core_sockets_changed()
 
         # Update ingress
         if had_ingress != app.ingress_panel:

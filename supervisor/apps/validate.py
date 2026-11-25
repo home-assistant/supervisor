@@ -41,6 +41,7 @@ from ..const import (
     ATTR_HASSIO_ROLE,
     ATTR_HOMEASSISTANT,
     ATTR_HOMEASSISTANT_API,
+    ATTR_HOMEASSISTANT_API_PROXY,
     ATTR_HOST_DBUS,
     ATTR_HOST_IPC,
     ATTR_HOST_NETWORK,
@@ -111,6 +112,8 @@ from ..const import (
     AppState,
 )
 from ..docker.const import Capabilities
+from ..homeassistant import const as homeassistant_const
+from ..homeassistant.validate import core_binds_app_sockets
 from ..host.const import LogFormatter
 from ..validate import (
     docker_image,
@@ -275,6 +278,18 @@ def _warn_app_config(log: Callable[..., None]):
                     volume_type,
                     _LEGACY_MAP_TYPES[volume_type],
                 )
+
+        if config.get(ATTR_HOMEASSISTANT_API_PROXY) is False and not (
+            core_binds_app_sockets(config.get(ATTR_HOMEASSISTANT))
+        ):
+            log(
+                "App '%s' sets 'homeassistant_api_proxy: false' without "
+                "'homeassistant' set to at least %s, the first version that "
+                "provides its Core socket; the setting is ignored and the app "
+                "keeps using the proxy.",
+                name,
+                homeassistant_const.CORE_APP_SOCKET_MIN_VERSION,
+            )
 
         # Dynamic ingress port selection (ingress_port: 0) picks a random port
         # from the INGRESS_DYNAMIC_PORT_MIN-INGRESS_DYNAMIC_PORT_MAX range. An
@@ -525,6 +540,8 @@ _SCHEMA_APP_CONFIG = vol.Schema(
         vol.Optional(ATTR_HOMEASSISTANT_API, default=False): vol.Boolean(),
         # No default, so changing SUPERVISOR_API_TCP_DEFAULT reaches installed apps too
         vol.Optional(ATTR_SUPERVISOR_API_TCP): vol.Boolean(),
+        # No default, so changing HOMEASSISTANT_API_PROXY_DEFAULT reaches installed apps too
+        vol.Optional(ATTR_HOMEASSISTANT_API_PROXY): vol.Boolean(),
         vol.Optional(ATTR_STDIN, default=False): vol.Boolean(),
         vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
         vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),

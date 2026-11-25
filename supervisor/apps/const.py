@@ -13,6 +13,12 @@ class AppBackupMode(StrEnum):
     COLD = "cold"
 
 
+class HomeAssistantAPIRole(StrEnum):
+    """Core group of the user an app with Core API access calls Core as."""
+
+    ADMIN = "admin"
+
+
 class MappingType(StrEnum):
     """Mapping type of an App Folder."""
 
@@ -43,6 +49,8 @@ WATCHDOG_RETRY_SECONDS = 10
 
 # Flipped to False late in the deprecation cycle, before the TCP API is removed
 SUPERVISOR_API_TCP_DEFAULT = True
+# Flipped to False late in the deprecation cycle, before the proxy is removed
+HOMEASSISTANT_API_PROXY_DEFAULT = True
 WATCHDOG_MAX_ATTEMPTS = 5
 WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)
 WATCHDOG_THROTTLE_MAX_CALLS = 10

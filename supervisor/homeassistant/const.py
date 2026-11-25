@@ -18,6 +18,9 @@ WATCHDOG_MAX_ATTEMPTS = 5
 WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)
 WATCHDOG_THROTTLE_MAX_CALLS = 10
 SAFE_MODE_FILENAME = PurePath("safe-mode")
+# First Core that binds a socket per app, a placeholder no version reaches until
+# that Core is released
+CORE_APP_SOCKET_MIN_VERSION: AwesomeVersion = AwesomeVersion("TBD")
 
 CLOSING_STATES = [
     CoreState.SHUTDOWN,
@@ -40,6 +43,7 @@ class WSEvent(StrEnum):
     """Websocket events."""
 
     APP = "app"
+    CORE_SOCKETS_CHANGED = "core_sockets_changed"
     HEALTH_CHANGED = "health_changed"
     ISSUE_CHANGED = "issue_changed"
     ISSUE_REMOVED = "issue_removed"

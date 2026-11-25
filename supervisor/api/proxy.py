@@ -110,6 +110,17 @@ class APIProxy(CoreSysAttributes):
 
         return response
 
+    def _moved_off_proxy(self, app: App) -> bool:
+        """Return True and log if the app declared it no longer uses the proxy."""
+        if app.homeassistant_api_proxy:
+            return False
+        _LOGGER.warning(
+            "Home Assistant API proxy access from %s denied, it sets "
+            "'homeassistant_api_proxy: false'",
+            app.slug,
+        )
+        return True
+
     def _socket_app(self, request: web.Request) -> App:
         """Return the app a socket request is from if it may use the API."""
         # Forbidden, not Unauthorized: the socket already proved who the caller
@@ -121,15 +132,16 @@ class APIProxy(CoreSysAttributes):
         if not principal.access_homeassistant_api:
             _LOGGER.warning("Not permitted API access: %s", principal.slug)
             raise HTTPForbidden
+        if self._moved_off_proxy(principal):
+            raise HTTPForbidden
         _LOGGER.debug("%s access from %s", request.path, principal.slug)
         return principal
 
-    def _check_access(self, request: web.Request):
-        """Check the caller may use the Home Assistant API."""
+    def _check_access(self, request: web.Request) -> App:
+        """Return the calling app if it may use the Home Assistant API."""
         # The socket identifies the caller, a token is never read on one
         if is_unix_socket_request(request):
-            self._socket_app(request)
-            return
+            return self._socket_app(request)
 
         if AUTHORIZATION in request.headers:
             bearer = request.headers[AUTHORIZATION]
@@ -142,15 +154,21 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.warning("Unknown Home Assistant API access!")
         elif not app.access_homeassistant_api:
             _LOGGER.warning("Not permitted API access: %s", app.slug)
+        elif self._moved_off_proxy(app):
+            raise HTTPForbidden
         else:
             _LOGGER.debug("%s access from %s", request.path, app.slug)
-            return
+            return app
 
         raise HTTPUnauthorized
 
     @asynccontextmanager
     async def _api_client(
-        self, request: web.Request, path: str, timeout: int | None = 300
+        self,
+        request: web.Request,
+        app: App,
+        path: str,
+        timeout: int | None = 300,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         """Return a client request with proxy origin for Home Assistant."""
         try:
@@ -166,6 +184,7 @@ class APIProxy(CoreSysAttributes):
                 data=request.content,
                 timeout=timeout,
                 params=request.query,
+                app=app,
             ) as resp:
                 yield resp
                 return
@@ -183,12 +202,12 @@ class APIProxy(CoreSysAttributes):
 
     async def stream(self, request: web.Request):
         """Proxy HomeAssistant EventStream Requests."""
-        self._check_access(request)
+        app = self._check_access(request)
         if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway
 
         _LOGGER.info("Home Assistant EventStream start")
-        async with self._api_client(request, "stream", timeout=None) as client:
+        async with self._api_client(request, app, "stream", timeout=None) as client:
             response = await self._stream_client_response(
                 request,
                 client,
@@ -200,7 +219,7 @@ class APIProxy(CoreSysAttributes):
 
     async def api(self, request: web.Request):
         """Proxy Home Assistant API Requests."""
-        self._check_access(request)
+        app = self._check_access(request)
 
         # Forward the path exactly as the app sent it on the wire. The route's
         # match_info is percent-decoded once already, and re-encoding a decoded
@@ -215,7 +234,7 @@ class APIProxy(CoreSysAttributes):
         if not await self.sys_homeassistant.api.check_api_state():
             raise HTTPBadGateway
 
-        async with self._api_client(request, path) as client:
+        async with self._api_client(request, app, path) as client:
             # Check if this is a streaming response (e.g., MCP SSE endpoints)
             if client.content_type == "text/event-stream":
                 return await self._stream_client_response(
@@ -242,10 +261,10 @@ class APIProxy(CoreSysAttributes):
                     response.headers[header] = client.headers[header]
             return response
 
-    async def _websocket_client(self) -> ClientWebSocketResponse:
+    async def _websocket_client(self, app: App) -> ClientWebSocketResponse:
         """Initialize a WebSocket API connection."""
         try:
-            ws_client = await self.sys_homeassistant.api.connect_websocket()
+            ws_client = await self.sys_homeassistant.api.connect_websocket(app)
             return ws_client.client
         except HomeAssistantAPIError as err:
             raise APIError(
@@ -392,6 +411,12 @@ class APIProxy(CoreSysAttributes):
                     dumps=json_dumps,
                 )
                 return server
+            if self._moved_off_proxy(app):
+                await server.send_json(
+                    {"type": "auth_invalid", "message": "Invalid access"},
+                    dumps=json_dumps,
+                )
+                return server
 
             app_name = app.slug
             _LOGGER.info("WebSocket access from %s", app_name)
@@ -417,7 +442,7 @@ class APIProxy(CoreSysAttributes):
 
         # init connection to hass
         try:
-            client = await self._websocket_client()
+            client = await self._websocket_client(app)
         except APIError:
             return server
 

@@ -20,7 +20,7 @@ from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode
+from supervisor.apps.const import AppBackupMode, HomeAssistantAPIRole
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
 from supervisor.const import (
     ATTR_ADVANCED,
@@ -63,8 +63,8 @@ from supervisor.exceptions import (
     StoreRepositoryFileUnsafeError,
 )
 from supervisor.hardware.helper import HwHelper
-from supervisor.homeassistant.api import APIState
-from supervisor.homeassistant.const import WSType
+from supervisor.homeassistant.api import APIState, HomeAssistantAPI
+from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.ingress import Ingress
 from supervisor.resolution.const import (
     ContextType,
@@ -1153,6 +1153,114 @@ def test_supervisor_api_tcp_long_slug(
         assert install_app_ssh.supervisor_api_tcp is True
 
 
+@pytest.mark.parametrize(
+    ("homeassistant_api", "slug_max_length", "expected"),
+    [
+        pytest.param(True, 60, True, id="core-api"),
+        pytest.param(False, 60, False, id="no-core-api"),
+        pytest.param(True, 5, False, id="long-slug"),
+    ],
+)
+def test_with_core_socket(
+    install_app_ssh: App, homeassistant_api: bool, slug_max_length: int, expected: bool
+) -> None:
+    """Test Core listens for apps with Core API access whose slug fits."""
+    install_app_ssh.data["homeassistant_api"] = homeassistant_api
+
+    with patch("supervisor.apps.model.SLUG_MAX_LENGTH", slug_max_length):
+        assert install_app_ssh.with_core_socket is expected
+
+
+@pytest.mark.parametrize(
+    ("homeassistant_api", "expected"),
+    [
+        pytest.param(True, HomeAssistantAPIRole.ADMIN, id="core-api"),
+        pytest.param(False, None, id="no-core-api"),
+    ],
+)
+def test_homeassistant_api_role(
+    install_app_ssh: App, homeassistant_api: bool, expected: HomeAssistantAPIRole | None
+) -> None:
+    """Test apps with Core API access are Core admins."""
+    install_app_ssh.data["homeassistant_api"] = homeassistant_api
+
+    assert install_app_ssh.homeassistant_api_role is expected
+
+
+@pytest.mark.parametrize(
+    ("config", "core_min_version", "slug_max_length", "expected"),
+    [
+        pytest.param({}, "2027.1.0", 60, True, id="default"),
+        pytest.param(
+            {"homeassistant_api": False}, "2027.1.0", 60, False, id="no-core-api"
+        ),
+        pytest.param(
+            {"homeassistant_api_proxy": True}, "2027.1.0", 60, True, id="proxy"
+        ),
+        pytest.param(
+            {"homeassistant_api_proxy": False, "homeassistant": "2027.1.0"},
+            "TBD",
+            60,
+            True,
+            id="core-unreleased",
+        ),
+        pytest.param(
+            {"homeassistant_api_proxy": False},
+            "2027.1.0",
+            60,
+            True,
+            id="no-requirement",
+        ),
+        pytest.param(
+            {"homeassistant_api_proxy": False, "homeassistant": "2026.12.0"},
+            "2027.1.0",
+            60,
+            True,
+            id="requirement-too-low",
+        ),
+        pytest.param(
+            {"homeassistant_api_proxy": False, "homeassistant": "2027.1.0"},
+            "2027.1.0",
+            5,
+            True,
+            id="long-slug",
+        ),
+        pytest.param(
+            {"homeassistant_api_proxy": False, "homeassistant": "2027.1.0"},
+            "2027.1.0",
+            60,
+            False,
+            id="off-proxy",
+        ),
+    ],
+)
+def test_homeassistant_api_proxy(
+    install_app_ssh: App,
+    config: dict[str, Any],
+    core_min_version: str,
+    slug_max_length: int,
+    expected: bool,
+) -> None:
+    """Test apps leave the proxy only with a Core that binds their socket."""
+    install_app_ssh.data.update(
+        config
+        | {
+            key: AwesomeVersion(value)
+            for key, value in config.items()
+            if key == "homeassistant"
+        }
+    )
+
+    with (
+        patch(
+            "supervisor.homeassistant.const.CORE_APP_SOCKET_MIN_VERSION",
+            AwesomeVersion(core_min_version),
+        ),
+        patch("supervisor.apps.model.SLUG_MAX_LENGTH", slug_max_length),
+    ):
+        assert install_app_ssh.homeassistant_api_proxy is expected
+
+
 async def _start(coresys: CoreSys, app: App) -> asyncio.Task | None:
     """Start the app."""
     return await app.start()
@@ -1171,11 +1279,12 @@ async def _restore(coresys: CoreSys, app: App) -> asyncio.Task | None:
 
 
 @pytest.mark.parametrize(
-    "start",
+    ("start", "core_dir"),
     [
-        pytest.param(_start, id="start"),
-        pytest.param(_restart, id="restart"),
-        pytest.param(_restore, id="restore"),
+        pytest.param(_start, True, id="start"),
+        pytest.param(_restart, True, id="restart"),
+        # The backed up config has no Core API access
+        pytest.param(_restore, False, id="restore"),
     ],
 )
 @pytest.mark.usefixtures(
@@ -1185,13 +1294,14 @@ async def test_start_prepares_supervisor_socket(
     coresys: CoreSys,
     install_app_ssh: App,
     start: Callable[[CoreSys, App], Any],
+    core_dir: bool,
 ) -> None:
-    """Test the socket folder exists and the socket listens before the container runs."""
+    """Test the socket folders exist and the socket listens before the container runs."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_app_ssh.path_data.mkdir()
     await install_app_ssh.load()
     socket_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
-    state_at_run: list[tuple[bool, list[Any]]] = []
+    state_at_run: list[tuple[bool, bool, list[Any]]] = []
 
     async def _run(*args, **kwargs) -> MagicMock:
         state_at_run.append(
@@ -1199,6 +1309,7 @@ async def test_start_prepares_supervisor_socket(
                 await coresys.run_in_executor(
                     install_app_ssh.path_run_supervisor.is_dir
                 ),
+                await coresys.run_in_executor(install_app_ssh.path_run_core.is_dir),
                 coresys.api.sockets.register.await_args_list.copy(),
             )
         )
@@ -1207,7 +1318,21 @@ async def test_start_prepares_supervisor_socket(
     with patch.object(DockerAPI, "run", side_effect=_run):
         await start(coresys, install_app_ssh)
 
-    assert state_at_run == [(True, [call(install_app_ssh, socket_path)])]
+    assert state_at_run == [(True, core_dir, [call(install_app_ssh, socket_path)])]
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_without_core_api(coresys: CoreSys, install_app_ssh: App) -> None:
+    """Test an app without Core API access gets no Core socket folder."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    install_app_ssh.data["homeassistant_api"] = False
+
+    with patch.object(DockerAPI, "run"):
+        await install_app_ssh.start()
+
+    assert install_app_ssh.path_run_supervisor.is_dir()
+    assert not install_app_ssh.path_run_core.exists()
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -1358,6 +1483,66 @@ async def test_uninstall_removes_supervisor_socket(
 
     assert unregistered_at_remove == [[call(socket_path)]]
     assert not install_app_ssh.path_run_supervisor.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_uninstall_core_socket(
+    coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
+) -> None:
+    """Test uninstall tells Core and keeps the folder Core may still listen in."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    await coresys.run_in_executor(install_app_ssh.ensure_run_dirs)
+    coresys.apps.check_core_sockets_changed()
+    await asyncio.sleep(0)
+    ha_ws_client.async_send_command.reset_mock()
+
+    with (
+        patch.object(DockerApp, "remove"),
+        patch.object(Ingress, "update_hass_panel"),
+        patch.object(HomeAssistantAPI, "close_app_session") as close_app_session,
+    ):
+        await coresys.apps.uninstall(TEST_ADDON_SLUG)
+        await asyncio.sleep(0)
+
+    assert (
+        call(
+            {
+                "type": WSType.SUPERVISOR_EVENT,
+                "data": {"event": WSEvent.CORE_SOCKETS_CHANGED, "data": {}},
+            }
+        )
+        in ha_ws_client.async_send_command.call_args_list
+    )
+    close_app_session.assert_awaited_once_with(TEST_ADDON_SLUG)
+    assert install_app_ssh.path_run_core.is_dir()
+
+
+@pytest.mark.parametrize(
+    ("state", "closed"),
+    [
+        pytest.param(ContainerState.STOPPED, True, id="stopped"),
+        pytest.param(ContainerState.FAILED, True, id="failed"),
+        pytest.param(ContainerState.RUNNING, False, id="running"),
+    ],
+)
+async def test_container_stop_closes_core_session(
+    coresys: CoreSys, install_app_ssh: App, state: ContainerState, closed: bool
+) -> None:
+    """Test the app's session to Core is closed when its container stops."""
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(DockerApp, "current_state", return_value=ContainerState.UNKNOWN),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.load()
+
+    with patch.object(HomeAssistantAPI, "close_app_session") as close_app_session:
+        await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", state)
+
+    assert close_app_session.await_args_list == (
+        [call(TEST_ADDON_SLUG)] if closed else []
+    )
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")

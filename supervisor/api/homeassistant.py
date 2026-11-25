@@ -8,6 +8,7 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
+from ..apps.app import RUN_CORE_APPS
 from ..const import (
     ATTR_ARCH,
     ATTR_AUDIO_INPUT,
@@ -20,16 +21,23 @@ from ..const import (
     ATTR_IP_ADDRESS,
     ATTR_JOB_ID,
     ATTR_MACHINE,
+    ATTR_NAME,
     ATTR_ONE_SHOT,
+    ATTR_PATH,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
+    ATTR_ROLE,
+    ATTR_SLUG,
+    ATTR_SOCKETS,
     ATTR_SSL,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_WATCHDOG,
+    SOCKET_NAME_CORE,
 )
 from ..coresys import CoreSysAttributes
+from ..docker.const import PATH_RUN_CORE
 from ..exceptions import APIDBMigrationInProgress, APIError
 from ..validate import docker_image, network_port, version_tag
 from .const import ATTR_BACKGROUND, ATTR_FORCE, ATTR_SAFE_MODE
@@ -38,6 +46,7 @@ from .utils import (
     api_return_stats,
     api_validate,
     background_task,
+    require_home_assistant,
     require_running_system,
 )
 
@@ -157,6 +166,24 @@ class APIHomeAssistant(CoreSysAttributes):
             self.sys_homeassistant.duplicate_log_file = body[ATTR_DUPLICATE_LOG_FILE]
 
         await self.sys_homeassistant.save_data()
+
+    @api_process
+    @require_home_assistant
+    async def sockets(self, request: web.Request) -> dict[str, Any]:
+        """Return the app sockets Core listens on, with paths in Core's view."""
+        return {
+            ATTR_SOCKETS: [
+                {
+                    ATTR_SLUG: app.slug,
+                    ATTR_NAME: app.name,
+                    ATTR_PATH: (
+                        PATH_RUN_CORE / RUN_CORE_APPS / app.slug / SOCKET_NAME_CORE
+                    ).as_posix(),
+                    ATTR_ROLE: app.homeassistant_api_role,
+                }
+                for app in self.sys_apps.with_core_socket
+            ]
+        }
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:

@@ -139,8 +139,9 @@ RE_WATCHDOG = re.compile(
 WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 STARTUP_TIMEOUT = 120
 
-# Supervisor listens for each app in its own subfolder of this run subfolder
+# Supervisor and Core each listen for an app in a subfolder named after its slug
 RUN_SUPERVISOR_APPS = PurePath("apps")
+RUN_CORE_APPS = PurePath("apps")
 
 _OPTIONS_MERGER: Final = Merger(
     type_strategies=[(dict, ["merge"])],
@@ -864,12 +865,25 @@ class App(AppModel):
             self.sys_config.path_extern_run_supervisor, RUN_SUPERVISOR_APPS, self.slug
         )
 
+    @property
+    def path_run_core(self) -> Path:
+        """Return folder of the socket Core listens on for this app."""
+        return self.sys_config.path_run_core / RUN_CORE_APPS / self.slug
+
+    @property
+    def path_extern_run_core(self) -> PurePath:
+        """Return folder of the socket Core listens on for this app for Docker."""
+        return PurePath(self.sys_config.path_extern_run_core, RUN_CORE_APPS, self.slug)
+
     def ensure_run_dirs(self) -> None:
         """Create the run folders the app's socket mounts need.
 
         Must be run in executor.
         """
         self.path_run_supervisor.mkdir(parents=True, exist_ok=True)
+        # Never removed by Supervisor, Core may still listen in there
+        if self.with_core_socket:
+            self.path_run_core.mkdir(parents=True, exist_ok=True)
 
     async def prepare_sockets(self) -> None:
         """Create the app's socket folders and listen on its Supervisor socket."""
@@ -1079,6 +1093,7 @@ class App(AppModel):
 
         # Add to app manager
         self.sys_apps.local[self.slug] = self
+        self.sys_apps.check_core_sockets_changed()
 
         # Reload ingress tokens
         if self.with_ingress:
@@ -1106,6 +1121,7 @@ class App(AppModel):
         # The container (and possibly the image) is gone; the state derives
         # back to UNKNOWN via the image-removed instance.
         self._update_state(container_state=ContainerState.UNKNOWN)
+        await self.sys_homeassistant.api.close_app_session(self.slug)
 
         await self.unload()
 
@@ -1151,6 +1167,7 @@ class App(AppModel):
         # Remove from app manager
         self.sys_apps.local.pop(self.slug)
         await self.sys_apps.data.uninstall(self)
+        self.sys_apps.check_core_sockets_changed()
         await self.sys_run_in_executor(
             partial(shutil.rmtree, self.path_run_supervisor, ignore_errors=True)
         )
@@ -1199,6 +1216,7 @@ class App(AppModel):
         try:
             _LOGGER.info("App '%s' successfully updated", self.slug)
             await self.sys_apps.data.update(store)
+            self.sys_apps.check_core_sockets_changed()
             await self._check_ingress_port()
 
             # Reload ingress tokens in case app gained ingress support
@@ -1266,6 +1284,7 @@ class App(AppModel):
 
             if self.app_store:
                 await self.sys_apps.data.update(self.app_store)
+                self.sys_apps.check_core_sockets_changed()
 
             await self._check_ingress_port()
 
@@ -1988,6 +2007,9 @@ class App(AppModel):
 
         # An observed container state supersedes any prior operation error.
         self._update_state(container_state=event.state)
+
+        if event.state in (ContainerState.STOPPED, ContainerState.FAILED):
+            await self.sys_homeassistant.api.close_app_session(self.slug)
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in app container and restart if necessary."""

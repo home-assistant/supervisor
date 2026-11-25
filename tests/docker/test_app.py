@@ -180,6 +180,48 @@ def test_supervisor_socket_long_slug(
     assert "/run/supervisor/api" not in [mount.target for mount in mounts]
 
 
+@pytest.mark.parametrize(
+    ("app_config", "slug_max_length", "expected"),
+    [
+        pytest.param({"homeassistant_api": True}, 60, True, id="core-api"),
+        pytest.param(
+            {"homeassistant_api": True, "homeassistant_api_proxy": False},
+            60,
+            True,
+            id="off-proxy",
+        ),
+        pytest.param({}, 60, False, id="no-core-api"),
+        pytest.param({"homeassistant_api": True}, 5, False, id="long-slug"),
+    ],
+)
+@pytest.mark.usefixtures("path_extern")
+def test_core_socket(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    app_config: dict[str, bool],
+    slug_max_length: int,
+    expected: bool,
+):
+    """Test apps with Core API access get the folder Core listens in read-only."""
+    config = load_json_fixture("basic-app-config.json") | app_config
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+    core_socket_mount = DockerMount(
+        type=MountType.BIND,
+        source="/run/supervisor/core/apps/test_addon",
+        target="/run/supervisor/core",
+        read_only=True,
+    )
+
+    with patch("supervisor.apps.model.SLUG_MAX_LENGTH", slug_max_length):
+        mounts = docker_app.mounts
+        environment = docker_app.environment
+
+    assert (core_socket_mount in mounts) is expected
+    assert (
+        environment.get("HOMEASSISTANT_API_SOCKET") == "/run/supervisor/core/core.sock"
+    ) is expected
+
+
 def test_legacy_app_environment_does_not_modify_app_data(
     coresys: CoreSys,
     addonsdata_system: dict[str, Data],

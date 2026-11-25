@@ -36,6 +36,7 @@ from ..const import (
     ATTR_HASSIO_ROLE,
     ATTR_HOMEASSISTANT,
     ATTR_HOMEASSISTANT_API,
+    ATTR_HOMEASSISTANT_API_PROXY,
     ATTR_HOST_DBUS,
     ATTR_HOST_IPC,
     ATTR_HOST_NETWORK,
@@ -104,6 +105,7 @@ from ..exceptions import (
     HassioArchNotFound,
     StoreRepositoryFileUnsafeError,
 )
+from ..homeassistant.validate import core_binds_app_sockets
 from ..host.const import LogFormatter
 from ..jobs.const import JOB_GROUP_APP
 from ..jobs.job_group import JobGroup
@@ -118,9 +120,11 @@ from .const import (
     ATTR_LOG_FORMAT,
     ATTR_PATH,
     ATTR_READ_ONLY,
+    HOMEASSISTANT_API_PROXY_DEFAULT,
     SLUG_MAX_LENGTH,
     SUPERVISOR_API_TCP_DEFAULT,
     AppBackupMode,
+    HomeAssistantAPIRole,
     MappingType,
 )
 from .options import AppOptions, UiOptions
@@ -493,6 +497,30 @@ class AppModel(JobGroup, ABC):
         if self.slug_too_long_for_socket:
             return True
         return self.data.get(ATTR_SUPERVISOR_API_TCP, SUPERVISOR_API_TCP_DEFAULT)
+
+    @property
+    def with_core_socket(self) -> bool:
+        """Return True if Core listens on a socket of this app's own."""
+        # Apps with a long slug keep reaching Core through the proxy
+        return self.access_homeassistant_api and not self.slug_too_long_for_socket
+
+    @property
+    def homeassistant_api_role(self) -> HomeAssistantAPIRole | None:
+        """Return the Core API access level of the app, None without access."""
+        # Every app with Core API access has been an admin through the proxy
+        return HomeAssistantAPIRole.ADMIN if self.access_homeassistant_api else None
+
+    @property
+    def homeassistant_api_proxy(self) -> bool:
+        """Return True if the app reaches the Core API through Supervisor's proxy."""
+        if not self.access_homeassistant_api:
+            return False
+        if not self.with_core_socket or self.data.get(
+            ATTR_HOMEASSISTANT_API_PROXY, HOMEASSISTANT_API_PROXY_DEFAULT
+        ):
+            return True
+        # Only a Core that binds the app's socket can take over from the proxy
+        return not core_binds_app_sockets(self.homeassistant_version)
 
     @property
     def backup_exclude(self) -> list[str]:

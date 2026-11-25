@@ -1,7 +1,9 @@
 """Validate functions."""
 
+from contextlib import suppress
 import uuid
 
+from awesomeversion import AwesomeVersion, AwesomeVersionException
 import voluptuous as vol
 
 from ..const import (
@@ -19,8 +21,23 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
 )
+from ..utils import version_is_new_enough
 from ..validate import docker_image, network_port, token, uuid_match, version_tag
+from . import const
 from .const import ATTR_OVERRIDE_IMAGE
+
+
+def core_binds_app_sockets(version: AwesomeVersion | str | None) -> bool:
+    """Return True if this Core version binds a socket for each app."""
+    # Looked up on the module so tests can patch the unreleased constant
+    if not version or not const.CORE_APP_SOCKET_MIN_VERSION.valid:
+        return False
+    with suppress(AwesomeVersionException, TypeError):
+        return version_is_new_enough(
+            AwesomeVersion(str(version)), const.CORE_APP_SOCKET_MIN_VERSION
+        )
+    return False
+
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema(

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Coroutine, Generator
+from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
+from functools import partial
 from json import dumps
 import logging
+from pathlib import Path
 import re
 from typing import Any, cast
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 from aiohttp import (
     ClientPayloadError,
@@ -19,6 +21,7 @@ from aiohttp import (
 )
 from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.api.const import WEBSOCKETS
@@ -1034,3 +1037,159 @@ async def test_api_proxy_streaming_response_client_payload_error(
 
         content = await response.read()
         assert b"data: event1\n\n" in content
+
+
+CORE_APP_SOCKET_MIN_VERSION = (
+    "supervisor.homeassistant.const.CORE_APP_SOCKET_MIN_VERSION"
+)
+
+
+@pytest.fixture(name="core_binds_app_sockets")
+def fixture_core_binds_app_sockets(
+    coresys: CoreSys, tmp_run_dir: Path
+) -> Generator[None]:
+    """Run a Core that binds a socket for each app."""
+    coresys.homeassistant.version = AwesomeVersion("2027.1.0")
+    with (
+        patch(CORE_APP_SOCKET_MIN_VERSION, AwesomeVersion("2027.1.0")),
+        patch.object(HomeAssistantAPI, "check_api_state", return_value=True),
+    ):
+        yield
+
+
+@pytest.fixture(name="app_core_socket")
+async def fixture_app_core_socket(
+    coresys: CoreSys, install_app_example: App, core_binds_app_sockets: None
+) -> AsyncGenerator[list[dict[str, str]]]:
+    """Listen on the example app's Core socket like Core does.
+
+    Returns the headers of the REST requests received.
+    """
+    received: list[dict[str, str]] = []
+
+    async def states(request: web.Request) -> web.Response:
+        received.append(dict(request.headers))
+        return web.json_response([{"entity_id": "sun.sun"}])
+
+    async def websocket(request: web.Request) -> web.WebSocketResponse:
+        server = web.WebSocketResponse()
+        await server.prepare(request)
+        await server.send_json({"type": "auth_ok", "ha_version": "2027.1.0"})
+        async for msg in server:
+            await server.send_str(msg.data)
+        return server
+
+    core = web.Application()
+    core.router.add_get("/api/states", states)
+    core.router.add_get("/api/websocket", websocket)
+    runner = web.AppRunner(core)
+    await runner.setup()
+    path = install_app_example.path_run_core / "core.sock"
+    await coresys.run_in_executor(partial(path.parent.mkdir, parents=True))
+    await web.UnixSite(runner, str(path)).start()
+
+    yield received
+
+    await coresys.homeassistant.api.close()
+    await runner.cleanup()
+
+
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+async def test_api_proxy_over_app_core_socket(
+    api_client: TestClient,
+    proxy_auth: dict[str, str],
+    app_core_socket: list[dict[str, str]],
+):
+    """Test the proxy forwards an app's request over its own Core socket."""
+    response = await api_client.get("/core/api/states", headers=proxy_auth)
+
+    assert response.status == 200
+    assert await response.json() == [{"entity_id": "sun.sun"}]
+    assert len(app_core_socket) == 1
+    assert "Authorization" not in app_core_socket[0]
+
+
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+@pytest.mark.usefixtures("app_core_socket")
+async def test_proxy_websocket_over_app_core_socket(
+    api_client: TestClient, proxy_auth: dict[str, str]
+):
+    """Test the WebSocket proxy connects to Core over the app's own socket."""
+    websocket = await api_client.ws_connect("/core/websocket")
+    assert (await websocket.receive_json())["type"] == "auth_required"
+    await websocket.send_json({"type": "auth", "access_token": "abc123"})
+    assert (await websocket.receive_json())["type"] == "auth_ok"
+
+    await websocket.send_json({"id": 1, "type": "ping"})
+
+    assert await websocket.receive_json() == {"id": 1, "type": "ping"}
+    await websocket.close()
+
+
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+@pytest.mark.usefixtures("core_binds_app_sockets")
+async def test_api_proxy_app_core_socket_missing(
+    api_client: TestClient, proxy_auth: dict[str, str]
+):
+    """Test the proxy fails instead of using its own socket for an app's request."""
+    with patch.object(
+        HomeAssistantAPI, "session", new_callable=PropertyMock
+    ) as supervisor_session:
+        response = await api_client.get("/core/api/states", headers=proxy_auth)
+
+    assert response.status == 502
+    supervisor_session.assert_not_called()
+
+
+@pytest.fixture(name="off_proxy")
+def fixture_off_proxy(install_app_example: App) -> Generator[None]:
+    """Make the example app declare it reaches Core without the proxy."""
+    install_app_example.data["homeassistant"] = AwesomeVersion("2027.1.0")
+    install_app_example.data["homeassistant_api_proxy"] = False
+    with patch(CORE_APP_SOCKET_MIN_VERSION, AwesomeVersion("2027.1.0")):
+        yield
+
+
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+@pytest.mark.usefixtures("off_proxy")
+async def test_api_proxy_refuses_app_off_proxy(
+    api_client: TestClient,
+    proxy_auth: dict[str, str],
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test an app that left the proxy is refused by it."""
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        response = await api_client.get("/core/api/states", headers=proxy_auth)
+
+    assert response.status == 403
+    make_request.assert_not_called()
+    assert "it sets 'homeassistant_api_proxy: false'" in caplog.text
+
+
+@pytest.mark.usefixtures("off_proxy")
+async def test_proxy_websocket_refuses_app_off_proxy(
+    api_client: TestClient, install_app_example: App
+):
+    """Test an app that left the proxy is refused a WebSocket with its token."""
+    install_app_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_app_example.data["homeassistant_api"] = True
+
+    websocket = await api_client.ws_connect("/core/websocket")
+    assert (await websocket.receive_json())["type"] == "auth_required"
+    await websocket.send_json({"type": "auth", "access_token": "abc123"})
+
+    assert (await websocket.receive_json())["type"] == "auth_invalid"
+
+
+@pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
+@pytest.mark.usefixtures("off_proxy", "unix_socket")
+async def test_proxy_websocket_socket_refuses_app_off_proxy(
+    api_client: TestClient, install_app_example: App
+):
+    """Test an app that left the proxy is refused the WebSocket on its socket."""
+    install_app_example.data["homeassistant_api"] = True
+
+    with pytest.raises(WSServerHandshakeError) as err:
+        await api_client.ws_connect("/core/websocket")
+
+    assert err.value.status == 403

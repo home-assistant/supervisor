@@ -8,6 +8,7 @@ import aiohttp
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.apps.app import App
 from supervisor.const import SERVER_SOFTWARE
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
@@ -873,3 +874,91 @@ async def test_connect_websocket_tcp(coresys: CoreSys):
     # Verify connect_with_auth was called with the fresh token
     mock_connect.assert_called_once()
     assert mock_connect.call_args.args[2] == "fresh_token"
+
+
+# --- session_for_app ---
+
+
+@pytest.mark.parametrize(
+    ("core_version", "min_version", "homeassistant_api", "slug_max_length"),
+    [
+        pytest.param("2027.1.0", "TBD", True, 60, id="core-unreleased"),
+        pytest.param("2026.12.0", "2027.1.0", True, 60, id="core-too-old"),
+        pytest.param("landingpage", "2027.1.0", True, 60, id="landingpage"),
+        pytest.param("2027.1.0", "2027.1.0", False, 60, id="no-core-api"),
+        pytest.param("2027.1.0", "2027.1.0", True, 5, id="long-slug"),
+    ],
+)
+def test_session_for_app_supervisor_own(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    core_version: str,
+    min_version: str,
+    homeassistant_api: bool,
+    slug_max_length: int,
+):
+    """Test apps' requests use Supervisor's own session without a socket of theirs."""
+    coresys.homeassistant.version = AwesomeVersion(core_version)
+    install_app_ssh.data["homeassistant_api"] = homeassistant_api
+
+    with (
+        patch(
+            "supervisor.homeassistant.const.CORE_APP_SOCKET_MIN_VERSION",
+            AwesomeVersion(min_version),
+        ),
+        patch("supervisor.apps.model.SLUG_MAX_LENGTH", slug_max_length),
+    ):
+        assert coresys.homeassistant.api.session_for_app(install_app_ssh) is None
+
+
+@pytest.mark.usefixtures("tmp_run_dir")
+async def test_session_for_app(coresys: CoreSys, install_app_ssh: App):
+    """Test an app's requests use a session on its own socket once Core binds it."""
+    coresys.homeassistant.version = AwesomeVersion("2027.1.0")
+    api = coresys.homeassistant.api
+
+    with patch(
+        "supervisor.homeassistant.const.CORE_APP_SOCKET_MIN_VERSION",
+        AwesomeVersion("2027.1.0"),
+    ):
+        session = api.session_for_app(install_app_ssh)
+        try:
+            assert isinstance(session.connector, aiohttp.UnixConnector)
+            assert session.connector.path == str(
+                coresys.config.path_run / "core" / "apps" / "local_ssh" / "core.sock"
+            )
+            assert isinstance(session.cookie_jar, aiohttp.DummyCookieJar)
+            assert session.headers[aiohttp.hdrs.USER_AGENT] == SERVER_SOFTWARE
+            assert api.session_for_app(install_app_ssh) is session
+        finally:
+            await api.close()
+
+    assert session.closed
+
+
+@pytest.mark.parametrize(
+    ("state", "closed"),
+    [
+        pytest.param(ContainerState.STOPPED, True, id="stopped"),
+        pytest.param(ContainerState.FAILED, True, id="failed"),
+        pytest.param(ContainerState.RUNNING, False, id="running"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_run_dir")
+async def test_app_sessions_closed_with_core(
+    coresys: CoreSys, install_app_ssh: App, state: ContainerState, closed: bool
+):
+    """Test apps' sessions to Core are closed when Core stops."""
+    coresys.homeassistant.version = AwesomeVersion("2027.1.0")
+    api = coresys.homeassistant.api
+    with patch(
+        "supervisor.homeassistant.const.CORE_APP_SOCKET_MIN_VERSION",
+        AwesomeVersion("2027.1.0"),
+    ):
+        session = api.session_for_app(install_app_ssh)
+
+    try:
+        await api.container_state_changed(core_state_event(state))
+        assert session.closed is closed
+    finally:
+        await api.close()
