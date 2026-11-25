@@ -80,6 +80,7 @@ from ..const import (
     ATTR_STARTUP,
     ATTR_STATE,
     ATTR_STDIN,
+    ATTR_SUPERVISOR_API_TCP,
     ATTR_SYSTEM,
     ATTR_SYSTEM_MANAGED,
     ATTR_SYSTEM_MANAGED_CONFIG_ENTRY,
@@ -522,6 +523,8 @@ _SCHEMA_APP_CONFIG = vol.Schema(
         vol.Optional(ATTR_HASSIO_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_HASSIO_ROLE, default=ROLE_DEFAULT): vol.In(ROLE_ALL),
         vol.Optional(ATTR_HOMEASSISTANT_API, default=False): vol.Boolean(),
+        # No default, so changing SUPERVISOR_API_TCP_DEFAULT reaches installed apps too
+        vol.Optional(ATTR_SUPERVISOR_API_TCP): vol.Boolean(),
         vol.Optional(ATTR_STDIN, default=False): vol.Boolean(),
         vol.Optional(ATTR_LEGACY, default=False): vol.Boolean(),
         vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),

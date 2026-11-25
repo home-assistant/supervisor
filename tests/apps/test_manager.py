@@ -2,13 +2,17 @@
 
 import asyncio
 from collections.abc import AsyncGenerator, Generator
+from contextlib import AbstractContextManager, nullcontext
 from copy import deepcopy
+import logging
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, Mock, PropertyMock, call, patch
 
 from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
+from securetar import SecureTarFile
 
 from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
@@ -29,6 +33,7 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
+    APISocketListenError,
     AppConfigurationError,
     AppsError,
     DockerAPIError,
@@ -354,6 +359,68 @@ async def test_load(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
         write_hosts.assert_called_once()
 
     assert "Found 1 installed apps" in caplog.text
+
+
+@pytest.mark.usefixtures("install_app_ssh", "install_app_example")
+async def test_load_listens_for_installed_apps(coresys: CoreSys):
+    """Test app manager load listens on the socket of every installed app."""
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(PluginDns, "write_hosts"),
+    ):
+        await coresys.apps.load()
+
+    local_ssh = coresys.apps.get_local_only(TEST_ADDON_SLUG)
+    local_example = coresys.apps.get_local_only("local_example")
+    assert coresys.api.sockets.register.await_args_list == [
+        call(app, app.path_run_supervisor / "supervisor.sock")
+        for app in (local_ssh, local_example)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("state", "message"),
+    [
+        pytest.param(
+            AppState.STARTED,
+            "App local_ssh can't reach Supervisor on its socket until it is restarted",
+            id="started",
+        ),
+        pytest.param(
+            AppState.STARTUP,
+            "App local_ssh can't reach Supervisor on its socket until it is restarted",
+            id="startup",
+        ),
+        pytest.param(
+            AppState.STOPPED,
+            "Retrying the socket for app local_ssh when it starts",
+            id="stopped",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("install_app_ssh", "install_app_example")
+async def test_load_socket_error(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    state: AppState,
+    message: str,
+):
+    """Test a socket failing for one app does not stop the others."""
+    coresys.api.sockets.register.side_effect = [
+        APISocketListenError(path="/run/os/supervisor/apps/local_ssh"),
+        None,
+    ]
+
+    with (
+        patch.object(DockerApp, "attach"),
+        patch.object(PluginDns, "write_hosts"),
+        patch.object(App, "state", new=PropertyMock(return_value=state)),
+        caplog.at_level(logging.INFO),
+    ):
+        await coresys.apps.load()
+
+    assert coresys.api.sockets.register.await_count == 2
+    assert message in caplog.text
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -835,3 +902,67 @@ async def test_from_token_missing(
     install_app_ssh.persist.pop(ATTR_ACCESS_TOKEN, None)
 
     assert coresys.apps.from_token(token) is None
+
+
+@pytest.mark.parametrize(
+    ("install_error", "expectation"),
+    [
+        pytest.param(None, nullcontext(), id="installed"),
+        pytest.param(AppsError, pytest.raises(AppsError), id="failed"),
+    ],
+)
+@pytest.mark.usefixtures("mock_amd64_arch_supported", "test_repository")
+async def test_install_pending_until_done(
+    coresys: CoreSys,
+    install_error: type[Exception] | None,
+    expectation: AbstractContextManager,
+):
+    """Test an app being installed is pending until its install ends."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    pending: list[list[str]] = []
+
+    async def mock_install(app: App) -> None:
+        pending.append(list(coresys.apps.pending))
+        if install_error:
+            raise install_error
+
+    with patch.object(App, "install", new=mock_install), expectation:
+        await coresys.apps.install(TEST_ADDON_SLUG)
+
+    assert pending == [[TEST_ADDON_SLUG]]
+    assert coresys.apps.pending == {}
+
+
+@pytest.mark.usefixtures("test_repository")
+async def test_restore_new_app_pending_until_done(coresys: CoreSys):
+    """Test an app restored without being installed is pending until done."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    pending: list[list[str]] = []
+
+    async def mock_restore(app: App, tar_file: SecureTarFile) -> None:
+        pending.append(list(coresys.apps.pending))
+
+    with (
+        patch.object(App, "restore", new=mock_restore),
+        patch.object(App, "ingress_panel", new=PropertyMock(return_value=False)),
+    ):
+        await coresys.apps.restore(TEST_ADDON_SLUG, Mock(spec=SecureTarFile))
+
+    assert pending == [[TEST_ADDON_SLUG]]
+    assert coresys.apps.pending == {}
+    assert TEST_ADDON_SLUG in coresys.apps.local
+
+
+async def test_uninstall_pending_until_done(coresys: CoreSys, install_app_ssh: App):
+    """Test an app being uninstalled stays pending after it leaves local."""
+    pending: list[list[str]] = []
+
+    async def mock_uninstall(app: App, **kwargs: Any) -> None:
+        coresys.apps.local.pop(app.slug)
+        pending.append(list(coresys.apps.pending))
+
+    with patch.object(App, "uninstall", new=mock_uninstall):
+        await coresys.apps.uninstall(TEST_ADDON_SLUG)
+
+    assert pending == [[TEST_ADDON_SLUG]]
+    assert coresys.apps.pending == {}

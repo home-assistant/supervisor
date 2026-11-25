@@ -160,6 +160,43 @@ async def test_app_slug_too_long(
 
 
 @pytest.mark.parametrize(
+    ("slug", "image_config", "kept"),
+    [
+        pytest.param("foo-bar", {}, True, id="valid"),
+        pytest.param("foo__bar", {}, True, id="double-underscore"),
+        pytest.param("Foo", {}, True, id="uppercase"),
+        pytest.param("foo..bar", {}, False, id="double-dot"),
+        pytest.param("foo._bar", {}, False, id="mixed-separators"),
+        pytest.param("_foo", {}, False, id="leading-separator"),
+        pytest.param("foo-", {}, False, id="trailing-separator"),
+        pytest.param(
+            "foo..bar", {"image": "ghcr.io/test/{arch}-foo"}, True, id="with-image"
+        ),
+    ],
+)
+async def test_app_slug_local_build_image(
+    coresys: CoreSys,
+    tmp_path: Path,
+    slug: str,
+    image_config: dict[str, str],
+    kept: bool,
+):
+    """Test locally built store apps are skipped if the slug gives no valid image."""
+    config = load_json_fixture("basic-app-config.json")
+    del config["image"]
+    config |= {"slug": slug} | image_config
+    config_file = tmp_path / "config.json"
+    config_file.write_text(json.dumps(config), encoding="utf-8")
+
+    with patch.object(
+        coresys.store.data, "_find_app_configs", AsyncMock(return_value=[config_file])
+    ):
+        apps = await coresys.store.data._read_apps_folder(tmp_path, REPOSITORY_LOCAL)
+
+    assert (f"{REPOSITORY_LOCAL}_{slug}" in apps) is kept
+
+
+@pytest.mark.parametrize(
     ("repository", "channel", "system", "level", "message"),
     [
         pytest.param(

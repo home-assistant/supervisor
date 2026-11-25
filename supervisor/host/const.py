@@ -112,3 +112,10 @@ class MulticastDnsMode(StrEnum):
     OFF = "off"
     RESOLVE = "resolve"
     ANNOUNCE = "announce"
+
+
+class StreamType(StrEnum):
+    """INPUT/OUTPUT type of source."""
+
+    INPUT = "input"
+    OUTPUT = "output"

@@ -67,8 +67,14 @@ RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 # pylint: disable=invalid-name
 network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
-# Path component pattern for Docker image names (supports {arch}/{machine} templates)
-_RE_IMAGE_PATH_COMPONENT = re.compile(r"^[a-z0-9{][a-z0-9.\-_{}]*$")
+# Path component of a Docker image name per Docker's reference grammar:
+# alphanumeric runs joined by ".", "_", "__" or one or more "-". Templates
+# like {arch}/{machine} count as alphanumeric.
+_IMAGE_ALPHANUMERIC = r"(?:[a-z0-9]|\{[a-z]+\})+"
+_IMAGE_SEPARATOR = r"(?:[._]|__|-+)"
+_RE_IMAGE_PATH_COMPONENT = re.compile(
+    rf"^{_IMAGE_ALPHANUMERIC}(?:{_IMAGE_SEPARATOR}{_IMAGE_ALPHANUMERIC})*$"
+)
 
 
 def docker_image(image: str) -> str:

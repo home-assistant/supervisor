@@ -21,9 +21,9 @@ def _get_supervisor_version():
     for line in CONSTANTS.split("\n"):
         if match := RE_SUPERVISOR_VERSION.match(line):
             if git_sha := match.group("git_sha"):
-                return f"9999.09.9.dev9999+{git_sha}"
+                return f"9999.9.9.dev9999+{git_sha}"
             return match.group(1)
-    return "9999.09.9.dev9999"
+    return "9999.9.9.dev9999"
 
 
 setup(

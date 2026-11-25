@@ -27,6 +27,7 @@ from ..exceptions import (
     BackupSupervisorVersionError,
     UpdaterError,
 )
+from ..jobs import JobSchedulerOptions
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -39,6 +40,12 @@ from ..utils.sentry import async_capture_exception
 from .backup import Backup, BackupLocation
 from .const import (
     DEFAULT_FREEZE_TIMEOUT,
+    JOB_FREEZE_ALL,
+    JOB_FULL_BACKUP,
+    JOB_FULL_RESTORE,
+    JOB_PARTIAL_BACKUP,
+    JOB_PARTIAL_RESTORE,
+    JOB_THAW_ALL,
     LOCATION_CLOUD_BACKUP,
     LOCATION_TYPE,
     BackupJobStage,
@@ -49,9 +56,6 @@ from .utils import create_slug
 from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-JOB_FULL_RESTORE = "backup_manager_full_restore"
-JOB_PARTIAL_RESTORE = "backup_manager_partial_restore"
 
 
 class BackupManager(FileConfiguration, JobGroup):
@@ -254,6 +258,7 @@ class BackupManager(FileConfiguration, JobGroup):
         """Load exists backups data."""
         await self.reload()
 
+    @Job(name="backup_manager_reload")
     async def reload(self, location: str | None | type[DEFAULT] = DEFAULT) -> bool:
         """Load exists backups."""
 
@@ -290,11 +295,12 @@ class BackupManager(FileConfiguration, JobGroup):
 
         # This is just so we don't have to cast repeatedly. Variable will only be used when location is not DEFAULT
         location_name = "" if location == DEFAULT else cast(str | None, location)
-        locations = (
-            self.backup_locations
-            if location == DEFAULT
-            else {location_name: self.backup_locations[location_name]}
-        )
+        if location == DEFAULT:
+            locations = self.backup_locations
+        elif location_name in self.backup_locations:
+            locations = {location_name: self.backup_locations[location_name]}
+        else:
+            raise BackupMountDownError(mount=cast(str, location_name))
         # List the backup files of all locations in parallel; a slow or
         # network-backed location should not hold up the others.
         location_items = list(locations.items())
@@ -359,7 +365,9 @@ class BackupManager(FileConfiguration, JobGroup):
                 await self.sys_run_in_executor(backup_tarfile.unlink)
                 del backup.all_locations[location]
             except FileNotFoundError as err:
-                self.sys_create_task(self.reload(location))
+                await self.sys_jobs.schedule_job(
+                    self.reload, JobSchedulerOptions(), location
+                )
                 raise BackupFileNotFoundError(
                     f"Cannot delete backup at {backup_tarfile.as_posix()}, file does not exist!",
                     _LOGGER.error,
@@ -592,7 +600,7 @@ class BackupManager(FileConfiguration, JobGroup):
             await self.sys_core.set_state(CoreState.RUNNING)
 
     @Job(
-        name="backup_manager_full_backup",
+        name=JOB_FULL_BACKUP,
         conditions=[JobCondition.RUNNING],
         on_condition=BackupJobError,
         cleanup=False,
@@ -644,7 +652,7 @@ class BackupManager(FileConfiguration, JobGroup):
         return backup
 
     @Job(
-        name="backup_manager_partial_backup",
+        name=JOB_PARTIAL_BACKUP,
         conditions=[JobCondition.RUNNING],
         on_condition=BackupJobError,
         cleanup=False,
@@ -990,7 +998,7 @@ class BackupManager(FileConfiguration, JobGroup):
         return success
 
     @Job(
-        name="backup_manager_freeze_all",
+        name=JOB_FREEZE_ALL,
         conditions=[JobCondition.RUNNING],
         on_condition=BackupJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
@@ -1022,7 +1030,7 @@ class BackupManager(FileConfiguration, JobGroup):
         await asyncio.gather(*[app.begin_backup() for app in running_apps])
 
     @Job(
-        name="backup_manager_thaw_all",
+        name=JOB_THAW_ALL,
         conditions=[JobCondition.FROZEN],
         on_condition=BackupJobError,
     )

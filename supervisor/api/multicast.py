@@ -1,43 +1,30 @@
 """Init file for Supervisor Multicast RESTful API."""
 
 import asyncio
-from collections.abc import Awaitable
 import logging
 from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
 
-from ..const import (
-    ATTR_ENABLED,
-    ATTR_ONE_SHOT,
-    ATTR_UPDATE_AVAILABLE,
-    ATTR_VERSION,
-    ATTR_VERSION_LATEST,
-)
-from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, MulticastDisabledError
-from ..validate import version_tag
-from .utils import api_process, api_return_stats, api_validate, require_running_system
+from ..const import ATTR_ENABLED
+from ..plugins.multicast import PluginMulticast
+from .plugins import APIPlugin
+from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): vol.Boolean()})
 
 
-class APIMulticast(CoreSysAttributes):
+class APIMulticast(APIPlugin[PluginMulticast]):
     """Handle RESTful API for Multicast functions."""
 
-    @api_process
-    async def info(self, request: web.Request) -> dict[str, Any]:
+    def _info(self) -> dict[str, Any]:
         """Return Multicast information."""
-        return {
-            ATTR_VERSION: self.sys_plugins.multicast.version,
-            ATTR_VERSION_LATEST: self.sys_plugins.multicast.latest_version,
-            ATTR_UPDATE_AVAILABLE: self.sys_plugins.multicast.need_update,
-            ATTR_ENABLED: self.sys_plugins.multicast.enabled,
+        return super()._info() | {
+            ATTR_ENABLED: self.plugin.enabled,
         }
 
     @api_process
@@ -47,42 +34,6 @@ class APIMulticast(CoreSysAttributes):
 
         if ATTR_ENABLED in body:
             if body[ATTR_ENABLED]:
-                await asyncio.shield(self.sys_plugins.multicast.enable())
+                await asyncio.shield(self.plugin.enable())
             else:
-                await asyncio.shield(self.sys_plugins.multicast.disable())
-
-    @api_process
-    async def stats(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information for v2 contract (always one-shot)."""
-        stats = await self.sys_plugins.multicast.stats(one_shot=True)
-        return api_return_stats(stats, legacy=False)
-
-    @api_process
-    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information."""
-        one_shot = ATTR_ONE_SHOT in request.query
-        stats = await self.sys_plugins.multicast.stats(one_shot=one_shot)
-
-        return api_return_stats(stats, legacy=True)
-
-    @api_process
-    @require_running_system
-    async def update(self, request: web.Request) -> None:
-        """Update Multicast plugin."""
-        if not self.sys_plugins.multicast.enabled:
-            raise MulticastDisabledError
-
-        body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_plugins.multicast.latest_version)
-
-        if not self.sys_plugins.multicast.version:
-            raise APIError("Multicast plugin is not installed")
-        if version == self.sys_plugins.multicast.version:
-            raise APIError(f"Version {version} is already in use")
-        await asyncio.shield(self.sys_plugins.multicast.update(version))
-
-    @api_process
-    @require_running_system
-    def restart(self, request: web.Request) -> Awaitable[None]:
-        """Restart Multicast plugin."""
-        return asyncio.shield(self.sys_plugins.multicast.restart())
+                await asyncio.shield(self.plugin.disable())

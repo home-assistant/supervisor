@@ -701,3 +701,19 @@ def test_slug_too_long_installed():
     config["repository"] = "local"
 
     assert vd.SCHEMA_APP_SYSTEM(config)["slug"] == "a" * 61
+
+
+def test_supervisor_api_tcp_not_stored_by_default():
+    """Test an unset supervisor_api_tcp is not stored, so its default can change."""
+    config = load_json_fixture("basic-app-config.json")
+
+    assert "supervisor_api_tcp" not in vd.SCHEMA_APP_CONFIG(config)
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_supervisor_api_tcp_kept(value: bool):
+    """Test a declared supervisor_api_tcp is kept."""
+    config = load_json_fixture("basic-app-config.json")
+    config["supervisor_api_tcp"] = value
+
+    assert vd.SCHEMA_APP_CONFIG(config)["supervisor_api_tcp"] is value

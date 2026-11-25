@@ -325,6 +325,26 @@ async def test_api_supervisor_fallback_log_capture(
         capture_exception.assert_called_once()
 
 
+@pytest.mark.usefixtures("docker_logs")
+async def test_api_supervisor_fallback_gateway_rejected_request(
+    api_client_with_prefix: tuple[TestClient, str],
+    journald_gateway: MagicMock,
+):
+    """Check a request rejected by the journal gateway falls back without capture."""
+    api_client, prefix = api_client_with_prefix
+    journald_gateway.status = 400
+    journald_gateway.content.feed_data(b"Failed to parse Range header.\n")
+    journald_gateway.content.feed_eof()
+
+    with patch("supervisor.api.async_capture_exception") as capture_exception:
+        resp = await api_client.get(
+            f"{prefix}/supervisor/logs", headers={"Range": "entries=:-1:0"}
+        )
+
+    assert resp.status == 200
+    capture_exception.assert_not_called()
+
+
 async def test_api_supervisor_reload(
     api_client_with_prefix: tuple[TestClient, str],
     supervisor_internet: AsyncMock,

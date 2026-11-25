@@ -1,7 +1,7 @@
 """Test Home Assistant Apps."""
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 import errno
 from http import HTTPStatus
@@ -10,7 +10,7 @@ import os
 from pathlib import Path, PurePath
 from tarfile import TarFile
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, call, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
@@ -18,13 +18,17 @@ from awesomeversion import AwesomeVersion
 import pytest
 from securetar import SecureTarArchive, SecureTarFile
 
+from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode
+from supervisor.apps.const import AppBackupMode, AppOperation, AppOperationInitiator
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
+from supervisor.apps.validate import SCHEMA_APP_USER
 from supervisor.const import (
     ATTR_ADVANCED,
+    ATTR_IMAGE,
     ATTR_LOCATION,
     ATTR_PORTS,
+    ATTR_SLUG,
     AppBoot,
     AppState,
     BusEvent,
@@ -33,9 +37,11 @@ from supervisor.const import (
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
+from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
+    APISocketListenError,
     AppFileReadError,
     AppNotRunningError,
     AppNotSupportedArchitectureError,
@@ -44,6 +50,8 @@ from supervisor.exceptions import (
     AppRepositoryFileUnsafeError,
     AppsError,
     AppsJobError,
+    AppSocketDirsError,
+    AppSocketListenError,
     AppStatsTimeoutError,
     AppUnknownError,
     AudioUpdateError,
@@ -198,14 +206,25 @@ async def test_app_state_listener(coresys: CoreSys, install_app_ssh: App) -> Non
 
 
 @pytest.mark.parametrize(
-    ("websocket_v2_enabled", "expected_event"),
-    [(False, "addon"), (True, "app")],
+    ("websocket_v2_enabled", "expected_data"),
+    [
+        pytest.param(
+            False,
+            lambda app: {
+                "event": "addon",
+                "slug": TEST_ADDON_SLUG,
+                "state": AppState.STARTED,
+            },
+            id="v1",
+        ),
+        pytest.param(True, lambda app: {"event": "app"} | app.status, id="v2"),
+    ],
 )
 async def test_app_state_event_name_compatibility(
     install_app_ssh: App,
     ha_ws_client: AsyncMock,
     websocket_v2_enabled: bool,
-    expected_event: str,
+    expected_data: Callable[[App], dict[str, Any]],
 ) -> None:
     """Test app state event uses legacy/new metadata based on WS v2 feature flag."""
     install_app_ssh.sys_config.set_feature_flag(
@@ -228,11 +247,7 @@ async def test_app_state_event_name_compatibility(
     ha_ws_client.async_send_command.assert_any_call(
         {
             "type": WSType.SUPERVISOR_EVENT,
-            "data": {
-                "event": expected_event,
-                "slug": TEST_ADDON_SLUG,
-                "state": AppState.STARTED,
-            },
+            "data": expected_data(install_app_ssh),
         }
     )
 
@@ -633,6 +648,39 @@ async def test_watchdog_port_conflict_does_not_retry(
         assert f"Watchdog cannot restart app {install_app_ssh.name}" in caplog.text
 
 
+async def test_watchdog_retries_socket_error(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test the watchdog retries a start that failed to listen on the socket."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    with (
+        patch.object(
+            App,
+            "start",
+            side_effect=[AppSocketListenError(app=TEST_ADDON_SLUG), done_task],
+        ) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.WATCHDOG_RETRY_SECONDS", 0),
+        patch("supervisor.apps.app.async_capture_exception"),
+    ):
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert start.await_count == 2
+
+
 async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
     """Test app watchdog restarts app on stop if not manual."""
     with patch.object(DockerApp, "attach"):
@@ -671,6 +719,238 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
         restart.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "stop",
+    [
+        pytest.param(App.stop, id="app"),
+        pytest.param(lambda app: app.instance.stop(), id="container"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("event_state", "expected_state"),
+    [
+        pytest.param(ContainerState.STOPPED, AppState.STOPPED, id="stopped"),
+        pytest.param(ContainerState.FAILED, AppState.ERROR, id="failed"),
+    ],
+)
+async def test_stop_stopping_until_container_stops(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    stop: Callable[[App], Awaitable[None]],
+    event_state: ContainerState,
+    expected_state: AppState,
+) -> None:
+    """Test app is stopping during the stop request until docker reports it stopped."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        state_during_stop.append(install_app_ssh.state)
+        # Health checks while shutting down do not end stopping
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY
+        )
+        state_during_stop.append(install_app_ssh.state)
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await stop(install_app_ssh)
+        assert state_during_stop == [AppState.STOPPING, AppState.STOPPING]
+
+        # Docker can answer the stop request before its die event arrives
+        assert install_app_ssh.state == AppState.STOPPING
+        await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", event_state)
+        assert install_app_ssh.state == expected_state
+
+        # Next start is not mistaken for stopping
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
+        assert install_app_ssh.state == AppState.STARTED
+
+
+async def test_stop_container_stopped_during_stop_request(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test docker reporting the container stopped ends stopping right away."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STARTED)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
+        state_during_stop.append(install_app_ssh.state)
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.stop()
+
+    assert state_during_stop == [AppState.STOPPED]
+    assert install_app_ssh.state == AppState.STOPPED
+
+
+async def test_stop_not_stopping_when_not_running(install_app_ssh: App) -> None:
+    """Test stopping an app which is not running does not enter stopping."""
+    force_app_state(install_app_ssh, AppState.STOPPED)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        state_during_stop.append(install_app_ssh.state)
+
+    with patch.object(DockerInterface, "stop", side_effect=mock_stop):
+        await install_app_ssh.stop()
+
+    assert state_during_stop == [AppState.STOPPED]
+    assert install_app_ssh.state == AppState.STOPPED
+
+
+@pytest.mark.parametrize(
+    ("stop", "error"),
+    [
+        pytest.param(App.stop, AppUnknownError, id="app"),
+        pytest.param(lambda app: app.instance.stop(), DockerError, id="container"),
+    ],
+)
+@pytest.mark.parametrize(
+    "running_state",
+    [
+        pytest.param(AppState.STARTED, id="started"),
+        pytest.param(AppState.STARTUP, id="startup"),
+    ],
+)
+async def test_stop_failed_error(
+    install_app_ssh: App,
+    stop: Callable[[App], Awaitable[None]],
+    error: type[Exception],
+    running_state: AppState,
+) -> None:
+    """Test a failed stop request leaves stopping for error."""
+    force_app_state(install_app_ssh, running_state)
+    state_during_stop: list[AppState] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        state_during_stop.append(install_app_ssh.state)
+        raise DockerError
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        pytest.raises(error),
+    ):
+        await stop(install_app_ssh)
+
+    assert state_during_stop == [AppState.STOPPING]
+    assert install_app_ssh.state == AppState.ERROR
+
+
+@pytest.mark.parametrize(
+    "running_state",
+    [
+        pytest.param(AppState.STARTED, id="started"),
+        pytest.param(AppState.STARTUP, id="startup"),
+    ],
+)
+async def test_stopping_raw_state(
+    coresys: CoreSys, install_app_ssh: App, running_state: AppState
+) -> None:
+    """Test raw state follows the container while the app is stopping."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, running_state)
+    states_during_stop: list[tuple[AppState, AppState]] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        states_during_stop.append((install_app_ssh.state, install_app_ssh.raw_state))
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
+        )
+        states_during_stop.append((install_app_ssh.state, install_app_ssh.raw_state))
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.stop()
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
+
+    assert states_during_stop == [
+        (AppState.STOPPING, running_state),
+        (AppState.STOPPING, AppState.STARTED),
+    ]
+    assert install_app_ssh.state == AppState.STOPPED
+    assert install_app_ssh.raw_state == AppState.STOPPED
+
+
+@pytest.mark.parametrize(
+    ("websocket_v2_enabled", "expected_sent"),
+    [
+        pytest.param(False, [[], [AppState.STARTED], [AppState.STOPPED]], id="v1"),
+        pytest.param(True, [[AppState.STOPPING], [], [AppState.STOPPED]], id="v2"),
+    ],
+)
+async def test_stopping_state_event_compatibility(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    ha_ws_client: AsyncMock,
+    websocket_v2_enabled: bool,
+    expected_sent: list[list[AppState]],
+) -> None:
+    """Test Home Assistant only gets the stopping state with WS v2 enabled."""
+    install_app_ssh.sys_config.set_feature_flag(
+        FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, websocket_v2_enabled
+    )
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+    force_app_state(install_app_ssh, AppState.STARTUP)
+    sent: list[list[AppState]] = []
+    last_state = AppState.STARTUP
+
+    async def collect_sent() -> None:
+        nonlocal last_state
+        await asyncio.sleep(0)
+        # V2 events also carry operation changes, only state changes matter here
+        states: list[AppState] = []
+        for call_ in ha_ws_client.async_send_command.call_args_list:
+            data = call_.args[0].get("data", {})
+            if data.get("event") in ("addon", "app") and data["state"] != last_state:
+                last_state = data["state"]
+                states.append(last_state)
+        sent.append(states)
+        ha_ws_client.async_send_command.reset_mock()
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        await collect_sent()
+        # Health check passing while stopping still completes startup for v1
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
+        )
+        await collect_sent()
+
+    await asyncio.sleep(0)
+    ha_ws_client.async_send_command.reset_mock()
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        patch.object(App, "watchdog_container"),
+    ):
+        await install_app_ssh.stop()
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
+        await collect_sent()
+
+    assert sent == expected_sent
 
 
 @pytest.mark.usefixtures("mock_amd64_arch_supported", "test_repository")
@@ -942,6 +1222,248 @@ async def test_start_timeout(
         await start_task
 
     assert "Timeout while waiting for app Terminal & SSH to start" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("config", "expected"),
+    [
+        pytest.param({}, True, id="default"),
+        pytest.param({"supervisor_api_tcp": True}, True, id="tcp"),
+        pytest.param({"supervisor_api_tcp": False}, False, id="socket"),
+    ],
+)
+def test_supervisor_api_tcp(
+    install_app_ssh: App, config: dict[str, bool], expected: bool
+) -> None:
+    """Test apps call the Supervisor API over TCP unless they opt out."""
+    install_app_ssh.data.update(config)
+
+    assert install_app_ssh.supervisor_api_tcp is expected
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        pytest.param({}, id="default"),
+        pytest.param({"supervisor_api_tcp": False}, id="socket"),
+    ],
+)
+def test_supervisor_api_tcp_long_slug(
+    install_app_ssh: App, config: dict[str, bool]
+) -> None:
+    """Test an app whose slug is over the cap gets no socket and stays on TCP."""
+    install_app_ssh.data.update(config)
+
+    with patch("supervisor.apps.model.SLUG_MAX_LENGTH", 5):
+        assert install_app_ssh.slug_too_long_for_socket is True
+        assert install_app_ssh.supervisor_api_tcp is True
+
+
+async def _start(coresys: CoreSys, app: App) -> asyncio.Task | None:
+    """Start the app."""
+    return await app.start()
+
+
+async def _restart(coresys: CoreSys, app: App) -> asyncio.Task | None:
+    """Restart the app."""
+    return await app.restart()
+
+
+async def _restore(coresys: CoreSys, app: App) -> asyncio.Task | None:
+    """Restore the app from a backup of it running."""
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_running.tar.gz"))
+    with patch.object(DockerApp, "is_running", return_value=False):
+        return await coresys.apps.restore(app.slug, tarfile)
+
+
+@pytest.mark.parametrize(
+    "start",
+    [
+        pytest.param(_start, id="start"),
+        pytest.param(_restart, id="restart"),
+        pytest.param(_restore, id="restore"),
+    ],
+)
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
+async def test_start_prepares_supervisor_socket(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    start: Callable[[CoreSys, App], Any],
+) -> None:
+    """Test the socket folder exists and the socket listens before the container runs."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    socket_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
+    state_at_run: list[tuple[bool, list[Any]]] = []
+
+    async def _run(*args, **kwargs) -> MagicMock:
+        state_at_run.append(
+            (
+                await coresys.run_in_executor(
+                    install_app_ssh.path_run_supervisor.is_dir
+                ),
+                coresys.api.sockets.register.await_args_list.copy(),
+            )
+        )
+        return MagicMock()
+
+    with patch.object(DockerAPI, "run", side_effect=_run):
+        await start(coresys, install_app_ssh)
+
+    assert state_at_run == [(True, [call(install_app_ssh, socket_path)])]
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_socket_already_registered(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test a start does not register the socket again."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    socket_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
+
+    with patch.object(
+        SocketRegistry,
+        "paths",
+        new=PropertyMock(return_value=[socket_path.as_posix()]),
+    ):
+        await install_app_ssh.start()
+
+    coresys.api.sockets.register.assert_not_awaited()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_socket_dirs_error(install_app_ssh: App) -> None:
+    """Test the start fails when the socket folder can't be created."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+
+    with (
+        patch.object(App, "ensure_run_dirs", side_effect=OSError("full")),
+        patch.object(DockerAPI, "run") as run,
+        pytest.raises(AppSocketDirsError),
+    ):
+        await install_app_ssh.start()
+
+    run.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_socket_listen_error(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test the start fails as an app error when Supervisor can't listen."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    coresys.api.sockets.register.side_effect = APISocketListenError(path="test")
+
+    with (
+        patch.object(DockerAPI, "run") as run,
+        pytest.raises(AppSocketListenError),
+    ):
+        await install_app_ssh.start()
+
+    run.assert_not_called()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_long_slug(coresys: CoreSys, install_app_ssh: App) -> None:
+    """Test an app whose slug is over the cap starts without a socket."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+
+    with (
+        patch("supervisor.apps.model.SLUG_MAX_LENGTH", 5),
+        patch.object(DockerAPI, "run") as run,
+    ):
+        await install_app_ssh.start()
+
+    run.assert_called_once()
+    coresys.api.sockets.register.assert_not_awaited()
+    assert not install_app_ssh.path_run_supervisor.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_prepare_sockets_concurrent(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test concurrent preparations register the socket once."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    registered: list[str] = []
+
+    async def register(_principal: App, path: Path) -> None:
+        await asyncio.sleep(0)
+        registered.append(path.as_posix())
+
+    coresys.api.sockets.register.side_effect = register
+    # Both preparations reach the registry check without yielding to a thread
+    with (
+        patch.object(coresys, "run_in_executor", AsyncMock()),
+        patch.object(
+            SocketRegistry,
+            "paths",
+            new=PropertyMock(side_effect=lambda: list(registered)),
+        ),
+    ):
+        await asyncio.gather(
+            install_app_ssh.prepare_sockets(), install_app_ssh.prepare_sockets()
+        )
+
+    coresys.api.sockets.register.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    ("config", "has_token"),
+    [
+        pytest.param({}, True, id="default"),
+        pytest.param({"supervisor_api_tcp": True}, True, id="tcp"),
+        pytest.param({"supervisor_api_tcp": False}, False, id="socket"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start_access_token(
+    install_app_ssh: App, config: dict[str, bool], has_token: bool
+) -> None:
+    """Test the token is rotated, or dropped for an app off the TCP API."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    install_app_ssh.data.update(config)
+    install_app_ssh.persist["access_token"] = "old_token"
+
+    await install_app_ssh.start()
+
+    assert ("access_token" in install_app_ssh.persist) is has_token
+    assert install_app_ssh.supervisor_token != "old_token"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_uninstall_removes_supervisor_socket(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test uninstall stops listening before removing the container, then the folder."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    await coresys.run_in_executor(install_app_ssh.ensure_run_dirs)
+    socket_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
+    unregistered_at_remove: list[list[Any]] = []
+
+    async def _remove(*args, **kwargs) -> None:
+        unregistered_at_remove.append(
+            coresys.api.sockets.unregister.await_args_list.copy()
+        )
+
+    with (
+        patch.object(DockerApp, "remove", side_effect=_remove),
+        patch.object(Ingress, "update_hass_panel"),
+    ):
+        await coresys.apps.uninstall(TEST_ADDON_SLUG)
+
+    assert unregistered_at_remove == [[call(socket_path)]]
+    assert not install_app_ssh.path_run_supervisor.exists()
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -1367,6 +1889,24 @@ async def test_local_example_install(coresys: CoreSys, tmp_supervisor_data: Path
         install.assert_called_once()
 
     assert data_dir.is_dir()
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [pytest.param("ssh", id="lowercase"), pytest.param("SSH", id="uppercase")],
+)
+@pytest.mark.usefixtures("test_repository", "mock_amd64_arch_supported")
+async def test_local_build_image_valid(coresys: CoreSys, slug: str):
+    """Test locally built app image name is valid regardless of slug case."""
+    store = coresys.apps.store[TEST_ADDON_SLUG]
+    store.data[ATTR_SLUG] = slug
+    assert store.need_build
+    await coresys.apps.data.install(store)
+
+    # save_data is mocked in tests.
+    # The real one validates with this schema and discards the install data if the image is invalid.
+    user_data = SCHEMA_APP_USER(coresys.apps.data.user[TEST_ADDON_SLUG])
+    assert user_data[ATTR_IMAGE] == "local/amd64-addon-ssh"
 
 
 @pytest.mark.usefixtures("test_repository", "tmp_supervisor_data")
@@ -2258,3 +2798,203 @@ async def test_path_location_detached_raises(coresys: CoreSys, install_app_ssh: 
     assert install_app_ssh.with_changelog is False
     assert install_app_ssh.with_documentation is False
     assert await install_app_ssh.long_description() is None
+
+
+def _app_statuses(ha_ws_client: AsyncMock) -> list[dict[str, Any]]:
+    """Return the app status events sent to Home Assistant."""
+    return [
+        sent.args[0]["data"]
+        for sent in ha_ws_client.async_send_command.call_args_list
+        if sent.args[0].get("data", {}).get("event") == "app"
+    ]
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_operation_reports_outermost_job(
+    coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
+) -> None:
+    """Test a restart is reported as restarting, not as stopping and starting."""
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    await coresys.block_till_done()
+    ha_ws_client.async_send_command.reset_mock()
+
+    start_task = await install_app_ssh.restart()
+    await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await start_task
+    await coresys.block_till_done()
+
+    operations = [status["operation"] for status in _app_statuses(ha_ws_client)]
+    assert {operation["name"] for operation in operations if operation} == {
+        AppOperation.RESTARTING
+    }
+    assert [
+        operation for operation in operations if operation and operation["done"]
+    ] == [
+        {
+            "name": AppOperation.RESTARTING,
+            "initiator": AppOperationInitiator.API,
+            "job_id": ANY,
+            "progress": 100,
+            "done": True,
+            "errors": [],
+        }
+    ]
+    assert operations[-1] is None
+    assert install_app_ssh.operation is None
+
+
+async def test_operation_failure_reports_errors(
+    coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
+) -> None:
+    """Test the event ending a failed operation carries its errors."""
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=DockerError),
+        pytest.raises(AppUnknownError),
+    ):
+        await install_app_ssh.stop()
+    await coresys.block_till_done()
+
+    operations = [status["operation"] for status in _app_statuses(ha_ws_client)]
+    assert operations[-2]["name"] == AppOperation.STOPPING
+    assert operations[-2]["done"] is True
+    assert [error["type"] for error in operations[-2]["errors"]] == ["AppUnknownError"]
+    assert operations[-1] is None
+
+
+@pytest.mark.parametrize(
+    ("root_job", "initiator"),
+    [
+        pytest.param("app_manager_boot", AppOperationInitiator.BOOT, id="boot"),
+        pytest.param(
+            "app_restart_after_problem", AppOperationInitiator.WATCHDOG, id="watchdog"
+        ),
+        pytest.param(
+            "backup_manager_partial_backup", AppOperationInitiator.BACKUP, id="backup"
+        ),
+        pytest.param(
+            "backup_manager_full_restore", AppOperationInitiator.RESTORE, id="restore"
+        ),
+        pytest.param("other_job", AppOperationInitiator.SUPERVISOR, id="other"),
+    ],
+)
+async def test_operation_initiator_from_root_job(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    root_job: str,
+    initiator: AppOperationInitiator,
+) -> None:
+    """Test the initiator of an operation is found from its root job."""
+    operations: list[dict[str, Any] | None] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        operations.append(install_app_ssh.operation)
+
+    with (
+        patch.object(DockerInterface, "stop", side_effect=mock_stop),
+        coresys.jobs.new_job(root_job).start(),
+    ):
+        await install_app_ssh.stop()
+
+    assert operations == [
+        {
+            "name": AppOperation.STOPPING,
+            "initiator": initiator,
+            "job_id": ANY,
+            "progress": None,
+            "done": False,
+            "errors": [],
+        }
+    ]
+
+
+async def test_operation_progress(
+    coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
+) -> None:
+    """Test progress is null until the operation's job reports some, then a number."""
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+    update_job = coresys.jobs.new_job("app_manager_update", reference=TEST_ADDON_SLUG)
+
+    with patch.object(DockerInterface, "stop"), update_job.start():
+        await install_app_ssh.stop()
+        update_job.progress = 50
+        # A reset after progress was reported, like a retried image pull
+        update_job.progress = 0
+        update_job.progress = 50
+        await coresys.block_till_done()
+
+        assert install_app_ssh.operation == {
+            "name": AppOperation.UPDATING,
+            "initiator": AppOperationInitiator.API,
+            "job_id": update_job.uuid,
+            "progress": 50,
+            "done": False,
+            "errors": [],
+        }
+
+    await coresys.block_till_done()
+    progress = [
+        status["operation"]["progress"]
+        for status in _app_statuses(ha_ws_client)
+        if status["operation"]
+    ]
+    assert progress == [None, 50, 0, 50, 100]
+    assert install_app_ssh.operation is None
+
+
+async def test_rejected_operation_not_reported(
+    coresys: CoreSys, install_app_ssh: App
+) -> None:
+    """Test an operation rejected by the app's lock does not replace the current one."""
+    operations: list[dict[str, Any] | None] = []
+
+    async def mock_stop(*args: Any, **kwargs: Any) -> None:
+        with pytest.raises(AppsJobError):
+            await coresys.create_task(install_app_ssh.restart())
+        operations.append(install_app_ssh.operation)
+
+    with patch.object(DockerInterface, "stop", side_effect=mock_stop):
+        await install_app_ssh.stop()
+
+    assert [operation["name"] for operation in operations] == [AppOperation.STOPPING]
+
+
+async def test_status_published_on_settings_change(
+    coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
+) -> None:
+    """Test saving changed settings sends the app's status once."""
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+    install_app_ssh.watchdog = False
+    await install_app_ssh.save_persist()
+    await coresys.block_till_done()
+    ha_ws_client.async_send_command.reset_mock()
+
+    install_app_ssh.watchdog = True
+    await install_app_ssh.save_persist()
+    await install_app_ssh.save_persist()
+    await coresys.block_till_done()
+
+    statuses = _app_statuses(ha_ws_client)
+    assert [status["watchdog"] for status in statuses] == [True]
+    assert statuses[0] == {"event": "app"} | install_app_ssh.status
+
+
+async def test_status_not_published_without_websocket_v2(
+    coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
+) -> None:
+    """Test the app's status is only sent to Home Assistant with WS v2 enabled."""
+    install_app_ssh.watchdog = True
+    await install_app_ssh.save_persist()
+    with patch.object(DockerInterface, "stop"):
+        await install_app_ssh.stop()
+    await coresys.block_till_done()
+
+    assert not [
+        sent
+        for sent in ha_ws_client.async_send_command.call_args_list
+        if sent.args[0].get("data", {}).get("event") in ("app", "addon")
+        and "operation" in sent.args[0]["data"]
+    ]

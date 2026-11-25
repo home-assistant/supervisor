@@ -12,6 +12,7 @@ import pytest
 from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.backups.manager import BackupManager
+from supervisor.const import FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AppNotSupportedError, StoreJobError
 from supervisor.homeassistant.const import WSEvent
@@ -299,3 +300,26 @@ async def test_app_version_timestamp(coresys: CoreSys, install_app_example: App)
     ):
         await coresys.store.reload()
     assert timestamp < install_app_example.latest_version_timestamp
+
+
+async def test_store_refresh_publishes_app_status(
+    coresys: CoreSys, install_app_ssh: App, ha_ws_client: AsyncMock
+):
+    """Test a store refresh sends the status of apps whose latest version changed."""
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, True)
+    install_app_ssh.publish_status()
+    await coresys.block_till_done()
+    ha_ws_client.async_send_command.reset_mock()
+
+    coresys.store.data.apps[install_app_ssh.slug]["version"] = AwesomeVersion("99.0.0")
+    await coresys.store._read_apps()  # pylint: disable=protected-access
+    await coresys.block_till_done()
+
+    statuses = [
+        call.args[0]["data"]
+        for call in ha_ws_client.async_send_command.call_args_list
+        if call.args[0].get("data", {}).get("event") == "app"
+    ]
+    assert [
+        (status["version_latest"], status["update_available"]) for status in statuses
+    ] == [("99.0.0", True)]

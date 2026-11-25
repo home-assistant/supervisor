@@ -22,6 +22,7 @@ from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import AppState, CoreState, Folder
 from supervisor.coresys import CoreSys
+from supervisor.dbus.const import UnitActiveState
 from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
@@ -2465,6 +2466,90 @@ async def test_partial_reload_multiple_locations(
     assert backup.location is None
     assert backup.locations == [None, "backup_test"]
     assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
+
+
+@pytest.fixture(name="backup_mount_backups")
+async def fixture_backup_mount_backups(
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    mount_propagation: None,
+    mock_is_mount: MagicMock,
+) -> Backup:
+    """Load backups from the local folder and a backup mount."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    copy(get_fixture_path("backup_example.tar"), tmp_supervisor_data / "backup")
+    copy(get_fixture_path("backup_example.tar"), mount_dir)
+    copy(get_fixture_path("test_consolidate.tar"), mount_dir)
+    await coresys.backups.reload()
+
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations.keys() == {None, "backup_test"}
+    assert len(coresys.backups.list_backups) == 2
+    return backup
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        pytest.param("backup_test", id="mount_down"),
+        pytest.param("unknown_mount", id="unknown_mount"),
+    ],
+)
+@pytest.mark.usefixtures("path_extern")
+async def test_partial_reload_unavailable_location(
+    coresys: CoreSys, backup_mount_backups: Backup, location: str
+):
+    """Test a partial reload of an unavailable location raises."""
+    with (
+        patch.object(
+            Mount, "state", new=PropertyMock(return_value=UnitActiveState.FAILED)
+        ),
+        pytest.raises(BackupMountDownError),
+    ):
+        await coresys.backups.reload(location)
+
+    assert len(coresys.backups.list_backups) == 2
+    assert backup_mount_backups.all_locations.keys() == {None, "backup_test"}
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_remove_missing_file_unavailable_location(
+    coresys: CoreSys, backup_mount_backups: Backup, caplog: pytest.LogCaptureFixture
+):
+    """Test removing a missing file from an unavailable location logs the reload error."""
+    backup_mount_backups.all_locations["backup_test"].path = (
+        tar_file_mock := MagicMock()
+    )
+    tar_file_mock.unlink.side_effect = FileNotFoundError()
+
+    with patch.object(
+        Mount, "state", new=PropertyMock(return_value=UnitActiveState.FAILED)
+    ):
+        with pytest.raises(BackupFileNotFoundError):
+            await coresys.backups.remove(
+                backup_mount_backups, locations=[coresys.mounts.get("backup_test")]
+            )
+        await coresys.block_till_done()
+
+    assert (
+        "Background job backup_manager_reload failed: "
+        "Backup mount 'backup_test' is down" in caplog.text
+    )
+    assert "Task exception was never retrieved" not in caplog.text
+    assert backup_mount_backups.all_locations.keys() == {None, "backup_test"}
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")

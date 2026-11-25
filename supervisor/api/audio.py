@@ -18,22 +18,17 @@ from ..const import (
     ATTR_INDEX,
     ATTR_INPUT,
     ATTR_NAME,
-    ATTR_ONE_SHOT,
     ATTR_OUTPUT,
-    ATTR_UPDATE_AVAILABLE,
-    ATTR_VERSION,
-    ATTR_VERSION_LATEST,
     ATTR_VOLUME,
 )
-from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
-from ..host.sound import StreamType
-from ..validate import version_tag
-from .utils import api_process, api_return_stats, api_validate, require_running_system
+from ..exceptions import AudioInvalidSource
+from ..host.const import StreamType
+from ..plugins.audio import PluginAudio
+from .plugins import APIPlugin
+from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 
 SCHEMA_VOLUME = vol.Schema(
     {
@@ -56,17 +51,24 @@ SCHEMA_PROFILE = vol.Schema(
     {vol.Required(ATTR_CARD): str, vol.Required(ATTR_NAME): str}
 )
 
+SCHEMA_STREAM_TYPE = vol.Coerce(StreamType)
 
-class APIAudio(CoreSysAttributes):
+
+def _get_stream_type(request: web.Request) -> StreamType:
+    """Return validated stream type from request path."""
+    source = request.match_info["source"]
+    try:
+        return SCHEMA_STREAM_TYPE(source)
+    except vol.Invalid as err:
+        raise AudioInvalidSource(source=source) from err
+
+
+class APIAudio(APIPlugin[PluginAudio]):
     """Handle RESTful API for Audio functions."""
 
-    @api_process
-    async def info(self, request: web.Request) -> dict[str, Any]:
+    def _info(self) -> dict[str, Any]:
         """Return Audio information."""
-        return {
-            ATTR_VERSION: self.sys_plugins.audio.version,
-            ATTR_VERSION_LATEST: self.sys_plugins.audio.latest_version,
-            ATTR_UPDATE_AVAILABLE: self.sys_plugins.audio.need_update,
+        return super()._info() | {
             ATTR_HOST: str(self.sys_docker.network.audio),
             ATTR_AUDIO: {
                 ATTR_CARD: [asdict(card) for card in self.sys_host.sound.cards],
@@ -79,37 +81,6 @@ class APIAudio(CoreSysAttributes):
         }
 
     @api_process
-    async def stats(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information for v2 contract (always one-shot)."""
-        stats = await self.sys_plugins.audio.stats(one_shot=True)
-        return api_return_stats(stats, legacy=False)
-
-    @api_process
-    async def stats_v1(self, request: web.Request) -> dict[str, Any]:
-        """Return resource information."""
-        one_shot = ATTR_ONE_SHOT in request.query
-        stats = await self.sys_plugins.audio.stats(one_shot=one_shot)
-
-        return api_return_stats(stats, legacy=True)
-
-    @api_process
-    @require_running_system
-    async def update(self, request: web.Request) -> None:
-        """Update Audio plugin."""
-        body = await api_validate(SCHEMA_VERSION, request)
-        version = body.get(ATTR_VERSION, self.sys_plugins.audio.latest_version)
-
-        if version == self.sys_plugins.audio.version:
-            raise APIError(f"Version {version} is already in use")
-        await asyncio.shield(self.sys_plugins.audio.update(version))
-
-    @api_process
-    @require_running_system
-    def restart(self, request: web.Request) -> Awaitable[None]:
-        """Restart Audio plugin."""
-        return asyncio.shield(self.sys_plugins.audio.restart())
-
-    @api_process
     def reload(self, request: web.Request) -> Awaitable[None]:
         """Reload Audio information."""
         return asyncio.shield(self.sys_host.sound.update())
@@ -117,7 +88,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_volume(self, request: web.Request) -> None:
         """Set audio volume on stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_VOLUME, request)
 
@@ -130,7 +101,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_mute(self, request: web.Request) -> None:
         """Mute audio volume on stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_MUTE, request)
 
@@ -143,7 +114,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_default(self, request: web.Request) -> None:
         """Set audio default stream."""
-        source: StreamType = StreamType(request.match_info["source"])
+        source = _get_stream_type(request)
         body = await api_validate(SCHEMA_DEFAULT, request)
 
         await asyncio.shield(self.sys_host.sound.set_default(source, body[ATTR_NAME]))

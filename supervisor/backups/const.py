@@ -17,6 +17,13 @@ SECURETAR_CREATE_VERSION = 2
 SECURETAR_V3_CREATE_VERSION = 3
 CORE_SECURETAR_V3_MIN_VERSION: AwesomeVersion = AwesomeVersion("2026.3.0")
 DEFAULT_FREEZE_TIMEOUT = 600
+
+JOB_FREEZE_ALL = "backup_manager_freeze_all"
+JOB_FULL_BACKUP = "backup_manager_full_backup"
+JOB_FULL_RESTORE = "backup_manager_full_restore"
+JOB_PARTIAL_BACKUP = "backup_manager_partial_backup"
+JOB_PARTIAL_RESTORE = "backup_manager_partial_restore"
+JOB_THAW_ALL = "backup_manager_thaw_all"
 LOCATION_CLOUD_BACKUP = ".cloud_backup"
 
 LOCATION_TYPE = Mount | Literal[".cloud_backup"] | None

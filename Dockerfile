@@ -22,7 +22,7 @@ RUN \
         openssl \
         yaml \
     \
-    && pip3 install uv==0.13.7
+    && pip3 install uv==0.13.9
 
 #############################################
 # Install requirements and build Supervisor #
@@ -48,7 +48,7 @@ RUN \
         ${LOCAL_WHEELS:+--find-links $LOCAL_WHEELS}
 
 # Install Home Assistant Supervisor
-ARG BUILD_VERSION="9999.09.9.dev9999"
+ARG BUILD_VERSION="9999.9.9.dev9999"
 COPY . supervisor
 RUN \
     --mount=type=bind,source=./wheels,target=/usr/src/wheels \

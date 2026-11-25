@@ -53,6 +53,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound
+from ..jobs import JobSchedulerOptions
 from ..mounts.const import MountUsage
 from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
@@ -578,7 +579,9 @@ class APIBackups(CoreSysAttributes):
         filename = backup.all_locations[location].path
         # If the file is missing, return 404 and trigger reload of location
         if not await self.sys_run_in_executor(filename.is_file):
-            self.sys_create_task(self.sys_backups.reload(location))
+            await self.sys_jobs.schedule_job(
+                self.sys_backups.reload, JobSchedulerOptions(), location
+            )
             return web.Response(status=404)
 
         response = web.FileResponse(filename)

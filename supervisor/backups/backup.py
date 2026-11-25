@@ -63,6 +63,7 @@ from ..exceptions import (
     MountError,
 )
 from ..homeassistant.const import LANDINGPAGE
+from ..jobs import JobSchedulerOptions
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -417,7 +418,9 @@ class Backup(JobGroup):
         try:
             await self.sys_run_in_executor(_validate_file)
         except FileNotFoundError as err:
-            self.sys_create_task(self.sys_backups.reload(location))
+            await self.sys_jobs.schedule_job(
+                self.sys_backups.reload, JobSchedulerOptions(), location
+            )
             raise BackupFileNotFoundError(
                 f"Cannot validate backup at {backup_file.as_posix()}, file does not exist!",
                 _LOGGER.error,
@@ -588,7 +591,9 @@ class Backup(JobGroup):
         try:
             tar, members = await self.sys_run_in_executor(_open_backup)
         except BackupFileNotFoundError:
-            self.sys_create_task(self.sys_backups.reload(location))
+            await self.sys_jobs.schedule_job(
+                self.sys_backups.reload, JobSchedulerOptions(), location
+            )
             raise
         except tarfile.FilterError as err:
             raise BackupInvalidError(

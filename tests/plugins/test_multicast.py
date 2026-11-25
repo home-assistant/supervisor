@@ -16,7 +16,8 @@ from supervisor.exceptions import (
     DockerError,
     DockerStatsTimeoutError,
     MulticastDisabledError,
-    MulticastError,
+    MulticastDisableError,
+    MulticastEnableError,
     MulticastNotRunningError,
     MulticastStatsTimeoutError,
     MulticastUnknownError,
@@ -79,21 +80,21 @@ async def test_stats_unknown_error(coresys: CoreSys):
 
 @pytest.mark.usefixtures("supervisor_internet")
 async def test_enable_failure(coresys: CoreSys):
-    """Test enable translates plugin errors into MulticastError."""
+    """Test enable translates plugin errors into MulticastEnableError."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with (
         patch.object(PluginBase, "enable", side_effect=PluginError("boom")),
-        pytest.raises(MulticastError),
+        pytest.raises(MulticastEnableError),
     ):
         await coresys.plugins.multicast.enable()
 
 
 async def test_disable_failure(coresys: CoreSys):
-    """Test disable translates plugin errors into MulticastError."""
+    """Test disable translates plugin errors into MulticastDisableError."""
     with (
         patch.object(PluginBase, "disable", side_effect=PluginError("boom")),
-        pytest.raises(MulticastError),
+        pytest.raises(MulticastDisableError),
     ):
         await coresys.plugins.multicast.disable()
 

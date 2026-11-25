@@ -67,6 +67,7 @@ from ..const import (
     ATTR_STAGE,
     ATTR_STARTUP,
     ATTR_STDIN,
+    ATTR_SUPERVISOR_API_TCP,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
@@ -82,6 +83,7 @@ from ..const import (
     ATTR_WATCHDOG,
     ATTR_WEBUI,
     MACHINE_DEPRECATED,
+    REPOSITORY_LOCAL,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
@@ -90,6 +92,7 @@ from ..const import (
     AppStage,
     AppStartup,
     CpuArch,
+    UpdateChannel,
 )
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
@@ -117,6 +120,8 @@ from .const import (
     ATTR_LOG_FORMAT,
     ATTR_PATH,
     ATTR_READ_ONLY,
+    SLUG_MAX_LENGTH,
+    SUPERVISOR_API_TCP_DEFAULT,
     AppBackupMode,
     MappingType,
 )
@@ -290,6 +295,19 @@ class AppModel(JobGroup, ABC):
     def repository(self) -> str:
         """Return repository of app."""
         return self.data[ATTR_REPOSITORY]
+
+    @property
+    def user_is_developer(self) -> bool:
+        """Return True if this system's user is presumably the app's developer.
+
+        There is no direct signal, so assume it for local apps and on
+        development systems.
+        """
+        return (
+            self.repository == REPOSITORY_LOCAL
+            or self.sys_dev
+            or self.sys_updater.channel == UpdateChannel.DEV
+        )
 
     @property
     def translations(self) -> dict:
@@ -474,6 +492,22 @@ class AppModel(JobGroup, ABC):
     def hassio_role(self) -> str:
         """Return Supervisor role for API."""
         return self.data[ATTR_HASSIO_ROLE]
+
+    @property
+    def slug_too_long_for_socket(self) -> bool:
+        """Return True if the app's socket path may not fit in sun_path.
+
+        Apps installed before the slug cap, or restored from their backups, keep
+        their slug. They get no Supervisor socket and stay on the TCP API.
+        """
+        return len(self.slug) > SLUG_MAX_LENGTH
+
+    @property
+    def supervisor_api_tcp(self) -> bool:
+        """Return True if the app gets a token to call the Supervisor API over TCP."""
+        if self.slug_too_long_for_socket:
+            return True
+        return self.data.get(ATTR_SUPERVISOR_API_TCP, SUPERVISOR_API_TCP_DEFAULT)
 
     @property
     def backup_exclude(self) -> list[str]:
@@ -938,4 +972,6 @@ class AppModel(JobGroup, ABC):
 
         # local build
         arch = self.sys_arch.match(config[ATTR_ARCH])
-        return f"{config[ATTR_REPOSITORY]}/{arch!s}-addon-{config[ATTR_SLUG]}"
+        # App slugs are allowed to contain uppercase characters,
+        # but Docker image names must be lowercase
+        return f"{config[ATTR_REPOSITORY]}/{arch!s}-addon-{config[ATTR_SLUG]}".lower()

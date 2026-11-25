@@ -1,8 +1,8 @@
 """Init file for Supervisor apps."""
 
 import asyncio
-from collections.abc import Awaitable
-from contextlib import suppress
+from collections.abc import Awaitable, Callable, Generator
+from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import datetime
 from functools import partial
@@ -30,15 +30,22 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
+    ATTR_DONE,
+    ATTR_ERRORS,
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
     ATTR_INGRESS_PORT,
     ATTR_INGRESS_TOKEN,
+    ATTR_INITIATOR,
+    ATTR_JOB_ID,
     ATTR_LOCATION,
+    ATTR_NAME,
     ATTR_NETWORK,
+    ATTR_OPERATION,
     ATTR_OPTIONS,
     ATTR_PORTS,
+    ATTR_PROGRESS,
     ATTR_PROTECTED,
     ATTR_SCHEMA,
     ATTR_SLUG,
@@ -46,17 +53,21 @@ from ..const import (
     ATTR_SYSTEM,
     ATTR_SYSTEM_MANAGED,
     ATTR_SYSTEM_MANAGED_CONFIG_ENTRY,
+    ATTR_UPDATE_AVAILABLE,
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
+    ATTR_VERSION_LATEST,
     ATTR_VERSION_TIMESTAMP,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
+    SOCKET_NAME_SUPERVISOR,
     AppBoot,
     AppBootConfig,
     AppStartup,
     AppState,
     BusEvent,
+    FeatureFlag,
 )
 from ..coresys import CoreSys
 from ..docker.app import DockerApp
@@ -65,6 +76,7 @@ from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    APISocketError,
     AppBackupMetadataInvalidError,
     AppBuildFailedUnknownError,
     AppConfigurationInvalidError,
@@ -77,6 +89,8 @@ from ..exceptions import (
     AppPrePostBackupCommandReturnedError,
     AppsError,
     AppsJobError,
+    AppSocketDirsError,
+    AppSocketListenError,
     AppStatsTimeoutError,
     AppUnknownError,
     BackupInvalidError,
@@ -92,10 +106,12 @@ from ..exceptions import (
     DockerStatsTimeoutError,
     HassioArchNotFound,
     HostAppArmorError,
+    JobNotFound,
     StoreAppNotFoundError,
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent
+from ..jobs import SupervisorJob
 from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
@@ -107,11 +123,16 @@ from ..utils.dt import utc_from_timestamp
 from ..utils.json import read_json_file, write_json_file
 from ..utils.sentry import async_capture_exception
 from .const import (
+    JOB_APP_RESTART_AFTER_PROBLEM,
+    OPERATION_INITIATOR_JOBS,
+    OPERATION_JOBS,
     WATCHDOG_MAX_ATTEMPTS,
     WATCHDOG_RETRY_SECONDS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
     AppBackupMode,
+    AppOperation,
+    AppOperationInitiator,
     MappingType,
 )
 from .model import AppModel, Data
@@ -134,6 +155,9 @@ RE_WATCHDOG = re.compile(
 WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 STARTUP_TIMEOUT = 120
 
+# Supervisor listens for each app in its own subfolder of this run subfolder
+RUN_SUPERVISOR_APPS = PurePath("apps")
+
 _OPTIONS_MERGER: Final = Merger(
     type_strategies=[(dict, ["merge"])],
     fallback_strategies=["override"],
@@ -144,9 +168,19 @@ _OPTIONS_MERGER: Final = Merger(
 # Map other app states to those two
 _MAP_APP_STATE = {
     AppState.STARTUP: AppState.STARTED,
+    AppState.STOPPING: AppState.STOPPED,
     AppState.ERROR: AppState.STOPPED,
     AppState.UNKNOWN: AppState.STOPPED,
 }
+
+_RUNNING_CONTAINER_STATES = frozenset(
+    {
+        ContainerState.RUNNING,
+        ContainerState.STARTING,
+        ContainerState.HEALTHY,
+        ContainerState.UNHEALTHY,
+    }
+)
 
 
 class App(AppModel):
@@ -161,10 +195,22 @@ class App(AppModel):
         # Cached app state. Updated only via ``_update_state`` so the value
         # consumers see matches what was last emitted.
         self._state: AppState = AppState.UNKNOWN
+        # App state from docker signals alone, without our STOPPING overlay.
+        self._raw_state: AppState = AppState.UNKNOWN
+        # Set while our stop request to docker is in flight; docker has no such state.
+        # Managed by ``stopping``.
+        self._stopping: bool = False
+        # Job of the operation in progress and the operation as last reported
+        self._operation_job: SupervisorJob | None = None
+        self._operation: dict[str, Any] | None = None
+        self._remove_operation_listener: Callable[[], None] | None = None
+        # Status last sent to Home Assistant
+        self._published_status: dict[str, Any] | None = None
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._wait_for_startup_task: asyncio.Task | None = None
+        self._sockets_lock = asyncio.Lock()
         self._boot_failed_issue = Issue(
             IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
         )
@@ -190,6 +236,11 @@ class App(AppModel):
     def state(self) -> AppState:
         """Return current state of the app."""
         return self._state
+
+    @property
+    def raw_state(self) -> AppState:
+        """Return app state from docker signals alone, never STOPPING."""
+        return self._raw_state
 
     def _derive_state(self, operation_error: bool) -> AppState:
         """Derive the app state from the cached docker signals.
@@ -237,49 +288,198 @@ class App(AppModel):
         if container_state is not None:
             self._container_state = container_state
 
-        new_state = self._derive_state(operation_error)
-        if new_state == self._state:
-            return
-        old_state = self._state
-        self._state = new_state
-
-        # Signal listeners about app state change
-        if new_state == AppState.STARTED or old_state == AppState.STARTUP:
-            self._startup_event.set()
-
-        # Dismiss boot failed or port conflict issue if present and we started
-        if new_state == AppState.STARTED:
-            for issue in self.sys_resolution.issues:
-                if (
-                    issue == self.boot_failed_issue
-                    or issue.type == IssueType.APP_PORT_CONFLICT
-                    and issue.context == ContextType.ADDON
-                    and issue.reference == self.slug
-                ):
-                    self.sys_resolution.dismiss_issue(issue)
-
-        # Home Assistant lists discovery messages only of started apps
-        if new_state != AppState.STARTED:
-            self.sys_discovery.mark_unannounced(self)
-        elif old_state == AppState.STARTUP:
-            # Pushes during startup were dropped or came before the app was ready
-            self.sys_discovery.push_messages(self)
-
-        # Dismiss device access missing issue if present and we stopped
-        if new_state == AppState.STOPPED and (
-            access_issue := self.sys_resolution.get_issue_if_present(
-                self.device_access_missing_issue
-            )
-        ):
-            self.sys_resolution.dismiss_issue(access_issue)
-
-        self.sys_homeassistant.websocket.supervisor_event_custom(
-            WSEvent.APP,
-            {
-                ATTR_SLUG: self.slug,
-                ATTR_STATE: new_state,
-            },
+        raw_state = self._derive_state(operation_error)
+        new_state = (
+            AppState.STOPPING
+            if self._stopping
+            and not operation_error
+            and self._container_state in _RUNNING_CONTAINER_STATES
+            else raw_state
         )
+        old_state, old_raw_state = self._state, self._raw_state
+        self._state, self._raw_state = new_state, raw_state
+
+        if new_state != old_state:
+            # Signal listeners about app state change
+            if new_state == AppState.STARTED or old_state == AppState.STARTUP:
+                self._startup_event.set()
+
+            # Dismiss boot failed or port conflict issue if present and we started
+            if new_state == AppState.STARTED:
+                for issue in self.sys_resolution.issues:
+                    if (
+                        issue == self.boot_failed_issue
+                        or issue.type == IssueType.APP_PORT_CONFLICT
+                        and issue.context == ContextType.ADDON
+                        and issue.reference == self.slug
+                    ):
+                        self.sys_resolution.dismiss_issue(issue)
+
+            # Home Assistant lists discovery messages only of started apps
+            if new_state != AppState.STARTED:
+                self.sys_discovery.mark_unannounced(self)
+            elif old_state == AppState.STARTUP:
+                # Pushes during startup were dropped or came before the app was ready
+                self.sys_discovery.push_messages(self)
+
+            # Dismiss device access missing issue if present and we stopped
+            if new_state == AppState.STOPPED and (
+                access_issue := self.sys_resolution.get_issue_if_present(
+                    self.device_access_missing_issue
+                )
+            ):
+                self.sys_resolution.dismiss_issue(access_issue)
+
+        if self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            self.publish_status()
+        # Core versions predating the v2 API do not know STOPPING
+        elif raw_state != old_raw_state:
+            self.sys_homeassistant.websocket.supervisor_event_custom(
+                WSEvent.APP,
+                {
+                    ATTR_SLUG: self.slug,
+                    ATTR_STATE: raw_state,
+                },
+            )
+
+    @contextmanager
+    def stopping(self) -> Generator[None]:
+        """Report a running app as STOPPING while docker stops its container."""
+        self._stopping = True
+        self._update_state()
+        try:
+            yield
+        except DockerError:
+            # Some callers suppress stop failures, so mark the error here
+            self._update_state(operation_error=True)
+            raise
+        finally:
+            # Docker can answer before its die event arrives, which then ends STOPPING
+            self._stopping = False
+
+    @property
+    def operation(self) -> dict[str, Any] | None:
+        """Return the operation in progress on the app, if any."""
+        return self._operation
+
+    @property
+    def status(self) -> dict[str, Any]:
+        """Return a summary of the app's state, settings and operation."""
+        status: dict[str, Any] = {
+            ATTR_SLUG: self.slug,
+            ATTR_STATE: self.state,
+            ATTR_OPERATION: self.operation,
+        }
+        if self.slug in self.sys_apps.data.user:
+            return status | {
+                ATTR_NAME: self.name,
+                ATTR_VERSION: self.version,
+                ATTR_VERSION_LATEST: self.latest_version,
+                ATTR_UPDATE_AVAILABLE: self.need_update,
+                ATTR_BOOT: self.boot,
+                ATTR_WATCHDOG: self.watchdog,
+                ATTR_INGRESS_PANEL: self.ingress_panel,
+                ATTR_PROTECTED: self.protected,
+                ATTR_AUTO_UPDATE: self.auto_update,
+            }
+
+        # Not installed yet or anymore, only the store knows about it
+        store = self.app_store
+        return status | {
+            ATTR_NAME: store.name if store else None,
+            ATTR_VERSION: None,
+            ATTR_VERSION_LATEST: store.latest_version if store else None,
+            ATTR_UPDATE_AVAILABLE: False,
+            ATTR_BOOT: None,
+            ATTR_WATCHDOG: None,
+            ATTR_INGRESS_PANEL: None,
+            ATTR_PROTECTED: None,
+            ATTR_AUTO_UPDATE: None,
+        }
+
+    def publish_status(self) -> None:
+        """Send the app's status to Home Assistant if it changed since last sent."""
+        if not self.sys_config.feature_flags.get(
+            FeatureFlag.SUPERVISOR_WEBSOCKET_V2_API, False
+        ):
+            return
+        if (status := self.status) == self._published_status:
+            return
+        self._published_status = status
+        self.sys_homeassistant.websocket.supervisor_event_custom(WSEvent.APP, status)
+
+    def _parent_job(self, job: SupervisorJob) -> SupervisorJob | None:
+        """Return the parent of a job if it has one."""
+        if job.parent_id:
+            with suppress(JobNotFound):
+                return self.sys_jobs.get_job(job.parent_id)
+        return None
+
+    def _on_lock_acquired(self, job: SupervisorJob) -> None:
+        """Track the operation which the job taking the app's lock is a part of."""
+        operation_job: SupervisorJob | None = None
+        root = job
+        current: SupervisorJob | None = job
+        while current:
+            if current.reference == self.slug and current.name in OPERATION_JOBS:
+                operation_job = current
+            root = current
+            current = self._parent_job(current)
+
+        if not operation_job or operation_job is self._operation_job:
+            return
+
+        # The lock holder wins if another operation slipped in between its steps
+        if self._remove_operation_listener:
+            self._remove_operation_listener()
+
+        self._operation_job = operation_job
+        self._operation = {
+            ATTR_NAME: OPERATION_JOBS[cast(str, operation_job.name)],
+            ATTR_INITIATOR: (
+                AppOperationInitiator.API
+                if root is operation_job
+                else OPERATION_INITIATOR_JOBS.get(
+                    cast(str, root.name), AppOperationInitiator.SUPERVISOR
+                )
+            ),
+            ATTR_JOB_ID: operation_job.uuid,
+            # Null until the job reports progress, so clients can tell it is unknown
+            ATTR_PROGRESS: round(operation_job.progress, 1) or None,
+            ATTR_DONE: False,
+            ATTR_ERRORS: [],
+        }
+        self._remove_operation_listener = self.sys_jobs.add_job_change_listener(
+            operation_job, self._operation_job_changed
+        )
+        self.publish_status()
+
+    def _operation_job_changed(self, job_data: dict[str, Any]) -> None:
+        """Update the operation in progress from a change to its job."""
+        if not self._operation:
+            return
+
+        progress: float | None = job_data[ATTR_PROGRESS]
+        # Job progress starts at 0, report it as unknown until the job reports any
+        if progress == 0 and self._operation[ATTR_PROGRESS] is None:
+            progress = None
+
+        operation = self._operation | {
+            ATTR_PROGRESS: progress,
+            ATTR_DONE: bool(job_data[ATTR_DONE]),
+            ATTR_ERRORS: job_data[ATTR_ERRORS],
+        }
+        self._operation = operation
+        self.publish_status()
+
+        # Job manager drops the listener of a done job
+        if operation[ATTR_DONE]:
+            self._operation_job = None
+            self._operation = None
+            self._remove_operation_listener = None
+            self.publish_status()
 
     @property
     def in_progress(self) -> bool:
@@ -800,6 +1000,51 @@ class App(AppModel):
         return Path(self.path_data, "options.json")
 
     @property
+    def path_run_supervisor(self) -> Path:
+        """Return folder of the socket Supervisor listens on for this app."""
+        return self.sys_config.path_run_supervisor / RUN_SUPERVISOR_APPS / self.slug
+
+    @property
+    def path_extern_run_supervisor(self) -> PurePath:
+        """Return folder of the socket Supervisor listens on for this app for Docker."""
+        return PurePath(
+            self.sys_config.path_extern_run_supervisor, RUN_SUPERVISOR_APPS, self.slug
+        )
+
+    def ensure_run_dirs(self) -> None:
+        """Create the run folders the app's socket mounts need.
+
+        Must be run in executor.
+        """
+        self.path_run_supervisor.mkdir(parents=True, exist_ok=True)
+
+    async def prepare_sockets(self) -> None:
+        """Create the app's socket folders and listen on its Supervisor socket."""
+        if self.slug_too_long_for_socket:
+            _LOGGER.debug("App %s slug is too long for a Supervisor socket", self.slug)
+            return
+
+        # Bind mount sources must exist before every container start, and the
+        # run folder is a tmpfs that does not survive a host reboot
+        try:
+            await self.sys_run_in_executor(self.ensure_run_dirs)
+        except OSError as err:
+            _LOGGER.error("Can't create socket folders for app %s: %s", self.slug, err)
+            raise AppSocketDirsError(app=self.slug) from err
+
+        # The socket outlives container restarts, registering it again is an error.
+        # A watchdog start can race the manager preparing sockets at load. A per-app
+        # lock, as a QUEUE job's lock would be shared by every app.
+        path = self.path_run_supervisor / SOCKET_NAME_SUPERVISOR
+        async with self._sockets_lock:
+            if path.as_posix() in self.sys_api.sockets.paths:
+                return
+            try:
+                await self.sys_api.sockets.register(self, path)
+            except APISocketError as err:
+                raise AppSocketListenError(app=self.slug) from err
+
+    @property
     def path_pulse(self) -> Path:
         """Return path to asound config."""
         return Path(self.sys_config.path_tmp, f"{self.slug}_pulse")
@@ -835,6 +1080,7 @@ class App(AppModel):
     async def save_persist(self) -> None:
         """Save data of app."""
         await self.sys_apps.data.save_data()
+        self.publish_status()
 
     async def watchdog_application(self) -> bool:
         """Return True if application is running."""
@@ -995,6 +1241,10 @@ class App(AppModel):
         self, *, remove_config: bool, remove_image: bool = True
     ) -> None:
         """Uninstall and cleanup this app."""
+        # Kept-alive connections of the old container must not reach a reinstall
+        await self.sys_api.sockets.unregister(
+            self.path_run_supervisor / SOCKET_NAME_SUPERVISOR
+        )
         try:
             await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
@@ -1049,6 +1299,9 @@ class App(AppModel):
         # Remove from app manager
         self.sys_apps.local.pop(self.slug)
         await self.sys_apps.data.uninstall(self)
+        await self.sys_run_in_executor(
+            partial(shutil.rmtree, self.path_run_supervisor, ignore_errors=True)
+        )
 
         # Cleanup Ingress tokens
         if need_ingress_token_cleanup:
@@ -1314,7 +1567,7 @@ class App(AppModel):
         )
 
     @Job(
-        name="app_start",
+        name=AppOperation.STARTING.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1333,8 +1586,12 @@ class App(AppModel):
                 )
             return self._wait_for_startup_task
 
-        # Access Token
-        self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+        # Access Token, the socket identifies an app off TCP so a token issued
+        # before must stop working
+        if self.supervisor_api_tcp:
+            self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
+        else:
+            self.persist.pop(ATTR_ACCESS_TOKEN, None)
         await self.save_persist()
 
         # Options
@@ -1356,6 +1613,8 @@ class App(AppModel):
         if self.app_config_used:
             await self.sys_run_in_executor(_check_app_config_dir)
 
+        await self.prepare_sockets()
+
         # Start App
         self._startup_event.clear()
         try:
@@ -1373,7 +1632,7 @@ class App(AppModel):
         return self._wait_for_startup_task
 
     @Job(
-        name="app_stop",
+        name=AppOperation.STOPPING.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1388,7 +1647,7 @@ class App(AppModel):
             raise AppUnknownError(app=self.slug) from err
 
     @Job(
-        name="app_restart",
+        name=AppOperation.RESTARTING.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1521,7 +1780,7 @@ class App(AppModel):
         return False
 
     @Job(
-        name="app_backup",
+        name=AppOperation.BACKING_UP.job_name,
         on_condition=AppsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
@@ -1785,7 +2044,7 @@ class App(AppModel):
         return wait_for_start
 
     @Job(
-        name="app_restart_after_problem",
+        name=JOB_APP_RESTART_AFTER_PROBLEM,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         on_condition=AppsJobError,

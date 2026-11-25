@@ -24,6 +24,7 @@ from ..exceptions import (
     APIAppNotInstalled,
     APISocketError,
     HostJournalGatewaydConnectionError,
+    HostJournalGatewaydRequestError,
     HostNotSupportedError,
 )
 from ..host.const import LogFormatter
@@ -32,7 +33,6 @@ from .apps import APIApps
 from .audio import APIAudio
 from .auth import APIAuth
 from .backups import APIBackups
-from .cli import APICli
 from .const import CONTENT_TYPE_TEXT, WEBSOCKETS, AppVersion
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
@@ -48,6 +48,7 @@ from .multicast import APIMulticast
 from .network import APINetwork
 from .observer import APIObserver
 from .os import APIOS
+from .plugins import APIPlugin
 from .proxy import APIProxy
 from .resolution import APIResolution
 from .root import APIRoot
@@ -238,6 +239,28 @@ class RestAPI(CoreSysAttributes):
                     ),
                 ),
             ]
+        )
+
+    def _register_plugin(self, api_plugin: APIPlugin, app: web.Application) -> None:
+        """Register the endpoints every plugin provides."""
+        plugin = api_plugin.plugin
+        path = f"/{plugin.slug}"
+
+        stats_handler = (
+            api_plugin.stats_v1
+            if app is self.versions[AppVersion.V1]
+            else api_plugin.stats
+        )
+        app.add_routes(
+            [
+                web.get(f"{path}/info", api_plugin.info),
+                web.get(f"{path}/stats", stats_handler),
+                web.post(f"{path}/update", api_plugin.update),
+                web.post(f"{path}/restart", api_plugin.restart),
+            ]
+        )
+        self._register_advanced_logs(
+            path, plugin.instance.name, default_format=LogFormatter.VERBOSE, app=app
         )
 
     def _register_host(self, app: web.Application) -> None:
@@ -439,62 +462,21 @@ class RestAPI(CoreSysAttributes):
 
     def _register_cli(self, app: web.Application) -> None:
         """Register HA cli functions."""
-        api_cli = APICli()
-        api_cli.coresys = self.coresys
-
-        stats_handler = (
-            api_cli.stats_v1 if app is self.versions[AppVersion.V1] else api_cli.stats
-        )
-        app.add_routes(
-            [
-                web.get("/cli/info", api_cli.info),
-                web.get("/cli/stats", stats_handler),
-                web.post("/cli/update", api_cli.update),
-            ]
-        )
+        self._register_plugin(APIPlugin(self.coresys, self.sys_plugins.cli), app)
 
     def _register_observer(self, app: web.Application) -> None:
         """Register Observer functions."""
-        api_observer = APIObserver()
-        api_observer.coresys = self.coresys
-
-        stats_handler = (
-            api_observer.stats_v1
-            if app is self.versions[AppVersion.V1]
-            else api_observer.stats
-        )
-        app.add_routes(
-            [
-                web.get("/observer/info", api_observer.info),
-                web.get("/observer/stats", stats_handler),
-                web.post("/observer/update", api_observer.update),
-            ]
-        )
+        self._register_plugin(APIObserver(self.coresys, self.sys_plugins.observer), app)
 
     def _register_multicast(self, app: web.Application) -> None:
         """Register Multicast functions."""
-        api_multicast = APIMulticast()
-        api_multicast.coresys = self.coresys
+        api_multicast = APIMulticast(self.coresys, self.sys_plugins.multicast)
+        self._register_plugin(api_multicast, app)
 
-        stats_handler = (
-            api_multicast.stats_v1
-            if app is self.versions[AppVersion.V1]
-            else api_multicast.stats
-        )
         app.add_routes(
             [
-                web.get("/multicast/info", api_multicast.info),
-                web.get("/multicast/stats", stats_handler),
                 web.post("/multicast/options", api_multicast.options),
-                web.post("/multicast/update", api_multicast.update),
-                web.post("/multicast/restart", api_multicast.restart),
             ]
-        )
-        self._register_advanced_logs(
-            "/multicast",
-            "hassio_multicast",
-            default_format=LogFormatter.VERBOSE,
-            app=app,
         )
 
     def _register_hardware(self, app: web.Application) -> None:
@@ -641,7 +623,12 @@ class RestAPI(CoreSysAttributes):
                 # Supervisor logs are critical, so catch everything, log the exception
                 # and try to return Docker container logs as the fallback
                 if isinstance(
-                    err, (HostNotSupportedError, HostJournalGatewaydConnectionError)
+                    err,
+                    (
+                        HostNotSupportedError,
+                        HostJournalGatewaydConnectionError,
+                        HostJournalGatewaydRequestError,
+                    ),
                 ):
                     # No need for a traceback or capturing to Sentry, the cause
                     # is known and already logged at the source (e.g. missing or
@@ -837,7 +824,9 @@ class RestAPI(CoreSysAttributes):
             app.add_routes(
                 [
                     web.get("/apps", api_apps.list_apps),
+                    web.get("/apps/status", api_apps.status_list),
                     web.get("/apps/{app}/info", api_apps.info),
+                    web.get("/apps/{app}/status", api_apps.status),
                     web.post("/apps/{app}/uninstall", api_apps.uninstall),
                     web.post("/apps/{app}/start", api_apps.start),
                     web.post("/apps/{app}/stop", api_apps.stop),
@@ -984,43 +973,23 @@ class RestAPI(CoreSysAttributes):
 
     def _register_dns(self, app: web.Application) -> None:
         """Register DNS functions."""
-        api_dns = APICoreDNS()
-        api_dns.coresys = self.coresys
+        api_dns = APICoreDNS(self.coresys, self.sys_plugins.dns)
+        self._register_plugin(api_dns, app)
 
-        stats_handler = (
-            api_dns.stats_v1 if app is self.versions[AppVersion.V1] else api_dns.stats
-        )
         app.add_routes(
             [
-                web.get("/dns/info", api_dns.info),
-                web.get("/dns/stats", stats_handler),
-                web.post("/dns/update", api_dns.update),
                 web.post("/dns/options", api_dns.options),
-                web.post("/dns/restart", api_dns.restart),
                 web.post("/dns/reset", api_dns.reset),
             ]
         )
 
-        self._register_advanced_logs(
-            "/dns", "hassio_dns", default_format=LogFormatter.VERBOSE, app=app
-        )
-
     def _register_audio(self, app: web.Application) -> None:
         """Register Audio functions."""
-        api_audio = APIAudio()
-        api_audio.coresys = self.coresys
+        api_audio = APIAudio(self.coresys, self.sys_plugins.audio)
+        self._register_plugin(api_audio, app)
 
-        stats_handler = (
-            api_audio.stats_v1
-            if app is self.versions[AppVersion.V1]
-            else api_audio.stats
-        )
         app.add_routes(
             [
-                web.get("/audio/info", api_audio.info),
-                web.get("/audio/stats", stats_handler),
-                web.post("/audio/update", api_audio.update),
-                web.post("/audio/restart", api_audio.restart),
                 web.post("/audio/reload", api_audio.reload),
                 web.post("/audio/profile", api_audio.set_profile),
                 web.post("/audio/volume/{source}/application", api_audio.set_volume),
@@ -1029,10 +998,6 @@ class RestAPI(CoreSysAttributes):
                 web.post("/audio/mute/{source}", api_audio.set_mute),
                 web.post("/audio/default/{source}", api_audio.set_default),
             ]
-        )
-
-        self._register_advanced_logs(
-            "/audio", "hassio_audio", default_format=LogFormatter.VERBOSE, app=app
         )
 
     def _register_mounts(self, app: web.Application) -> None:

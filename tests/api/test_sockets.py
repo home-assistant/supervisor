@@ -13,6 +13,7 @@ import pytest
 
 from supervisor.api import RestAPI
 from supervisor.api.sockets import SocketRegistry
+from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
@@ -30,6 +31,12 @@ async def _principal_handler(request: web.Request) -> web.Response:
     return web.Response(text=str(registry.principal_for(request) is not None))
 
 
+async def _principal_repr_handler(request: web.Request) -> web.Response:
+    """Return who the request was identified as by its socket."""
+    registry = request.app[REGISTRY]
+    return web.Response(text=repr(registry.principal_for(request)))
+
+
 @pytest.fixture(name="registry")
 async def fixture_registry(
     coresys: CoreSys,
@@ -37,6 +44,7 @@ async def fixture_registry(
     """Return a socket registry serving a minimal app."""
     app = web.Application()
     app.router.add_get("/", _principal_handler)
+    app.router.add_get("/principal", _principal_repr_handler)
     runner = web.AppRunner(app)
     registry = SocketRegistry(coresys, runner)
     app[REGISTRY] = registry
@@ -46,11 +54,11 @@ async def fixture_registry(
     await runner.cleanup()
 
 
-async def _get(path: Path) -> str:
-    """Request the root path over a Unix socket and return the body."""
+async def _get(path: Path, resource: str = "/") -> str:
+    """Request a resource over a Unix socket and return the body."""
     async with (
         ClientSession(connector=UnixConnector(path=str(path))) as session,
-        session.get("http://localhost/") as resp,
+        session.get(f"http://localhost{resource}") as resp,
     ):
         assert resp.status == 200
         return await resp.text()
@@ -304,3 +312,33 @@ async def test_api_stop_cancels_core_socket_retry(coresys: CoreSys, tmp_run_dir:
     # pylint: disable-next=protected-access
     assert api._core_socket_retry.cancelled()
     assert not api.sockets.paths
+
+
+async def test_app_sockets(
+    coresys: CoreSys,
+    registry: tuple[SocketRegistry, web.AppRunner],
+    install_app_ssh: App,
+    install_app_example: App,
+):
+    """Test each app gets its own socket identifying it."""
+    sockets, _ = registry
+    ssh_path = install_app_ssh.path_run_supervisor / "supervisor.sock"
+    example_path = install_app_example.path_run_supervisor / "supervisor.sock"
+
+    with patch.object(coresys.api, "sockets", sockets):
+        await install_app_ssh.prepare_sockets()
+        await install_app_example.prepare_sockets()
+        # Every start prepares the sockets again
+        await install_app_ssh.prepare_sockets()
+
+    assert sockets.paths == [str(ssh_path), str(example_path)]
+    assert await _get(ssh_path, "/principal") == "<Addon: local_ssh>"
+    assert await _get(example_path, "/principal") == "<Addon: local_example>"
+
+    with pytest.raises(APISocketAlreadyRegisteredError):
+        await sockets.register(install_app_ssh, ssh_path)
+
+    await sockets.unregister(ssh_path)
+
+    assert sockets.paths == [str(example_path)]
+    assert await _get(example_path, "/principal") == "<Addon: local_example>"

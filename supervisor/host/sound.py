@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 from datetime import timedelta
-from enum import StrEnum
 import logging
 
 from pulsectl import Pulse, PulseError, PulseIndexError, PulseOperationFailed
@@ -11,6 +10,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import PulseAudioError
 from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
+from .const import StreamType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -18,13 +18,6 @@ PULSE_NAME = "supervisor"
 
 PULSE_ALSA_MODULE = "module-alsa-card"
 PULSE_UDEV_MODULE = "module-udev-detect"
-
-
-class StreamType(StrEnum):
-    """INPUT/OUTPUT type of source."""
-
-    INPUT = "input"
-    OUTPUT = "output"
 
 
 @dataclass(slots=True, frozen=True)

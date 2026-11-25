@@ -14,6 +14,7 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.dns import DockerDNS
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.exceptions import CoreDNSHostsError
 from supervisor.plugins.dns import HostEntry, PluginDns
 from supervisor.resolution.const import (
     ContextType,
@@ -171,6 +172,26 @@ async def test_reset_hosts_unlink_oserror(
     assert (
         UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
     ) is unhealthy
+
+
+async def test_write_hosts_failed(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test a failed hosts write logs the OS error and raises CoreDNSHostsError."""
+    with (
+        patch.object(
+            PluginDns, "hosts_template", new=PropertyMock(return_value=Mock())
+        ),
+        patch.object(
+            type(coresys.plugins.dns.hosts),
+            "write_text",
+            side_effect=OSError("disk full"),
+        ),
+        pytest.raises(CoreDNSHostsError),
+    ):
+        await coresys.plugins.dns.write_hosts()
+
+    assert "Can't update hosts: disk full" in caplog.text
 
 
 async def test_write_hosts_serialized(coresys: CoreSys):
