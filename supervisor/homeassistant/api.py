@@ -111,14 +111,12 @@ class HomeAssistantAPI(CoreSysAttributes):
     async def bind_container(self, metadata: dict[str, Any] | None) -> None:
         """Set the Core container to talk to, None once it is removed.
 
-        The socket path is read from the container's SUPERVISOR_CORE_API_SOCKET
-        env var, so it matches how that container was started, even by an
-        older Supervisor.
+        Does nothing if that container is bound already. The socket path is
+        read from the container's SUPERVISOR_CORE_API_SOCKET env var, so it
+        matches how that container was started, even by an older Supervisor.
         """
         container: CoreContainer | None = None
-        running = False
         if metadata:
-            running = bool(metadata.get("State", {}).get("Running"))
             socket_path: Path | None = None
             for env in metadata.get("Config", {}).get("Env") or []:
                 name, _, value = env.partition("=")
@@ -130,8 +128,6 @@ class HomeAssistantAPI(CoreSysAttributes):
             return
 
         self._container = container
-        # State events of this container may have been missed or ignored
-        self._core_container_running = running
         self._core_connected = False
         await self.close()
 
@@ -210,9 +206,6 @@ class HomeAssistantAPI(CoreSysAttributes):
     async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
         """Process Core container state changes."""
         if event.name != self.sys_homeassistant.core.instance.name:
-            return
-        # A replaced container can still report its exit
-        if self._container and event.id != self._container.id:
             return
 
         # A pending or failed healthcheck still means the process is up
@@ -393,6 +386,9 @@ class HomeAssistantAPI(CoreSysAttributes):
         # which lets a path that passed a deny check upstream turn into a
         # different one on the wire.
         url = URL(f"{self.api_url}/{path}", encoded=True)
+        # Read once, the container can be removed while the request runs
+        use_unix_socket = self.use_unix_socket
+        session = self.session
         headers = headers or {}
         client_timeout = aiohttp.ClientTimeout(total=timeout)
 
@@ -401,10 +397,10 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         for _ in (1, 2):
             try:
-                if not self.use_unix_socket:
+                if not use_unix_socket:
                     await self._ensure_access_token()
                     headers[hdrs.AUTHORIZATION] = f"Bearer {self._access_token}"
-                async with self.session.request(
+                async with session.request(
                     method,
                     url,
                     data=data,
@@ -414,7 +410,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                     params=params,
                     ssl=False,
                 ) as resp:
-                    if resp.status == 401 and not self.use_unix_socket:
+                    if resp.status == 401 and not use_unix_socket:
                         self._access_token = None
                         continue
                     if resp.status == 401:

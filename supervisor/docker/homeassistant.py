@@ -201,7 +201,7 @@ class DockerHomeAssistant(DockerInterface):
 
         return mounts
 
-    async def _container_changed(self, metadata: dict[str, Any] | None) -> None:
+    async def _container_seen(self, metadata: dict[str, Any] | None) -> None:
         """Point Supervisor's Core API client at the container."""
         await self.sys_homeassistant.api.bind_container(metadata)
 

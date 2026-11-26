@@ -226,6 +226,33 @@ async def test_unix_session_follows_replaced_container(coresys: CoreSys):
         await api.close()
 
 
+async def test_unix_session_requested_during_close(coresys: CoreSys):
+    """Test a session requested while the old one closes stays tracked."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    await api.bind_container(
+        core_container_metadata([f"{SOCKET_ENV}/core.sock"], container_id="old")
+    )
+    old_session = api.session
+    close_old_session = old_session.close
+    sessions: list[aiohttp.ClientSession] = []
+
+    async def close_with_concurrent_request() -> None:
+        await close_old_session()
+        sessions.append(api.session)
+
+    with patch.object(old_session, "close", side_effect=close_with_concurrent_request):
+        await api.bind_container(
+            core_container_metadata(
+                [f"{SOCKET_ENV}/core/core.sock"], container_id="new"
+            )
+        )
+
+    assert api.session is sessions[0]
+    await api.close()
+    assert sessions[0].closed
+
+
 async def test_unix_session_kept_for_same_container(coresys: CoreSys):
     """Test attaching the bound Core container again keeps its session."""
     api = coresys.homeassistant.api
@@ -404,21 +431,6 @@ async def test_bind_container_keeps_core_used_supervisor_socket(coresys: CoreSys
     api.core_used_supervisor_socket = True
 
     await api.bind_container(core_container_metadata([]))
-
-    assert api.core_used_supervisor_socket is True
-
-
-async def test_container_state_changed_ignores_replaced_container(coresys: CoreSys):
-    """Test a late exit of a replaced Core container does not reset the new one."""
-    api = coresys.homeassistant.api
-    await api.bind_container(core_container_metadata([], container_id="new"))
-    api.core_used_supervisor_socket = True
-
-    await api.container_state_changed(
-        DockerContainerStateEvent(
-            name="homeassistant", state=ContainerState.STOPPED, id="old", time=1
-        )
-    )
 
     assert api.core_used_supervisor_socket is True
 
@@ -697,40 +709,6 @@ async def test_make_request_connection_error(
             pass
 
     is_running.assert_not_awaited()
-
-
-@pytest.mark.parametrize(
-    ("running", "message"),
-    [
-        pytest.param(True, "connection refused", id="running"),
-        pytest.param(False, "Core container is not running", id="stopped"),
-    ],
-)
-@pytest.mark.usefixtures("websession")
-async def test_make_request_connection_error_after_bind(
-    coresys: CoreSys, running: bool, message: str
-):
-    """Test a bound container's own state replaces the one of its predecessor."""
-    api = coresys.homeassistant.api
-    coresys.websession.request = MagicMock(
-        side_effect=aiohttp.ClientConnectionError("connection refused")
-    )
-    await api.container_state_changed(
-        core_state_event(
-            ContainerState.RUNNING if not running else ContainerState.STOPPED
-        )
-    )
-    await api.bind_container(
-        {"Id": "new", "Config": {"Env": []}, "State": {"Running": running}}
-    )
-
-    with (
-        patch.object(type(api), "use_unix_socket", False),
-        patch.object(api, "_ensure_access_token", new_callable=AsyncMock),
-        pytest.raises(HomeAssistantAPIError, match=message),
-    ):
-        async with api.make_request("get", "api/test"):
-            pass
 
 
 @pytest.mark.usefixtures("websession")

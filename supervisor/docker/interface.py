@@ -419,12 +419,14 @@ class DockerInterface(JobGroup, ABC):
 
     async def _get_container(self) -> dict[str, Any] | None:
         """Get docker container, returns None if not found."""
+        self._container_generation += 1
         generation = self._container_generation
         metadata = await self._inspect_container()
         # Every inspect reports, so a missed attach or run is caught up on. A
-        # result from before a concurrent attach, run or removal is outdated.
+        # result is outdated once the container was inspected again, attached,
+        # run or removed in the meantime.
         if generation == self._container_generation:
-            await self._container_changed(metadata)
+            await self._container_seen(metadata)
         return metadata
 
     async def _inspect_container(self) -> dict[str, Any] | None:
@@ -578,10 +580,13 @@ class DockerInterface(JobGroup, ABC):
     async def _container_replaced(self, metadata: dict[str, Any] | None) -> None:
         """Report a container being attached, run or removed."""
         self._container_generation += 1
-        await self._container_changed(metadata)
+        await self._container_seen(metadata)
 
-    async def _container_changed(self, metadata: dict[str, Any] | None) -> None:
-        """Handle the container as last seen in Docker, None if there is none."""
+    async def _container_seen(self, metadata: dict[str, Any] | None) -> None:
+        """Handle the container as last seen in Docker, None if there is none.
+
+        Mostly called with the container already known, as every inspect reports.
+        """
 
     @Job(
         name="docker_interface_stop",

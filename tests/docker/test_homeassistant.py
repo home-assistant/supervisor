@@ -426,3 +426,35 @@ async def test_outdated_inspect_keeps_core_api_binding(coresys: CoreSys):
         await instance.current_state()
 
     assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"
+
+
+async def test_overtaken_inspect_keeps_core_api_binding(coresys: CoreSys):
+    """Test an inspect which a later one overtook does not rebind."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    container = {
+        "Id": "abc123",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+        "State": {"Status": "running"},
+    }
+    first_inspect_started = asyncio.Event()
+    second_inspect_done = asyncio.Event()
+
+    async def missing_then_found() -> dict[str, Any] | None:
+        if first_inspect_started.is_set():
+            return container
+        first_inspect_started.set()
+        await second_inspect_done.wait()
+        return None
+
+    with patch.object(instance, "_inspect_container", side_effect=missing_then_found):
+        first_inspect = asyncio.create_task(instance.current_state())
+        await first_inspect_started.wait()
+        await instance.current_state()
+        second_inspect_done.set()
+        await first_inspect
+
+    assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"
