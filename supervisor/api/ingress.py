@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 import aiohttp
-from aiohttp import ClientTimeout, ClientWSTimeout, WSCloseCode, hdrs, web
+from aiohttp import ClientTimeout, ClientWSTimeout, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
     HTTPForbidden,
@@ -31,15 +31,20 @@ from ..const import (
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
-    STOPPING_STATES,
     WEBSOCKET_CLOSE_TIMEOUT,
     HomeAssistantUser,
     IngressSessionData,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIUnauthorized, HomeAssistantAPIError
-from .const import COOKIE_INGRESS, WEBSOCKETS
-from .utils import api_process, api_validate, require_home_assistant, stop_on_disconnect
+from .const import COOKIE_INGRESS
+from .utils import (
+    api_process,
+    api_validate,
+    prepare_websocket,
+    require_home_assistant,
+    stop_on_disconnect,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -230,11 +235,13 @@ class APIIngress(CoreSysAttributes):
             autoping=False,
             max_msg_size=MAX_WEBSOCKET_MESSAGE_SIZE,
         )
-        await ws_server.prepare(request)
-        request.config_dict[WEBSOCKETS].add(ws_server)
-        # The upgrade may complete after API stop closed the tracked websockets
-        if self.sys_core.state in STOPPING_STATES:
-            await ws_server.close(code=WSCloseCode.GOING_AWAY)
+        if not await prepare_websocket(
+            request,
+            ws_server,
+            self.coresys,
+            logger=_LOGGER,
+            disconnect_log_level=logging.DEBUG,
+        ):
             return ws_server
 
         # Preparing
@@ -343,19 +350,28 @@ class APIIngress(CoreSysAttributes):
             response = web.StreamResponse(status=result.status, headers=headers)
             response.content_type = content_type
 
+            response.headers["X-Accel-Buffering"] = "no"
             async with stop_on_disconnect(request):
                 try:
-                    response.headers["X-Accel-Buffering"] = "no"
                     await response.prepare(request)
-                    async for data, _ in result.content.iter_chunks():
-                        await response.write(data)
+                except ConnectionError as err:
+                    _LOGGER.debug(
+                        "Client disconnected before ingress stream to %s: %s", url, err
+                    )
+                    return response
 
-                except (
-                    aiohttp.ClientError,
-                    aiohttp.ClientPayloadError,
-                    ConnectionResetError,
-                    ConnectionError,
-                ) as err:
+                try:
+                    async for data, _ in result.content.iter_chunks():
+                        try:
+                            await response.write(data)
+                        except ConnectionError as err:
+                            _LOGGER.debug(
+                                "Client disconnected during ingress stream to %s: %s",
+                                url,
+                                err,
+                            )
+                            break
+                except (aiohttp.ClientError, ConnectionError) as err:
                     _LOGGER.error("Stream error with %s: %s", url, err)
 
             return response
