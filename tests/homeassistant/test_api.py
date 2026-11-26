@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePath
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import aiohttp
@@ -103,6 +104,16 @@ async def test_get_config_api_error(coresys: CoreSys):
         await coresys.homeassistant.api.get_config()
 
 
+SOCKET_ENV = "SUPERVISOR_CORE_API_SOCKET=/run/supervisor"
+
+
+def core_container_metadata(
+    env: list[str], container_id: str = "abc123"
+) -> dict[str, Any]:
+    """Return inspect metadata of a Core container."""
+    return {"Id": container_id, "Config": {"Env": env}}
+
+
 # --- supports_unix_socket / use_unix_socket ---
 
 
@@ -158,21 +169,30 @@ async def test_core_socket_path(
 ):
     """Test Core socket path and use_unix_socket based on version and container env."""
     coresys.homeassistant.version = AwesomeVersion(version)
-    # pylint: disable-next=protected-access
-    coresys.homeassistant.core.instance._meta = {"Config": {"Env": env}}
+    await coresys.homeassistant.api.bind_container(core_container_metadata(env))
     assert coresys.homeassistant.api.core_socket_path == (
         expected and coresys.config.path_run / expected
     )
     assert coresys.homeassistant.api.use_unix_socket is (expected is not None)
 
 
+async def test_core_socket_path_without_container(coresys: CoreSys):
+    """Test there is no connection mode once the Core container is removed."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    await api.bind_container(core_container_metadata([f"{SOCKET_ENV}/core.sock"]))
+    await api.bind_container(None)
+
+    with pytest.raises(HomeAssistantAPIError, match="Core container is not running"):
+        _ = api.use_unix_socket
+
+
 async def test_unix_session_uses_core_socket_path(coresys: CoreSys):
     """Test the Unix session connects to the path from the Core container env."""
     coresys.homeassistant.version = AwesomeVersion("2026.4.0")
-    # pylint: disable-next=protected-access
-    coresys.homeassistant.core.instance._meta = {
-        "Config": {"Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]}
-    }
+    await coresys.homeassistant.api.bind_container(
+        core_container_metadata([f"{SOCKET_ENV}/core/core.sock"])
+    )
     session = coresys.homeassistant.api.session
     try:
         assert isinstance(session.connector, aiohttp.UnixConnector)
@@ -183,6 +203,70 @@ async def test_unix_session_uses_core_socket_path(coresys: CoreSys):
         assert session.headers[aiohttp.hdrs.USER_AGENT] == SERVER_SOFTWARE
     finally:
         await coresys.homeassistant.api.close()
+
+
+async def test_unix_session_follows_replaced_container(coresys: CoreSys):
+    """Test a new Core container with another socket path gets a new session."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    await api.bind_container(
+        core_container_metadata([f"{SOCKET_ENV}/core.sock"], container_id="old")
+    )
+    old_session = api.session
+
+    await api.bind_container(
+        core_container_metadata([f"{SOCKET_ENV}/core/core.sock"], container_id="new")
+    )
+    try:
+        assert old_session.closed
+        assert api.session.connector.path == str(
+            coresys.config.path_run / "core" / "core.sock"
+        )
+    finally:
+        await api.close()
+
+
+async def test_unix_session_requested_during_close(coresys: CoreSys):
+    """Test a session requested while the old one closes stays tracked."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    await api.bind_container(
+        core_container_metadata([f"{SOCKET_ENV}/core.sock"], container_id="old")
+    )
+    old_session = api.session
+    close_old_session = old_session.close
+    sessions: list[aiohttp.ClientSession] = []
+
+    async def close_with_concurrent_request() -> None:
+        await close_old_session()
+        sessions.append(api.session)
+
+    with patch.object(old_session, "close", side_effect=close_with_concurrent_request):
+        await api.bind_container(
+            core_container_metadata(
+                [f"{SOCKET_ENV}/core/core.sock"], container_id="new"
+            )
+        )
+
+    assert api.session is sessions[0]
+    await api.close()
+    assert sessions[0].closed
+
+
+async def test_unix_session_kept_for_same_container(coresys: CoreSys):
+    """Test attaching the bound Core container again keeps its session."""
+    api = coresys.homeassistant.api
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    metadata = core_container_metadata([f"{SOCKET_ENV}/core/core.sock"])
+    await api.bind_container(metadata)
+    session = api.session
+
+    await api.bind_container(metadata)
+    try:
+        assert api.session is session
+        assert not session.closed
+    finally:
+        await api.close()
 
 
 # --- api_url / ws_url ---
@@ -339,6 +423,16 @@ async def test_core_used_supervisor_socket_reset(
     )
 
     assert api.core_used_supervisor_socket is expected
+
+
+async def test_bind_container_keeps_core_used_supervisor_socket(coresys: CoreSys):
+    """Test binding keeps socket use Core showed before its container was bound."""
+    api = coresys.homeassistant.api
+    api.core_used_supervisor_socket = True
+
+    await api.bind_container(core_container_metadata([]))
+
+    assert api.core_used_supervisor_socket is True
 
 
 # --- get_api_state / check_api_state ---
@@ -760,6 +854,16 @@ async def test_make_request_unix_socket_401_raises(
 
 
 # --- connect_websocket ---
+
+
+async def test_connect_websocket_without_container(coresys: CoreSys):
+    """Test connect_websocket reports a missing Core container as connection error."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+
+    with pytest.raises(
+        HomeAssistantWSConnectionError, match="Core container is not running"
+    ):
+        await coresys.homeassistant.api.connect_websocket()
 
 
 async def test_connect_websocket_unix(coresys: CoreSys):

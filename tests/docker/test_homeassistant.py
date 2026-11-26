@@ -19,6 +19,7 @@ from supervisor.docker.const import (
 )
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.manager import DockerAPI
+from supervisor.exceptions import HomeAssistantAPIError
 from supervisor.homeassistant.const import LANDINGPAGE
 
 from . import DEV_MOUNT
@@ -318,3 +319,142 @@ async def test_timeout(coresys: CoreSys, container: DockerContainer):
     }
     await coresys.homeassistant.core.instance.attach(AwesomeVersion("2024.3.0"))
     assert coresys.homeassistant.core.instance.timeout == 320
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_run_after_stop_uses_new_socket_path(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test a Core container replacing a stopped one is reached on its own socket."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    container.show.return_value |= {
+        "Id": "old",
+        "Config": {"Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"]},
+    }
+    await instance.attach(AwesomeVersion("2026.4.0"))
+    await instance.stop(remove_container=False)
+
+    # A request while Core is stopped still targets the existing container
+    old_session = api.session
+    assert old_session.connector.path == str(coresys.config.path_run / "core.sock")
+
+    new_container = {
+        "Id": "new",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+    }
+    with (
+        patch.object(DockerAPI, "run", return_value=new_container),
+        patch.object(DockerHomeAssistant, "is_running", return_value=False),
+    ):
+        await instance.run()
+
+    try:
+        assert old_session.closed
+        assert api.session.connector.path == str(
+            coresys.config.path_run / "core" / "core.sock"
+        )
+    finally:
+        await api.close()
+
+
+async def test_stop_and_remove_unbinds_core_api(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test removing the Core container leaves nothing to connect to."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    container.show.return_value |= {"Id": "old", "Config": {"Env": []}}
+    await instance.attach(AwesomeVersion("2026.4.0"))
+    assert api.use_unix_socket is False
+
+    await instance.stop()
+
+    with pytest.raises(HomeAssistantAPIError, match="Core container is not running"):
+        _ = api.use_unix_socket
+
+
+async def test_inspect_binds_core_api(coresys: CoreSys, container: DockerContainer):
+    """Test inspecting the Core container catches up on a missed attach or run."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    container.show.return_value |= {
+        "Id": "abc123",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+    }
+    with pytest.raises(HomeAssistantAPIError, match="Core container is not running"):
+        _ = api.use_unix_socket
+
+    await coresys.homeassistant.core.instance.is_running()
+
+    assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_outdated_inspect_keeps_core_api_binding(coresys: CoreSys):
+    """Test an inspect from before a new container was run does not rebind."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    old_container = {
+        "Id": "old",
+        "Config": {"Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core.sock"]},
+        "State": {"Status": "exited", "ExitCode": 0},
+    }
+    new_container = {
+        "Id": "new",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+    }
+
+    async def inspect_during_run() -> dict[str, Any]:
+        with (
+            patch.object(DockerAPI, "run", return_value=new_container),
+            patch.object(DockerHomeAssistant, "is_running", return_value=False),
+        ):
+            await instance.run()
+        return old_container
+
+    with patch.object(instance, "_inspect_container", side_effect=inspect_during_run):
+        await instance.current_state()
+
+    assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"
+
+
+async def test_overtaken_inspect_keeps_core_api_binding(coresys: CoreSys):
+    """Test an inspect which a later one overtook does not rebind."""
+    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    api = coresys.homeassistant.api
+    instance = coresys.homeassistant.core.instance
+    container = {
+        "Id": "abc123",
+        "Config": {
+            "Env": ["SUPERVISOR_CORE_API_SOCKET=/run/supervisor/core/core.sock"]
+        },
+        "State": {"Status": "running"},
+    }
+    first_inspect_started = asyncio.Event()
+    second_inspect_done = asyncio.Event()
+
+    async def missing_then_found() -> dict[str, Any] | None:
+        if first_inspect_started.is_set():
+            return container
+        first_inspect_started.set()
+        await second_inspect_done.wait()
+        return None
+
+    with patch.object(instance, "_inspect_container", side_effect=missing_then_found):
+        first_inspect = asyncio.create_task(instance.current_state())
+        await first_inspect_started.wait()
+        await instance.current_state()
+        second_inspect_done.set()
+        await first_inspect
+
+    assert api.core_socket_path == coresys.config.path_run / "core" / "core.sock"

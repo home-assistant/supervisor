@@ -58,6 +58,14 @@ class CoreHTTPConfig:
     server_host: list[str]
 
 
+@dataclass(frozen=True, slots=True)
+class CoreContainer:
+    """Core container Supervisor talks to."""
+
+    id: str
+    socket_path: Path | None
+
+
 class HomeAssistantAPI(CoreSysAttributes):
     """Home Assistant core object for handle it."""
 
@@ -69,6 +77,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         self._access_token: str | None = None
         self._access_token_expires: datetime | None = None
         self._token_lock: asyncio.Lock = asyncio.Lock()
+        self._container: CoreContainer | None = None
         self._unix_session: aiohttp.ClientSession | None = None
         self._core_connected: bool = False
         self._core_used_supervisor_socket: bool = False
@@ -99,31 +108,43 @@ class HomeAssistantAPI(CoreSysAttributes):
             return self.sys_config.path_run / SOCKET_NAME_CORE
         return self.sys_config.path_run / relative
 
+    async def bind_container(self, metadata: dict[str, Any] | None) -> None:
+        """Set the Core container to talk to, None once it is removed.
+
+        Does nothing if that container is bound already. The socket path is
+        read from the container's SUPERVISOR_CORE_API_SOCKET env var, so it
+        matches how that container was started, even by an older Supervisor.
+        """
+        container: CoreContainer | None = None
+        if metadata:
+            socket_path: Path | None = None
+            for env in metadata.get("Config", {}).get("Env") or []:
+                name, _, value = env.partition("=")
+                if name == ENV_CORE_API_SOCKET:
+                    socket_path = self._supervisor_view_of_core_socket(value)
+            container = CoreContainer(metadata["Id"], socket_path)
+
+        if container == self._container:
+            return
+
+        self._container = container
+        self._core_connected = False
+        await self.close()
+
     @property
     def core_socket_path(self) -> Path | None:
-        """Return the running Core container's Unix socket path, None for TCP.
+        """Return the Core container's Unix socket path, None for TCP.
 
         Checks both version support and that the container was actually started
-        with the SUPERVISOR_CORE_API_SOCKET env var. The path is read from that
-        env var, so it always matches how the running container was started,
-        even when Core is still running with a container started by an older
-        Supervisor.
+        with the SUPERVISOR_CORE_API_SOCKET env var.
 
-        Raises HomeAssistantAPIError without container metadata, i.e. when no
-        Core container exists to connect to.
+        Raises HomeAssistantAPIError when no Core container exists to connect to.
         """
         if not self.supports_unix_socket:
             return None
-        instance = self.sys_homeassistant.core.instance
-        if not instance.attached:
-            raise HomeAssistantAPIError(
-                "Cannot determine Core connection mode: container metadata not available"
-            )
-        for env in instance.meta_config.get("Env", []):
-            name, _, value = env.partition("=")
-            if name == ENV_CORE_API_SOCKET:
-                return self._supervisor_view_of_core_socket(value)
-        return None
+        if not self._container:
+            raise HomeAssistantAPIError("Core container is not running")
+        return self._container.socket_path
 
     @property
     def core_used_supervisor_socket(self) -> bool:
@@ -140,10 +161,9 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     @property
     def use_unix_socket(self) -> bool:
-        """Return True if the running Core container is configured for Unix socket.
+        """Return True if the Core container is configured for Unix socket.
 
-        Raises HomeAssistantAPIError without container metadata, i.e. when no
-        Core container exists to connect to.
+        Raises HomeAssistantAPIError when no Core container exists to connect to.
         """
         return self.core_socket_path is not None
 
@@ -200,15 +220,13 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         self._core_connected = False
         self._core_used_supervisor_socket = False
-        if self._unix_session and not self._unix_session.closed:
-            await self._unix_session.close()
-            self._unix_session = None
 
     async def close(self) -> None:
         """Close the Unix socket session."""
-        if self._unix_session and not self._unix_session.closed:
-            await self._unix_session.close()
-            self._unix_session = None
+        # Detach first, a request during the close would create a new session
+        session, self._unix_session = self._unix_session, None
+        if session and not session.closed:
+            await session.close()
 
     async def _ensure_access_token(self) -> None:
         """Ensure there is a valid access token.
@@ -281,16 +299,24 @@ class HomeAssistantAPI(CoreSysAttributes):
             HomeAssistantAPIError: On connection or auth failure.
 
         """
+        # Read once, the container can be removed while connecting
         try:
-            if self.use_unix_socket:
-                return await WSClient.connect(self.session, self.ws_url)
+            use_unix_socket = self.use_unix_socket
+            session = self.session
+            ws_url = self.ws_url
+        except HomeAssistantAPIError as err:
+            raise HomeAssistantWSConnectionError(str(err)) from err
+
+        try:
+            if use_unix_socket:
+                return await WSClient.connect(session, ws_url)
 
             for attempt in (1, 2):
                 try:
                     await self._ensure_access_token()
                     assert self._access_token
                     return await WSClient.connect_with_auth(
-                        self.session, self.ws_url, self._access_token
+                        session, ws_url, self._access_token
                     )
                 except HomeAssistantAuthError:
                     self._access_token = None
@@ -302,7 +328,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             aiohttp.ClientError,
         ) as err:
             raise self._request_error(
-                self.ws_url, err, HomeAssistantWSConnectionError
+                ws_url, err, HomeAssistantWSConnectionError
             ) from err
 
         # Unreachable, but satisfies type checker
@@ -360,6 +386,9 @@ class HomeAssistantAPI(CoreSysAttributes):
         # which lets a path that passed a deny check upstream turn into a
         # different one on the wire.
         url = URL(f"{self.api_url}/{path}", encoded=True)
+        # Read once, the container can be removed while the request runs
+        use_unix_socket = self.use_unix_socket
+        session = self.session
         headers = headers or {}
         client_timeout = aiohttp.ClientTimeout(total=timeout)
 
@@ -368,10 +397,10 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         for _ in (1, 2):
             try:
-                if not self.use_unix_socket:
+                if not use_unix_socket:
                     await self._ensure_access_token()
                     headers[hdrs.AUTHORIZATION] = f"Bearer {self._access_token}"
-                async with self.session.request(
+                async with session.request(
                     method,
                     url,
                     data=data,
@@ -381,7 +410,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                     params=params,
                     ssl=False,
                 ) as resp:
-                    if resp.status == 401 and not self.use_unix_socket:
+                    if resp.status == 401 and not use_unix_socket:
                         self._access_token = None
                         continue
                     if resp.status == 401:

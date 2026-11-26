@@ -127,6 +127,7 @@ class DockerInterface(JobGroup, ABC):
         )
         self.coresys: CoreSys = coresys
         self._meta: dict[str, Any] | None = None
+        self._container_generation: int = 0
 
     @property
     def timeout(self) -> int:
@@ -418,6 +419,18 @@ class DockerInterface(JobGroup, ABC):
 
     async def _get_container(self) -> dict[str, Any] | None:
         """Get docker container, returns None if not found."""
+        self._container_generation += 1
+        generation = self._container_generation
+        metadata = await self._inspect_container()
+        # Every inspect reports, so a missed attach or run is caught up on. A
+        # result is outdated once the container was inspected again, attached,
+        # run or removed in the meantime.
+        if generation == self._container_generation:
+            await self._container_seen(metadata)
+        return metadata
+
+    async def _inspect_container(self) -> dict[str, Any] | None:
+        """Inspect docker container, returns None if not found."""
         try:
             # container() builds the handle from the name with no I/O;
             # show() below performs the actual inspect call.
@@ -477,6 +490,7 @@ class DockerInterface(JobGroup, ABC):
                 docker_container = self.sys_docker.containers.container(self.name)
             if isinstance(docker_container, DockerContainer):
                 self._meta = await docker_container.show()
+                await self._container_replaced(self._meta)
                 self.sys_docker.monitor.watch_container(self._meta)
 
                 state, exit_code = _container_state_from_model(self._meta)
@@ -561,6 +575,18 @@ class DockerInterface(JobGroup, ABC):
 
         # Store metadata
         self._meta = container_metadata
+        await self._container_replaced(container_metadata)
+
+    async def _container_replaced(self, metadata: dict[str, Any] | None) -> None:
+        """Report a container being attached, run or removed."""
+        self._container_generation += 1
+        await self._container_seen(metadata)
+
+    async def _container_seen(self, metadata: dict[str, Any] | None) -> None:
+        """Handle the container as last seen in Docker, None if there is none.
+
+        Mostly called with the container already known, as every inspect reports.
+        """
 
     @Job(
         name="docker_interface_stop",
@@ -573,6 +599,8 @@ class DockerInterface(JobGroup, ABC):
             await self.sys_docker.stop_container(
                 self.name, self.timeout, remove_container
             )
+        if remove_container:
+            await self._container_replaced(None)
 
     @Job(
         name="docker_interface_start",
