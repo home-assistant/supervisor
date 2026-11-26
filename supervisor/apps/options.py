@@ -56,6 +56,10 @@ _SCHEMA_LENGTH_PARTS = (
 )
 
 
+class AppDeviceMissingError(vol.Invalid):
+    """A device option points to a device that does not exist."""
+
+
 class AppOptions(CoreSysAttributes):
     """Validate Apps Options."""
 
@@ -192,7 +196,7 @@ class AppOptions(CoreSysAttributes):
             try:
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:
-                raise vol.Invalid(
+                raise AppDeviceMissingError(
                     f"Device '{value}' does not exist in {self._name} ({self._slug})"
                 ) from None
 

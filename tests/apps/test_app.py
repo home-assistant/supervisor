@@ -20,8 +20,15 @@ from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.api.sockets import SocketRegistry
 from supervisor.apps.app import App
-from supervisor.apps.const import AppBackupMode, AppOperation, AppOperationInitiator
+from supervisor.apps.const import (
+    WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_RETRY_SECONDS,
+    AppBackupMode,
+    AppOperation,
+    AppOperationInitiator,
+)
 from supervisor.apps.model import AppModel, read_in_repository, resolve_in_repository
+from supervisor.apps.options import AppOptions
 from supervisor.apps.validate import SCHEMA_APP_USER
 from supervisor.const import (
     ATTR_ADVANCED,
@@ -42,6 +49,8 @@ from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     APISocketListenError,
+    AppConfigurationDeviceMissingError,
+    AppConfigurationInvalidError,
     AppFileReadError,
     AppNotRunningError,
     AppNotSupportedArchitectureError,
@@ -69,6 +78,7 @@ from supervisor.hardware.helper import HwHelper
 from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.const import WSType
 from supervisor.ingress import Ingress
+from supervisor.jobs.const import JOB_GROUP_APP
 from supervisor.resolution.const import (
     ContextType,
     IssueType,
@@ -87,8 +97,22 @@ from tests.common import (
     force_app_state,
     get_fixture_path,
     is_in_list,
+    reset_rate_limited_calls,
 )
 from tests.const import TEST_ADDON_SLUG
+
+_ALL_BACKOFF_SLEEPS = [
+    call(WATCHDOG_RETRY_SECONDS << i) for i in range(WATCHDOG_MAX_ATTEMPTS - 1)
+]
+
+
+@pytest.fixture(autouse=True)
+def reset_watchdog_rate_limit() -> None:
+    """Reset the app watchdog rate limit, which outlives each test."""
+    reset_rate_limited_calls(
+        App._restart_after_problem,  # pylint: disable=protected-access
+        JOB_GROUP_APP.format(slug=TEST_ADDON_SLUG),
+    )
 
 
 async def _fire_test_event(
@@ -558,34 +582,38 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
     done_task = asyncio.get_running_loop().create_future()
     done_task.set_result(None)
     with (
-        patch.object(App, "restart", AsyncMock(return_value=done_task)) as restart,
         patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
+        patch.object(DockerApp, "stop") as stop,
         patch.object(DockerApp, "current_state") as current_state,
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
     ):
-        # Restart if it becomes unhealthy
-        current_state.return_value = ContainerState.UNHEALTHY
+        # Restart if it becomes unhealthy, without marking it stopped by the user
+        current_state.side_effect = [ContainerState.UNHEALTHY, ContainerState.RUNNING]
         await _fire_test_event(
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY
         )
-        restart.assert_called_once()
-        start.assert_not_called()
+        stop.assert_called_once_with()
+        start.assert_called_once()
+        sleep.assert_not_awaited()
+        assert install_app_ssh._manual_stop is False  # pylint: disable=protected-access
 
-        restart.reset_mock()
+        stop.reset_mock()
+        start.reset_mock()
 
         # Rebuild if it failed
-        current_state.return_value = ContainerState.FAILED
-        with patch.object(DockerApp, "stop") as stop:
-            await _fire_test_event(
-                coresys,
-                f"app_{TEST_ADDON_SLUG}",
-                ContainerState.FAILED,
-                exit_code=1,
-            )
-            stop.assert_called_once_with(remove_container=True)
-            restart.assert_not_called()
-            start.assert_called_once()
+        current_state.side_effect = [ContainerState.FAILED, ContainerState.RUNNING]
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+        stop.assert_called_once_with()
+        start.assert_called_once()
+        sleep.assert_not_awaited()
 
         start.reset_mock()
+        current_state.side_effect = None
 
         # Do not process event if container state has changed since fired
         current_state.return_value = ContainerState.HEALTHY
@@ -595,7 +623,6 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
             ContainerState.FAILED,
             exit_code=1,
         )
-        restart.assert_not_called()
         start.assert_not_called()
 
         # Do not restart while the healthcheck is still starting
@@ -603,7 +630,6 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         await _fire_test_event(
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STARTING
         )
-        restart.assert_not_called()
         start.assert_not_called()
 
         # Other apps ignored
@@ -611,7 +637,6 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         await _fire_test_event(
             coresys, "app_local_non_installed", ContainerState.UNHEALTHY
         )
-        restart.assert_not_called()
         start.assert_not_called()
 
 
@@ -633,6 +658,7 @@ async def test_watchdog_port_conflict_does_not_retry(
         ) as start,
         patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
         patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
         patch("supervisor.apps.app.async_capture_exception") as capture_exception,
     ):
         caplog.clear()
@@ -644,6 +670,7 @@ async def test_watchdog_port_conflict_does_not_retry(
         )
 
         start.assert_called_once()
+        sleep.assert_not_awaited()
         capture_exception.assert_not_called()
         assert f"Watchdog cannot restart app {install_app_ssh.name}" in caplog.text
 
@@ -666,9 +693,18 @@ async def test_watchdog_retries_socket_error(
             "start",
             side_effect=[AppSocketListenError(app=TEST_ADDON_SLUG), done_task],
         ) as start,
-        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(
+            DockerApp,
+            "current_state",
+            side_effect=[
+                ContainerState.FAILED,
+                ContainerState.UNKNOWN,
+                ContainerState.UNKNOWN,
+                ContainerState.RUNNING,
+            ],
+        ),
         patch.object(DockerApp, "stop"),
-        patch("supervisor.apps.app.WATCHDOG_RETRY_SECONDS", 0),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
         patch("supervisor.apps.app.async_capture_exception"),
     ):
         await _fire_test_event(
@@ -679,6 +715,574 @@ async def test_watchdog_retries_socket_error(
         )
 
     assert start.await_count == 2
+    assert sleep.await_args_list == [call(WATCHDOG_RETRY_SECONDS)]
+
+
+@pytest.mark.parametrize(
+    (
+        "start_errors",
+        "active_jobs",
+        "container_states",
+        "expected_sleeps",
+        "expected_starts",
+        "expected_captures",
+    ),
+    [
+        pytest.param(
+            [],
+            [MagicMock(), None],
+            [ContainerState.FAILED, ContainerState.FAILED, ContainerState.RUNNING],
+            [call(WATCHDOG_RETRY_SECONDS)],
+            1,
+            0,
+            id="before_first_attempt",
+        ),
+        pytest.param(
+            [AppsError("fail")],
+            [None, MagicMock(), None],
+            [
+                ContainerState.FAILED,
+                ContainerState.UNKNOWN,
+                ContainerState.UNKNOWN,
+                ContainerState.UNKNOWN,
+                ContainerState.RUNNING,
+            ],
+            [call(WATCHDOG_RETRY_SECONDS), call(WATCHDOG_RETRY_SECONDS)],
+            2,
+            1,
+            id="after_failed_attempt",
+        ),
+    ],
+)
+async def test_watchdog_waits_for_app_job(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    start_errors: list[Exception],
+    active_jobs: list[MagicMock | None],
+    container_states: list[ContainerState],
+    expected_sleeps: list[Any],
+    expected_starts: int,
+    expected_captures: int,
+) -> None:
+    """Test the watchdog makes no attempt while another app job is running."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    with (
+        patch.object(App, "start", side_effect=[*start_errors, done_task]) as start,
+        patch.object(
+            App,
+            "active_job",
+            new=PropertyMock(side_effect=active_jobs),
+        ) as active_job,
+        patch.object(
+            DockerApp,
+            "current_state",
+            side_effect=container_states,
+        ),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
+        patch("supervisor.apps.app.async_capture_exception") as capture_exception,
+    ):
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert active_job.call_count == len(active_jobs)
+    assert start.await_count == expected_starts
+    assert sleep.await_args_list == expected_sleeps
+    assert capture_exception.await_count == expected_captures
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_starts", "expected_sleeps", "message"),
+    [
+        pytest.param(
+            AppConfigurationDeviceMissingError,
+            WATCHDOG_MAX_ATTEMPTS,
+            _ALL_BACKOFF_SLEEPS,
+            f"device still missing after {WATCHDOG_MAX_ATTEMPTS} attempts",
+            id="device_missing",
+        ),
+        pytest.param(
+            AppConfigurationInvalidError,
+            1,
+            [],
+            "until its options are fixed",
+            id="invalid_options",
+        ),
+    ],
+)
+async def test_watchdog_configuration_error(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+    error: type[AppConfigurationInvalidError],
+    expected_starts: int,
+    expected_sleeps: list[Any],
+    message: str,
+) -> None:
+    """Test the watchdog only retries invalid options for a missing device."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            App,
+            "start",
+            side_effect=error(app=TEST_ADDON_SLUG, validation_error="invalid"),
+        ) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
+        patch("supervisor.apps.app.async_capture_exception") as capture_exception,
+    ):
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert start.call_count == expected_starts
+    assert sleep.await_args_list == expected_sleeps
+    # Neither an explicit capture nor a critical log, both reach Sentry
+    capture_exception.assert_not_called()
+    assert not [r for r in caplog.records if r.levelno >= logging.CRITICAL]
+    assert message in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("value", "error"),
+    [
+        pytest.param(
+            "/dev/missing", AppConfigurationDeviceMissingError, id="device_missing"
+        ),
+        pytest.param(1, AppConfigurationInvalidError, id="invalid_options"),
+    ],
+)
+async def test_write_options_error(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    value: str | int,
+    error: type[AppConfigurationInvalidError],
+) -> None:
+    """Test write options tells a missing device apart from other invalid options."""
+    schema = AppOptions(
+        coresys, {"device": "device"}, install_app_ssh.name, TEST_ADDON_SLUG
+    )
+    with (
+        patch.object(App, "schema", new=PropertyMock(return_value=schema)),
+        patch.object(App, "options", new=PropertyMock(return_value={"device": value})),
+        pytest.raises(AppConfigurationInvalidError) as exc_info,
+    ):
+        await install_app_ssh.write_options()
+
+    assert type(exc_info.value) is error
+
+
+def _no_user_action(app: App) -> None:
+    """Leave the app alone."""
+
+
+def _stop_app(app: App) -> None:
+    """Mark the app as stopped by the user."""
+    app._manual_stop = True  # pylint: disable=protected-access
+
+
+def _disable_watchdog(app: App) -> None:
+    """Turn off the app's watchdog."""
+    app.watchdog = False
+
+
+def _uninstall_app(app: App) -> None:
+    """Remove the app as uninstall does."""
+    app.sys_apps.local.pop(app.slug)
+
+
+@pytest.mark.parametrize(
+    (
+        "container_states",
+        "user_action_during_start",
+        "user_action_during_sleep",
+        "expected_starts",
+        "expected_sleeps",
+        "gave_up",
+    ),
+    [
+        pytest.param(
+            [
+                ContainerState.FAILED,
+                *[ContainerState.UNKNOWN] * (WATCHDOG_MAX_ATTEMPTS * 2 - 1),
+            ],
+            _no_user_action,
+            _no_user_action,
+            WATCHDOG_MAX_ATTEMPTS,
+            _ALL_BACKOFF_SLEEPS,
+            True,
+            id="container_removed",
+        ),
+        pytest.param(
+            [
+                ContainerState.FAILED,
+                *[ContainerState.STOPPED] * (WATCHDOG_MAX_ATTEMPTS * 2 - 1),
+            ],
+            _no_user_action,
+            _no_user_action,
+            WATCHDOG_MAX_ATTEMPTS,
+            _ALL_BACKOFF_SLEEPS,
+            True,
+            id="container_created_not_started",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, *[ContainerState.UNKNOWN] * 3],
+            _stop_app,
+            _no_user_action,
+            2,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="manual_stop",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, *[ContainerState.UNKNOWN] * 3],
+            _disable_watchdog,
+            _no_user_action,
+            2,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="watchdog_disabled",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, *[ContainerState.UNKNOWN] * 3],
+            _uninstall_app,
+            _no_user_action,
+            2,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="uninstall",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, ContainerState.RUNNING],
+            _no_user_action,
+            _no_user_action,
+            1,
+            [],
+            False,
+            id="started_during_attempt",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, ContainerState.UNKNOWN, ContainerState.UNKNOWN],
+            _no_user_action,
+            _stop_app,
+            1,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="manual_stop_during_backoff",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, ContainerState.UNKNOWN, ContainerState.UNKNOWN],
+            _no_user_action,
+            _disable_watchdog,
+            1,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="watchdog_disabled_during_backoff",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, ContainerState.UNKNOWN, ContainerState.UNKNOWN],
+            _no_user_action,
+            _uninstall_app,
+            1,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="uninstall_during_backoff",
+        ),
+        pytest.param(
+            [ContainerState.FAILED, ContainerState.UNKNOWN, ContainerState.RUNNING],
+            _no_user_action,
+            _no_user_action,
+            1,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="started_during_backoff",
+        ),
+    ],
+)
+async def test_watchdog_retries_after_failed_container_removed(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+    container_states: list[ContainerState],
+    user_action_during_start: Callable[[App], None],
+    user_action_during_sleep: Callable[[App], None],
+    expected_starts: int,
+    expected_sleeps: list[Any],
+    gave_up: bool,
+) -> None:
+    """Watchdog keeps retrying a failed app after removing its container."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    actions_during_start = iter(
+        [
+            _no_user_action,
+            user_action_during_start,
+            *[_no_user_action] * WATCHDOG_MAX_ATTEMPTS,
+        ]
+    )
+    actions_during_sleep = iter(
+        [user_action_during_sleep, *[_no_user_action] * WATCHDOG_MAX_ATTEMPTS]
+    )
+
+    def fail_start() -> None:
+        next(actions_during_start)(install_app_ssh)
+        raise AppsError("fail")
+
+    async def fake_sleep(_delay: float) -> None:
+        next(actions_during_sleep)(install_app_ssh)
+
+    with (
+        patch.object(App, "start", side_effect=fail_start) as start,
+        patch.object(DockerApp, "current_state", side_effect=container_states),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep", side_effect=fake_sleep) as sleep,
+        patch("supervisor.apps.app.async_capture_exception"),
+    ):
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+        assert start.call_count == expected_starts
+        assert sleep.await_args_list == expected_sleeps
+        assert (
+            f"failed all {WATCHDOG_MAX_ATTEMPTS} attempts" in caplog.text
+        ) is gave_up
+
+
+async def test_watchdog_retries_unhealthy(
+    coresys: CoreSys, install_app_ssh: App, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test the watchdog retries an unhealthy app in a single restart loop."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    # Stopping the running container fires its own event like docker would
+    async def mock_stop(*args, **kwargs) -> None:
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
+
+    with (
+        patch.object(App, "start", side_effect=AppsError("fail")) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.UNHEALTHY),
+        patch.object(DockerApp, "stop", new=mock_stop),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
+        patch("supervisor.apps.app.async_capture_exception"),
+    ):
+        await _fire_test_event(
+            coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY
+        )
+
+    assert start.call_count == WATCHDOG_MAX_ATTEMPTS
+    assert sleep.await_args_list == _ALL_BACKOFF_SLEEPS
+    assert install_app_ssh._manual_stop is False  # pylint: disable=protected-access
+    assert f"failed all {WATCHDOG_MAX_ATTEMPTS} attempts" in caplog.text
+
+
+@pytest.mark.parametrize(
+    (
+        "trigger_state",
+        "exit_code",
+        "container_states",
+        "expected_starts",
+        "expected_sleeps",
+        "gave_up",
+    ),
+    [
+        pytest.param(
+            ContainerState.FAILED,
+            1,
+            [
+                ContainerState.FAILED,
+                ContainerState.FAILED,
+                ContainerState.FAILED,
+                ContainerState.RUNNING,
+            ],
+            2,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="failed_recovers",
+        ),
+        pytest.param(
+            ContainerState.UNHEALTHY,
+            None,
+            [
+                ContainerState.UNHEALTHY,
+                ContainerState.UNHEALTHY,
+                ContainerState.UNHEALTHY,
+                ContainerState.HEALTHY,
+            ],
+            2,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            False,
+            id="unhealthy_recovers",
+        ),
+        pytest.param(
+            ContainerState.FAILED,
+            1,
+            [ContainerState.FAILED] * (WATCHDOG_MAX_ATTEMPTS * 2),
+            WATCHDOG_MAX_ATTEMPTS,
+            _ALL_BACKOFF_SLEEPS,
+            True,
+            id="failed_exhausts",
+        ),
+        pytest.param(
+            ContainerState.UNHEALTHY,
+            None,
+            [ContainerState.UNHEALTHY] * (WATCHDOG_MAX_ATTEMPTS * 2),
+            WATCHDOG_MAX_ATTEMPTS,
+            _ALL_BACKOFF_SLEEPS,
+            True,
+            id="unhealthy_exhausts",
+        ),
+    ],
+)
+async def test_watchdog_restarts_again_if_not_running(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+    trigger_state: ContainerState,
+    exit_code: int | None,
+    container_states: list[ContainerState],
+    expected_starts: int,
+    expected_sleeps: list[Any],
+    gave_up: bool,
+) -> None:
+    """Test the watchdog backs off and retries if the app is down after a start."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    with (
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
+        patch.object(DockerApp, "current_state", side_effect=container_states),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
+        patch("supervisor.apps.app.async_capture_exception") as capture_exception,
+    ):
+        caplog.clear()
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            trigger_state,
+            exit_code=exit_code,
+        )
+
+    assert start.await_count == expected_starts
+    assert sleep.await_args_list == expected_sleeps
+    assert (
+        f"still {trigger_state} after {WATCHDOG_MAX_ATTEMPTS} attempts" in caplog.text
+    ) is gave_up
+    # App startup/healthcheck failures are not Supervisor errors
+    capture_exception.assert_not_called()
+    assert not [r for r in caplog.records if r.levelno >= logging.CRITICAL]
+
+
+@pytest.mark.parametrize(
+    ("checks", "expected_starts", "expected_sleeps"),
+    [
+        pytest.param(
+            [
+                (ContainerState.FAILED, ()),
+                (ContainerState.RUNNING, (ContainerState.FAILED,)),
+                (ContainerState.FAILED, ()),
+                (ContainerState.FAILED, ()),
+                (ContainerState.RUNNING, ()),
+            ],
+            2,
+            [call(WATCHDOG_RETRY_SECONDS)],
+            id="crashed_during_check",
+        ),
+        pytest.param(
+            [
+                (ContainerState.FAILED, ()),
+                (ContainerState.RUNNING, (ContainerState.STOPPED,)),
+                (ContainerState.RUNNING, ()),
+            ],
+            1,
+            [],
+            id="stale_event_while_running",
+        ),
+    ],
+)
+async def test_watchdog_rechecks_state_on_racing_event(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    checks: list[tuple[ContainerState, tuple[ContainerState, ...]]],
+    expected_starts: int,
+    expected_sleeps: list[Any],
+) -> None:
+    """Test the watchdog re-checks state when an event arrives during current_state."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
+    check_iter = iter(checks)
+
+    async def mock_current_state() -> ContainerState:
+        state, racing_events = next(check_iter)
+        for racing_state in racing_events:
+            await _fire_test_event(coresys, f"app_{TEST_ADDON_SLUG}", racing_state)
+        return state
+
+    with (
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
+        patch.object(
+            DockerApp, "current_state", side_effect=mock_current_state
+        ) as current_state,
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.apps.app.asyncio.sleep") as sleep,
+    ):
+        await _fire_test_event(
+            coresys,
+            f"app_{TEST_ADDON_SLUG}",
+            ContainerState.FAILED,
+            exit_code=1,
+        )
+
+    assert current_state.await_count == len(checks)
+    assert start.await_count == expected_starts
+    assert sleep.await_args_list == expected_sleeps
 
 
 async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
@@ -688,17 +1292,17 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
 
     install_app_ssh.watchdog = True
 
-    # Watchdog does ``await (await self.restart())`` because App.restart
+    # Watchdog does ``await (await self.start())`` because App.start
     # returns an asyncio.Task; the mock must mirror that shape.
     done_task = asyncio.get_running_loop().create_future()
     done_task.set_result(None)
     with (
-        patch.object(App, "restart", AsyncMock(return_value=done_task)) as restart,
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
         patch.object(
             DockerApp,
             "current_state",
             return_value=ContainerState.STOPPED,
-        ),
+        ) as current_state,
         patch.object(DockerApp, "stop"),
     ):
         # Do not restart when app stopped by user
@@ -709,16 +1313,17 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
         await _fire_test_event(
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
-        restart.assert_not_called()
+        start.assert_not_called()
 
         # Do restart app if it stops and user didn't do it
         await _fire_test_event(
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.RUNNING
         )
+        current_state.side_effect = [ContainerState.STOPPED, ContainerState.RUNNING]
         await _fire_test_event(
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
-        restart.assert_called_once()
+        start.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -993,19 +1598,20 @@ async def test_watchdog_during_attach(
     store = coresys.apps.store[TEST_ADDON_SLUG]
     await coresys.apps.data.install(store)
 
-    # Watchdog does ``await (await self.restart())`` because App.restart
+    # Watchdog does ``await (await self.start())`` because App.start
     # returns an asyncio.Task; the mock must mirror that shape.
     done_task = asyncio.get_running_loop().create_future()
     done_task.set_result(None)
     with (
-        patch.object(App, "restart", AsyncMock(return_value=done_task)) as restart,
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
         patch.object(HwHelper, "last_boot", return_value=utcnow()),
         patch.object(DockerApp, "attach"),
+        patch.object(DockerApp, "stop"),
         patch.object(
             DockerApp,
             "current_state",
             return_value=ContainerState.STOPPED,
-        ),
+        ) as current_state,
     ):
         coresys.config.last_boot = (
             await coresys.hardware.helper.last_boot() + boot_timedelta
@@ -1015,11 +1621,12 @@ async def test_watchdog_during_attach(
         app.watchdog = True
 
         await app.load()
+        current_state.side_effect = [ContainerState.STOPPED, ContainerState.RUNNING]
         await _fire_test_event(
             coresys, f"app_{TEST_ADDON_SLUG}", ContainerState.STOPPED
         )
 
-        assert restart.call_count == restart_count
+        assert start.call_count == restart_count
 
 
 @pytest.mark.usefixtures("install_app_ssh")

@@ -79,6 +79,7 @@ from ..exceptions import (
     APISocketError,
     AppBackupMetadataInvalidError,
     AppBuildFailedUnknownError,
+    AppConfigurationDeviceMissingError,
     AppConfigurationInvalidError,
     AppFileReadError,
     AppNotRunningError,
@@ -136,7 +137,7 @@ from .const import (
     MappingType,
 )
 from .model import AppModel, Data
-from .options import AppOptions
+from .options import AppDeviceMissingError, AppOptions
 from .utils import remove_data
 from .validate import SCHEMA_APP_BACKUP
 
@@ -207,6 +208,8 @@ class App(AppModel):
         # Status last sent to Home Assistant
         self._published_status: dict[str, Any] | None = None
         self._manual_stop: bool = False
+        self._watchdog_restarting: bool = False
+        self._watchdog_event_pending: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._wait_for_startup_task: asyncio.Task | None = None
@@ -1134,7 +1137,13 @@ class App(AppModel):
             options = self.schema.validate(self.options)
             await self.sys_run_in_executor(write_json_file, self.path_options, options)
         except vol.Invalid as ex:
-            raise AppConfigurationInvalidError(
+            errors = ex.errors if isinstance(ex, vol.MultipleInvalid) else [ex]
+            error_type = (
+                AppConfigurationDeviceMissingError
+                if all(isinstance(error, AppDeviceMissingError) for error in errors)
+                else AppConfigurationInvalidError
+            )
+            raise error_type(
                 _LOGGER.error,
                 app=self.slug,
                 validation_error=humanize_error(self.options, ex),
@@ -2051,64 +2060,95 @@ class App(AppModel):
         throttle=JobThrottle.GROUP_RATE_LIMIT,
         internal=True,
     )
-    async def _restart_after_problem(
-        self, state: ContainerState, exit_code: int | None = None
-    ):
-        """Restart unhealthy or failed app."""
+    async def _restart_after_problem(self) -> None:
+        """Restart app until it runs again or is no longer wanted."""
         attempts = 0
-        while await self.instance.current_state() == state:
-            if not self.in_progress:
-                if state == ContainerState.FAILED:
-                    _LOGGER.warning(
-                        "Watchdog found app %s exited with code %d, restarting...",
-                        self.name,
-                        exit_code,
-                    )
-                else:
-                    _LOGGER.warning(
-                        "Watchdog found app %s is %s, restarting...",
-                        self.name,
-                        state,
-                    )
-                try:
-                    if state == ContainerState.FAILED:
-                        # Ensure failed container is removed before attempting reanimation
-                        if attempts == 0:
-                            with suppress(DockerError):
-                                await self.instance.stop(remove_container=True)
+        needs_backoff = False
+        while True:
+            self._watchdog_event_pending = False
+            state = await self.instance.current_state()
+            if state in (
+                ContainerState.RUNNING,
+                ContainerState.HEALTHY,
+                ContainerState.STARTING,
+            ):
+                if self._watchdog_event_pending:
+                    continue
+                return
 
-                        await (await self.start())
-                    else:
-                        await (await self.restart())
-                except AppPortConflict as err:
-                    _LOGGER.warning(
-                        "Watchdog cannot restart app %s: %s", self.name, err
-                    )
-                    break
-                except AppsError as err:
-                    attempts = attempts + 1
-                    _LOGGER.error("Watchdog restart of app %s failed!", self.name)
-                    await async_capture_exception(err)
-                else:
-                    break
+            # Stopped by the user, watchdog turned off or uninstalled
+            if (
+                not self.watchdog
+                or self._manual_stop
+                or self.sys_apps.get_local_only(self.slug) is not self
+            ):
+                return
 
+            # The last start succeeded but the app went down again
             if attempts >= WATCHDOG_MAX_ATTEMPTS:
-                _LOGGER.critical(
-                    "Watchdog cannot restart app %s, failed all %s attempts",
+                _LOGGER.error(
+                    "Watchdog gave up on app %s, still %s after %s attempts",
                     self.name,
+                    state,
                     attempts,
                 )
-                break
+                return
 
-            # Exponential backoff to spread retries over the throttle window
-            delay = WATCHDOG_RETRY_SECONDS * (1 << max(attempts - 1, 0))
-            _LOGGER.debug(
-                "Watchdog will retry app %s in %s seconds (attempt %s)",
-                self.name,
-                delay,
-                attempts + 1,
+            if needs_backoff or self.in_progress or self.active_job:
+                needs_backoff = False
+                # Exponential backoff to spread retries over the throttle window
+                delay = WATCHDOG_RETRY_SECONDS * (1 << max(attempts - 1, 0))
+                _LOGGER.debug(
+                    "Watchdog will retry app %s in %s seconds (attempt %s)",
+                    self.name,
+                    delay,
+                    attempts + 1,
+                )
+                await asyncio.sleep(delay)
+                continue
+
+            _LOGGER.warning(
+                "Watchdog found app %s is %s, restarting...", self.name, state
             )
-            await asyncio.sleep(delay)
+            attempts += 1
+            needs_backoff = True
+            try:
+                # Not App.stop, the watchdog must not count as a manual stop
+                with suppress(DockerError):
+                    await self.instance.stop()
+
+                await (await self.start())
+            except AppPortConflict as err:
+                _LOGGER.warning("Watchdog cannot restart app %s: %s", self.name, err)
+                return
+            except AppConfigurationDeviceMissingError:
+                # The device may come back, e.g. a replugged USB radio
+                _LOGGER.error("Watchdog restart of app %s failed!", self.name)
+                if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                    # Not critical, that level is reported to Sentry
+                    _LOGGER.error(
+                        "Watchdog cannot restart app %s, device still missing "
+                        "after %s attempts",
+                        self.name,
+                        attempts,
+                    )
+                    return
+            except AppConfigurationInvalidError:
+                _LOGGER.error(
+                    "Watchdog cannot restart app %s until its options are fixed",
+                    self.name,
+                )
+                return
+            except AppsError as err:
+                _LOGGER.error("Watchdog restart of app %s failed!", self.name)
+                await async_capture_exception(err)
+                if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                    _LOGGER.critical(
+                        "Watchdog cannot restart app %s, failed all %s attempts",
+                        self.name,
+                        attempts,
+                    )
+                    return
 
     async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
         """Update cached container state and emit transitions."""
@@ -2151,7 +2191,17 @@ class App(AppModel):
             ContainerState.STOPPED,
             ContainerState.UNHEALTHY,
         ]:
-            await self._restart_after_problem(event.state, event.exit_code)
+            if self._watchdog_restarting:
+                # Re-check state before exiting in case this raced current_state()
+                self._watchdog_event_pending = True
+                return
+
+            self._watchdog_restarting = True
+            try:
+                await self._restart_after_problem()
+            finally:
+                self._watchdog_restarting = False
+                self._watchdog_event_pending = False
 
     async def refresh_path_cache(self) -> None:
         """Refresh cache of existing paths."""
