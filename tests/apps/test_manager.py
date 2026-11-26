@@ -1,7 +1,7 @@
 """Test app manager."""
 
 import asyncio
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import AbstractContextManager, nullcontext
 from copy import deepcopy
 import logging
@@ -40,6 +40,7 @@ from supervisor.exceptions import (
     DockerNotFound,
     HassioArchNotFound,
 )
+from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.plugins.dns import PluginDns
 from supervisor.resolution.const import (
     ContextType,
@@ -945,6 +946,7 @@ async def test_restore_new_app_pending_until_done(coresys: CoreSys):
     with (
         patch.object(App, "restore", new=mock_restore),
         patch.object(App, "ingress_panel", new=PropertyMock(return_value=False)),
+        patch.object(App, "with_core_socket", new=PropertyMock(return_value=False)),
     ):
         await coresys.apps.restore(TEST_ADDON_SLUG, Mock(spec=SecureTarFile))
 
@@ -966,3 +968,126 @@ async def test_uninstall_pending_until_done(coresys: CoreSys, install_app_ssh: A
 
     assert pending == [[TEST_ADDON_SLUG]]
     assert coresys.apps.pending == {}
+
+
+CORE_SOCKETS_CHANGED = call(
+    {
+        "type": WSType.SUPERVISOR_EVENT,
+        "data": {"event": WSEvent.CORE_SOCKETS_CHANGED, "data": {}},
+    }
+)
+
+
+def _rename(app: App) -> None:
+    """Rename the app, which renames its user in Core."""
+    app.data["name"] = "Renamed"
+
+
+def _drop_core_api(app: App) -> None:
+    """Take away the app's Core API access."""
+    app.data["homeassistant_api"] = False
+
+
+def _change_description(app: App) -> None:
+    """Change something Core's listing does not show."""
+    app.data["description"] = "Changed"
+
+
+@pytest.mark.parametrize(
+    ("change", "notified"),
+    [
+        pytest.param(_rename, True, id="renamed"),
+        pytest.param(_drop_core_api, True, id="core-api-dropped"),
+        pytest.param(_change_description, False, id="unrelated-change"),
+    ],
+)
+async def test_check_core_sockets_changed(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    ha_ws_client: AsyncMock,
+    change: Callable[[App], None],
+    notified: bool,
+):
+    """Test Core is told to fetch the socket listing only when it changed."""
+    coresys.apps.check_core_sockets_changed()
+    await asyncio.sleep(0)
+    ha_ws_client.async_send_command.reset_mock()
+
+    change(install_app_ssh)
+    coresys.apps.check_core_sockets_changed()
+    coresys.apps.check_core_sockets_changed()
+    await asyncio.sleep(0)
+
+    assert ha_ws_client.async_send_command.call_args_list == (
+        [CORE_SOCKETS_CHANGED] if notified else []
+    )
+
+
+@pytest.mark.parametrize(
+    ("store_config", "notified"),
+    [
+        pytest.param({"homeassistant_api": True}, False, id="unchanged"),
+        pytest.param(
+            {"homeassistant_api": True, "name": "Renamed"}, True, id="renamed"
+        ),
+        pytest.param({"homeassistant_api": False}, True, id="core-api-dropped"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_update_core_sockets_changed(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    ha_ws_client: AsyncMock,
+    store_config: dict[str, Any],
+    notified: bool,
+):
+    """Test an update tells Core when it changes the socket listing."""
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    coresys.apps.check_core_sockets_changed()
+    with patch(
+        "supervisor.store.data.read_json_or_yaml_file",
+        return_value=load_json_fixture("app-config-add-image.json") | store_config,
+    ):
+        await coresys.store.data.update()
+    await asyncio.sleep(0)
+    ha_ws_client.async_send_command.reset_mock()
+
+    with (
+        patch.object(DockerInterface, "install"),
+        patch.object(DockerApp, "is_running", return_value=False),
+    ):
+        await coresys.apps.update(TEST_ADDON_SLUG)
+        await asyncio.sleep(0)
+
+    assert (
+        CORE_SOCKETS_CHANGED in ha_ws_client.async_send_command.call_args_list
+    ) is notified
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_rebuild_core_sockets_changed(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    container: DockerContainer,
+    ha_ws_client: AsyncMock,
+):
+    """Test a rebuild tells Core when the store config changes the listing."""
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    install_app_ssh.path_data.mkdir()
+    await install_app_ssh.load()
+    coresys.apps.data.system[install_app_ssh.slug]["homeassistant_api"] = False
+    coresys.apps.check_core_sockets_changed()
+    await asyncio.sleep(0)
+    ha_ws_client.async_send_command.reset_mock()
+
+    with (
+        patch.object(DockerApp, "_build"),
+        patch.object(DockerApp, "is_running", return_value=False),
+        patch.object(App, "need_build", new=PropertyMock(return_value=True)),
+    ):
+        await coresys.apps.rebuild(TEST_ADDON_SLUG)
+        await asyncio.sleep(0)
+
+    assert CORE_SOCKETS_CHANGED in ha_ws_client.async_send_command.call_args_list

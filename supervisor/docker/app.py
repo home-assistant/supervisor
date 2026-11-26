@@ -23,6 +23,7 @@ from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
+    SOCKET_NAME_CORE,
     SOCKET_NAME_SUPERVISOR,
     SYSTEMD_JOURNAL_PERSISTENT,
     SYSTEMD_JOURNAL_VOLATILE,
@@ -50,6 +51,7 @@ from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
 from .const import (
     ADDON_BUILDER_IMAGE,
+    ENV_HOMEASSISTANT_API_SOCKET,
     ENV_SUPERVISOR_SOCKET,
     ENV_TIME,
     ENV_TOKEN,
@@ -69,6 +71,7 @@ from .const import (
     PATH_PRIVATE_DATA,
     PATH_PUBLIC_CONFIG,
     PATH_RUN_API,
+    PATH_RUN_CORE,
     PATH_SHARE,
     PATH_SSL,
     REDUCED_CAPABILITIES_DROP,
@@ -242,6 +245,11 @@ class DockerApp(DockerInterface):
         if not self.app.slug_too_long_for_socket:
             environment[ENV_SUPERVISOR_SOCKET] = (
                 PATH_RUN_API / SOCKET_NAME_SUPERVISOR
+            ).as_posix()
+        # Set even before a Core binds it, clients fall back while the file is absent
+        if self.app.with_core_socket:
+            environment[ENV_HOMEASSISTANT_API_SOCKET] = (
+                PATH_RUN_CORE / SOCKET_NAME_CORE
             ).as_posix()
         if self.app.supervisor_api_tcp:
             environment[ENV_TOKEN] = self.app.supervisor_token
@@ -456,6 +464,30 @@ class DockerApp(DockerInterface):
         return None
 
     @property
+    def _socket_mounts(self) -> list[DockerMount]:
+        """Return mounts of the folders Supervisor and Core listen for the app in."""
+        mounts: list[DockerMount] = []
+        if not self.app.slug_too_long_for_socket:
+            mounts.append(
+                DockerMount(
+                    type=MountType.BIND,
+                    source=self.app.path_extern_run_supervisor.as_posix(),
+                    target=PATH_RUN_API.as_posix(),
+                    read_only=True,
+                )
+            )
+        if self.app.with_core_socket:
+            mounts.append(
+                DockerMount(
+                    type=MountType.BIND,
+                    source=self.app.path_extern_run_core.as_posix(),
+                    target=PATH_RUN_CORE.as_posix(),
+                    read_only=True,
+                )
+            )
+        return mounts
+
+    @property
     def mounts(self) -> list[DockerMount]:
         """Return mounts for container."""
         app_mapping = self.app.map_volumes
@@ -474,16 +506,7 @@ class DockerApp(DockerInterface):
             ),
         ]
 
-        # Supervisor listens for the app in here
-        if not self.app.slug_too_long_for_socket:
-            mounts.append(
-                DockerMount(
-                    type=MountType.BIND,
-                    source=self.app.path_extern_run_supervisor.as_posix(),
-                    target=PATH_RUN_API.as_posix(),
-                    read_only=True,
-                )
-            )
+        mounts.extend(self._socket_mounts)
 
         # setup config mappings
         if MappingType.CONFIG in app_mapping:

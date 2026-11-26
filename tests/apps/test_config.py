@@ -1,7 +1,10 @@
 """Validate App configs."""
 
 import logging
+from typing import Any
+from unittest.mock import patch
 
+from awesomeversion import AwesomeVersion
 import pytest
 import voluptuous as vol
 
@@ -717,3 +720,89 @@ def test_supervisor_api_tcp_kept(value: bool):
     config["supervisor_api_tcp"] = value
 
     assert vd.SCHEMA_APP_CONFIG(config)["supervisor_api_tcp"] is value
+
+
+def test_homeassistant_api_proxy_not_stored_by_default():
+    """Test an unset homeassistant_api_proxy is not stored, so its default can change."""
+    config = load_json_fixture("basic-app-config.json")
+
+    assert "homeassistant_api_proxy" not in vd.SCHEMA_APP_CONFIG(config)
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_homeassistant_api_proxy_kept(value: bool):
+    """Test a declared homeassistant_api_proxy is kept."""
+    config = load_json_fixture("basic-app-config.json")
+    config["homeassistant_api_proxy"] = value
+
+    assert vd.SCHEMA_APP_CONFIG(config)["homeassistant_api_proxy"] is value
+
+
+NOT_RELEASED_WARNING = "without 'homeassistant' set to at least TBD"
+MIN_VERSION_WARNING = "without 'homeassistant' set to at least 2027.1.0"
+
+
+@pytest.mark.parametrize(
+    ("min_version", "config", "warning", "warned"),
+    [
+        pytest.param(
+            "TBD",
+            {"homeassistant": "2030.1.0", "homeassistant_api_proxy": False},
+            NOT_RELEASED_WARNING,
+            True,
+            id="core-unreleased",
+        ),
+        pytest.param(
+            "TBD",
+            {"homeassistant": "TBD", "homeassistant_api_proxy": False},
+            NOT_RELEASED_WARNING,
+            True,
+            id="core-unreleased-placeholder-required",
+        ),
+        pytest.param(
+            "2027.1.0",
+            {"homeassistant_api_proxy": False},
+            MIN_VERSION_WARNING,
+            True,
+            id="no-requirement",
+        ),
+        pytest.param(
+            "2027.1.0",
+            {"homeassistant": "2026.12.0", "homeassistant_api_proxy": False},
+            MIN_VERSION_WARNING,
+            True,
+            id="requirement-too-low",
+        ),
+        pytest.param(
+            "2027.1.0",
+            {"homeassistant": "2027.1.0", "homeassistant_api_proxy": False},
+            "homeassistant_api_proxy",
+            False,
+            id="requirement-met",
+        ),
+        pytest.param(
+            "2027.1.0",
+            {"homeassistant_api_proxy": True},
+            "homeassistant_api_proxy",
+            False,
+            id="proxy-kept",
+        ),
+    ],
+)
+def test_homeassistant_api_proxy_requires_core(
+    caplog: pytest.LogCaptureFixture,
+    min_version: str,
+    config: dict[str, Any],
+    warning: str,
+    warned: bool,
+):
+    """Test leaving the proxy is only accepted with a Core that binds app sockets."""
+    app_config = load_json_fixture("basic-app-config.json") | config
+
+    with patch(
+        "supervisor.homeassistant.const.CORE_APP_SOCKET_MIN_VERSION",
+        AwesomeVersion(min_version),
+    ):
+        vd.SCHEMA_APP_CONFIG(app_config)
+
+    assert (warning in caplog.text) is warned

@@ -9,6 +9,7 @@ from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.apps.app import App
 from supervisor.backups.manager import BackupManager
 from supervisor.const import DNS_SUFFIX, CoreState
 from supervisor.coresys import CoreSys
@@ -875,3 +876,39 @@ async def test_update_skips_health_check_when_core_not_running(
         not in coresys.resolution.issues
     )
     assert coresys.homeassistant.version == AwesomeVersion("2026.4.4")
+
+
+async def test_api_core_sockets(
+    api_client_with_prefix: tuple[TestClient, str],
+    install_app_ssh: App,
+    install_app_example: App,
+):
+    """Test Core gets the sockets to listen on for apps with Core API access."""
+    client, prefix = api_client_with_prefix
+    install_app_ssh.data["homeassistant_api"] = True
+    install_app_example.data["homeassistant_api"] = False
+
+    resp = await client.get(f"{prefix}/core/sockets")
+
+    assert resp.status == 200
+    assert (await resp.json())["data"] == {
+        "sockets": [
+            {
+                "slug": "local_ssh",
+                "name": "Terminal & SSH",
+                "path": "/run/supervisor/core/apps/local_ssh/core.sock",
+                "role": "admin",
+            }
+        ]
+    }
+
+
+async def test_api_core_sockets_core_only(
+    app_api_client_with_prefix: tuple[TestClient, str],
+):
+    """Test only Core may list the app sockets."""
+    client, prefix = app_api_client_with_prefix
+
+    resp = await client.get(f"{prefix}/core/sockets")
+
+    assert resp.status == 401

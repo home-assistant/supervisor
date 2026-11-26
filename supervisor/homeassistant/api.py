@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
 from pathlib import Path, PurePath
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from aiohttp import hdrs
@@ -26,9 +26,17 @@ from ..exceptions import (
 )
 from ..utils import version_is_new_enough
 from .const import LANDINGPAGE
+from .validate import core_binds_app_sockets
 from .websocket import WSClient
 
+if TYPE_CHECKING:
+    from ..apps.app import App
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Core identifies an app by its socket, the host part is never resolved
+APP_API_URL = "http://localhost"
+APP_WS_URL = "ws://localhost/api/websocket"
 
 CORE_UNIX_SOCKET_MIN_VERSION: AwesomeVersion = AwesomeVersion(
     "2026.4.0.dev202603250907"
@@ -70,6 +78,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         self._access_token_expires: datetime | None = None
         self._token_lock: asyncio.Lock = asyncio.Lock()
         self._unix_session: aiohttp.ClientSession | None = None
+        self._app_sessions: dict[str, aiohttp.ClientSession] = {}
         self._core_connected: bool = False
         self._core_used_supervisor_socket: bool = False
         self._core_container_running: bool | None = None
@@ -169,6 +178,39 @@ class HomeAssistantAPI(CoreSysAttributes):
             )
         return self._unix_session
 
+    def session_for_app(self, app: App) -> aiohttp.ClientSession | None:
+        """Return the session forwarding an app's requests to Core as the app.
+
+        None while Core does not bind a socket for each app, Supervisor's own
+        session applies then. Never falls back to it once Core does, a missing
+        socket fails the request instead.
+        """
+        if not app.with_core_socket or not core_binds_app_sockets(
+            self.sys_homeassistant.version
+        ):
+            return None
+
+        session = self._app_sessions.get(app.slug)
+        if session is None or session.closed:
+            session = self._app_sessions[app.slug] = aiohttp.ClientSession(
+                connector=aiohttp.UnixConnector(
+                    path=str(app.path_run_core / SOCKET_NAME_CORE)
+                ),
+                cookie_jar=aiohttp.DummyCookieJar(),
+                headers={hdrs.USER_AGENT: SERVER_SOFTWARE},
+            )
+        return session
+
+    async def close_app_session(self, slug: str) -> None:
+        """Close the session forwarding an app's requests to Core."""
+        if (session := self._app_sessions.pop(slug, None)) and not session.closed:
+            await session.close()
+
+    async def _close_app_sessions(self) -> None:
+        """Close the sessions forwarding apps' requests to Core."""
+        for slug in list(self._app_sessions):
+            await self.close_app_session(slug)
+
     @property
     def api_url(self) -> str:
         """Return API base url for internal Supervisor to Core communication."""
@@ -203,12 +245,14 @@ class HomeAssistantAPI(CoreSysAttributes):
         if self._unix_session and not self._unix_session.closed:
             await self._unix_session.close()
             self._unix_session = None
+        await self._close_app_sessions()
 
     async def close(self) -> None:
-        """Close the Unix socket session."""
+        """Close the Unix socket sessions."""
         if self._unix_session and not self._unix_session.closed:
             await self._unix_session.close()
             self._unix_session = None
+        await self._close_app_sessions()
 
     async def _ensure_access_token(self) -> None:
         """Ensure there is a valid access token.
@@ -270,27 +314,35 @@ class HomeAssistantAPI(CoreSysAttributes):
         _LOGGER.debug("Error on call %s: %s", url, message)
         return error_type(message)
 
-    async def connect_websocket(self) -> WSClient:
+    async def connect_websocket(self, app: App | None = None) -> WSClient:
         """Connect a WebSocket to Core, handling auth as appropriate.
 
         For Unix socket connections, no authentication is needed.
         For TCP connections, handles token management with one retry
-        on auth failure.
+        on auth failure. With an app, connects as that app (see session_for_app).
 
         Raises:
             HomeAssistantAPIError: On connection or auth failure.
 
         """
+        unix_session: aiohttp.ClientSession | None
+        if app and (app_session := self.session_for_app(app)):
+            unix_session, url = app_session, APP_WS_URL
+        elif self.use_unix_socket:
+            unix_session, url = self.session, self.ws_url
+        else:
+            unix_session, url = None, self.ws_url
+
         try:
-            if self.use_unix_socket:
-                return await WSClient.connect(self.session, self.ws_url)
+            if unix_session:
+                return await WSClient.connect(unix_session, url)
 
             for attempt in (1, 2):
                 try:
                     await self._ensure_access_token()
                     assert self._access_token
                     return await WSClient.connect_with_auth(
-                        self.session, self.ws_url, self._access_token
+                        self.session, url, self._access_token
                     )
                 except HomeAssistantAuthError:
                     self._access_token = None
@@ -301,9 +353,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             TimeoutError,
             aiohttp.ClientError,
         ) as err:
-            raise self._request_error(
-                self.ws_url, err, HomeAssistantWSConnectionError
-            ) from err
+            raise self._request_error(url, err, HomeAssistantWSConnectionError) from err
 
         # Unreachable, but satisfies type checker
         raise RuntimeError("Unreachable")
@@ -319,6 +369,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         timeout: int | None = 30,
         params: MultiMapping[str] | None = None,
         headers: dict[str, str] | None = None,
+        app: App | None = None,
     ) -> AsyncIterator[aiohttp.ClientResponse]:
         """Async context manager to make requests to Home Assistant Core API.
 
@@ -344,6 +395,8 @@ class HomeAssistantAPI(CoreSysAttributes):
             timeout: Request timeout in seconds
             params: URL query parameters
             headers: Additional HTTP headers
+            app: Make the request as this app (see session_for_app). Core's
+                answer then goes to the app, a 401 included
 
         Yields:
             aiohttp.ClientResponse: The HTTP response object
@@ -355,11 +408,19 @@ class HomeAssistantAPI(CoreSysAttributes):
                 credentials (HTTP 401), after one token refresh over TCP
 
         """
+        # As an app, a 401 is Core's answer for the app, not about Supervisor's
+        # credentials
+        if app and (app_session := self.session_for_app(app)):
+            session, base_url, use_token, as_app = app_session, APP_API_URL, False, True
+        else:
+            session, base_url, as_app = self.session, self.api_url, False
+            use_token = not self.use_unix_socket
+
         # encoded=True makes yarl send the path byte-for-byte. Without it, yarl
         # would normalize percent-encoded unreserved characters (e.g. %5F -> _),
         # which lets a path that passed a deny check upstream turn into a
         # different one on the wire.
-        url = URL(f"{self.api_url}/{path}", encoded=True)
+        url = URL(f"{base_url}/{path}", encoded=True)
         headers = headers or {}
         client_timeout = aiohttp.ClientTimeout(total=timeout)
 
@@ -368,10 +429,10 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         for _ in (1, 2):
             try:
-                if not self.use_unix_socket:
+                if use_token:
                     await self._ensure_access_token()
                     headers[hdrs.AUTHORIZATION] = f"Bearer {self._access_token}"
-                async with self.session.request(
+                async with session.request(
                     method,
                     url,
                     data=data,
@@ -381,19 +442,18 @@ class HomeAssistantAPI(CoreSysAttributes):
                     params=params,
                     ssl=False,
                 ) as resp:
-                    if resp.status == 401 and not self.use_unix_socket:
+                    if resp.status != 401 or as_app:
+                        yield resp
+                        return
+                    if use_token:
                         self._access_token = None
                         continue
-                    if resp.status == 401:
-                        # Over the Unix socket there is no token to refresh:
-                        # Core does not accept the Supervisor user itself.
-                        _LOGGER.error(
-                            "Home Assistant rejected Supervisor credentials on %s",
-                            path,
-                        )
-                        raise HomeAssistantAuthError
-                    yield resp
-                    return
+                    # Over the Unix socket there is no token to refresh:
+                    # Core does not accept the Supervisor user itself.
+                    _LOGGER.error(
+                        "Home Assistant rejected Supervisor credentials on %s", path
+                    )
+                    raise HomeAssistantAuthError
             except (TimeoutError, aiohttp.ClientError) as err:
                 raise self._request_error(url, err, HomeAssistantAPIError) from err
 
