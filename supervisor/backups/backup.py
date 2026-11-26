@@ -520,7 +520,8 @@ class Backup(JobGroup):
 
             return _outer_secure_tarfile
 
-        outer_secure_tarfile = await self.sys_run_in_executor(_open_outer_tarfile)
+        async with self.sys_backups.location_lock(self.location):
+            outer_secure_tarfile = await self.sys_run_in_executor(_open_outer_tarfile)
         self._outer_secure_tarfile = outer_secure_tarfile
 
         def _close_outer_tarfile() -> int:
