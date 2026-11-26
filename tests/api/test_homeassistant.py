@@ -868,10 +868,62 @@ async def test_update_skips_health_check_when_core_not_running(
     # Health check must not run when Core wasn't running on entry.
     mock_get_config.assert_not_called()
     mock_frontend.assert_not_called()
-    # Caller (restore flow) is responsible for cleanup later.
-    mock_cleanup.assert_not_called()
+    # The image of the version restored away from is removed.
+    mock_cleanup.assert_called_once_with(
+        old_image="ghcr.io/home-assistant/qemux86-64-homeassistant"
+    )
     assert (
         Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE, reference="2026.4.4")
         not in coresys.resolution.issues
     )
     assert coresys.homeassistant.version == AwesomeVersion("2026.4.4")
+
+
+@pytest.mark.parametrize(
+    "cleanup_error",
+    [
+        pytest.param(None, id="cleanup_succeeds"),
+        pytest.param(DockerError("cleanup failed"), id="cleanup_fails"),
+    ],
+)
+async def test_update_stopped_core_cleans_up_old_image(
+    core_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    cleanup_error: DockerError | None,
+):
+    """Test updating a stopped Core removes the previous image.
+
+    Core is kept stopped on purpose on some systems (e.g. a standby
+    install), and every update would otherwise leave one image behind.
+    A failed cleanup must not fail the update.
+    """
+    api_client, root = core_api_client_with_root
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2026.11.2")
+    coresys.homeassistant.set_image("ghcr.io/home-assistant/qemux86-64-homeassistant")
+
+    with (
+        patch.object(DockerInterface, "update") as mock_update,
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=False)),
+        patch.object(DockerInterface, "exists", AsyncMock(return_value=False)),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2026.11.3")),
+        ),
+        patch.object(HomeAssistantCore, "start") as mock_start,
+        patch.object(HomeAssistantAPI, "get_config") as mock_get_config,
+        patch.object(
+            DockerInterface, "cleanup", side_effect=cleanup_error
+        ) as mock_cleanup,
+    ):
+        resp = await api_client.post(f"{root}/update", json={"version": "2026.11.3"})
+
+    assert resp.status == 200
+    mock_update.assert_called_once()
+    mock_start.assert_not_called()
+    mock_get_config.assert_not_called()
+    mock_cleanup.assert_called_once_with(
+        old_image="ghcr.io/home-assistant/qemux86-64-homeassistant"
+    )
+    assert coresys.homeassistant.version == AwesomeVersion("2026.11.3")
