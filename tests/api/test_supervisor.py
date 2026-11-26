@@ -2,6 +2,7 @@
 
 # pylint: disable=protected-access
 import asyncio
+from pathlib import Path
 import time
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -12,6 +13,7 @@ from awesomeversion import AwesomeVersion
 from blockbuster import BlockingError
 import pytest
 
+from supervisor.config import CoreConfig
 from supervisor.const import CoreState, FeatureFlag
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
@@ -388,6 +390,42 @@ async def test_api_supervisor_options_country(
     assert resp.status == 200
     body = await resp.json()
     assert body["data"]["country"] == "CH"
+
+
+async def test_api_supervisor_options_language(
+    api_client_with_prefix: tuple[TestClient, str],
+    coresys: CoreSys,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that Supervisor accepts and persists the installation language."""
+    api_client, prefix = api_client_with_prefix
+    monkeypatch.setattr(
+        "supervisor.config.FILE_HASSIO_CONFIG", tmp_path / "supervisor.json"
+    )
+    monkeypatch.setattr(coresys, "_config", await CoreConfig().load_config())
+    assert coresys.config.language == "en"
+
+    url = f"{prefix}/supervisor/options"
+    response = await api_client.post(url, json={"language": "pt-BR"})
+    assert response.status == 200
+    assert coresys.config.language == "pt-BR"
+
+    response = await api_client.post(url, json={"country": "BR"})
+    assert response.status == 200
+    assert (await CoreConfig().load_config()).language == "pt-BR"
+
+
+async def test_api_supervisor_options_invalid_language(
+    api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
+) -> None:
+    """Reject invalid language values before changing the saved setting."""
+    api_client, prefix = api_client_with_prefix
+    response = await api_client.post(
+        f"{prefix}/supervisor/options", json={"language": "pt-BR\0"}
+    )
+    assert response.status == 400
+    assert coresys.config.language == "en"
 
 
 @pytest.mark.parametrize(

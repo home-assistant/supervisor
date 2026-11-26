@@ -17,6 +17,7 @@ from .const import (
     ATTR_DIAGNOSTICS,
     ATTR_FEATURE_FLAGS,
     ATTR_IMAGE,
+    ATTR_LANGUAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_TIMEZONE,
@@ -64,6 +65,7 @@ RUN_SUPERVISOR = PurePath("supervisor")
 RUN_CORE = PurePath("core")
 
 DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
+_DEFAULT_LANGUAGE = "en"
 
 # We filter out UTC because it's the system default fallback
 # Core also does not respect the container timezone and resets timezones
@@ -115,6 +117,16 @@ class CoreConfig(FileConfiguration):
     def country(self, value: str | None) -> None:
         """Set supervisor country."""
         self._data[ATTR_COUNTRY] = value
+
+    @property
+    def language(self) -> str:
+        """Return the Home Assistant installation language."""
+        return self._data.get(ATTR_LANGUAGE, _DEFAULT_LANGUAGE)
+
+    @language.setter
+    def language(self, value: str) -> None:
+        """Set the Home Assistant installation language."""
+        self._data[ATTR_LANGUAGE] = value
 
     @property
     def version(self) -> AwesomeVersion:
