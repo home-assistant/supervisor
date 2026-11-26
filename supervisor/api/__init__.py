@@ -27,7 +27,9 @@ from ..exceptions import (
     HostJournalGatewaydRequestError,
     HostNotSupportedError,
 )
+from ..homeassistant.module import HomeAssistant
 from ..host.const import LogFormatter
+from ..host.manager import HostManager
 from ..utils.sentry import async_capture_exception
 from .apps import APIApps
 from .audio import APIAudio
@@ -64,9 +66,9 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 MAX_CLIENT_SIZE: int = 1024**2 * 16
-# Backoff for retrying Core's socket, the s6 watchdog bounds the total time
-CORE_SOCKET_RETRY_MIN: int = 1
-CORE_SOCKET_RETRY_MAX: int = 60
+# Backoff for retrying the Core and host sockets
+SOCKET_RETRY_MIN: int = 1
+SOCKET_RETRY_MAX: int = 60
 MAX_LINE_SIZE: int = 24570
 
 
@@ -105,7 +107,7 @@ class RestAPI(CoreSysAttributes):
         self._runner: web.AppRunner = web.AppRunner(self.webapp, shutdown_timeout=5)
         self._site: web.TCPSite | None = None
         self.sockets: SocketRegistry = SocketRegistry(coresys, self._runner)
-        self._core_socket_retry: asyncio.Task | None = None
+        self._socket_retries: list[asyncio.Task] = []
 
         # share single host API handler for reuse in logging endpoints
         self._api_host: APIHost = APIHost()
@@ -1161,38 +1163,48 @@ class RestAPI(CoreSysAttributes):
         else:
             listening.append(str(self.sys_docker.network.supervisor))
 
-        if not await self._listen_for_core():
-            self._core_socket_retry = self.sys_create_background_task(
-                self._retry_listen_for_core()
-            )
+        principals: tuple[tuple[str, HomeAssistant | HostManager], ...] = (
+            ("Core", self.sys_homeassistant),
+            ("host OS", self.sys_host),
+        )
+        for name, principal in principals:
+            if not await self._listen_for(name, principal):
+                self._socket_retries.append(
+                    self.sys_create_background_task(
+                        self._retry_listen_for(name, principal)
+                    )
+                )
         listening.extend(self.sockets.paths)
 
         if listening:
             _LOGGER.info("Starting API on %s", ", ".join(listening))
 
-    async def _listen_for_core(self) -> bool:
-        """Listen for Core on its socket, return whether it worked."""
+    async def _listen_for(
+        self, name: str, principal: HomeAssistant | HostManager
+    ) -> bool:
+        """Listen for a principal on its socket, return whether it worked."""
         try:
             await self.sockets.register(
-                self.sys_homeassistant,
-                self.sys_homeassistant.path_run_supervisor / SOCKET_NAME_SUPERVISOR,
+                principal, principal.path_run_supervisor / SOCKET_NAME_SUPERVISOR
             )
         except APISocketError as err:
-            _LOGGER.error("Failed to create API socket for Core -> %s", err)
+            _LOGGER.error("Failed to create API socket for %s -> %s", name, err)
             return False
         return True
 
-    async def _retry_listen_for_core(self) -> None:
-        """Retry listening for Core on its socket until it works."""
-        # Serving Core defines a working Supervisor, so never give up
-        delay = CORE_SOCKET_RETRY_MIN
+    async def _retry_listen_for(
+        self, name: str, principal: HomeAssistant | HostManager
+    ) -> None:
+        """Retry listening for a principal on its socket until it works."""
+        # Core and the host OS have no other way in once TCP is gone, so never give up
+        delay = SOCKET_RETRY_MIN
         while True:
-            _LOGGER.info("Retrying API socket for Core in %d seconds", delay)
+            _LOGGER.info("Retrying API socket for %s in %d seconds", name, delay)
             await asyncio.sleep(delay)
-            if await self._listen_for_core():
+            if await self._listen_for(name, principal):
                 _LOGGER.info("Starting API on %s", ", ".join(self.sockets.paths))
                 return
-            delay = min(delay * 2, CORE_SOCKET_RETRY_MAX)
+            delay = min(delay * 2, SOCKET_RETRY_MAX)
 
     async def stop(self) -> None:
         """Stop RESTful API webserver."""
@@ -1200,10 +1212,11 @@ class RestAPI(CoreSysAttributes):
             return
 
         # Shutdown running API
-        if self._core_socket_retry:
-            self._core_socket_retry.cancel()
+        for retry in self._socket_retries:
+            retry.cancel()
             with suppress(asyncio.CancelledError):
-                await self._core_socket_retry
+                await retry
+        self._socket_retries.clear()
         await self._site.stop()
         await self.sockets.stop_all()
         await self._runner.cleanup()

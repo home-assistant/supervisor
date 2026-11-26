@@ -3,6 +3,7 @@
 from contextlib import suppress
 from functools import lru_cache
 import logging
+from pathlib import Path, PurePath
 from typing import Self
 
 from awesomeversion import AwesomeVersion
@@ -23,6 +24,8 @@ from .services import ServiceManager
 from .sound import SoundControl
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+RUN_SUPERVISOR_HOST = PurePath("host")
 
 
 class HostManager(CoreSysAttributes):
@@ -45,6 +48,23 @@ class HostManager(CoreSysAttributes):
         """Post init actions that must occur in event loop."""
         await self._logs.post_init()
         return self
+
+    @property
+    def path_run_supervisor(self) -> Path:
+        """Return folder of the socket Supervisor listens on for the host OS."""
+        return self.sys_config.path_run_supervisor / RUN_SUPERVISOR_HOST
+
+    @property
+    def path_extern_run_supervisor(self) -> PurePath:
+        """Return folder of the host OS socket Supervisor listens on for Docker."""
+        return PurePath(self.sys_config.path_extern_run_supervisor, RUN_SUPERVISOR_HOST)
+
+    def ensure_run_dirs(self) -> None:
+        """Create the run folder of the host OS socket.
+
+        Must be run in executor.
+        """
+        self.path_run_supervisor.mkdir(parents=True, exist_ok=True)
 
     @property
     def apparmor(self) -> AppArmorControl:

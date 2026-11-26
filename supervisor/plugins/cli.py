@@ -31,6 +31,7 @@ from ..jobs.decorator import Job
 from .base import PluginBase, PluginErrors
 from .const import (
     FILE_HASSIO_CLI,
+    OS_HOST_CLI_MIN_VERSION,
     PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
@@ -64,6 +65,20 @@ class PluginCli(PluginBase):
         self.instance: DockerCli = DockerCli(coresys)
 
     @property
+    def enabled(self) -> bool:
+        """Return True if the plugin is enabled and the host OS has no ha of its own."""
+        return not self._host_has_cli() and super().enabled
+
+    def _host_has_cli(self) -> bool:
+        """Return True if the OS ships ha talking to the host OS socket."""
+        return (
+            OS_HOST_CLI_MIN_VERSION is not None
+            and self.sys_os.available
+            and self.sys_os.version is not None
+            and self.sys_os.version >= OS_HOST_CLI_MIN_VERSION
+        )
+
+    @property
     def default_image(self) -> str:
         """Return default image for cli plugin."""
         if self.sys_updater.image_cli:
@@ -89,8 +104,21 @@ class PluginCli(PluginBase):
         """Update local HA cli."""
         await super().update(version)
 
+    async def load(self) -> None:
+        """Load the cli plugin and drop the token of a disabled one."""
+        if not self.enabled and self._data.pop(ATTR_ACCESS_TOKEN, None):
+            await self.save_data()
+        await super().load()
+
     async def start(self) -> None:
         """Run cli with a new API token."""
+        # The mount source must exist even when the host OS socket failed to bind
+        try:
+            await self.sys_run_in_executor(self.sys_host.ensure_run_dirs)
+        except OSError as err:
+            _LOGGER.error("Can't create socket folder for the cli: %s", err)
+            raise CliStartError from err
+
         self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
         await self.save_data()
         await super().start()

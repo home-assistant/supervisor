@@ -2,12 +2,19 @@
 
 import logging
 
-from ..const import CLI_DOCKER_NAME
+from ..const import CLI_DOCKER_NAME, SOCKET_NAME_SUPERVISOR
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerJobError
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
-from .const import ENV_TIME, ENV_TOKEN
+from .const import (
+    ENV_SUPERVISOR_SOCKET,
+    ENV_TIME,
+    ENV_TOKEN,
+    PATH_RUN_API,
+    DockerMount,
+    MountType,
+)
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -46,8 +53,21 @@ class DockerCli(DockerInterface, CoreSysAttributes):
                 "supervisor": self.sys_docker.network.supervisor,
                 "observer": self.sys_docker.network.observer,
             },
+            mounts=[
+                # The cli shares the host OS socket, both act as the host OS
+                DockerMount(
+                    type=MountType.BIND,
+                    source=self.sys_host.path_extern_run_supervisor.as_posix(),
+                    target=PATH_RUN_API.as_posix(),
+                    read_only=True,
+                ),
+            ],
             environment={
                 ENV_TIME: self.sys_timezone,
+                ENV_SUPERVISOR_SOCKET: (
+                    PATH_RUN_API / SOCKET_NAME_SUPERVISOR
+                ).as_posix(),
+                # Images with a ha older than 5.7.0 only know the token
                 ENV_TOKEN: self.sys_plugins.cli.supervisor_token,
             },
         )
