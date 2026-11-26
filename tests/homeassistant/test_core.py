@@ -17,6 +17,7 @@ from time_machine import travel
 from supervisor.const import CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import DBUS_ERR_SYSTEMD_NO_SUCH_UNIT
+from supervisor.docker.const import ENV_TOKEN
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
@@ -29,6 +30,7 @@ from supervisor.exceptions import (
     DockerContainerNotRunningError,
     DockerError,
     DockerStatsTimeoutError,
+    DockerTimeoutError,
     HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
@@ -700,6 +702,68 @@ async def test_start(
 
     container.stop.assert_called_once_with(t=260)
     assert container.delete.call_args_list == delete_calls
+
+
+@pytest.mark.parametrize(
+    ("run_error", "surviving_token", "expected_token"),
+    [
+        pytest.param(
+            DockerTimeoutError("Create timed out"),
+            "a" * 112,
+            "a" * 112,
+            id="create-timeout-retains-previous-container",
+        ),
+        pytest.param(
+            DockerAPIError("Container name is in use"),
+            "a" * 112,
+            "a" * 112,
+            id="name-conflict",
+        ),
+        pytest.param(
+            DockerTimeoutError("Create timed out"),
+            "b" * 112,
+            "b" * 112,
+            id="create-timeout-retains-new-container",
+        ),
+        pytest.param(
+            DockerAPIError("Container name is in use"),
+            "c" * 112,
+            "b" * 112,
+            id="unrecognized-token",
+        ),
+    ],
+)
+async def test_failed_start_preserves_issued_token(
+    coresys: CoreSys,
+    container: DockerContainer,
+    tmp_supervisor_data: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    run_error: DockerError,
+    surviving_token: str,
+    expected_token: str,
+) -> None:
+    """Restore the previous token only when it belongs to the retained container."""
+    container.show.return_value["Config"] = {"Env": [f"{ENV_TOKEN}={surviving_token}"]}
+    coresys.homeassistant.supervisor_token = "a" * 112
+    monkeypatch.setattr(
+        coresys.homeassistant, "_file", tmp_supervisor_data / "homeassistant.json"
+    )
+
+    with (
+        patch(
+            "supervisor.homeassistant.core.secrets.token_hex", return_value="b" * 112
+        ),
+        patch.object(DockerHomeAssistant, "is_running", return_value=False),
+        patch.object(DockerHomeAssistant, "is_initialize", return_value=False),
+        patch.object(DockerHomeAssistant, "run", side_effect=run_error),
+        pytest.raises(HomeAssistantError) as error,
+    ):
+        await coresys.homeassistant.core.start()
+
+    assert error.value.__cause__ is run_error
+    assert coresys.homeassistant.supervisor_token == expected_token
+    await coresys.homeassistant.read_data()
+    assert coresys.homeassistant.supervisor_token == expected_token
 
 
 @pytest.mark.usefixtures("path_extern")

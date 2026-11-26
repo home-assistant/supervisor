@@ -545,6 +545,7 @@ class HomeAssistantCore(JobGroup):
             # No Instance/Container found, extended start
             else:
                 # Create new API token
+                previous_token = self.sys_homeassistant.supervisor_token
                 self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
                 await self.sys_homeassistant.save_data()
 
@@ -556,6 +557,16 @@ class HomeAssistantCore(JobGroup):
                         restore_job_id=self.sys_backups.current_restore
                     )
                 except DockerError as err:
+                    # Restore only the token issued before this attempt.
+                    with suppress(DockerError):
+                        if (
+                            previous_token
+                            and await self.instance.container_uses_supervisor_token(
+                                previous_token
+                            )
+                        ):
+                            self.sys_homeassistant.supervisor_token = previous_token
+                            await self.sys_homeassistant.save_data()
                     raise HomeAssistantError from err
 
         await self._block_till_run()
