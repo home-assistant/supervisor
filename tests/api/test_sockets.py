@@ -253,10 +253,11 @@ async def test_principal_for_tcp(
     assert await resp.text() == "False"
 
 
-async def test_api_listens_for_core(coresys: CoreSys, tmp_run_dir: Path):
-    """Test the API serves Core on its socket without a token."""
+async def test_api_listens_for_core_and_host(coresys: CoreSys, tmp_run_dir: Path):
+    """Test the API serves Core and the host OS on their sockets without a token."""
     await coresys.core.set_state(CoreState.RUNNING)
-    path = tmp_run_dir / "supervisor" / "core" / "supervisor.sock"
+    core_path = tmp_run_dir / "supervisor" / "core" / "supervisor.sock"
+    host_path = tmp_run_dir / "supervisor" / "host" / "supervisor.sock"
     api = RestAPI(coresys)
     with patch("supervisor.docker.supervisor.os") as os:
         os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
@@ -264,53 +265,64 @@ async def test_api_listens_for_core(coresys: CoreSys, tmp_run_dir: Path):
     await api.start()
 
     try:
-        assert api.sockets.paths == [str(path)]
-        async with (
-            ClientSession(connector=UnixConnector(path=str(path))) as session,
-            session.get("http://localhost/supervisor/info") as resp,
-        ):
-            assert resp.status == 200
+        assert api.sockets.paths == [str(core_path), str(host_path)]
+        for path in (core_path, host_path):
+            async with (
+                ClientSession(connector=UnixConnector(path=str(path))) as session,
+                session.get("http://localhost/supervisor/info") as resp,
+            ):
+                assert resp.status == 200
     finally:
         await api.stop()
 
     assert not api.sockets.paths
-    assert not await asyncio.get_running_loop().run_in_executor(None, path.exists)
+    loop = asyncio.get_running_loop()
+    assert not await loop.run_in_executor(None, core_path.exists)
+    assert not await loop.run_in_executor(None, host_path.exists)
 
 
-async def test_api_retries_core_socket(coresys: CoreSys, tmp_run_dir: Path):
-    """Test the API keeps retrying Core's socket until it can listen on it."""
-    path = tmp_run_dir / "supervisor" / "core" / "supervisor.sock"
+@pytest.mark.parametrize(("failing", "working"), [("core", "host"), ("host", "core")])
+async def test_api_retries_socket(
+    coresys: CoreSys, tmp_run_dir: Path, failing: str, working: str
+):
+    """Test the API retries a failed socket without holding up the other one."""
+    failing_path = tmp_run_dir / "supervisor" / failing / "supervisor.sock"
+    working_path = tmp_run_dir / "supervisor" / working / "supervisor.sock"
     loop = asyncio.get_running_loop()
     # A directory in the way makes preparing the socket path fail
-    await loop.run_in_executor(None, lambda: path.mkdir(parents=True))
+    await loop.run_in_executor(None, lambda: failing_path.mkdir(parents=True))
     api = RestAPI(coresys)
 
-    with patch("supervisor.api.CORE_SOCKET_RETRY_MIN", 0):
+    with patch("supervisor.api.SOCKET_RETRY_MIN", 0):
         await api.start()
         try:
-            assert not api.sockets.paths
-            await loop.run_in_executor(None, path.rmdir)
+            assert api.sockets.paths == [str(working_path)]
+            await loop.run_in_executor(None, failing_path.rmdir)
             # pylint: disable-next=protected-access
-            await asyncio.wait_for(api._core_socket_retry, timeout=5)
+            await asyncio.wait_for(asyncio.gather(*api._socket_retries), timeout=5)
 
-            assert api.sockets.paths == [str(path)]
+            assert sorted(api.sockets.paths) == sorted(
+                [str(working_path), str(failing_path)]
+            )
         finally:
             await api.stop()
 
 
-async def test_api_stop_cancels_core_socket_retry(coresys: CoreSys, tmp_run_dir: Path):
-    """Test stopping the API ends retrying Core's socket."""
-    path = tmp_run_dir / "supervisor" / "core" / "supervisor.sock"
-    await asyncio.get_running_loop().run_in_executor(
-        None, lambda: path.mkdir(parents=True)
-    )
+async def test_api_stop_cancels_socket_retries(coresys: CoreSys, tmp_run_dir: Path):
+    """Test stopping the API ends retrying the sockets."""
+    loop = asyncio.get_running_loop()
+    for name in ("core", "host"):
+        path = tmp_run_dir / "supervisor" / name / "supervisor.sock"
+        await loop.run_in_executor(None, lambda p=path: p.mkdir(parents=True))
     api = RestAPI(coresys)
     await api.start()
+    # pylint: disable-next=protected-access
+    retries = list(api._socket_retries)
 
     await api.stop()
 
-    # pylint: disable-next=protected-access
-    assert api._core_socket_retry.cancelled()
+    assert len(retries) == 2
+    assert all(retry.cancelled() for retry in retries)
     assert not api.sockets.paths
 
 
