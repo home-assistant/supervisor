@@ -32,6 +32,7 @@ from .const import (
     ATTR_HOMEASSISTANT,
     ATTR_ID,
     ATTR_IMAGE,
+    ATTR_LANGUAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
     ATTR_MTU,
@@ -115,6 +116,7 @@ def docker_image(image: str) -> str:
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
+language = vol.Match(r"[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*\Z")
 
 
 def version_tag(
@@ -221,6 +223,7 @@ SCHEMA_SUPERVISOR_CONFIG = vol.All(
     vol.Schema(
         {
             vol.Optional(ATTR_TIMEZONE): validate_timezone,
+            vol.Optional(ATTR_LANGUAGE): language,
             vol.Optional(ATTR_LAST_BOOT): str,
             vol.Optional(
                 ATTR_VERSION, default=AwesomeVersion(SUPERVISOR_VERSION)

@@ -23,6 +23,7 @@ from ..const import (
     ATTR_HEALTHY,
     ATTR_ICON,
     ATTR_IP_ADDRESS,
+    ATTR_LANGUAGE,
     ATTR_LOGGING,
     ATTR_NAME,
     ATTR_ONE_SHOT,
@@ -45,7 +46,7 @@ from ..store.validate import repositories
 from ..utils.blockbuster import BlockBusterManager
 from ..utils.sentry import close_sentry, init_sentry
 from ..utils.validate import validate_timezone
-from ..validate import version_tag, wait_boot
+from ..validate import language, version_tag, wait_boot
 from .const import CONTENT_TYPE_TEXT, DetectBlockingIO
 from .utils import api_process, api_process_raw, api_return_stats, api_validate
 
@@ -56,6 +57,7 @@ SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannel),
         vol.Optional(ATTR_TIMEZONE): str,
+        vol.Optional(ATTR_LANGUAGE): language,
         vol.Optional(ATTR_LOGGING): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
         vol.Optional(ATTR_DEBUG_BLOCK): vol.Boolean(),
@@ -193,6 +195,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_COUNTRY in body:
             self.sys_config.country = body[ATTR_COUNTRY]
+
+        if ATTR_LANGUAGE in body:
+            self.sys_config.language = body[ATTR_LANGUAGE]
 
         if ATTR_DEBUG in body:
             self.sys_config.debug = body[ATTR_DEBUG]

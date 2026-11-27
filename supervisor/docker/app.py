@@ -50,6 +50,7 @@ from ..utils.sentinel import DEFAULT
 from ..utils.sentry import async_capture_exception
 from .const import (
     ADDON_BUILDER_IMAGE,
+    ENV_LANGUAGE,
     ENV_SUPERVISOR_SOCKET,
     ENV_TIME,
     ENV_TOKEN,
@@ -237,6 +238,7 @@ class DockerApp(DockerInterface):
 
         environment: dict[str, str | int | None] = {
             **app_env,
+            ENV_LANGUAGE: self.sys_config.language,
             ENV_TIME: self.sys_timezone,
         }
         if not self.app.slug_too_long_for_socket:

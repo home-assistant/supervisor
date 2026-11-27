@@ -162,6 +162,25 @@ def test_supervisor_socket_environment(
     } == tokens
 
 
+def test_app_language_environment(
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
+) -> None:
+    """Test apps receive the installation language even with API access disabled."""
+    config = load_json_fixture("basic-app-config.json") | {
+        "environment": {"LANGUAGE": "de"},
+        "hassio_api": False,
+        "homeassistant_api": False,
+        "supervisor_api_tcp": False,
+    }
+    docker_app = get_docker_app(coresys, addonsdata_system, config)
+
+    assert docker_app.environment["LANGUAGE"] == "en"
+
+    coresys.config.language = "pt-BR"
+
+    assert docker_app.environment["LANGUAGE"] == "pt-BR"
+
+
 @pytest.mark.usefixtures("path_extern")
 def test_supervisor_socket_long_slug(
     coresys: CoreSys, addonsdata_system: dict[str, Data], addonsdata_user: PropertyMock
